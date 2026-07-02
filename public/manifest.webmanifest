@@ -1,0 +1,28 @@
+{
+  "name": "Kuula Mobile",
+  "short_name": "Kuula",
+  "description": "Fast, secure loans via mobile money. Apply for loans, manage payments, and track savings using MTN MoMo and Airtel Money.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0D5C3A",
+  "categories": ["finance", "business", "productivity"],
+  "lang": "en-UG",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "./kuula-tile-green-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./kuula-tile-green-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

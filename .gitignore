@@ -1,0 +1,59 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# This project uses npm. package-lock.json IS committed for reproducible
+# builds; other package managers' lockfiles must never be committed (two
+# lockfiles break CI and deploy tooling).
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+
+# ── Environment & secrets — NEVER commit these ────────────────────────────────
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.staging
+.env.staging.local
+.env.test
+.env.test.local
+# Allow only the safe template
+!.env.example
+
+# ── Editor & OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/settings.json
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ── Native build output ───────────────────────────────────────────────────────
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/DerivedData/
+
+# ── Release signing — NEVER commit keystores or certs ────────────────────────
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+
+# ── Supabase CLI local artifacts ──────────────────────────────────────────────
+supabase/.branches/
+supabase/.temp/

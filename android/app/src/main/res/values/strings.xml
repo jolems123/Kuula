@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kuula</string>
+    <string name="title_activity_main">Kuula</string>
+    <string name="package_name">ug.kuula.app</string>
+    <string name="custom_url_scheme">ug.kuula.app</string>
+</resources>

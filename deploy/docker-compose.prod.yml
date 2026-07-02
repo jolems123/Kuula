@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Kuula API — production docker-compose for the deploy host.
+#
+# This file is what `deploy-backend.yml` SSHes onto the server. It is the
+# single source of truth for the production stack: Postgres + API + (future)
+# reverse proxy. Copy to /opt/kuula/docker-compose.yml on first setup.
+#
+# Required server-side env (.env file at /opt/kuula/.env — NOT committed):
+#
+#   POSTGRES_USER=kuula
+#   POSTGRES_PASSWORD=<strong random password>
+#   POSTGRES_DB=kuula
+#   DATABASE_URL=postgres://kuula:<password>@postgres:5432/kuula
+#   JWT_SECRET=<at least 32 random chars>
+#   CORS_ORIGIN=https://kuula.ug,https://www.kuula.ug,capacitor://localhost
+#   KUULA_IMAGE_TAG=latest
+#   MTN_API_USER=...
+#   MTN_API_KEY=...
+#   MTN_SUBSCRIPTION_KEY=...
+#   AIRTEL_CLIENT_ID=...
+#   AIRTEL_CLIENT_SECRET=...
+#   AT_API_KEY=...
+#
+# Never put real secrets in this file — use the server's .env instead.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kuula-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - kuula_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Do NOT expose 5432 publicly. If you need it for ad-hoc admin, expose
+    # via an SSH tunnel: `ssh -L 5432:postgres:5432 user@host`.
+    networks:
+      - kuula_internal
+
+  api:
+    image: ghcr.io/${GITHUB_REPO_OWNER:-jolems123}/kuula-api:${KUULA_IMAGE_TAG:-latest}
+    container_name: kuula-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      AUTO_MIGRATE: "true"
+      LOG_LEVEL: info
+      # Override the per-request port so the container listens on 3000.
+      PORT: 3000
+    # The host reverse proxy (Caddy / Nginx) terminates TLS and forwards
+    # to 3000. Map 3000:3000 only if the proxy is on the same host.
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - kuula_internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  # ── Optional: Caddy reverse proxy (auto-HTTPS via Let's Encrypt) ──────────
+  # Uncomment when you're ready to expose the API on https://api.kuula.ug.
+  # Caddy auto-provisions + renews the TLS certificate.
+  #
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: kuula-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   environment:
+  #     API_HOST: api:3000
+  #     PUBLIC_DOMAIN: api.kuula.ug
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - kuula_internal
+
+volumes:
+  kuula_pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  kuula_internal:
+    driver: bridge

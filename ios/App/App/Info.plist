@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>CFBundleDevelopmentRegion</key>
+        <string>en</string>
+        <key>CFBundleDisplayName</key>
+        <string>Kuula</string>
+        <key>CFBundleExecutable</key>
+        <string>$(EXECUTABLE_NAME)</string>
+        <key>CFBundleIdentifier</key>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+        <key>CFBundleInfoDictionaryVersion</key>
+        <string>6.0</string>
+        <key>CFBundleName</key>
+        <string>$(PRODUCT_NAME)</string>
+        <key>CFBundlePackageType</key>
+        <string>APPL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>2.4.1</string>
+        <key>CFBundleVersion</key>
+        <string>24100</string>
+        <key>LSRequiresIPhoneOS</key>
+        <true/>
+
+        <!-- Splash + main storyboards (Capacitor) -->
+        <key>UILaunchStoryboardName</key>
+        <string>LaunchScreen</string>
+        <key>UIMainStoryboardFile</key>
+        <string>Main</string>
+
+        <!-- Portrait-only — this is a financial services app and the entire
+             UI is designed for portrait. Locking orientation avoids the
+             half-rendered landscape states reviewers flag as broken. -->
+        <key>UISupportedInterfaceOrientations</key>
+        <array>
+                <string>UIInterfaceOrientationPortrait</string>
+        </array>
+        <key>UISupportedInterfaceOrientations~ipad</key>
+        <array>
+                <string>UIInterfaceOrientationPortrait</string>
+                <string>UIInterfaceOrientationPortraitUpsideDown</string>
+                <string>UIInterfaceOrientationLandscapeLeft</string>
+                <string>UIInterfaceOrientationLandscapeRight</string>
+        </array>
+
+        <key>UIViewControllerBasedStatusBarAppearance</key>
+        <true/>
+
+        <!-- ── Privacy usage descriptions ─────────────────────────────────── -->
+        <!-- Apple requires a clear, user-facing reason for every permission
+             the binary requests. Reviewers reject submissions that ship a
+             permission without a description. -->
+
+        <!-- Camera: KYC national-ID photo upload (user-initiated). -->
+        <key>NSCameraUsageDescription</key>
+        <string>Kuula uses the camera to capture your national ID photo for KYC verification. The photo is encrypted in transit and at rest.</string>
+
+        <!-- Photo Library: alternative KYC upload path (existing ID photo). -->
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>Kuula can upload an existing photo of your national ID for KYC verification.</string>
+
+        <!-- Face ID: biometric unlock of the app. -->
+        <key>NSFaceIDUsageDescription</key>
+        <string>Kuula uses Face ID to securely unlock the app without typing your PIN.</string>
+
+        <!-- ── App Transport Security ─────────────────────────────────────── -->
+        <!-- HTTPS is enforced everywhere; the local dev exception lets the
+             simulator reach a local backend during development only. -->
+        <key>NSAppTransportSecurity</key>
+        <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <false/>
+                <key>NSAllowsLocalNetworking</key>
+                <true/>
+        </dict>
+
+        <!-- App launch defaults -->
+        <key>UIRequiresFullScreen</key>
+        <true/>
+        <key>UIStatusBarStyle</key>
+        <string>UIStatusBarStyleLightContent</string>
+</dict>
+</plist>

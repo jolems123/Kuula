@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config — Kuula
+
+  Production: cleartext (HTTP) traffic is BLOCKED for all domains; only HTTPS
+  is allowed. This is required by Google Play and is what reviewers check.
+
+  Local development: localhost and 10.0.2.2 (Android emulator's host loopback)
+  are exempt so the app can talk to a local dev backend without HTTPS.
+-->
+<network-security-config>
+    <!-- Default: HTTPS only. Any HTTP request to a domain not listed below
+         is rejected by the platform. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Local development only. The emulator reaches the host machine on
+         10.0.2.2; physical devices use the host's LAN IP. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

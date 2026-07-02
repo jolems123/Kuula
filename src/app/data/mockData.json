@@ -1,0 +1,257 @@
+{
+  "user": {
+    "id": "KUU-2024-001847",
+    "role": "user",
+    "initials": "AN",
+    "fullName": "Amara Nakato",
+    "phone": "+256 770 123 456",
+    "email": "amara.nakato@gmail.com",
+    "nationalId": "CM86H00****PL",
+    "dateOfBirth": "March 15, 1992",
+    "district": "Kampala",
+    "occupation": "Small Business Owner",
+    "memberSince": "January 2024",
+    "memberYears": "2+ years",
+    "verified": true,
+    "avatarUrl": null
+  },
+  "testUsers": [
+    {
+      "id": "KUU-2024-001847",
+      "role": "user",
+      "initials": "AN",
+      "fullName": "Amara Nakato",
+      "phone": "+256 770 123 456",
+      "email": "amara.nakato@gmail.com",
+      "nationalId": "CM86H00****PL",
+      "dateOfBirth": "March 15, 1992",
+      "district": "Kampala",
+      "occupation": "Small Business Owner",
+      "memberSince": "January 2024",
+      "memberYears": "2+ years",
+      "verified": true,
+      "avatarUrl": null
+    },
+    {
+      "id": "ADMIN-2024-000001",
+      "role": "admin",
+      "initials": "AK",
+      "fullName": "Admin Kavuma",
+      "phone": "+256 700 000 001",
+      "email": "admin@kuula.ug",
+      "nationalId": "ADMIN-ID",
+      "dateOfBirth": "January 1, 1990",
+      "district": "Kampala",
+      "occupation": "Kuula Staff",
+      "memberSince": "January 2020",
+      "memberYears": "6+ years",
+      "verified": true,
+      "avatarUrl": null
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-001",
+      "senderId": "KUU-2024-001847",
+      "receiverId": "ADMIN-2024-000001",
+      "content": "Hello, I have a question about my loan payment.",
+      "createdAt": "2026-06-10T09:30:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-002",
+      "senderId": "ADMIN-2024-000001",
+      "receiverId": "KUU-2024-001847",
+      "content": "Hi Amara! Of course — what would you like to know?",
+      "createdAt": "2026-06-10T09:32:00.000Z",
+      "isRead": true
+    },
+    {
+      "id": "msg-003",
+      "senderId": "KUU-2024-001847",
+      "receiverId": "ADMIN-2024-000001",
+      "content": "When is my next payment due?",
+      "createdAt": "2026-06-10T09:33:00.000Z",
+      "isRead": false
+    }
+  ],
+  "creditProfile": {
+    "score": 742,
+    "maxScore": 850,
+    "tier": "Excellent",
+    "percentile": 85,
+    "history": [
+      {
+        "month": "Dec",
+        "score": 680
+      },
+      {
+        "month": "Jan",
+        "score": 695
+      },
+      {
+        "month": "Feb",
+        "score": 710
+      },
+      {
+        "month": "Mar",
+        "score": 718
+      },
+      {
+        "month": "Apr",
+        "score": 725
+      },
+      {
+        "month": "May",
+        "score": 730
+      },
+      {
+        "month": "Jun",
+        "score": 742
+      }
+    ],
+    "improvementSinceStart": 62
+  },
+  "loanProfile": {
+    "availableCredit": 1500000,
+    "creditIncreaseFromLastMonth": 200000,
+    "totalLoansCount": 8,
+    "totalLoansRepaid": 8,
+    "activeLoan": {
+      "id": "LN-2024-00892",
+      "amount": 500000,
+      "repaidPercent": 42,
+      "status": "Active",
+      "disbursedDate": "Jun 1, 2026"
+    },
+    "nextPayment": {
+      "amount": 285000,
+      "dueDate": "Jun 25, 2026",
+      "daysLeft": 14
+    }
+  },
+  "savings": {
+    "balance": 340000,
+    "monthlyGrowthPercent": 5.2,
+    "goals": [
+      {
+        "id": "g1",
+        "name": "Emergency Fund",
+        "target": 1000000,
+        "saved": 340000,
+        "deadline": "Dec 2026",
+        "emoji": "🏦"
+      },
+      {
+        "id": "g2",
+        "name": "School Fees",
+        "target": 750000,
+        "saved": 180000,
+        "deadline": "Sep 2026",
+        "emoji": "📚"
+      },
+      {
+        "id": "g3",
+        "name": "Business Capital",
+        "target": 2000000,
+        "saved": 620000,
+        "deadline": "Mar 2027",
+        "emoji": "💼"
+      }
+    ]
+  },
+  "recentTransactions": [
+    {
+      "id": "t1",
+      "label": "Loan disbursed",
+      "amount": 500000,
+      "type": "credit",
+      "date": "Jun 1",
+      "method": "MTN MoMo"
+    },
+    {
+      "id": "t2",
+      "label": "MTN MoMo payment",
+      "amount": -285000,
+      "type": "debit",
+      "date": "May 25",
+      "method": "MTN MoMo"
+    },
+    {
+      "id": "t3",
+      "label": "Savings deposit",
+      "amount": 50000,
+      "type": "credit",
+      "date": "May 20",
+      "method": "Wallet"
+    },
+    {
+      "id": "t4",
+      "label": "Loan payment",
+      "amount": -285000,
+      "type": "debit",
+      "date": "Apr 25",
+      "method": "Airtel Money"
+    },
+    {
+      "id": "t5",
+      "label": "Savings deposit",
+      "amount": 75000,
+      "type": "credit",
+      "date": "Apr 10",
+      "method": "Wallet"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "n1",
+      "title": "Payment Due Soon",
+      "body": "Your loan payment of UGX 285,000 is due in 14 days.",
+      "type": "warning",
+      "time": "2 hours ago",
+      "read": false
+    },
+    {
+      "id": "n2",
+      "title": "Credit Score Improved!",
+      "body": "Your score increased by 12 points to 742 — Excellent tier.",
+      "type": "success",
+      "time": "3 days ago",
+      "read": false
+    },
+    {
+      "id": "n3",
+      "title": "Savings Goal Progress",
+      "body": "You've saved 34% of your Emergency Fund goal.",
+      "type": "info",
+      "time": "1 week ago",
+      "read": true
+    },
+    {
+      "id": "n4",
+      "title": "Loan Disbursed",
+      "body": "UGX 500,000 has been sent to your MTN MoMo +256 770 123 456.",
+      "type": "success",
+      "time": "Jun 1",
+      "read": true
+    }
+  ],
+  "paymentMethods": [
+    {
+      "id": "pm1",
+      "type": "mtn",
+      "label": "MTN MoMo",
+      "number": "+256 770 123 456",
+      "primary": true,
+      "color": "#FCD34D"
+    },
+    {
+      "id": "pm2",
+      "type": "airtel",
+      "label": "Airtel Money",
+      "number": "+256 752 987 654",
+      "primary": false,
+      "color": "#EF4444"
+    }
+  ]
+}

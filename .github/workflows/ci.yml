@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Frontend: typecheck + pricing compliance + build + API smoke + sweep ─────
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Pricing compliance (Apple 36% + UMRA 33.6% APR caps)
+        run: node scripts/check-pricing-compliance.mjs
+
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+          retention-days: 7
+
+      - name: API smoke test (reference server)
+        run: |
+          node server/server.mjs &
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3000/api/health && break
+            sleep 0.5
+          done
+          # valid login succeeds
+          curl -sf -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770123456","pin":"1234"}' | grep -q '"token"'
+          # invalid login is rejected
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770123456","pin":"0000"}')
+          test "$code" = "401"
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Route sweep (all screens, runtime errors + blank pages)
+        run: |
+          npm run dev -- --port 5173 &
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:5173/ > /dev/null && break
+            sleep 0.5
+          done
+          npm run sweep
+
+  # ── Backend: typecheck + Postgres-backed test suite ──────────────────────────
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kuula
+          POSTGRES_PASSWORD: kuula
+          POSTGRES_DB: kuula_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kuula -d kuula_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgres://kuula:kuula@localhost:5432/kuula_test
+      JWT_SECRET: ci-test-secret-at-least-32-characters-long-please
+      NODE_ENV: test
+      DEBUG_OTP: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Typecheck backend
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Run migrations
+        working-directory: backend
+        run: npm run migrate
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+  # ── Capacitor sync sanity (web build → native projects) ─────────────────────
+  sync:
+    needs: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync native projects
+        run: npx cap sync android && npx cap sync ios

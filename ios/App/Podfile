@@ -1,0 +1,74 @@
+require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
+
+platform :ios, '15.0'
+use_frameworks!
+
+# workaround to avoid Xcode caching of Pods that requires
+# Product -> Clean Build Folder after new Cordova plugins installed
+# Requires CocoaPods 1.6 or newer
+install! 'cocoapods', :disable_input_output_paths => true
+
+def capacitor_pods
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
+  pod 'CapacitorSplashScreen', :path => '../../node_modules/@capacitor/splash-screen'
+  pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
+end
+
+target 'App' do
+  capacitor_pods
+  # Add your Pods here
+end
+
+# ── Store-compliance: strip unrecognised privacy usage descriptions ──────────
+# Running `npx cap sync` can merge new NS*UsageDescription keys from Capacitor
+# plugins into the built Info.plist.  Apple rejects binaries that declare a
+# permission string without the app actually requesting it.  This post_install
+# hook removes every privacy key that is NOT in the explicit allow-list below.
+#
+# Allowed keys (the three the app actually uses):
+#   NSCameraUsageDescription          — KYC ID-photo capture
+#   NSPhotoLibraryUsageDescription    — KYC photo upload
+#   NSFaceIDUsageDescription          — biometric app unlock
+#
+# If you add a new permission, add its key to ALLOWED_PRIVACY_KEYS.
+ALLOWED_PRIVACY_KEYS = %w[
+  NSCameraUsageDescription
+  NSPhotoLibraryUsageDescription
+  NSFaceIDUsageDescription
+].freeze
+
+FORBIDDEN_PRIVACY_PREFIXES = %w[NSLocation NSContacts NSCalendar NSReminders
+  NSBluetooth NSMicrophone NSSpeechRecognition NSAppleMusicUsage
+  NSMotion NSHealthUpdate NSHealthShare NSHomeKit
+  NFFallDetectionUsageDescription NSPhotoLibraryAddUsageDescription
+  NSTracking NSLocalNetworkUsageDescription
+  NSCameraUseDescription NSPhotoLibraryAddUsageDescription
+].freeze
+
+post_install do |installer|
+  assertDeploymentTarget(installer)
+
+  # Strip disallowed privacy keys from every target's Info.plist
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      plist_path = config.build_settings['INFOPLIST_FILE']
+      next unless plist_path && File.exist?(plist_path)
+
+      plist = Plist.parse_xml(plist_path)
+      next unless plist.is_a?(Hash)
+
+      removed = []
+      plist.keys.select { |k| k.start_with?('NS') && k.end_with?('UsageDescription') }.each do |key|
+        next if ALLOWED_PRIVACY_KEYS.include?(key)
+        plist.delete(key)
+        removed << key
+      end
+      unless removed.empty?
+        Plist.save_xml(plist, plist_path)
+        puts "[store-compliance] Stripped from #{target.name}: #{removed.join(', ')}"
+      end
+    end
+  end
+end
