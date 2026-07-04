@@ -65,7 +65,9 @@ const spec = await fetch(`${SUPABASE_URL}/rest/v1/`, {
 }).then(r => r.json()).catch(() => ({}));
 const allPaths = Object.keys(spec.paths || {});
 const rpcs = allPaths.filter(p => p.includes("rpc")).map(p => p.replace(/.*rpc\//, ""));
-["is_admin","pay_repayment","topup_wallet","adjust_savings"].forEach(fn => {
+// pay_repayment/topup_wallet are intentionally NOT client-callable since 0006
+// (wallet-simulation paths revoked); only these must be exposed:
+["is_admin","adjust_savings"].forEach(fn => {
   rpcs.includes(fn) ? ok(`RPC: ${fn}`) : ko(`RPC: ${fn} not found`);
 });
 

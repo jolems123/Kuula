@@ -57,6 +57,10 @@ page.on("console", (msg) => {
 });
 
 // Land on the app. With HashRouter, the root URL redirects to #/welcome.
+// Pre-mark first-launch onboarding as seen so the sweep starts at welcome.
+await page.addInitScript(() => {
+  try { localStorage.setItem("kuula_onboarded", "1"); } catch { /* ignore */ }
+});
 await page.goto(BASE + "/", { waitUntil: "networkidle" });
 await page.waitForURL(/#\/welcome$/, { timeout: 15_000 });
 
