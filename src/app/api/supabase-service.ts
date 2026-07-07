@@ -420,14 +420,11 @@ export const supabaseApi = {
   depositSavings: async (_token: string, amount: number) => adjustSavings(amount),
   withdrawSavings: async (_token: string, amount: number) => adjustSavings(-amount),
 
-  topupWallet: async (_token: string, amount: number) => {
-    const sb = requireSupabase();
-    // Server-authoritative: the topup_wallet RPC (SECURITY DEFINER) validates
-    // the caller, enforces a positive amount, credits the wallet, and writes the
-    // ledger row. Clients can no longer set their own balance directly.
-    const { data, error } = await sb.rpc("topup_wallet", { p_amount: Math.round(amount) });
-    if (error) throw new ApiError(error.message, 400);
-    return data as { balance: number };
+  topupWallet: async (_token: string, _amount: number): Promise<{ balance: number }> => {
+    // The topup_wallet RPC is revoked in production (migration 0006): it minted
+    // wallet balance with no real payment behind it, and that balance could
+    // settle real loans. Money enters the system only via MarzPay collections.
+    throw new ApiError("Wallet top-ups are made from your mobile money when a payment is collected.", 400);
   },
 
   getRepayment: async (_token: string) => {
@@ -473,7 +470,8 @@ export const supabaseApi = {
     const sb = requireSupabase();
     const { data: auth } = await sb.auth.getUser();
     const uid = auth.user?.id ?? "";
-    await sb.from("profiles").update({ deleted_at: new Date().toISOString() }).eq("id", uid);
+    const { error } = await sb.from("profiles").update({ deleted_at: new Date().toISOString() }).eq("id", uid);
+    if (error) throw new ApiError(error.message, 400); // deletion must not silently no-op (Apple 5.1.1(v))
     await sb.auth.signOut();
     return { ok: true as const };
   },
