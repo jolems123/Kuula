@@ -1,10 +1,14 @@
 # Build & verify web bundle + native mobile apps (Capacitor)
 #
-# Two modes:
-#   push to main  → CI only (typecheck + build + test + pricing check)
-#   workflow_dispatch → CI + signed Android AAB / iOS IPA for store upload
+# Three modes:
+#   push to main       → CI only (typecheck + build + test + pricing check)
+#   workflow_dispatch  → CI + Android APK/AAB and/or iOS IPA
 #
-# Requires GitHub Secrets for signed builds (see SECRETS.md reference below).
+# build_type options:
+#   debug   → unsigned APK (install directly on phone, no secrets needed)
+#   release → signed AAB for Play Store (requires ANDROID_* secrets)
+#
+# For quick phone testing: Run workflow → build_type=debug → download APK artifact.
 name: Build Mobile Apps
 
 on:
@@ -18,13 +22,13 @@ on:
         default: "android"
         type: string
       build_type:
-        description: "Build type"
+        description: "debug = APK for testing (no secrets). release = signed AAB for Play Store."
         required: false
-        default: "release"
+        default: "debug"
         type: choice
         options:
-          - release
           - debug
+          - release
 
 env:
   VITE_BACKEND: supabase
@@ -71,11 +75,11 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # ── Job 2: Android signed AAB (manual trigger only) ────────────────────
+  # ── Job 2: Android — debug APK or signed release AAB ─────────────────
   android:
-    name: Build Android AAB
+    name: "Android (${{ github.event.inputs.build_type || 'debug' }})"
     needs: verify
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && contains(github.event.inputs.platforms || 'android', 'android')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,10 +99,27 @@ jobs:
       - name: Build web + sync to Android
         run: npx cap sync android
 
+      # ── Debug: unsigned APK (no secrets needed, install directly on phone) ──
+      - name: Build debug APK
+        if: github.event.inputs.build_type == 'debug'
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload debug APK
+        if: github.event.inputs.build_type == 'debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      # ── Release: signed AAB (requires ANDROID_* secrets) ──
       - name: Decode keystore
+        if: github.event.inputs.build_type == 'release'
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/kuula-release.keystore
 
-      - name: Build signed AAB
+      - name: Build signed release AAB
+        if: github.event.inputs.build_type == 'release'
         working-directory: android
         env:
           KUULA_RELEASE_STORE_FILE: kuula-release.keystore
@@ -107,9 +128,11 @@ jobs:
           KUULA_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew bundleRelease
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload release AAB
+        if: github.event.inputs.build_type == 'release'
+        uses: actions/upload-artifact@v4
         with:
-          name: android-aab
+          name: android-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
@@ -117,7 +140,7 @@ jobs:
   ios:
     name: Build iOS IPA
     needs: verify
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && contains(github.event.inputs.platforms || 'android', 'ios')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
