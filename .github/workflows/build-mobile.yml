@@ -96,7 +96,13 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Build web + sync to Android
+      - name: Download web dist from verify job
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+
+      - name: Sync to Android
         run: npx cap sync android
 
       # ── Debug: unsigned APK (no secrets needed, install directly on phone) ──
@@ -152,7 +158,13 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Build web + sync to iOS
+      - name: Download web dist from verify job
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+
+      - name: Sync to iOS
         run: npx cap sync ios
 
       - name: Decode certificates
