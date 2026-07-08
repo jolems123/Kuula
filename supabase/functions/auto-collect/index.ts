@@ -9,10 +9,10 @@
 // Runs with the SERVICE ROLE key so it can move balances across all users.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { collectionStage } from "../_shared/core.ts";
-
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type" };
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   const admin = createClient(
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     .eq("status", "scheduled")
     .lte("due_date", new Date(now).toISOString());
 
-  if (error) return json({ error: error.message }, 500);
+  if (error) return json({ error: error.message }, 500, cors);
 
   let collected = 0, failed = 0;
   for (const r of due ?? []) {
@@ -58,9 +58,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ processed: (due ?? []).length, collected, failed, ranAt: new Date(now).toISOString() }, 200);
+  return json({ processed: (due ?? []).length, collected, failed, ranAt: new Date(now).toISOString() }, 200, cors);
 });
 
-function json(body: unknown, status: number) {
+function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }

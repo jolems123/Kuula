@@ -7,7 +7,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFFFFF",
-  "theme_color": "#0D5C3A",
+  "theme_color": "#FF6B35",
   "categories": ["finance", "business", "productivity"],
   "lang": "en-UG",
   "dir": "ltr",
@@ -16,13 +16,15 @@
       "src": "./kuula-tile-green-1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any",
+      "label": "Kuula"
     },
     {
       "src": "./kuula-tile-green-1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "maskable",
+      "label": "Kuula"
     }
   ]
 }

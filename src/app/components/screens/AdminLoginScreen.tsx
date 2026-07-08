@@ -118,7 +118,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
                 </button>
               </div>
             </div>
-            <button onClick={resetPw} style={{ fontSize: 12, color: "#0D5C3A", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
+            <button onClick={resetPw} style={{ fontSize: 12, color: "#FF6B35", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
           </div>
 
           {notice && (
@@ -128,7 +128,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 12, color: "#EF4444", margin: "-6px 0 0", textAlign: "center" }}>{error}</p>
           )}
 
-          <button onClick={submit} style={{ width: "100%", height: 48, borderRadius: 12, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 12px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={submit} style={{ width: "100%", height: 48, borderRadius: 12, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 12px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {loading ? <><div style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Signing in...</> : "Sign In to Admin"}
           </button>
 

@@ -491,7 +491,7 @@ export const supabaseApi = {
     const { data: auth } = await sb.auth.getUser();
     const uid = auth.user?.id ?? "";
     const { data, error } = await sb.from("savings_goals")
-      .insert({ user_id: uid, name: body.name, emoji: body.emoji, target: body.target, color: body.color ?? "#0D5C3A" })
+      .insert({ user_id: uid, name: body.name, emoji: body.emoji, target: body.target, color: body.color ?? "#FF6B35" })
       .select().single();
     if (error) throw new ApiError(error.message, 400);
     return { goal: data as SavingsGoal };

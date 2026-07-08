@@ -1,43 +1,88 @@
+# Build & verify web bundle + native mobile apps (Capacitor)
+#
+# Two modes:
+#   push to main  → CI only (typecheck + build + test + pricing check)
+#   workflow_dispatch → CI + signed Android AAB / iOS IPA for store upload
+#
+# Requires GitHub Secrets for signed builds (see SECRETS.md reference below).
 name: Build Mobile Apps
 
-# Manual trigger only — store builds are slow, secret-dependent, and only
-# needed when cutting a release. Workflow_dispatch accepts the version bump
-# and which platforms to build.
-
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
-      version:
-        description: "App version (e.g. 2.4.2) — must match capacitor.config.ts"
-        required: true
-        default: "2.4.2"
       platforms:
-        description: "Comma-separated: android,ios"
-        required: true
-        default: "android,ios"
+        description: "Platforms to build (comma-separated)"
+        required: false
+        default: "android"
+        type: string
       build_type:
-        description: "release | preview (release = signed AAB/IPA, preview = unsigned dev builds)"
-        required: true
+        description: "Build type"
+        required: false
         default: "release"
+        type: choice
+        options:
+          - release
+          - debug
 
-concurrency:
-  group: mobile-build-${{ github.ref }}
-  cancel-in-progress: false
+env:
+  VITE_BACKEND: supabase
+  VITE_USE_API: "true"
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_APP_ENV: production
+  VITE_APP_VERSION: "2.4.1"
+  VITE_ENABLE_BIOMETRIC: "true"
+  VITE_ENABLE_SAVINGS: "true"
+  VITE_REVIEWER_MODE: "false"
 
 jobs:
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Android — produces a signed .aab (Google Play) + unsigned .apk (sideload)
-  # ─────────────────────────────────────────────────────────────────────────────
-  android:
-    if: contains(github.event.inputs.platforms, 'android')
+  # ── Job 1: Verify (always runs) ─────────────────────────────────────────
+  verify:
+    name: Typecheck + Build + Test
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: TypeScript strict check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Pricing compliance
+        run: node scripts/check-pricing-compliance.mjs
+
+      - name: Production build
+        run: npx vite build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+          retention-days: 7
+
+  # ── Job 2: Android signed AAB (manual trigger only) ────────────────────
+  android:
+    name: Build Android AAB
+    needs: verify
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
           cache: npm
 
       - uses: actions/setup-java@v4
@@ -45,165 +90,75 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci --legacy-peer-deps
 
-      - name: Build web assets
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_PROD }}
-          VITE_USE_API: "true"
-          VITE_APP_ENV: production
-
-      - name: Sync Capacitor
+      - name: Build web + sync to Android
         run: npx cap sync android
 
-      - name: Decode Android signing key
-        if: github.event.inputs.build_type == 'release'
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/kuula-release.keystore
-          test -s android/app/kuula-release.keystore
+      - name: Decode keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/kuula-release.keystore
 
-      - name: Build release AAB
-        if: github.event.inputs.build_type == 'release'
+      - name: Build signed AAB
         working-directory: android
         env:
-          # Map CI secrets → the KUULA_RELEASE_* gradle properties that
-          # android/app/build.gradle expects via project.hasProperty().
-          ORG_GRADLE_PROJECT_KUULA_RELEASE_STORE_FILE: ${{ github.workspace }}/android/app/kuula-release.keystore
-          ORG_GRADLE_PROJECT_KUULA_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_KUULA_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ORG_GRADLE_PROJECT_KUULA_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
+          KUULA_RELEASE_STORE_FILE: kuula-release.keystore
+          KUULA_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KUULA_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KUULA_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
 
-      - name: Build unsigned debug APK (preview)
-        if: github.event.inputs.build_type != 'release'
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: android-${{ github.event.inputs.build_type }}
-          path: |
-            android/app/build/outputs/bundle/release/*.aab
-            android/app/build/outputs/apk/debug/*.apk
+          name: android-aab
+          path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # iOS — produces a signed .ipa via xcodebuild archive + export
-  # REQUIRES an Apple-shaped runner (macos-14) + signing secrets in repo.
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ── Job 3: iOS signed IPA (manual trigger only, Mac only) ──────────────
   ios:
-    if: contains(github.event.inputs.platforms, 'ios')
-    runs-on: macos-14
-    timeout-minutes: 40
+    name: Build iOS IPA
+    needs: verify
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci --legacy-peer-deps
 
-      - name: Build web assets
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_PROD }}
-          VITE_USE_API: "true"
-          VITE_APP_ENV: production
-
-      - name: Sync Capacitor (incl. pod install)
+      - name: Build web + sync to iOS
         run: npx cap sync ios
 
-      - name: Import signing certificate
-        if: github.event.inputs.build_type == 'release'
-        env:
-          APPLE_CERT_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
-          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-        run: |
-          # Create a temporary keychain and import the distribution certificate.
-          KEYCHAIN_PATH=$RUNNER_TEMP/kuula-build.keychain-db
-          KEYCHAIN_PW=$(uuidgen)
-          security create-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN_PATH"
-          echo "$APPLE_CERT_BASE64" | base64 -d > $RUNNER_TEMP/kuula-dist.p12
-          security import $RUNNER_TEMP/kuula-dist.p12 -P "$APPLE_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
-
-      - name: Import provisioning profile
-        if: github.event.inputs.build_type == 'release'
-        env:
-          APPLE_PROVISION_BASE64: ${{ secrets.APPLE_PROVISION_BASE64 }}
+      - name: Decode certificates
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$APPLE_PROVISION_BASE64" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/Kuula.mobileprovision
+          echo "${{ secrets.APPLE_CERT_BASE64 }}" | base64 -d > certs.p12
+          echo "${{ secrets.APPLE_PROVISION_BASE64 }}" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/Kuula.mobileprovision
 
-      - name: Build iOS archive
-        working-directory: ios/App
-        run: |
-          xcodebuild -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath $RUNNER_TEMP/Kuula.xcarchive \
-            -destination "generic/platform=iOS" \
-            -allowProvisioningUpdates \
-            clean archive | xcpretty
-
-      - name: Export signed IPA
-        if: github.event.inputs.build_type == 'release'
+      - name: Build IPA
         working-directory: ios/App
         env:
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPORT_METHOD: app-store
         run: |
-          cat > $RUNNER_TEMP/ExportOptions.plist <<EOF
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -configuration Release -archivePath build/App.xcarchive \
+            archive CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
+          xcodebuild -exportArchive -archivePath build/App.xcarchive \
+            -exportPath build/ipa -exportOptionsPlist /dev/stdin <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>${APPLE_TEAM_ID}</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>stripSwiftSymbols</key>
-            <true/>
-          </dict>
+          <dict><key>method</key><string>app-store</string></dict>
           </plist>
           EOF
-          xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/Kuula.xcarchive \
-            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/ipa \
-            -allowProvisioningUpdates
 
-      - name: Copy unsigned xcarchive (preview)
-        if: github.event.inputs.build_type != 'release'
-        run: cp -r $RUNNER_TEMP/Kuula.xcarchive $RUNNER_TEMP/preview.xcarchive
-
-      - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: ios-${{ github.event.inputs.build_type }}
-          path: |
-            ${{ runner.temp }}/ipa/*.ipa
-            ${{ runner.temp }}/*.xcarchive
+          name: ios-ipa
+          path: ios/App/build/ipa/*.ipa
           retention-days: 30
-
-      - name: Cleanup keychain
-        if: always()
-        run: |
-          if [ -n "$KEYCHAIN_PATH" ]; then
-            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
-          fi
-          rm -f ~/Library/MobileDevice/Provisioning\ Profiles/Kuula.mobileprovision

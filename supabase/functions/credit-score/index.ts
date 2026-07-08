@@ -8,14 +8,10 @@
 // admins score other users.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { computeCreditScore } from "../_shared/core.ts";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -27,7 +23,7 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user } } = await authed.auth.getUser();
-  if (!user) return json({ error: "Unauthorized" }, 401);
+  if (!user) return json({ error: "Unauthorized" }, 401, cors);
 
   const admin = createClient(url, serviceKey);
   const { data: me } = await admin.from("profiles").select("role").eq("id", user.id).single();
@@ -39,15 +35,15 @@ Deno.serve(async (req) => {
     .eq("id", targetId).single();
   const { data: sav } = await admin.from("savings_accounts").select("balance").eq("user_id", targetId).single();
 
-  if (!p) return json({ error: "Profile not found" }, 404);
+  if (!p) return json({ error: "Profile not found" }, 404, cors);
 
   return json(computeCreditScore({
     momoMonths: p.momo_months, momoTxnCount: p.momo_txn_count, crbStatus: p.crb_status,
     kycVerified: p.kyc_verified, loansRepaid: p.loans_repaid, loansTotal: p.loans_total,
     savingsBalance: sav?.balance ?? 0,
-  }), 200);
+  }), 200, cors);
 });
 
-function json(body: unknown, status: number) {
+function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }

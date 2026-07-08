@@ -45,7 +45,7 @@ function FullScreenMessage({
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: "#D2E9DD",
+            background: "#FFDCC8",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -68,7 +68,7 @@ function FullScreenMessage({
               fontSize: 15,
               fontWeight: 600,
               color: "white",
-              background: "#0D5C3A",
+              background: "#FF6B35",
               cursor: "pointer",
             }}
           >

@@ -21,7 +21,7 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("profile")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -58,7 +58,7 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
-        <button onClick={() => onNavigate("profile")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
+        <button onClick={() => onNavigate("profile")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
           Save Changes
         </button>
       </div>

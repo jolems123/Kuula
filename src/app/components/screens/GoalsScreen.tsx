@@ -14,7 +14,7 @@ function formatUGX(n: number) {
   return "UGX " + n.toLocaleString("en-UG");
 }
 
-const GOAL_COLORS = ["#0D5C3A", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
+const GOAL_COLORS = ["#FF6B35", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
 const GOAL_EMOJIS = ["🎯", "🎓", "🛡️", "📱", "🌾", "💼", "🏦", "🏠", "✈️", "🚗"];
 
 export function GoalsScreen({ onNavigate }: Props) {
@@ -118,7 +118,7 @@ export function GoalsScreen({ onNavigate }: Props) {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1"
-            style={{ padding: "5px 12px", borderRadius: 20, background: "#ECF5F0", border: "none", color: "#0D5C3A", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            style={{ padding: "5px 12px", borderRadius: 20, background: "#FFF0E8", border: "none", color: "#FF6B35", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
           >
             <Plus size={13} /> {t("goals.newGoal")}
           </button>
@@ -164,7 +164,7 @@ export function GoalsScreen({ onNavigate }: Props) {
               <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 6 }}>Emoji</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {GOAL_EMOJIS.map((e) => (
-                  <button key={e} onClick={() => setNewEmoji(e)} style={{ fontSize: 18, padding: "4px 8px", borderRadius: 8, border: newEmoji === e ? "2px solid #0D5C3A" : "1.5px solid #E5E7EB", background: newEmoji === e ? "#ECF5F0" : "white", cursor: "pointer" }}>{e}</button>
+                  <button key={e} onClick={() => setNewEmoji(e)} style={{ fontSize: 18, padding: "4px 8px", borderRadius: 8, border: newEmoji === e ? "2px solid #FF6B35" : "1.5px solid #E5E7EB", background: newEmoji === e ? "#FFF0E8" : "white", cursor: "pointer" }}>{e}</button>
                 ))}
               </div>
             </div>

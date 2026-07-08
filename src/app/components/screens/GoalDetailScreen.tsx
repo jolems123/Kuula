@@ -54,7 +54,7 @@ export function GoalDetailScreen({ onNavigate }: Props) {
         {/* Stats row */}
         <div style={{ display: "flex", gap: 10 }}>
           {[
-            { label: t("goalDetail.targetDate"), value: "Oct 2026", Icon: Calendar, color: "#0D5C3A" },
+            { label: t("goalDetail.targetDate"), value: "Oct 2026", Icon: Calendar, color: "#FF6B35" },
             { label: t("goalDetail.monthlyNeeded"), value: ugx(monthly), Icon: TrendingUp, color: "#10B981" },
             { label: t("goalDetail.autoSave"), value: "UGX 30K/mo", Icon: Plus, color: "#F59E0B" },
           ].map(({ label, value, Icon, color }) => (

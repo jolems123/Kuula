@@ -67,8 +67,8 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px", gap: 24 }}>
         {/* Icon */}
-        <div style={{ width: 80, height: 80, borderRadius: 40, background: "#ECF5F0", border: "2px solid #B6DCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <MessageSquare size={36} color="#0D5C3A" strokeWidth={1.5} />
+        <div style={{ width: 80, height: 80, borderRadius: 40, background: "#FFF0E8", border: "2px solid #B6DCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <MessageSquare size={36} color="#FF6B35" strokeWidth={1.5} />
         </div>
 
         <div style={{ textAlign: "center" }}>
@@ -93,8 +93,8 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
               onKeyDown={(e) => onKey(i, e.key)}
               style={{
                 width: 46, height: 56, borderRadius: 12, textAlign: "center", fontSize: 24, fontWeight: 800,
-                color: "#1F2937", background: digit ? "#ECF5F0" : "#F9FAFB",
-                border: `2px solid ${digit ? "#0D5C3A" : "#E5E7EB"}`, outline: "none",
+                color: "#1F2937", background: digit ? "#FFF0E8" : "#F9FAFB",
+                border: `2px solid ${digit ? "#FF6B35" : "#E5E7EB"}`, outline: "none",
               }}
             />
           ))}
@@ -104,7 +104,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
           {t("phoneVerify.didntReceive")}{" "}
           {resent
             ? <span style={{ color: "#10B981", fontWeight: 600 }}>{t("phoneVerify.codeResent")}</span>
-            : <button onClick={resend} style={{ color: "#0D5C3A", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>{t("phoneVerify.resendCode")}</button>
+            : <button onClick={resend} style={{ color: "#FF6B35", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>{t("phoneVerify.resendCode")}</button>
           }
         </p>
 
@@ -120,7 +120,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
           disabled={!filled || verifying}
           style={{
             width: "100%", height: 52, borderRadius: 14, cursor: filled && !verifying ? "pointer" : "not-allowed",
-            background: filled ? "linear-gradient(135deg, #0D5C3A, #0A4A2E)" : "#E5E7EB",
+            background: filled ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB",
             color: filled ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
             boxShadow: filled ? "0 4px 16px rgba(13,92,58,0.3)" : "none",
           }}

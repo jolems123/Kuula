@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "api": "node server/server.mjs",
     "sweep": "node scripts/route-sweep.mjs",
     "check:pricing": "node scripts/check-pricing-compliance.mjs",
     "cap:sync": "npm run build && cap sync",

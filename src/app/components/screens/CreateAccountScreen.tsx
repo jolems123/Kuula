@@ -159,7 +159,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
         </div>
 
         {/* Terms notice */}
-        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#ECF5F0", border: "1px solid #D2E9DD" }}>
+        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
           <p style={{ fontSize: 11, color: "#083A24", lineHeight: 1.6 }}>
             {t("createAccount.termsNotice")}
           </p>
@@ -176,7 +176,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           onMouseLeave={() => setHover(false)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: submitting ? "#8FCBAC" : hover ? "linear-gradient(135deg, #0A4A2E, #083A24)" : "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: submitting ? "#8FCBAC" : hover ? "linear-gradient(135deg, #E05A2B, #083A24)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white", fontSize: 16, fontWeight: 700, border: "none",
             boxShadow: hover ? "0 6px 24px rgba(13,92,58,0.45)" : "0 4px 16px rgba(13,92,58,0.3)",
             cursor: submitting ? "wait" : "pointer", transform: hover ? "translateY(-1px)" : "none",
@@ -187,7 +187,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
         </button>
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 10 }}>
           {t("createAccount.alreadyHaveAccount")}{" "}
-          <button onClick={() => onNavigate("welcome")} style={{ color: "#0D5C3A", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>{t("createAccount.logIn")}</button>
+          <button onClick={() => onNavigate("welcome")} style={{ color: "#FF6B35", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>{t("createAccount.logIn")}</button>
         </p>
       </div>
     </div>

@@ -31,7 +31,7 @@ export const env = {
   /** When true, auth runs against the real backend instead of demo data */
   USE_API: optional("VITE_USE_API", "false") === "true",
 
-  /** Which backend powers the app: "node" (reference server/) or "supabase" */
+  /** Which backend powers the app: "supabase" (production) or "node" (legacy stub) */
   BACKEND: (optional("VITE_BACKEND", "node") === "supabase" ? "supabase" : "node") as "node" | "supabase",
 
   // ── Supabase ───────────────────────────────────────────────────────────────

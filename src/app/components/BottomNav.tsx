@@ -38,13 +38,13 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
             >
               <Icon
                 size={22}
-                color={isActive ? "#0D5C3A" : "#9CA3AF"}
+                color={isActive ? "#FF6B35" : "#9CA3AF"}
                 strokeWidth={isActive ? 2.2 : 1.8}
               />
               <span
                 style={{
                   fontSize: 10,
-                  color: isActive ? "#0D5C3A" : "#9CA3AF",
+                  color: isActive ? "#FF6B35" : "#9CA3AF",
                   fontWeight: isActive ? 600 : 400,
                 }}
               >

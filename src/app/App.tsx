@@ -68,7 +68,7 @@ function ScreenLoader() {
           width: 28,
           height: 28,
           border: "3px solid #E5E7EB",
-          borderTopColor: "#0D5C3A",
+          borderTopColor: "#FF6B35",
           borderRadius: "50%",
           animation: "kuula-spin 0.7s linear infinite",
         }}
@@ -153,7 +153,7 @@ function Shell() {
         // screen and the backdrop is never visible.
         background: isAdminScreen
           ? "#F8FAFC"
-          : "radial-gradient(1200px 600px at 50% -10%, #D2E9DD 0%, #E2E8F0 55%, #F1F5F9 100%)",
+          : "radial-gradient(1200px 600px at 50% -10%, #FFDCC8 0%, #E2E8F0 55%, #F1F5F9 100%)",
         fontFamily: "system-ui, -apple-system, sans-serif",
         overflow: "hidden",
       }}

@@ -7,7 +7,7 @@ interface Props { onNavigate: (s: string) => void; }
 const TYPES = [
   { id: "mtn", logo: "🟡", label: "MTN Mobile Money", prefix: "+256 77", placeholder: "XXXXXXX", color: "#F59E0B" },
   { id: "airtel", logo: "🔴", label: "Airtel Money", prefix: "+256 75", placeholder: "XXXXXXX", color: "#EF4444" },
-  { id: "stanbic", logo: "🏦", label: "Stanbic Bank", prefix: "Acc:", placeholder: "Account Number", color: "#0D5C3A" },
+  { id: "stanbic", logo: "🏦", label: "Stanbic Bank", prefix: "Acc:", placeholder: "Account Number", color: "#FF6B35" },
   { id: "dfcu", logo: "🏦", label: "DFCU Bank", prefix: "Acc:", placeholder: "Account Number", color: "#8B5CF6" },
   { id: "equity", logo: "🏦", label: "Equity Bank", prefix: "Acc:", placeholder: "Account Number", color: "#10B981" },
 ];
@@ -29,7 +29,7 @@ export function AddPaymentMethodScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("wallet")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -44,11 +44,11 @@ export function AddPaymentMethodScreen({ onNavigate }: Props) {
             <button
               key={t.id}
               onClick={() => { setSelected(t.id); setVerified(false); setNumber(""); }}
-              style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `2px solid ${selected === t.id ? "#0D5C3A" : "#E5E7EB"}`, background: selected === t.id ? "#ECF5F0" : "white", cursor: "pointer", textAlign: "left" }}
+              style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `2px solid ${selected === t.id ? "#FF6B35" : "#E5E7EB"}`, background: selected === t.id ? "#FFF0E8" : "white", cursor: "pointer", textAlign: "left" }}
             >
               <span style={{ fontSize: 28 }}>{t.logo}</span>
               <span style={{ fontSize: 14, fontWeight: 700, color: selected === t.id ? "#083A24" : "#1F2937", flex: 1 }}>{t.label}</span>
-              <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === t.id ? "#0D5C3A" : "#D1D5DB"}`, background: selected === t.id ? "#0D5C3A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === t.id ? "#FF6B35" : "#D1D5DB"}`, background: selected === t.id ? "#FF6B35" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {selected === t.id && <div style={{ width: 8, height: 8, borderRadius: 4, background: "white" }} />}
               </div>
             </button>
@@ -63,7 +63,7 @@ export function AddPaymentMethodScreen({ onNavigate }: Props) {
               <input value={number} onChange={(e) => { setNumber(e.target.value); setVerified(false); }} placeholder={type.placeholder} style={{ flex: 1, height: 48, borderRadius: 10, border: "1.5px solid #E5E7EB", padding: "0 14px", fontSize: 15, color: "#1F2937", background: "#F9FAFB", outline: "none" }} />
             </div>
             {number.length >= 6 && !verified && (
-              <button onClick={verify} style={{ height: 42, borderRadius: 10, background: "#ECF5F0", color: "#0D5C3A", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>
+              <button onClick={verify} style={{ height: 42, borderRadius: 10, background: "#FFF0E8", color: "#FF6B35", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>
                 {verifying ? "Verifying..." : "Verify Number"}
               </button>
             )}
@@ -81,7 +81,7 @@ export function AddPaymentMethodScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
-        <button onClick={() => { if (verified) onNavigate("payment-methods-list"); }} style={{ width: "100%", height: 52, borderRadius: 14, background: verified ? "linear-gradient(135deg, #0D5C3A, #0A4A2E)" : "#E5E7EB", color: verified ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none", cursor: verified ? "pointer" : "not-allowed" }}>
+        <button onClick={() => { if (verified) onNavigate("payment-methods-list"); }} style={{ width: "100%", height: 52, borderRadius: 14, background: verified ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB", color: verified ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none", cursor: verified ? "pointer" : "not-allowed" }}>
           Add Payment Method
         </button>
       </div>

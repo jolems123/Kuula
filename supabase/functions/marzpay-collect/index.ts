@@ -8,16 +8,12 @@
 // function only records a PENDING attempt — it never marks the loan paid.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { marzConfigured, marzCollect, webhookUrl } from "../_shared/marzpay.ts";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, cors);
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -25,10 +21,10 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user } } = await authed.auth.getUser();
-  if (!user) return json({ error: "Unauthorized" }, 401);
+  if (!user) return json({ error: "Unauthorized" }, 401, cors);
 
   if (!marzConfigured()) {
-    return json({ error: "MarzPay is not configured — set MARZPAY_API_KEY and MARZPAY_API_SECRET." }, 503);
+    return json({ error: "MarzPay is not configured — set MARZPAY_API_KEY and MARZPAY_API_SECRET." }, 503, cors);
   }
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -40,15 +36,15 @@ Deno.serve(async (req) => {
     .eq("user_id", user.id).neq("status", "paid")
     .order("due_date", { ascending: true }).order("created_at", { ascending: true })
     .limit(1).maybeSingle();
-  if (!rep) return json({ status: "none", reason: "no-active-loan" }, 200);
+  if (!rep) return json({ status: "none", reason: "no-active-loan" }, 200, cors);
 
   const outstanding = rep.total - rep.amount_paid;
   const pay = amount != null ? Math.min(Math.max(Math.round(amount), 0), outstanding) : outstanding;
-  if (pay <= 0) return json({ status: "none", reason: "nothing-due" }, 200);
+  if (pay <= 0) return json({ status: "none", reason: "nothing-due" }, 200, cors);
 
   const { data: prof } = await admin.from("profiles").select("phone").eq("id", user.id).single();
   const phone = prof?.phone ?? "";
-  if (!phone) return json({ error: "No phone number on file" }, 422);
+  if (!phone) return json({ error: "No phone number on file" }, 422, cors);
 
   const reference = `REPAY-${rep.id}`;
   const result = await marzCollect({
@@ -71,7 +67,7 @@ Deno.serve(async (req) => {
   await admin.from("repayments").update({ attempts: [...(rep.attempts ?? []), attempt] }).eq("id", rep.id);
 
   if (!result.ok) {
-    return json({ status: "failed", reason: result.message, provider: result.raw }, 502);
+    return json({ status: "failed", reason: result.message, provider: result.raw }, 502, cors);
   }
 
   await admin.from("transactions").insert({
@@ -89,9 +85,9 @@ Deno.serve(async (req) => {
     amount: pay,
     reference,
     message: "Approve the payment prompt on your phone to complete the repayment.",
-  }, 200);
+  }, 200, cors);
 });
 
-function json(body: unknown, status: number) {
+function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }

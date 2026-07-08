@@ -101,7 +101,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,

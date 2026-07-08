@@ -19,7 +19,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -31,7 +31,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
         <p style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{t("support.contactUs")}</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { Icon: MessageCircle, label: t("support.liveChat"), sub: t("support.avgResponse"), color: "#0D5C3A", bg: "#ECF5F0", screen: "contact-support" },
+            { Icon: MessageCircle, label: t("support.liveChat"), sub: t("support.avgResponse"), color: "#FF6B35", bg: "#FFF0E8", screen: "contact-support" },
             { Icon: Phone, label: t("support.callUs"), sub: "0800 123 456 (Free)", color: "#10B981", bg: "#F0FDF4", screen: "contact-support" },
             { Icon: Mail, label: t("support.emailUs"), sub: "support@kuula.ug", color: "#F59E0B", bg: "#FFF7ED", screen: "contact-support" },
             { Icon: BookOpen, label: t("support.userGuide"), sub: t("support.howToArticles"), color: "#8B5CF6", bg: "#F5F3FF", screen: "about-app" },
@@ -66,7 +66,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
           ))}
         </div>
 
-        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#ECF5F0", border: "1px solid #D2E9DD" }}>
+        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
           <p style={{ fontSize: 12, color: "#083A24", margin: 0 }}>{t("support.emergency")}</p>
         </div>
       </div>

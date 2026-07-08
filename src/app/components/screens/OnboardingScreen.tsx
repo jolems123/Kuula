@@ -90,7 +90,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
             width: 132,
             height: 132,
             borderRadius: 36,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -123,7 +123,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
               border: "none",
               padding: 0,
               cursor: "pointer",
-              background: i === index ? "#0D5C3A" : "#D1D5DB",
+              background: i === index ? "#FF6B35" : "#D1D5DB",
               transition: "width 0.25s, background 0.25s",
             }}
           />
@@ -138,7 +138,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,
@@ -155,7 +155,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           {t("onboarding.haveAccount")}{" "}
           <button
             onClick={finish}
-            style={{ background: "none", border: "none", color: "#0D5C3A", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "#FF6B35", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
           >
             {t("onboarding.logIn")}
           </button>

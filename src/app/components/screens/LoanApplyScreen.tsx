@@ -59,7 +59,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       {/* Header */}
       <div
         className="flex items-center px-4 pt-4 pb-4"
-        style={{ background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}
+        style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}
       >
         <button
           onClick={() => onNavigate("home")}
@@ -103,7 +103,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
               style={{
                 fontSize: 36,
                 fontWeight: 800,
-                color: "#0D5C3A",
+                color: "#FF6B35",
                 border: "none",
                 outline: "none",
                 background: "transparent",
@@ -120,7 +120,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
               step={50000}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#0D5C3A" }}
+              style={{ width: "100%", accentColor: "#FF6B35" }}
             />
             <div className="flex justify-between mt-1">
               <span style={{ fontSize: 11, color: "#9CA3AF" }}>UGX 50,000</span>
@@ -146,7 +146,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
                   padding: "8px 14px",
                   borderRadius: 10,
                   border: term === d ? "none" : "1.5px solid #E5E7EB",
-                  background: term === d ? "#0D5C3A" : "white",
+                  background: term === d ? "#FF6B35" : "white",
                   color: term === d ? "white" : "#374151",
                   fontSize: 13,
                   fontWeight: 600,
@@ -176,8 +176,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
                   padding: "7px 12px",
                   borderRadius: 20,
                   border: purpose === p.key ? "none" : "1.5px solid #E5E7EB",
-                  background: purpose === p.key ? "#ECF5F0" : "white",
-                  color: purpose === p.key ? "#0D5C3A" : "#6B7280",
+                  background: purpose === p.key ? "#FFF0E8" : "white",
+                  color: purpose === p.key ? "#FF6B35" : "#6B7280",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -204,7 +204,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
                 onClick={() => setMethod(m.id)}
                 className="flex items-center gap-3 p-3 rounded-xl"
                 style={{
-                  background: method === m.id ? "#ECF5F0" : "#F9FAFB",
+                  background: method === m.id ? "#FFF0E8" : "#F9FAFB",
                   border: method === m.id ? "1.5px solid #B6DCC8" : "1.5px solid transparent",
                   cursor: "pointer",
                   textAlign: "left",
@@ -220,7 +220,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
                     height: 20,
                     borderRadius: 10,
                     border: method === m.id ? "none" : "2px solid #D1D5DB",
-                    background: method === m.id ? "#0D5C3A" : "transparent",
+                    background: method === m.id ? "#FF6B35" : "transparent",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -237,7 +237,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <div
           className="p-4 rounded-2xl"
           style={{
-            background: "linear-gradient(135deg, #ECF5F0, #D2E9DD)",
+            background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
             border: "1px solid #B6DCC8",
           }}
         >
@@ -256,7 +256,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           ))}
           <div className="flex justify-between pt-3 mt-1">
             <span style={{ fontSize: 15, fontWeight: 700, color: "#083A24" }}>{t("loanApply.totalRepayment")}</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#0A4A2E" }}>{formatUGX(total)}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#E05A2B" }}>{formatUGX(total)}</span>
           </div>
         </div>
       </div>
@@ -276,7 +276,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: loading ? "#8FCBAC" : "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: loading ? "#8FCBAC" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,

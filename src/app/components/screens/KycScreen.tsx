@@ -38,7 +38,7 @@ export function KycScreen({ onNavigate }: Props) {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  background: step >= s.n ? "#0D5C3A" : "#F3F4F6",
+                  background: step >= s.n ? "#FF6B35" : "#F3F4F6",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -52,7 +52,7 @@ export function KycScreen({ onNavigate }: Props) {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 10, color: step >= s.n ? "#0D5C3A" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
+              <span style={{ fontSize: 10, color: step >= s.n ? "#FF6B35" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
                 {s.label}
               </span>
             </div>
@@ -61,7 +61,7 @@ export function KycScreen({ onNavigate }: Props) {
                 style={{
                   flex: 1,
                   height: 2,
-                  background: step > s.n ? "#0D5C3A" : "#E5E7EB",
+                  background: step > s.n ? "#FF6B35" : "#E5E7EB",
                   margin: "0 8px",
                   marginBottom: 20,
                 }}
@@ -77,9 +77,9 @@ export function KycScreen({ onNavigate }: Props) {
           <>
             <div
               className="p-4 rounded-xl flex items-start gap-3"
-              style={{ background: "#ECF5F0", border: "1px solid #D2E9DD" }}
+              style={{ background: "#FFF0E8", border: "1px solid #FFDCC8" }}
             >
-              <User size={18} color="#0D5C3A" style={{ marginTop: 2 }} />
+              <User size={18} color="#FF6B35" style={{ marginTop: 2 }} />
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#083A24" }}>{t("kyc.ninRequired")}</p>
                 <p style={{ fontSize: 12, color: "#157A4E", marginTop: 2 }}>
@@ -252,7 +252,7 @@ export function KycScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white",
             fontSize: 16,
             fontWeight: 600,

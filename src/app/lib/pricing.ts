@@ -1,7 +1,7 @@
 /**
- * Client-side loan pricing — mirrors server/core.mjs so every build (even
- * offline/demo) shows a compliant, APR-capped, simple-interest quote and never
- * the old 8%/month figure.
+ * Client-side loan pricing — mirrors supabase/functions/_shared/core.ts so
+ * every build (even offline/demo) shows a compliant, APR-capped,
+ * simple-interest quote and never the old 8%/month figure.
  *
  *  - All-in APR is capped at 33.6% (below Apple's 36% loan-app limit).
  *  - Minimum term 90 days keeps loans above Google Play's 60-day floor.

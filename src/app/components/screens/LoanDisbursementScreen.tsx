@@ -15,7 +15,7 @@ const METHODS = [
   },
   {
     id: "bank", label: "Bank Account", sub: "Stanbic Bank · 2-4 hours",
-    logo: "🏦", color: "#0D5C3A", number: "Acc: ****4532",
+    logo: "🏦", color: "#FF6B35", number: "Acc: ****4532",
   },
 ];
 
@@ -25,7 +25,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("loan-purpose")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -45,9 +45,9 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
               key={m.id}
               onClick={() => setSelected(m.id)}
               style={{
-                background: active ? "#ECF5F0" : "white",
+                background: active ? "#FFF0E8" : "white",
                 borderRadius: 16, padding: "16px",
-                border: `2px solid ${active ? "#0D5C3A" : "#F3F4F6"}`,
+                border: `2px solid ${active ? "#FF6B35" : "#F3F4F6"}`,
                 boxShadow: "0 2px 6px rgba(0,0,0,0.04)", cursor: "pointer", textAlign: "left",
                 display: "flex", alignItems: "center", gap: 14,
               }}
@@ -65,7 +65,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
                 <p style={{ fontSize: 12, color: "#6B7280", margin: "2px 0 0" }}>{m.sub}</p>
                 <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", margin: "2px 0 0" }}>{m.number}</p>
               </div>
-              <div style={{ width: 22, height: 22, borderRadius: 11, border: `2px solid ${active ? "#0D5C3A" : "#D1D5DB"}`, background: active ? "#0D5C3A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 22, height: 22, borderRadius: 11, border: `2px solid ${active ? "#FF6B35" : "#D1D5DB"}`, background: active ? "#FF6B35" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {active && <div style={{ width: 8, height: 8, borderRadius: 4, background: "white" }} />}
               </div>
             </button>
@@ -79,7 +79,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
           <span style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>+ Add new payment method</span>
         </button>
 
-        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#ECF5F0", border: "1px solid #D2E9DD" }}>
+        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
           <p style={{ fontSize: 12, color: "#083A24", margin: 0 }}>
             ⚡ MTN MoMo and Airtel Money are disbursed <strong>instantly</strong>. Bank transfers take 2–4 business hours.
           </p>
@@ -87,7 +87,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
-        <button onClick={() => onNavigate("loan-review")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
+        <button onClick={() => onNavigate("loan-review")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
           Continue to Review
         </button>
       </div>

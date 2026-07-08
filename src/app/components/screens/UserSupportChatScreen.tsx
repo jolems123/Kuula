@@ -84,7 +84,7 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB" }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      <div style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)", padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <button onClick={() => onNavigate("help-support")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -112,7 +112,7 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
                 <div style={{
                   padding: "10px 14px",
                   borderRadius: isMine ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                  background: isMine ? "linear-gradient(135deg, #0D5C3A, #0A4A2E)" : "white",
+                  background: isMine ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "white",
                   color: isMine ? "white" : "#1F2937",
                   fontSize: 13,
                   lineHeight: 1.5,
@@ -156,7 +156,7 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
             width: 44,
             height: 44,
             borderRadius: 22,
-            background: inputText.trim() ? "linear-gradient(135deg, #0D5C3A, #0A4A2E)" : "#E5E7EB",
+            background: inputText.trim() ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB",
             border: "none",
             cursor: inputText.trim() ? "pointer" : "default",
             display: "flex",

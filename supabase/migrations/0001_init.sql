@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Kuula — initial schema, Row-Level Security, and triggers.
--- Mirrors the data model in server/core.mjs so behaviour is identical whether
--- the app runs on the Node reference backend or Supabase.
+-- Data model is mirrored in supabase/functions/_shared/core.ts and
+-- src/app/lib/pricing.ts so client and server stay in sync.
 --
 -- Apply with:  supabase db push        (or paste into the SQL editor)
 -- ============================================================================

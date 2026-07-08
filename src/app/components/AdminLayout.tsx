@@ -145,7 +145,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                     width: "100%", display: "flex", alignItems: "center", gap: 9,
                     padding: "9px 14px", background: isActive && !item.children ? "rgba(13,92,58,0.15)" : "transparent",
                     border: "none", cursor: "pointer", textAlign: "left",
-                    borderLeft: isActive && !item.children ? "2px solid #0D5C3A" : "2px solid transparent",
+                    borderLeft: isActive && !item.children ? "2px solid #FF6B35" : "2px solid transparent",
                   }}
                 >
                   <Icon size={15} color={isActive ? "#3FA876" : "#475569"} />
@@ -224,7 +224,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
             <Bell size={17} color="#64748B" />
             <div style={{ width: 7, height: 7, borderRadius: 4, background: "#EF4444", position: "absolute", top: 0, right: 0 }} />
           </button>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #FF6B35, #E05A2B)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "white" }}>AK</span>
           </div>
         </div>
@@ -241,7 +241,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
 // ── Shared admin components ───────────────────────────────────────────────────
 
 export function StatCard({
-  label, value, sub, color = "#0D5C3A", icon,
+  label, value, sub, color = "#FF6B35", icon,
 }: {
   label: string; value: string; sub?: string; color?: string; icon: React.ReactNode;
 }) {
@@ -301,7 +301,7 @@ export function StatusBadge({ status }: { status: string }) {
     active:    { bg: "#F0FDF4", color: "#10B981" },
     approved:  { bg: "#F0FDF4", color: "#10B981" },
     verified:  { bg: "#F0FDF4", color: "#10B981" },
-    completed: { bg: "#ECF5F0", color: "#0D5C3A" },
+    completed: { bg: "#FFF0E8", color: "#FF6B35" },
     paid:      { bg: "#F0FDF4", color: "#10B981" },
     pending:   { bg: "#FFF7ED", color: "#F59E0B" },
     offered:   { bg: "#F5F3FF", color: "#8B5CF6" },

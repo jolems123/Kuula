@@ -27,7 +27,7 @@ around one principle: **never show a number the backend didn't confirm.**
 - **Wallet** — top up, view balance, and see a full transaction history.
 - **Transparent terms** — every loan shows its real cost up front; pricing is
   compliance-checked (APR capped, minimum term enforced, simple interest only).
-- **Your language** — full UI in **English, Luganda (Luganda), and Swahili**.
+- **Your language** — full UI in **English, Luganda, and Swahili**.
 
 ### For operators (admin)
 - Loan review, approvals, disbursements, and collections dashboards.
@@ -49,10 +49,8 @@ The same React UI ships three ways — only the shell differs:
   (works under `file://` in the native webview), `react-i18next` (en / lg / sw).
 - **Mobile:** Capacitor (StatusBar, SplashScreen, App back-button, safe-area insets).
 - **Payments:** MTN MoMo & Airtel Money collections and disbursements.
-- **Backend (production):** Supabase (Postgres + Auth + RLS) with **MarzPay**
-  Edge Functions for real mobile-money collection, disbursement, and webhooks.
-- **Backend (legacy/reference):** a Node/Express + Postgres service kept for
-  parity and local development.
+- **Backend:** Supabase (Postgres + Auth + RLS + Edge Functions) with **MarZPay**
+  for real mobile-money collection, disbursement, and webhooks.
 
 ## Quick start (demo mode)
 
@@ -76,9 +74,7 @@ box without a backend**, using two seeded demo accounts:
 
 ## Connecting a real backend
 
-Kuula switches backends with a single env var — no code changes required.
-
-### Supabase + MarzPay (production)
+Set the following env vars to connect to Supabase:
 
 ```bash
 VITE_USE_API=true
@@ -87,27 +83,16 @@ VITE_SUPABASE_URL=https://<project>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-Server-side secrets (MarzPay API key/secret, webhook secret, Supabase service
+Server-side secrets (MarZPay API key/secret, webhook secret, Supabase service
 key) live **only** as Supabase Edge Function secrets — never as `VITE_*` vars.
-The MarzPay Edge Functions live in `supabase/functions/`:
+The MarZPay Edge Functions live in `supabase/functions/`:
 
 - `marzpay-collect` — initiate a mobile-money collection (repayment).
 - `marzpay-disburse` — disburse loan funds to the borrower.
-- `marzpay-webhook` — verify and process MarzPay status callbacks (fails
+- `marzpay-webhook` — verify and process MarZPay status callbacks (fails
   **closed** if the webhook secret is missing).
 - `auto-collect` — scheduled repayment collection sweep.
 - `credit-score` — credit decisioning.
-
-### Node/Express (legacy)
-
-```bash
-VITE_USE_API=true
-VITE_BACKEND=node        # default
-npm run api              # runs the reference server in server/
-```
-
-See `backend/` for the fuller Express + Postgres implementation and its own
-README.
 
 ## Internationalization
 
@@ -117,9 +102,9 @@ three files; the app selects a locale at runtime via `react-i18next`.
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and adjust. **Every `VITE_*` var is inlined
-into the public bundle**, so secrets (MTN/Airtel/MarzPay keys, JWT secret,
+into the public bundle**, so secrets (MTN/Airtel/MarZPay keys, JWT secret,
 Supabase service key) must never be `VITE_*` — they belong in Edge Function
-secrets or `backend/.env` only.
+secrets only.
 
 ## Verifying it works
 
@@ -157,7 +142,7 @@ src/
     config/env.ts          # VITE_* env validation
     context/AppContext.tsx # session / user / credit / loan state
     api/
-      client.ts            # provider-switched API client (node | supabase)
+      client.ts            # API client (supabase)
       supabase-service.ts  # Supabase implementation
       types.ts             # shared API types
     lib/supabase.ts        # lazy Supabase client
@@ -172,19 +157,17 @@ src/
 public/                    # PWA manifest + icons
 capacitor.config.ts        # native app config
 android/ , ios/            # generated Capacitor native projects
-backend/                   # Node/Express + Postgres backend (legacy/reference)
-server/                    # zero-dep Node reference backend
-supabase/                  # migrations + Edge Functions (MarzPay, production)
+supabase/                  # migrations + Edge Functions (MarZPay, production)
 scripts/                   # env checks, route sweep, pricing compliance
 ```
 
 ## Compliance & safety
 
-- **No fabricated financial data.** In server mode, balances and transactions
-  are only ever what the backend returns; loading/error/empty states are shown
-  instead of placeholder numbers, and payments are blocked when data is missing
-  or failed to load.
+- **No fabricated financial data.** When connected to Supabase, balances and
+  transactions are only ever what the backend returns; loading/error/empty
+  states are shown instead of placeholder numbers, and payments are blocked
+  when data is missing or failed to load.
 - **Pricing guardrails.** APR is capped, a minimum loan term is enforced, and
   interest is simple (never compounded); `npm run check:pricing` guards this.
-- **Fail closed.** Security-sensitive paths (e.g. the MarzPay webhook) reject
+- **Fail closed.** Security-sensitive paths (e.g. the MarZPay webhook) reject
   requests when required secrets are absent rather than trusting them.

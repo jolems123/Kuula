@@ -59,7 +59,7 @@ export function AdminCustomerListScreen({ onNavigate }: Props) {
         }
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Total Customers" value={loading ? "…" : String(customers.length)} color="#0D5C3A" icon={<></>}/>
+        <StatCard label="Total Customers" value={loading ? "…" : String(customers.length)} color="#FF6B35" icon={<></>}/>
         <StatCard label="Verified (KYC)" value={loading ? "…" : String(verifiedCount)} sub={customers.length > 0 ? `${Math.round(verifiedCount / customers.length * 100)}%` : "—"} color="#10B981" icon={<></>}/>
         <StatCard label="Total Loans Taken" value={loading ? "…" : String(customers.reduce((s, c) => s + (c.loans_total ?? 0), 0))} color="#F59E0B" icon={<></>}/>
       </div>
@@ -93,7 +93,7 @@ export function AdminCustomerDetailScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Customer Detail" subtitle="Select a customer from the list to view their profile"
         action={
           <div style={{ display:"flex",gap:8 }}>
-            <button onClick={()=>onNavigate("admin-customer-kyc")} style={{ padding:"8px 14px",borderRadius:8,background:"#ECF5F0",color:"#0D5C3A",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View KYC</button>
+            <button onClick={()=>onNavigate("admin-customer-kyc")} style={{ padding:"8px 14px",borderRadius:8,background:"#FFF0E8",color:"#FF6B35",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View KYC</button>
             <button onClick={()=>onNavigate("admin-block-customer")} style={{ padding:"8px 14px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Block</button>
           </div>
         }
@@ -187,7 +187,7 @@ export function AdminCustomerRiskScreen({ onNavigate }: Props) {
               <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:"#0F172A" }}>{v}</span>
             </div>
           ))}
-          <button style={{ width:"100%",height:40,marginTop:16,borderRadius:8,background:"#0D5C3A",color:"white",border:"none",fontSize:13,fontWeight:600,cursor:"pointer" }}>Increase Credit Limit</button>
+          <button style={{ width:"100%",height:40,marginTop:16,borderRadius:8,background:"#FF6B35",color:"white",border:"none",fontSize:13,fontWeight:600,cursor:"pointer" }}>Increase Credit Limit</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -204,8 +204,8 @@ export function AdminBlockCustomerScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:560 }}>
         <AdminCard>
           <div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:20 }}>
-            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"#ECF5F0",border:`2px solid ${blocked?"#FECACA":"#B6DCC8"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
-              {blocked ? <Lock size={28} color="#EF4444"/> : <Unlock size={28} color="#0D5C3A"/>}
+            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"#FFF0E8",border:`2px solid ${blocked?"#FECACA":"#B6DCC8"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+              {blocked ? <Lock size={28} color="#EF4444"/> : <Unlock size={28} color="#FF6B35"/>}
             </div>
             <div>
               <p style={{ fontSize:16,fontWeight:800,color:"#0F172A",margin:0 }}>Customer Account</p>

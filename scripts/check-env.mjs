@@ -11,7 +11,9 @@
  */
 const env = process.env;
 const useApi = env.VITE_USE_API === "true";
-const backend = env.VITE_BACKEND === "supabase" ? "supabase" : "node";
+// Default to supabase — the only supported backend for Kuula.
+// The legacy "node" path is kept only for local dev convenience.
+const backend = env.VITE_BACKEND || "supabase";
 const apiBase = env.VITE_API_BASE_URL || "";
 
 const errors = [];
@@ -31,12 +33,20 @@ if (isProd && env.VITE_REVIEWER_MODE === "true") {
 }
 
 if (useApi) {
-  if (backend === "supabase" && (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY)) {
-    errors.push(
-      "VITE_BACKEND=supabase but VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY are missing."
-    );
+  if (backend === "supabase") {
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+      errors.push(
+        "VITE_BACKEND=supabase (default) but VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY are missing."
+      );
+    }
+    // Validate the URL looks like a real Supabase project URL.
+    if (env.VITE_SUPABASE_URL && !env.VITE_SUPABASE_URL.includes(".supabase.co")) {
+      errors.push(
+        "VITE_SUPABASE_URL doesn't look like a Supabase project URL (expected https://<project>.supabase.co)."
+      );
+    }
   }
-  if (backend === "node" && (!apiBase || apiBase.startsWith("http://localhost"))) {
+  if (backend === "node" && isProd && (!apiBase || apiBase.startsWith("http://localhost"))) {
     errors.push(
       "Production build requires a real VITE_API_BASE_URL (https://…); refusing the localhost default."
     );

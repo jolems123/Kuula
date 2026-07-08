@@ -1,4 +1,4 @@
-// Shared domain logic for Edge Functions (Deno). Mirrors server/core.mjs.
+// Shared domain logic for Edge Functions (Deno). Mirrors src/app/lib/pricing.ts.
 export const COMPLIANCE = {
   MAX_APR: 0.336,
   APPLE_APR_CAP: 0.36,

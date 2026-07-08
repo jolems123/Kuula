@@ -98,7 +98,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("loan-detail")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -167,7 +167,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         ) : (
           <button
             onClick={() => setSigned(true)}
-            style={{ width: "100%", height: 52, borderRadius: 14, background: signed ? "#F3F4F6" : "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: signed ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            style={{ width: "100%", height: 52, borderRadius: 14, background: signed ? "#F3F4F6" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: signed ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
             {signed ? <><CheckCircle size={18} color="#10B981" /> Agreement Signed</> : <><Pen size={18} /> {isOffer ? "Sign to Continue" : "Sign Agreement"}</>}
           </button>

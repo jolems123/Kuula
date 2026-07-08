@@ -120,7 +120,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("loan-detail")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -129,19 +129,19 @@ export function MakePaymentScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 130px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Outstanding summary */}
-        <div style={{ background: "linear-gradient(135deg, #ECF5F0, #D2E9DD)", borderRadius: 16, padding: "16px", border: "1px solid #B6DCC8" }}>
+        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #B6DCC8" }}>
           {dataLoading ? (
             <p style={{ fontSize: 14, color: "#157A4E", fontWeight: 600, margin: 0 }}>{t("common.loading")}…</p>
           ) : dataError ? (
             <p style={{ fontSize: 14, color: "#EF4444", fontWeight: 700, margin: 0 }}>{t("makePayment.loadError")}</p>
           ) : outstanding == null ? (
-            <p style={{ fontSize: 14, color: "#0A4A2E", fontWeight: 700, margin: 0 }}>{t("makePayment.noActiveLoan")}</p>
+            <p style={{ fontSize: 14, color: "#E05A2B", fontWeight: 700, margin: 0 }}>{t("makePayment.noActiveLoan")}</p>
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div>
                   <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: 0 }}>{t("makePayment.outstandingBalance")}</p>
-                  <p style={{ fontSize: 28, fontWeight: 900, color: "#0A4A2E", margin: "4px 0 0" }}>{ugx(outstanding)}</p>
+                  <p style={{ fontSize: 28, fontWeight: 900, color: "#E05A2B", margin: "4px 0 0" }}>{ugx(outstanding)}</p>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <p style={{ fontSize: 11, color: "#157A4E", margin: 0 }}>{t("makePayment.minDue")}</p>
@@ -149,7 +149,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
                 </div>
               </div>
               {collection && (
-                <p style={{ fontSize: 11, color: "#0D5C3A", margin: "10px 0 0", fontWeight: 600 }}>
+                <p style={{ fontSize: 11, color: "#FF6B35", margin: "10px 0 0", fontWeight: 600 }}>
                   {t("makePayment.autoCollection", { name: collection })}
                 </p>
               )}
@@ -168,7 +168,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
                   onClick={() => setAmount(amt)}
                   style={{
                     padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                    background: amount === amt ? "#0D5C3A" : "#F3F4F6",
+                    background: amount === amt ? "#FF6B35" : "#F3F4F6",
                     color: amount === amt ? "white" : "#374151",
                   }}
                 >
@@ -181,7 +181,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
               type="number"
               value={amount ?? ""}
               onChange={(e) => setAmount(e.target.value === "" ? null : Number(e.target.value))}
-              style={{ width: "100%", height: 50, borderRadius: 12, border: "1.5px solid #E5E7EB", padding: "0 16px", fontSize: 18, fontWeight: 800, color: "#0D5C3A", background: "#F9FAFB", outline: "none", boxSizing: "border-box" }}
+              style={{ width: "100%", height: 50, borderRadius: 12, border: "1.5px solid #E5E7EB", padding: "0 16px", fontSize: 18, fontWeight: 800, color: "#FF6B35", background: "#F9FAFB", outline: "none", boxSizing: "border-box" }}
             />
           </div>
         )}
@@ -194,14 +194,14 @@ export function MakePaymentScreen({ onNavigate }: Props) {
               <button
                 key={m.id}
                 onClick={() => setMethod(m.id)}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, border: `2px solid ${method === m.id ? "#0D5C3A" : "#E5E7EB"}`, background: method === m.id ? "#ECF5F0" : "#F9FAFB", cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, border: `2px solid ${method === m.id ? "#FF6B35" : "#E5E7EB"}`, background: method === m.id ? "#FFF0E8" : "#F9FAFB", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24 }}>{m.logo}</span>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}>{m.label}</p>
                   <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>{m.number}</p>
                 </div>
-                <div style={{ width: 18, height: 18, borderRadius: 9, border: `2px solid ${method === m.id ? "#0D5C3A" : "#D1D5DB"}`, background: method === m.id ? "#0D5C3A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 18, height: 18, borderRadius: 9, border: `2px solid ${method === m.id ? "#FF6B35" : "#D1D5DB"}`, background: method === m.id ? "#FF6B35" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {method === m.id && <div style={{ width: 7, height: 7, borderRadius: 4, background: "white" }} />}
                 </div>
               </button>
@@ -222,7 +222,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
         <button
           onClick={pay}
           disabled={!canPay}
-          style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : 0.5, boxShadow: "0 4px 16px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+          style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : 0.5, boxShadow: "0 4px 16px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
         >
           {loading
             ? <><div style={{ width: 20, height: 20, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />{t("common.processing")}</>

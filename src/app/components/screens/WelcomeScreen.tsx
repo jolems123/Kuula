@@ -167,7 +167,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
         className="absolute top-0 left-0 right-0"
         style={{
           height: 320,
-          background: "linear-gradient(160deg, #ECF5F0 0%, #D2E9DD 60%, #fff 100%)",
+          background: "linear-gradient(160deg, #FFF0E8 0%, #FFDCC8 60%, #fff 100%)",
         }}
       />
 
@@ -210,13 +210,13 @@ export function WelcomeScreen({ onNavigate }: Props) {
         <button
           onClick={() => onNavigate("language")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "#ECF5F0", border: "1px solid #B6DCC8", cursor: "pointer" }}
+          style={{ background: "#FFF0E8", border: "1px solid #B6DCC8", cursor: "pointer" }}
         >
-          <Globe size={13} color="#0D5C3A" />
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#0D5C3A" }}>
+          <Globe size={13} color="#FF6B35" />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#FF6B35" }}>
             {i18n.language === "en" ? "English" : i18n.language === "lg" ? "Oluganda" : i18n.language === "sw" ? "Kiswahili" : i18n.language}
           </span>
-          <ChevronRight size={12} color="#0D5C3A" />
+          <ChevronRight size={12} color="#FF6B35" />
         </button>
       </div>
 
@@ -228,7 +228,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white",
             fontSize: 16,
             fontWeight: 600,
@@ -248,8 +248,8 @@ export function WelcomeScreen({ onNavigate }: Props) {
             style={{
               height: 52,
               borderRadius: 16,
-              background: "#ECF5F0",
-              color: "#0D5C3A",
+              background: "#FFF0E8",
+              color: "#FF6B35",
               fontSize: 15,
               fontWeight: 600,
               border: "1.5px solid #B6DCC8",
@@ -273,8 +273,8 @@ export function WelcomeScreen({ onNavigate }: Props) {
                   flex: 1,
                   height: 52,
                   borderRadius: 14,
-                  background: isAdmin ? "#FEF2F2" : "#ECF5F0",
-                  color: isAdmin ? "#DC2626" : "#0D5C3A",
+                  background: isAdmin ? "#FEF2F2" : "#FFF0E8",
+                  color: isAdmin ? "#DC2626" : "#FF6B35",
                   fontSize: 13,
                   fontWeight: 600,
                   border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #B6DCC8",
@@ -372,7 +372,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             <button
               onClick={handleApiLogin}
               disabled={apiLoading}
-              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#8FCBAC" : "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
+              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#8FCBAC" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
             >
               {apiLoading ? t("common.signingIn") : t("welcome.signIn")}
             </button>
@@ -454,7 +454,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
                 width: "100%",
                 height: 48,
                 borderRadius: 14,
-                background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+                background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
                 color: "white",
                 fontSize: 15,
                 fontWeight: 700,

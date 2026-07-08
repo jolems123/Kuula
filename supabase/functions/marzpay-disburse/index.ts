@@ -12,16 +12,12 @@
 // only allows the loan's own borrower to accept it.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { marzConfigured, marzDisburse, webhookUrl } from "../_shared/marzpay.ts";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, cors);
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -29,24 +25,24 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user } } = await authed.auth.getUser();
-  if (!user) return json({ error: "Unauthorized" }, 401);
+  if (!user) return json({ error: "Unauthorized" }, 401, cors);
 
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   if (!marzConfigured()) {
-    return json({ error: "MarzPay is not configured — set MARZPAY_API_KEY and MARZPAY_API_SECRET." }, 503);
+    return json({ error: "MarzPay is not configured — set MARZPAY_API_KEY and MARZPAY_API_SECRET." }, 503, cors);
   }
 
   const { applicationId } = await req.json().catch(() => ({})) as { applicationId?: string };
-  if (!applicationId) return json({ error: "applicationId is required" }, 400);
+  if (!applicationId) return json({ error: "applicationId is required" }, 400, cors);
 
   const { data: app, error: appErr } = await admin
     .from("loan_applications").select("*").eq("id", applicationId).single();
-  if (appErr || !app) return json({ error: "Application not found" }, 404);
+  if (appErr || !app) return json({ error: "Application not found" }, 404, cors);
 
   // Only the borrower may accept their own loan offer.
-  if (app.applicant_id !== user.id) return json({ error: "You can only accept your own loan" }, 403);
-  if (app.status !== "offered") return json({ error: `Loan is ${app.status}, not awaiting acceptance` }, 409);
+  if (app.applicant_id !== user.id) return json({ error: "You can only accept your own loan" }, 403, cors);
+  if (app.status !== "offered") return json({ error: `Loan is ${app.status}, not awaiting acceptance` }, 409, cors);
 
   // Idempotency lock: claim the offer BEFORE any external payout via a
   // compare-and-set on accepted_at (NULL -> now) while status stays 'offered'.
@@ -58,14 +54,14 @@ Deno.serve(async (req) => {
     .update({ accepted_at: new Date().toISOString() })
     .eq("id", app.id).eq("status", "offered").is("accepted_at", null)
     .select().maybeSingle();
-  if (!claim) return json({ error: "Loan is already being processed" }, 409);
+  if (!claim) return json({ error: "Loan is already being processed" }, 409, cors);
 
   const releaseLock = () =>
     admin.from("loan_applications").update({ accepted_at: null }).eq("id", app.id).eq("status", "offered");
 
   const { data: prof } = await admin.from("profiles").select("phone, full_name").eq("id", app.applicant_id).single();
   const phone = prof?.phone ?? "";
-  if (!phone) { await releaseLock(); return json({ error: "Borrower has no phone number on file" }, 422); }
+  if (!phone) { await releaseLock(); return json({ error: "Borrower has no phone number on file" }, 422, cors); }
 
   const reference = `LOAN-${app.id}`;
   const result = await marzDisburse({
@@ -77,7 +73,7 @@ Deno.serve(async (req) => {
   });
   if (!result.ok) {
     await releaseLock();
-    return json({ error: `Disbursement rejected by MarzPay: ${result.message}`, provider: result.raw }, 502);
+    return json({ error: `Disbursement rejected by MarzPay: ${result.message}`, provider: result.raw }, 502, cors);
   }
 
   // Money is on its way. Book the loan by flipping offered -> approved (the
@@ -116,15 +112,15 @@ Deno.serve(async (req) => {
       error: `Payout accepted but loan booking failed — flagged for reconciliation: ${lastErr}`,
       needsReconciliation: true,
       disbursement: { uuid: result.uuid, status: result.status, reference },
-    }, 500);
+    }, 500, cors);
   }
 
   return json({
     application: updated,
     disbursement: { uuid: result.uuid, status: result.status, reference },
-  }, 200);
+  }, 200, cors);
 });
 
-function json(body: unknown, status: number) {
+function json(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }

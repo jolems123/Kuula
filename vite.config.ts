@@ -16,6 +16,23 @@ function figmaAssetResolver() {
   }
 }
 
+// Remove the "noindex, nofollow" robots meta tag in production builds so
+// search engines can index the live site. Dev/staging builds keep it blocked.
+function robotsMetaPlugin() {
+  return {
+    name: 'robots-meta',
+    transformIndexHtml(html: string) {
+      if (process.env.VITE_APP_ENV === 'production') {
+        return html.replace(
+          /<meta name="robots" content="noindex, nofollow"\s*\/?>\s*\n?/g,
+          '<meta name="robots" content="index, follow" />\n',
+        );
+      }
+      return html;
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
@@ -23,6 +40,7 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    robotsMetaPlugin(),
   ],
   resolve: {
     alias: {
@@ -61,9 +79,7 @@ export default defineConfig({
     allowedHosts: true,
   },
 
-  // Root unit tests only cover the frontend (src). The backend has its own
-  // integration suite (backend/), which needs a dedicated throwaway Postgres
-  // and is run separately via `npm test --prefix backend`.
+  // Root unit tests cover the frontend (src).
   test: {
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },

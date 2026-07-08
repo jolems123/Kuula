@@ -12,7 +12,7 @@ export function ContactSupportScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("help-support")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -25,7 +25,7 @@ export function ContactSupportScreen({ onNavigate }: Props) {
           { id: "call" as const, Icon: Phone, label: "Call" },
           { id: "email" as const, Icon: Mail, label: "Email" },
         ].map(({ id, Icon, label }) => (
-          <button key={id} onClick={() => setMode(id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 38, borderRadius: 10, border: "none", cursor: "pointer", background: mode === id ? "#0D5C3A" : "#F3F4F6", color: mode === id ? "white" : "#6B7280", fontSize: 12, fontWeight: 600 }}>
+          <button key={id} onClick={() => setMode(id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 38, borderRadius: 10, border: "none", cursor: "pointer", background: mode === id ? "#FF6B35" : "#F3F4F6", color: mode === id ? "white" : "#6B7280", fontSize: 12, fontWeight: 600 }}>
             <Icon size={14} /> {label}
           </button>
         ))}
@@ -35,13 +35,13 @@ export function ContactSupportScreen({ onNavigate }: Props) {
         {mode === "chat" && (
           <>
             <div style={{ flex: 1 }}>
-              <div style={{ background: "#ECF5F0", borderRadius: "16px 16px 16px 4px", padding: "12px 14px", maxWidth: "80%", marginBottom: 10 }}>
+              <div style={{ background: "#FFF0E8", borderRadius: "16px 16px 16px 4px", padding: "12px 14px", maxWidth: "80%", marginBottom: 10 }}>
                 <p style={{ fontSize: 13, color: "#083A24", margin: "0 0 2px", fontWeight: 600 }}>Kuula Support 🤖</p>
                 <p style={{ fontSize: 13, color: "#374151", margin: 0 }}>Hello Amara! How can I help you today? Please describe your issue and I'll assist you right away.</p>
                 <span style={{ fontSize: 10, color: "#9CA3AF" }}>09:41 AM</span>
               </div>
               {sent && (
-                <div style={{ background: "#0D5C3A", borderRadius: "16px 16px 4px 16px", padding: "12px 14px", maxWidth: "80%", marginLeft: "auto", marginBottom: 10 }}>
+                <div style={{ background: "#FF6B35", borderRadius: "16px 16px 4px 16px", padding: "12px 14px", maxWidth: "80%", marginLeft: "auto", marginBottom: 10 }}>
                   <p style={{ fontSize: 13, color: "white", margin: 0 }}>{message}</p>
                   <span style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", display: "block", textAlign: "right" }}>09:42 AM ✓</span>
                 </div>
@@ -50,7 +50,7 @@ export function ContactSupportScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>Or choose a quick topic:</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {["Loan application", "Payment issue", "Account access", "Credit score", "Other"].map((t) => (
-                <button key={t} onClick={() => setMessage(t)} style={{ padding: "6px 12px", borderRadius: 20, background: "#ECF5F0", border: "none", color: "#0D5C3A", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{t}</button>
+                <button key={t} onClick={() => setMessage(t)} style={{ padding: "6px 12px", borderRadius: 20, background: "#FFF0E8", border: "none", color: "#FF6B35", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{t}</button>
               ))}
             </div>
           </>
@@ -85,12 +85,12 @@ export function ContactSupportScreen({ onNavigate }: Props) {
         {mode === "chat" ? (
           <div style={{ display: "flex", gap: 8 }}>
             <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type your message..." style={{ flex: 1, height: 46, borderRadius: 10, border: "1.5px solid #E5E7EB", padding: "0 14px", fontSize: 13, outline: "none" }} />
-            <button onClick={() => { if (message) setSent(true); }} style={{ width: 46, height: 46, borderRadius: 10, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={() => { if (message) setSent(true); }} style={{ width: 46, height: 46, borderRadius: 10, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Send size={18} color="white" />
             </button>
           </div>
         ) : (
-          <button style={{ width: "100%", height: 48, borderRadius: 14, background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
+          <button style={{ width: "100%", height: 48, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
             Send Message
           </button>
         )}

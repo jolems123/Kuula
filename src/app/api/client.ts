@@ -2,7 +2,7 @@
  * Kuula API client.
  *
  * `api` is provider-switched by VITE_BACKEND: the default "node" target is the
- * fetch wrapper below (reference server/); "supabase" routes to the Supabase
+ * fetch wrapper below (legacy stubs); "supabase" routes to the Supabase
  * service. Screens import `{ api }` and never care which backend is active.
  */
 import { env } from "../config/env";

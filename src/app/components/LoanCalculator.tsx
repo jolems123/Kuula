@@ -23,7 +23,7 @@ function LoanBreakdownRow({ label, value, highlight }: { label: string; value: s
       borderTop: "1px solid #F3F4F6",
     }}>
       <span style={{ fontSize: 13, color: "#6B7280" }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: highlight ? 800 : 600, color: highlight ? "#0A4A2E" : "#1F2937" }}>
+      <span style={{ fontSize: 14, fontWeight: highlight ? 800 : 600, color: highlight ? "#E05A2B" : "#1F2937" }}>
         {value}
       </span>
     </div>
@@ -77,7 +77,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
       {/* Header */}
       <div
         style={{
-          background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+          background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
           padding: "16px 20px",
         }}
       >
@@ -100,7 +100,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             {/* Track fill */}
             <div style={{
               position: "absolute", left: 0, height: 6, borderRadius: 3,
-              width: `${sliderPct}%`, background: "linear-gradient(90deg, #0D5C3A, #157A4E)",
+              width: `${sliderPct}%`, background: "linear-gradient(90deg, #FF6B35, #157A4E)",
               pointerEvents: "none", zIndex: 1,
             }} />
             {/* Track bg */}
@@ -125,7 +125,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
               left: `clamp(0px, calc(${sliderPct}% - 14px), calc(100% - 28px))`,
               width: 28, height: 28, borderRadius: 14,
               background: "white",
-              border: "3px solid #0D5C3A",
+              border: "3px solid #FF6B35",
               boxShadow: "0 2px 8px rgba(13,92,58,0.35)",
               zIndex: 1,
               pointerEvents: "none",
@@ -140,9 +140,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                 onClick={() => setAmount(v)}
                 style={{
                   padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                  border: `1.5px solid ${amount === v ? "#0D5C3A" : "#E5E7EB"}`,
-                  background: amount === v ? "#ECF5F0" : "white",
-                  color: amount === v ? "#0A4A2E" : "#6B7280",
+                  border: `1.5px solid ${amount === v ? "#FF6B35" : "#E5E7EB"}`,
+                  background: amount === v ? "#FFF0E8" : "white",
+                  color: amount === v ? "#E05A2B" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
@@ -164,9 +164,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                   onClick={() => setTermIdx(i)}
                   style={{
                     flex: 1, padding: "8px 4px", borderRadius: 10, fontSize: 11, fontWeight: 600,
-                    border: `1.5px solid ${termIdx === i ? "#0D5C3A" : "#E5E7EB"}`,
-                    background: termIdx === i ? "#ECF5F0" : "white",
-                    color: termIdx === i ? "#0A4A2E" : "#6B7280",
+                    border: `1.5px solid ${termIdx === i ? "#FF6B35" : "#E5E7EB"}`,
+                    background: termIdx === i ? "#FFF0E8" : "white",
+                    color: termIdx === i ? "#E05A2B" : "#6B7280",
                     cursor: "pointer",
                   }}
                 >
@@ -187,9 +187,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                 onClick={() => setPurpose(p.key)}
                 style={{
                   padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  border: `1.5px solid ${purpose === p.key ? "#0D5C3A" : "#E5E7EB"}`,
-                  background: purpose === p.key ? "#ECF5F0" : "white",
-                  color: purpose === p.key ? "#0A4A2E" : "#6B7280",
+                  border: `1.5px solid ${purpose === p.key ? "#FF6B35" : "#E5E7EB"}`,
+                  background: purpose === p.key ? "#FFF0E8" : "white",
+                  color: purpose === p.key ? "#E05A2B" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
@@ -203,8 +203,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
         <div
           style={{
             borderRadius: 14,
-            background: "#ECF5F0",
-            border: "1px solid #D2E9DD",
+            background: "#FFF0E8",
+            border: "1px solid #FFDCC8",
             padding: "12px 16px",
             marginBottom: 16,
           }}
@@ -223,7 +223,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span style={{ fontSize: 12, color: "#6B7280" }}>{t("loanApply.totalRepayable")}</span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: "#0A4A2E", letterSpacing: -0.5 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: "#E05A2B", letterSpacing: -0.5 }}>
               {fmt(total)}
             </span>
           </div>
@@ -250,7 +250,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
           onClick={() => onApply?.(amount, termDays, purpose)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white", fontSize: 16, fontWeight: 700, border: "none",
             boxShadow: "0 6px 20px rgba(13,92,58,0.35)",
             cursor: "pointer",

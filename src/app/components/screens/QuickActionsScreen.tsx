@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 interface Props { onNavigate: (s: string) => void; }
 
 const ACTIONS = [
-  { Icon: DollarSign, label: "Apply for Loan", color: "#0D5C3A", bg: "#ECF5F0", screen: "loan-apply" },
+  { Icon: DollarSign, label: "Apply for Loan", color: "#FF6B35", bg: "#FFF0E8", screen: "loan-apply" },
   { Icon: Send, label: "Make Payment", color: "#10B981", bg: "#F0FDF4", screen: "make-payment" },
   { Icon: PiggyBank, label: "Add to Savings", color: "#F59E0B", bg: "#FFF7ED", screen: "add-money" },
   { Icon: History, label: "Loan History", color: "#8B5CF6", bg: "#F5F3FF", screen: "loan-history" },
@@ -19,7 +19,7 @@ export function QuickActionsScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>Quick Actions</span>
         <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <X size={18} color="white" />
@@ -48,7 +48,7 @@ export function QuickActionsScreen({ onNavigate }: Props) {
         <div style={{ marginTop: 20, background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>Recent Actions</p>
           {[
-            { text: "Applied for UGX 500,000 loan", time: "2 hours ago", color: "#0D5C3A" },
+            { text: "Applied for UGX 500,000 loan", time: "2 hours ago", color: "#FF6B35" },
             { text: "Paid UGX 285,000 instalment", time: "3 days ago", color: "#10B981" },
             { text: "Added UGX 50,000 to savings", time: "1 week ago", color: "#F59E0B" },
           ].map((item, i) => (

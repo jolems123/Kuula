@@ -1,55 +1,78 @@
 # Kuula on Supabase
 
-This directory adds a Supabase backend **alongside** the Node reference server in
-`server/`. Nothing in the existing app is removed — the app chooses a backend at
-build time via `VITE_BACKEND` (`node` default, or `supabase`).
+This is the **production backend** for Kuula. The entire backend lives here:
 
 ```
 supabase/
-  migrations/0001_init.sql     tables + Row-Level Security + triggers
-  functions/credit-score/      Edge Function: AI credit scoring (5 sources)
-  functions/auto-collect/      Edge Function: auto-payment scheduler (cron)
-  functions/_shared/core.ts    shared scoring / collection logic
-  config.toml                  function config + hourly cron for auto-collect
+  migrations/                     SQL schema applied to your Supabase project
+    0001_init.sql                  tables + RLS + triggers
+    0002_transactions_and_loan_fields.sql
+    0003_goals_and_notifications.sql
+    0004_repayment_rpc.sql         server-authoritative money functions
+    0005_loan_offer_acceptance.sql
+  functions/
+    marzpay-collect/               initiate mobile-money repayment
+    marzpay-disburse/              disburse loan to borrower's MoMo
+    marzpay-webhook/               MarZPay async callback receiver
+    credit-score/                  credit decisioning (5-factor)
+    auto-collect/                  hourly auto-payment sweep (cron)
+    _shared/
+      core.ts                      scoring + collection logic
+      marzpay.ts                   MarZPay API client
+      cors.ts                      origin-restricted CORS helper
+  config.toml                      function config + cron schedule
 ```
 
-## What each piece provides
-| Feature | Where |
-|---|---|
-| Database | `migrations/0001_init.sql` — `profiles`, `messages`, `loan_applications`, `savings_accounts`, `wallets`, `repayments`, all under RLS |
-| Authentication | Supabase Auth (phone+PIN for customers, email+password for admin); `profiles` row auto-created by the `on_auth_user_created` trigger |
-| Loan service API | direct RLS-protected table access from `src/app/api/supabase-service.ts`; approval disburses + schedules repayment via the `on_loan_decision` trigger |
-| Credit scoring | `functions/credit-score` (service-role read, JWT-authenticated, admins can score any user) |
-| Auto-payment scheduler | `functions/auto-collect`, run hourly by `config.toml` cron — auto-debits due loans and writes receipts |
+## Architecture
+
+```
+Browser / Mobile App
+        │
+        ▼ (anon key + JWT)
+   Supabase Postgres (RLS-protected)
+        │
+        ▼ (service role, server-side)
+   Edge Functions (MarZPay, credit scoring, auto-collect)
+```
+
+- **Database** — 9 tables with Row-Level Security. Auth is Supabase Auth (phone + OTP for customers, email + password for admins).
+- **Money movement** — All balance changes go through `SECURITY DEFINER` RPCs (`pay_repayment`, `topup_wallet`, `adjust_savings`) or Edge Functions. Clients can only READ their money rows.
+- **Mobile money** — MarZPay aggregates MTN MoMo and Airtel Money. Real-money calls (collect, disburse, webhook) run in Edge Functions with the service role key.
 
 ## One-time setup
-1. **Keys** — in the app host (or `.env.local`):
-   ```
-   VITE_BACKEND=supabase
-   VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-   VITE_SUPABASE_ANON_KEY=sb_publishable_...      # publishable, NOT the secret key
-   ```
-   Add the same two as GitHub **Actions secrets** (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) so CI builds pick them up.
 
-2. **Database**
+1. **Frontend env** — in `.env.local`:
+   ```
+   VITE_USE_API=true
+   VITE_BACKEND=supabase
+   VITE_SUPABASE_URL=https://yuqhwjvmamjwklumlhtt.supabase.co
+   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+   ```
+
+2. **Database** — migrations are already applied. If starting fresh:
    ```bash
-   supabase link --project-ref YOUR_REF
    supabase db push
    ```
 
-3. **Edge Functions** (the service key stays here, never in the app):
+3. **Edge Functions** — set secrets first, then deploy:
    ```bash
-   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
-   supabase functions deploy credit-score
-   supabase functions deploy auto-collect
+   supabase secrets set MARZPAY_API_KEY=...
+   supabase secrets set MARZPAY_API_SECRET=...
+   supabase secrets set MARZPAY_WEBHOOK_SECRET=...
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
+   supabase secrets set CORS_ORIGIN=https://app.kuula.ug
+   supabase functions deploy --project-ref yuqhwjvmamjwklumlhtt
    ```
 
-4. **Auth providers** — enable Phone (+ password) and Email in the Supabase
-   dashboard. Seed an admin: create the user, then
-   `update public.profiles set role='admin' where email='admin@kuula.ug';`
+4. **Admin user** — create via Supabase Auth dashboard (email + password), then:
+   ```sql
+   update public.profiles set role='admin' where email='admin@kuula.ug';
+   ```
 
 ## Security
-- The browser only ever holds the **publishable** key; RLS enforces access.
-- The **`sb_secret_`** service key lives only in Edge Function secrets.
-- APR (≤33.6%) and the 90-day minimum term are enforced in the schema
-  (`loan_applications` CHECK constraints) as well as in app code.
+
+- The browser only holds the **publishable** anon key; RLS enforces all access.
+- The **service role key** lives only in Edge Function secrets — never in client code.
+- The MarZPay webhook rejects all callbacks when `MARZPAY_WEBHOOK_SECRET` is missing (fail-closed).
+- CORS is restricted to configured origins via the shared `cors.ts` helper.
+- APR (≤33.6%) and the 90-day minimum term are enforced in CHECK constraints AND in app code.

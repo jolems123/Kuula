@@ -11,7 +11,7 @@ interface Props {
 }
 
 const menuItems = [
-  { icon: User, label: "Personal Information", subtitle: "Name, ID, date of birth", color: "#0D5C3A", screen: "personal-info" },
+  { icon: User, label: "Personal Information", subtitle: "Name, ID, date of birth", color: "#FF6B35", screen: "personal-info" },
   { icon: Wallet, label: "Payment Methods", subtitle: "MTN MoMo, Airtel Money", color: "#10B981", screen: "payment-methods-list" },
   { icon: Bell, label: "Notification Settings", subtitle: "SMS, email, push alerts", color: "#F59E0B", screen: "notification-settings" },
   { icon: Shield, label: "Privacy & Security", subtitle: "PIN, biometric, 2FA", color: "#8B5CF6", screen: "privacy-security" },
@@ -25,7 +25,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
       onClick={onChange}
       style={{
         width: 44, height: 26, borderRadius: 13,
-        background: on ? "#0D5C3A" : "#E5E7EB",
+        background: on ? "#FF6B35" : "#E5E7EB",
         border: "none", cursor: "pointer", position: "relative",
         transition: "background 0.2s", flexShrink: 0,
       }}
@@ -67,7 +67,7 @@ export function SettingsScreen({ onNavigate }: Props) {
       {/* Header */}
       <div
         className="flex items-center px-4 pt-4 pb-4"
-        style={{ background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}
+        style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}
       >
         <button
           onClick={() => onNavigate("home")}
@@ -99,7 +99,7 @@ export function SettingsScreen({ onNavigate }: Props) {
             width: 64,
             height: 64,
             borderRadius: 32,
-            background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)",
+            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -135,7 +135,7 @@ export function SettingsScreen({ onNavigate }: Props) {
       <div className="mx-4 mt-3 flex gap-3">
         {[
           { label: t("settings.creditScore"), value: String(credit?.score ?? "—"), sub: credit?.tier ?? "—", color: "#10B981" },
-          { label: t("settings.memberSince"), value: "2024", sub: user?.memberSince?.split(" ")[1] ?? "", color: "#0D5C3A" },
+          { label: t("settings.memberSince"), value: "2024", sub: user?.memberSince?.split(" ")[1] ?? "", color: "#FF6B35" },
           { label: t("settings.loansTaken"), value: String(loan?.totalLoansCount ?? 0), sub: t("settings.allRepaid"), color: "#8B5CF6" },
         ].map((stat) => (
           <div
@@ -157,8 +157,8 @@ export function SettingsScreen({ onNavigate }: Props) {
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: "#ECF5F0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Globe size={17} color="#0D5C3A" />
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "#FFF0E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Globe size={17} color="#FF6B35" />
             </div>
             <div>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>App Language</p>
@@ -205,7 +205,7 @@ export function SettingsScreen({ onNavigate }: Props) {
               onMouseLeave={() => setHoveredItem(null)}
               className="w-full flex items-center gap-3 px-4 py-3.5"
               style={{
-                background: isHovered ? "#ECF5F0" : "white",
+                background: isHovered ? "#FFF0E8" : "white",
                 border: "none",
                 borderBottom: i < menuItems.length - 1 ? "1px solid #F3F4F6" : "none",
                 textAlign: "left",
@@ -228,7 +228,7 @@ export function SettingsScreen({ onNavigate }: Props) {
                 <p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{menuItemI18n[item.screen]?.label ?? item.label}</p>
                 <p style={{ fontSize: 11, color: "#9CA3AF" }}>{menuItemI18n[item.screen]?.subtitle ?? item.subtitle}</p>
               </div>
-              <ChevronRight size={16} color={isHovered ? "#0D5C3A" : "#D1D5DB"} style={{ transition: "color 0.15s", transform: isHovered ? "translateX(2px)" : "none" }} />
+              <ChevronRight size={16} color={isHovered ? "#FF6B35" : "#D1D5DB"} style={{ transition: "color 0.15s", transform: isHovered ? "translateX(2px)" : "none" }} />
             </button>
           );
         })}

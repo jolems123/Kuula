@@ -41,7 +41,7 @@ export function CreditBreakdownScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <button onClick={() => onNavigate("credit-dashboard")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -49,9 +49,9 @@ export function CreditBreakdownScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 30px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ background: "linear-gradient(135deg, #ECF5F0, #D2E9DD)", borderRadius: 14, padding: "14px 16px", border: "1px solid #B6DCC8" }}>
+        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 14, padding: "14px 16px", border: "1px solid #B6DCC8" }}>
           <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: 0 }}>Your Credit Score</p>
-          <p style={{ fontSize: 36, fontWeight: 900, color: "#0A4A2E", margin: "2px 0" }}>{headerScore} / 850</p>
+          <p style={{ fontSize: 36, fontWeight: 900, color: "#E05A2B", margin: "2px 0" }}>{headerScore} / 850</p>
           <p style={{ fontSize: 12, color: "#157A4E", margin: 0 }}>{headerTier} · {data ? "Computed from 5 data sources" : "Top 15% of borrowers"}</p>
         </div>
 

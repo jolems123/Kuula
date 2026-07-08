@@ -83,7 +83,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0D5C3A, #0A4A2E)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("transaction-history")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -142,7 +142,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
               ))}
             </div>
 
-            <button onClick={saveReceipt} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, borderRadius: 14, background: "#ECF5F0", border: "none", color: "#0D5C3A", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={saveReceipt} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, borderRadius: 14, background: "#FFF0E8", border: "none", color: "#FF6B35", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               <Download size={16} /> Download Receipt (PDF)
             </button>
           </>
