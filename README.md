@@ -2,172 +2,199 @@
 
 # Kuula
 
-**Fast, secure micro-loans and savings for Uganda — powered by mobile money.**
+**The lending app for Ugandans the banks ignore.**
 
-Borrow in minutes, save with a goal, and repay straight from MTN MoMo or Airtel
-Money. Kuula runs as an installable web app (PWA) and as native iOS and Android
-apps from a single React codebase.
+Instant micro-loans and goal-based savings delivered straight to
+MTN MoMo or Airtel Money — no branch visits, no paperwork, no collateral.
 
 </div>
 
 ---
 
-## What is Kuula?
+## The Problem
 
-Kuula is a Ugandan fintech app for instant micro-lending and goal-based savings.
-It moves **real money** over mobile money rails, so the whole product is built
-around one principle: **never show a number the backend didn't confirm.**
+Over **70% of Ugandans are unbanked or underbanked.** Most adults have never
+had a formal credit history, which means traditional banks won't lend to them.
+When a market vendor needs UGX 200,000 to restock, or a boda-boda rider needs
+UGX 50,000 for fuel, their only options are loan sharks charging 20–30% per
+*month* or informal savings groups (NDOBs) that can take weeks to disburse.
+
+The result is a **credit vacuum** — millions of hard-working Ugandans are locked
+out of affordable credit because they don't fit a bank's risk model. Mobile money
+(used by over 30 million Ugandans) already connects them to the financial system,
+but nobody is using that rail to lend responsibly.
+
+## How Kuula Solves It
+
+Kuula turns a borrower's **mobile money activity and app behavior** into a credit
+signal — no collateral, no bank statements, no credit bureau. The entire
+lifecycle happens on a phone:
+
+1. **Sign up in 60 seconds** — phone number + PIN, verified by OTP.
+2. **Get a credit decision in real time** — our scoring model evaluates
+   repayment ability instantly, not based on traditional credit history.
+3. **Receive funds directly on MTN MoMo or Airtel Money** — no bank account
+   needed. The money arrives as a mobile-money deposit the borrower can
+   immediately use.
+4. **Repay on your own schedule** — make a full repayment or pay a partial
+   amount from your mobile-money wallet. Auto-collection sweeps handle
+   overdue amounts.
+5. **Build a credit history** — every on-time repayment improves the user's
+   Kuula credit score, unlocking larger limits over time.
+
+### Why this matters
+
+| | Banks & SACCOs | Loan sharks | **Kuula** |
+|---|---|---|---|
+| **Collateral** | Land titles, payslips | None (but 30%/mo) | **None** |
+| **Time to funds** | Days to weeks | Minutes | **Minutes** |
+| **APR** | 20–30% | 240–360% | **≤ 33.6%** (UMRA cap) |
+| **Apply from** | Branch | In person | **Your phone** |
+| **Disbursement** | Bank account | Cash | **MoMo / Airtel** |
+| **Credit building** | Yes | No | **Yes** |
+
+## Who Kuula Is For
+
+### Borrowers (Customers)
+
+- **Market vendors, traders, and small business owners** who need working
+  capital to restock inventory between market days.
+- **Boda-boda riders, taxi drivers, and gig workers** who need cash for fuel,
+  repairs, or emergencies and can repay from daily earnings.
+- **Salaried workers** waiting for payday who need a short-term bridge for
+  school fees, rent, or medical costs.
+- **Anyone with an MTN MoMo or Airtel Money wallet** and a phone — no bank
+  account required.
+
+### Operators (Admin)
+
+- **Loan officers** who review applications, approve or decline loans, and
+  initiate disbursements.
+- **Collections teams** tracking overdue repayments and triggering
+  auto-collection sweeps via mobile money.
+- **Support staff** handling customer inquiries, disputes, and account issues.
+- **Management** viewing dashboards for portfolio health, disbursement
+  volumes, and compliance reporting.
+
+## Key Features
 
 ### For borrowers
-- **Loans in minutes** — apply, get a real-time credit decision, and receive
-  funds directly to MTN MoMo or Airtel Money.
-- **Flexible repayment** — pay the full balance or a partial amount; collections
-  are initiated on your phone for approval.
-- **Savings** — set aside money toward a goal and track progress.
-- **Wallet** — top up, view balance, and see a full transaction history.
-- **Transparent terms** — every loan shows its real cost up front; pricing is
-  compliance-checked (APR capped, minimum term enforced, simple interest only).
-- **Your language** — full UI in **English, Luganda, and Swahili**.
+- **Instant loans** — apply, get approved, receive funds on mobile money in
+  minutes, not days.
+- **Flexible repayment** — pay the full balance or any partial amount; the
+  app calculates remaining interest accurately.
+- **Goal-based savings** — create savings goals (school fees, emergency fund),
+  set auto-save rules, and track progress visually.
+- **Wallet & transaction history** — top up, view balances, and see every
+  transaction with clear descriptions.
+- **Credit score dashboard** — see your score, understand what affects it,
+  and get actionable tips to improve it.
+- **Transparent pricing** — every loan shows the exact total cost before you
+  accept. No hidden fees, no compounding interest, APR capped by regulation.
+- **3 languages** — full UI in **English, Luganda, and Swahili** so users
+  interact in the language they're most comfortable with.
+- **Biometric login** — unlock the app with your fingerprint or face on
+  supported devices.
 
-### For operators (admin)
-- Loan review, approvals, disbursements, and collections dashboards.
-- Customer support, savings/credit management, reporting, and audit views.
+### For operators
+- **Full loan lifecycle management** — application review, approval workflow,
+  disbursement, repayment tracking, and collections.
+- **Real-time dashboards** — portfolio health, active loans, disbursement
+  volumes, and delinquency rates at a glance.
+- **Customer management** — search, view profiles, manage savings accounts,
+  and handle support tickets.
+- **Compliance tools** — pricing guardrails enforced at build time (APR cap,
+  minimum term, simple interest only), audit-ready reporting.
 
-## How it runs
+## How It Works (User Journey)
 
-The same React UI ships three ways — only the shell differs:
+```
+  Download app          Verify phone          Apply for loan
+  ──────────────►  ────────────────►  ─────────────────►
+   (Play Store /      (OTP via SMS)      (amount, purpose,
+    App Store)                               duration)
 
-| Target | Command | Notes |
-|--------|---------|-------|
-| **Web / PWA** | `npm run dev` | Installable via the browser's "Add to Home Screen" / "Install" prompt. |
-| **Android** | `npm run cap:android` | Opens the Capacitor-wrapped Android Studio project. |
-| **iOS** | `npm run cap:ios` | Opens the Capacitor-wrapped Xcode project (Mac only). |
+  Credit decision       Receive funds         Repay on
+  ──────────────►  ────────────────►  ────────────►
+  (real-time         (straight to         (full or partial,
+   scoring)          MTN/Airtel MoMo)      via mobile money)
 
-## Tech stack
+  Credit score        Unlock higher        Repeat &
+  improves  ◄────   limits next time  ◄──── save goals
+```
 
-- **Frontend:** React + TypeScript + Vite, Tailwind CSS, shadcn/ui, `HashRouter`
-  (works under `file://` in the native webview), `react-i18next` (en / lg / sw).
-- **Mobile:** Capacitor (StatusBar, SplashScreen, App back-button, safe-area insets).
-- **Payments:** MTN MoMo & Airtel Money collections and disbursements.
-- **Backend:** Supabase (Postgres + Auth + RLS + Edge Functions) with **MarZPay**
-  for real mobile-money collection, disbursement, and webhooks.
+## Tech Stack
 
-## Quick start (demo mode)
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 19 + TypeScript, Vite, Tailwind CSS, shadcn/ui |
+| **Mobile** | Capacitor (single codebase → Android APK + iOS IPA + PWA) |
+| **Backend** | Supabase (Postgres + Auth + Row-Level Security + Edge Functions) |
+| **Payments** | MarZPay → MTN MoMo & Airtel Money (collections + disbursements) |
+| **CI/CD** | GitHub Actions (typecheck, test, build, signed APK/AAB/IPA) |
+| **Languages** | react-i18next (English, Luganda, Swahili) |
+
+## Quick Start
+
+### Demo mode (no backend needed)
 
 ```bash
 npm install            # install dependencies
-npm run dev            # start the dev server → http://localhost:5000
+npm run dev            # start dev server → http://localhost:5000
 ```
 
-With `VITE_USE_API=false` (the default) the app is **fully functional out of the
-box without a backend**, using two seeded demo accounts:
+The app works fully offline with two demo accounts:
 
 | Account | How to log in | PIN |
 |---------|---------------|-----|
-| Amara Nakato (customer) | tap **USER** | `1234` |
-| Admin Kavuma (operator) | tap **ADMIN** | `1234` |
+| Amara Nakato (customer) | Tap **USER** | `1234` |
+| Admin Kavuma (operator) | Tap **ADMIN** | `1234` |
 
-> Demo mode is the only place the app shows illustrative figures. The moment a
-> real backend is wired up (`VITE_USE_API=true`), every balance, loan, and
-> transaction comes from the server — and screens fail loudly (clear error /
-> empty states) rather than ever displaying a fabricated amount.
-
-## Connecting a real backend
-
-Set the following env vars to connect to Supabase:
+### Production mode (with Supabase)
 
 ```bash
-VITE_USE_API=true
-VITE_BACKEND=supabase
-VITE_SUPABASE_URL=https://<project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
+cp .env.example .env.local
+# Edit .env.local with your Supabase URL and anon key
+npm run build
 ```
 
-Server-side secrets (MarZPay API key/secret, webhook secret, Supabase service
-key) live **only** as Supabase Edge Function secrets — never as `VITE_*` vars.
-The MarZPay Edge Functions live in `supabase/functions/`:
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full production setup guide
+(Supabase, Capacitor, app store submission, signing keys).
 
-- `marzpay-collect` — initiate a mobile-money collection (repayment).
-- `marzpay-disburse` — disburse loan funds to the borrower.
-- `marzpay-webhook` — verify and process MarZPay status callbacks (fails
-  **closed** if the webhook secret is missing).
-- `auto-collect` — scheduled repayment collection sweep.
-- `credit-score` — credit decisioning.
-
-## Internationalization
-
-All copy is translated in `src/i18n/locales/{en,lg,sw}.json`. Add a key to all
-three files; the app selects a locale at runtime via `react-i18next`.
-
-## Environment variables
-
-Copy `.env.example` to `.env.local` and adjust. **Every `VITE_*` var is inlined
-into the public bundle**, so secrets (MTN/Airtel/MarZPay keys, JWT secret,
-Supabase service key) must never be `VITE_*` — they belong in Edge Function
-secrets only.
-
-## Verifying it works
-
-```bash
-npm run typecheck        # 0 TypeScript errors
-npm run build            # production bundle in dist/
-npm test                 # unit tests (vitest)
-npm run sweep            # headless route sweep — visits every registered screen,
-                         #   fails if any throws or renders blank
-npm run check:pricing    # asserts loan pricing stays within compliance limits
-```
-
-## Mobile (Capacitor)
-
-The iOS/Android projects are already generated. After any web change:
-
-```bash
-npm run cap:sync         # build web + sync assets into native projects
-npm run cap:android      # open Android Studio
-npm run cap:ios          # open Xcode (Mac only)
-```
-
-Native integrations (StatusBar, SplashScreen, hardware Back button, safe-area
-insets) are guarded by `Capacitor.isNativePlatform()`, so the exact same React
-tree runs on web and native.
-
-## Project structure
+## Project Structure
 
 ```
 src/
-  main.tsx                 # React entrypoint
-  lib/native-chrome.ts     # Capacitor plugin wiring (no-op on web)
   app/
-    App.tsx                # HashRouter + shell + auth guards
-    config/env.ts          # VITE_* env validation
-    context/AppContext.tsx # session / user / credit / loan state
-    api/
-      client.ts            # API client (supabase)
-      supabase-service.ts  # Supabase implementation
-      types.ts             # shared API types
-    lib/supabase.ts        # lazy Supabase client
-    screens/registry.ts    # lazy-loaded screens + access levels
-    components/
-      screens/             # all screen components (customer + admin)
-      ui/                  # shadcn/ui component library
-      BottomNav.tsx        # customer tab bar
-      AdminLayout.tsx      # admin sidebar shell
-  i18n/locales/            # en / lg / sw translations
+    components/screens/    # All app screens (customer + admin)
+    api/                   # Supabase client & service layer
+    context/               # App state (user, loans, credit, wallet)
+    lib/                   # Pricing engine, receipt generator, exports
+    screens/registry.ts    # Screen routing & access control
+  i18n/locales/            # English, Luganda, Swahili translations
   styles/                  # Tailwind + theme CSS
-public/                    # PWA manifest + icons
-capacitor.config.ts        # native app config
-android/ , ios/            # generated Capacitor native projects
-supabase/                  # migrations + Edge Functions (MarZPay, production)
-scripts/                   # env checks, route sweep, pricing compliance
+supabase/
+  functions/               # Edge Functions (MarZPay, credit scoring, collections)
+  migrations/              # Database schema (5 migrations)
+android/                   # Capacitor Android project
+ios/                       # Capacitor iOS project
 ```
 
-## Compliance & safety
+## Compliance & Safety
 
-- **No fabricated financial data.** When connected to Supabase, balances and
-  transactions are only ever what the backend returns; loading/error/empty
-  states are shown instead of placeholder numbers, and payments are blocked
-  when data is missing or failed to load.
-- **Pricing guardrails.** APR is capped, a minimum loan term is enforced, and
-  interest is simple (never compounded); `npm run check:pricing` guards this.
-- **Fail closed.** Security-sensitive paths (e.g. the MarZPay webhook) reject
-  requests when required secrets are absent rather than trusting them.
+- **No fabricated financial data.** In production, every balance, loan, and
+  transaction comes from the backend — the app shows clear error/empty states
+  rather than placeholder numbers.
+- **Pricing guardrails.** APR is hard-capped at 33.6% (UMRA limit), minimum
+  loan term is 90 days, and interest is simple (never compounded). These
+  rules are verified automatically on every build.
+- **Fail-closed security.** Sensitive operations (webhook processing, payments)
+  reject requests when required secrets are missing rather than proceeding
+  without verification.
+- **No secrets in the bundle.** Server-side keys (MarZPay, JWT, Supabase
+  service role) live only as Edge Function secrets — never as `VITE_*` env
+  vars.
+
+## License
+
+Proprietary — © Kuula Ltd.
