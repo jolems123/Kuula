@@ -106,7 +106,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
             fontSize: 16,
             fontWeight: 700,
             border: "none",
-            boxShadow: "0 4px 16px rgba(13,92,58,0.3)",
+            boxShadow: "0 4px 16px rgba(255,107,53,0.3)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",

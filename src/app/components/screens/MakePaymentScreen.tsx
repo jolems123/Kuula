@@ -49,7 +49,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
           return;
         }
         const total = Number(repayment.total ?? 0);
-        const paid = Number(repayment.amountPaid ?? 0);
+        const paid = Number(repayment.amount_paid ?? 0);
         const due = Math.max(0, total - paid);
         setOutstanding(due);
         setAmount(due);
@@ -222,7 +222,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
         <button
           onClick={pay}
           disabled={!canPay}
-          style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : 0.5, boxShadow: "0 4px 16px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+          style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : 0.5, boxShadow: "0 4px 16px rgba(255,107,53,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
         >
           {loading
             ? <><div style={{ width: 20, height: 20, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />{t("common.processing")}</>

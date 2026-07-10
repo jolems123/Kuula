@@ -101,7 +101,7 @@ export function NotificationsListScreen({ onNavigate }: Props) {
             <button
               key={n.id}
               onClick={() => handleMarkRead(n.id)}
-              style={{ background: !n.is_read ? "white" : "#F9FAFB", borderRadius: 16, padding: "14px 16px", border: !n.is_read ? "1px solid #FFDCC8" : "1px solid #F3F4F6", boxShadow: !n.is_read ? "0 2px 8px rgba(13,92,58,0.08)" : "none", cursor: "pointer", textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", width: "100%", position: "relative" }}
+              style={{ background: !n.is_read ? "white" : "#F9FAFB", borderRadius: 16, padding: "14px 16px", border: !n.is_read ? "1px solid #FFDCC8" : "1px solid #F3F4F6", boxShadow: !n.is_read ? "0 2px 8px rgba(255,107,53,0.08)" : "none", cursor: "pointer", textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", width: "100%", position: "relative" }}
             >
               {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#FF6B35", position: "absolute", top: 12, right: 12 }} />}
               <div style={{ width: 44, height: 44, borderRadius: 14, background: style.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

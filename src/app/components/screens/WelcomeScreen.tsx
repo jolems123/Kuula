@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, X, Globe } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import kuulaLogo from "../../../imports/kuula-tile-green-1024.png";
+import kuulaLogo from "../../../imports/kuula-tile-1024.png";
 import { useAppContext, type UserProfile, type CreditProfile, type LoanProfile, type Role, type Message } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";
 import { api, ApiError } from "../../api/client";
@@ -232,7 +232,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             color: "white",
             fontSize: 16,
             fontWeight: 600,
-            boxShadow: "0 6px 20px rgba(13,92,58,0.35)",
+            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
             border: "none",
           }}
         >
@@ -375,7 +375,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             <button
               onClick={handleApiLogin}
               disabled={apiLoading}
-              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#8FCBAC" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
+              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#F5B89A" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
             >
               {apiLoading ? t("common.signingIn") : t("welcome.signIn")}
             </button>

@@ -1,6 +1,6 @@
 import { Eye, EyeOff, Shield, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import kuulaLogo from "../../../imports/kuula-tile-green-1024.png";
+import kuulaLogo from "../../../imports/kuula-tile-1024.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { useAppContext, type UserProfile } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";

@@ -126,7 +126,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
               width: 28, height: 28, borderRadius: 14,
               background: "white",
               border: "3px solid #FF6B35",
-              boxShadow: "0 2px 8px rgba(13,92,58,0.35)",
+              boxShadow: "0 2px 8px rgba(255,107,53,0.35)",
               zIndex: 1,
               pointerEvents: "none",
             }} />
@@ -252,7 +252,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             width: "100%", height: 52, borderRadius: 14,
             background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: "0 6px 20px rgba(13,92,58,0.35)",
+            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
             cursor: "pointer",
           }}
         >

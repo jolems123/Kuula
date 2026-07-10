@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
-import kuulaLogo from "../../../imports/kuula-tile-green-1024.png";
+import kuulaLogo from "../../../imports/kuula-tile-1024.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { api, type Compliance } from "../../api/client";
 import { useTranslation } from "react-i18next";

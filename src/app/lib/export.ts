@@ -43,7 +43,7 @@ export interface PdfDocOptions {
   filename?: string;
 }
 
-const BRAND = { r: 13, g: 92, b: 58 }; // Kuula green
+const BRAND = { r: 255, g: 107, b: 53 }; // Kuula coral
 
 /** Build a branded multi-table PDF and download it. */
 export function downloadPdf(opts: PdfDocOptions): void {
@@ -104,7 +104,7 @@ export function downloadPdf(opts: PdfDocOptions): void {
       margin: { left: marginX, right: marginX },
       styles: { fontSize: 9, cellPadding: 5 },
       headStyles: { fillColor: [BRAND.r, BRAND.g, BRAND.b], textColor: 255 },
-      alternateRowStyles: { fillColor: [244, 248, 246] },
+      alternateRowStyles: { fillColor: [255, 243, 235] },
     });
     // @ts-expect-error jspdf-autotable augments the doc instance at runtime.
     y = (doc.lastAutoTable?.finalY ?? y) + 24;

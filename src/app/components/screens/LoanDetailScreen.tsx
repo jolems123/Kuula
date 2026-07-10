@@ -226,7 +226,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 flex gap-3" style={{ background: "white", borderTop: "1px solid #F3F4F6" }}>
         <button
           onClick={() => onNavigate("confirm")}
-          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(13,92,58,0.3)" }}
+          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(255,107,53,0.3)" }}
         >
           {t("loanDetail.makePayment")}
         </button>

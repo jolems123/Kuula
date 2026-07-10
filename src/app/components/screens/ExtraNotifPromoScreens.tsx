@@ -230,7 +230,7 @@ export function CustomerNotifHistoryScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"12px 16px 90px",display:"flex",flexDirection:"column",gap:10 }}>
         {items.map((n,i)=>(
-          <div key={i} style={{ background:n.read?"#F9FAFB":"white",borderRadius:14,padding:"14px 16px",border:n.read?"1px solid #F3F4F6":"1px solid #FFDCC8",boxShadow:n.read?"none":"0 2px 8px rgba(13,92,58,0.07)",display:"flex",gap:12 }}>
+          <div key={i} style={{ background:n.read?"#F9FAFB":"white",borderRadius:14,padding:"14px 16px",border:n.read?"1px solid #F3F4F6":"1px solid #FFDCC8",boxShadow:n.read?"none":"0 2px 8px rgba(255,107,53,0.07)",display:"flex",gap:12 }}>
             <span style={{ fontSize:24,flexShrink:0 }}>{n.icon}</span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:13,fontWeight:n.read?600:700,color:"#1F2937",margin:0 }}>{n.title}</p>

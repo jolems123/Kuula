@@ -475,7 +475,7 @@ export function CustomerOfficerAssignedScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 30px",display:"flex",flexDirection:"column",gap:16 }}>
         <div style={{ background:"white",borderRadius:20,padding:"24px",boxShadow:"0 4px 16px rgba(0,0,0,0.07)",display:"flex",flexDirection:"column",alignItems:"center",gap:12,textAlign:"center" }}>
-          <div style={{ width:72,height:72,borderRadius:36,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(13,92,58,0.3)" }}>
+          <div style={{ width:72,height:72,borderRadius:36,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(255,107,53,0.3)" }}>
             <span style={{ fontSize:28,fontWeight:800,color:"white" }}>AK</span>
           </div>
           <div>

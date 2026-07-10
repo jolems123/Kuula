@@ -170,7 +170,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                       width: "100%", height: 40, borderRadius: 10, marginTop: 12,
                       background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white",
                       fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer",
-                      boxShadow: "0 3px 10px rgba(13,92,58,0.3)",
+                      boxShadow: "0 3px 10px rgba(255,107,53,0.3)",
                     }}
                   >
                     <PlusCircle size={16} />
@@ -208,8 +208,8 @@ export function DashboardScreen({ onNavigate }: Props) {
             {/* Quick actions */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
-                { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "#FF6B35", bg: "linear-gradient(135deg, #FF6B35, #E05A2B)" },
-                { label: t("dashboard.makePayment"), screen: "make-payment", color: "white", bg: "linear-gradient(135deg, #10B981, #059669)" },
+                { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "#FF6B35", bg: "linear-gradient(135deg, #FF6B35, #E05A2B)", border: "none" },
+                { label: t("dashboard.makePayment"), screen: "make-payment", color: "white", bg: "linear-gradient(135deg, #10B981, #059669)", border: "none" },
                 { label: t("dashboard.viewSavings"), screen: "goals", color: "#FF6B35", bg: "white", border: "1.5px solid #FFDCC8" },
                 { label: t("dashboard.creditReport"), screen: "credit-dashboard", color: "#FF6B35", bg: "white", border: "1.5px solid #FFDCC8" },
               ].map((a) => (
@@ -220,7 +220,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                     height: 52, borderRadius: 14,
                     background: a.bg, color: a.color,
                     fontSize: 13, fontWeight: 700,
-                    border: (a as any).border || "none",
+                    border: a.border || "none",
                     cursor: "pointer",
                     boxShadow: a.bg.includes("gradient") ? "0 4px 12px rgba(0,0,0,0.15)" : "0 2px 6px rgba(0,0,0,0.05)",
                   }}
@@ -256,7 +256,7 @@ export function DashboardScreen({ onNavigate }: Props) {
 
             <button
               onClick={() => onNavigate("improve-credit")}
-              style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(13,92,58,0.3)" }}
+              style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(255,107,53,0.3)" }}
             >
               {t("dashboard.improveScore")}
             </button>
@@ -334,7 +334,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                   disabled={topUpLoading || topUpAmount < 20000}
                   style={{
                     width: "100%", height: 50, borderRadius: 14,
-                    background: (topUpLoading || topUpAmount < 20000) ? "#8FCBAC" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
+                    background: (topUpLoading || topUpAmount < 20000) ? "#F5B89A" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
                     color: "white", fontSize: 15, fontWeight: 700, border: "none",
                     cursor: (topUpLoading || topUpAmount < 20000) ? "wait" : "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

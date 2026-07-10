@@ -257,7 +257,7 @@ export function KycScreen({ onNavigate }: Props) {
             fontSize: 16,
             fontWeight: 600,
             border: "none",
-            boxShadow: "0 4px 16px rgba(13,92,58,0.3)",
+            boxShadow: "0 4px 16px rgba(255,107,53,0.3)",
           }}
         >
           {step < 3 ? t("common.continue") : t("common.goToDashboard")}

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, PiggyBank, TrendingUp, ChevronRight } from "lucide-react";
-import kuulaLogo from "../../../imports/kuula-tile-green-1024.png";
+import kuulaLogo from "../../../imports/kuula-tile-1024.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface Props {
@@ -94,7 +94,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 16px 36px rgba(13,92,58,0.28)",
+            boxShadow: "0 16px 36px rgba(255,107,53,0.28)",
             marginBottom: 40,
             position: "relative",
           }}
@@ -144,7 +144,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
             fontWeight: 700,
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(13,92,58,0.3)",
+            boxShadow: "0 6px 20px rgba(255,107,53,0.3)",
           }}
         >
           {isLast ? t("onboarding.getStarted") : t("onboarding.next")}

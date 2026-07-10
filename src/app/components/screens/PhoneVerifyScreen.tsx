@@ -152,7 +152,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
             width: "100%", height: 52, borderRadius: 14, cursor: filled && !verifying && lockoutRemaining <= 0 ? "pointer" : "not-allowed",
             background: filled && lockoutRemaining <= 0 ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB",
             color: filled && lockoutRemaining <= 0 ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: filled && lockoutRemaining <= 0 ? "0 4px 16px rgba(13,92,58,0.3)" : "none",
+            boxShadow: filled && lockoutRemaining <= 0 ? "0 4px 16px rgba(255,107,53,0.3)" : "none",
           }}
         >
           {lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : verifying ? "Verifying…" : t("phoneVerify.verifyAndContinue")}

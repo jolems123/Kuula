@@ -124,7 +124,7 @@ export function HomeScreen({ onNavigate }: Props) {
           style={{
             background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
             border: "1px solid #FFDCC8",
-            boxShadow: "0 2px 12px rgba(13,92,58,0.1)",
+            boxShadow: "0 2px 12px rgba(255,107,53,0.1)",
           }}
         >
           <div className="flex items-start justify-between mb-3">
@@ -223,7 +223,7 @@ export function HomeScreen({ onNavigate }: Props) {
             fontSize: 17,
             fontWeight: 700,
             border: "none",
-            boxShadow: "0 6px 20px rgba(13,92,58,0.35)",
+            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
           }}
         >
           + {t("home.applyLoan")}

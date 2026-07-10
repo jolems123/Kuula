@@ -10,8 +10,6 @@
  *   ach – Acholi
  *   lgg – Lugbara
  *   teo – Ateso
- *   rnd – Lunyankole
- *   cgg – Rukiga
  *   kon – Lukonzo
  */
 import i18n from "i18next";

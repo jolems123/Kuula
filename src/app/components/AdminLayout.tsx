@@ -5,7 +5,7 @@ import {
   Bell, LogOut, Search, Menu, ArrowLeft, type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import kuulaLogo from "../../imports/kuula-tile-green-1024.png";
+import kuulaLogo from "../../imports/kuula-tile-1024.png";
 
 interface NavItem {
   id: string;
@@ -143,12 +143,12 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                   }}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 9,
-                    padding: "9px 14px", background: isActive && !item.children ? "rgba(13,92,58,0.15)" : "transparent",
+                    padding: "9px 14px", background: isActive && !item.children ? "rgba(255,107,53,0.15)" : "transparent",
                     border: "none", cursor: "pointer", textAlign: "left",
                     borderLeft: isActive && !item.children ? "2px solid #FF6B35" : "2px solid transparent",
                   }}
                 >
-                  <Icon size={15} color={isActive ? "#3FA876" : "#475569"} />
+                  <Icon size={15} color={isActive ? "#FF6B35" : "#475569"} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? "#E2E8F0" : "#64748B", flex: 1, whiteSpace: "nowrap" }}>
                     {item.label}
                   </span>
@@ -168,7 +168,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                           width: "100%", display: "block", padding: "7px 14px 7px 0",
                           background: "transparent", border: "none", cursor: "pointer", textAlign: "left",
                           fontSize: 11, fontWeight: activeScreen === child.id ? 600 : 400,
-                          color: activeScreen === child.id ? "#3FA876" : "#475569",
+                          color: activeScreen === child.id ? "#FF6B35" : "#475569",
                           whiteSpace: "nowrap",
                         }}
                       >
