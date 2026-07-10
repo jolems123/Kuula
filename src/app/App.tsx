@@ -13,6 +13,7 @@ import { env } from "./config/env";
 import { supabase } from "./lib/supabase";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
+import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 
 /**
  * Restores an existing Supabase session on app start so the user stays logged
@@ -133,6 +134,9 @@ function Shell() {
   // Configure native mobile chrome (status bar style, splash hide, back button).
   // No-op on web so the same code runs in both environments.
   useNativeChrome();
+  // Subscribe to live Realtime updates (messages, notifications, loan status).
+  // No-op when not authenticated or when Supabase is not configured.
+  useRealtimeSubscriptions();
   // Customer screens are mobile-designed (~390px) and stay capped on larger
   // viewports; the admin console is a desktop layout and uses the full width.
   const isAdminScreen = location.pathname.startsWith("/admin-");

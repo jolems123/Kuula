@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Shield, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import kuulaLogo from "../../../imports/kuula-tile-green-1024.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { useAppContext, type UserProfile } from "../../context/AppContext";
@@ -7,6 +7,7 @@ import mockData from "../../data/mockData.json";
 import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { useTranslation } from "react-i18next";
+import { adminLoginLimiter } from "../../lib/rate-limiter";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -19,6 +20,25 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+  // Countdown timer for rate-limit lockout
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1000) { clearInterval(timer); return 0; }
+        return prev - 1000;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutRemaining]);
+
+  const formatLockout = useCallback((ms: number) => {
+    const secs = Math.ceil(ms / 1000);
+    if (secs >= 60) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+    return `${secs}s`;
+  }, []);
 
   const resetPw = async () => {
     setError(""); setNotice("");
@@ -34,11 +54,20 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const submit = async () => {
     setError("");
 
+    // Client-side rate limiting: 5 attempts per 5 minutes
+    const rateCheck = adminLoginLimiter.check();
+    if (!rateCheck.allowed) {
+      setLockoutRemaining(rateCheck.retryAfterMs);
+      setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`);
+      return;
+    }
+
     // Real staff authentication via the Kuula API.
     if (env.USE_API) {
       setLoading(true);
       try {
         const s = await api.adminLogin(email, pw);
+        adminLoginLimiter.reset();
         login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
         onNavigate("admin-otp");
       } catch (e) {
@@ -75,6 +104,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
       avatarUrl: adminUser.avatarUrl,
     };
     login("mock-token-admin", userProfile, null, null, 0, "admin");
+    adminLoginLimiter.reset();
     setTimeout(() => { setLoading(false); onNavigate("admin-otp"); }, 800);
   };
 
@@ -128,13 +158,13 @@ export function AdminLoginScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 12, color: "#EF4444", margin: "-6px 0 0", textAlign: "center" }}>{error}</p>
           )}
 
-          <button onClick={submit} style={{ width: "100%", height: 48, borderRadius: 12, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 12px rgba(13,92,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {loading ? <><div style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Signing in...</> : "Sign In to Admin"}
+          <button onClick={submit} disabled={loading || lockoutRemaining > 0} style={{ width: "100%", height: 48, borderRadius: 12, background: (loading || lockoutRemaining > 0) ? "#9CA3AF" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: (loading || lockoutRemaining > 0) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(255,107,53,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {loading ? <><div style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Signing in...</> : lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : "Sign In to Admin"}
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#F0FDF4", border: "1px solid #A7F3D0" }}>
-            <Shield size={14} color="#10B981" />
-            <span style={{ fontSize: 11, color: "#065F46" }}>Two-factor authentication required for all staff accounts</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
+            <Shield size={14} color="#FF6B35" />
+            <span style={{ fontSize: 11, color: "#374151" }}>Two-factor authentication required for all staff accounts</span>
           </div>
         </div>
 

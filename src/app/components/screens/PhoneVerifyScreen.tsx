@@ -1,8 +1,9 @@
 import { ArrowLeft, MessageSquare } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
+import { otpLimiter } from "../../lib/rate-limiter";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -13,7 +14,26 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
   const [resent, setResent] = useState(false);
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Countdown timer for rate-limit lockout
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1000) { clearInterval(timer); return 0; }
+        return prev - 1000;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutRemaining]);
+
+  const formatLockout = useCallback((ms: number) => {
+    const secs = Math.ceil(ms / 1000);
+    if (secs >= 60) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+    return `${secs}s`;
+  }, []);
 
   const handle = (i: number, val: string) => {
     if (!/^\d?$/.test(val)) return;
@@ -33,10 +53,19 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
   const verify = async () => {
     if (!filled || verifying) return;
     if (!pendingPhone) { setError("Start sign-up again to receive a code."); return; }
+
+    // Client-side rate limiting: 8 OTP attempts per 5 minutes
+    const rateCheck = otpLimiter.check();
+    if (!rateCheck.allowed) {
+      setLockoutRemaining(rateCheck.retryAfterMs);
+      setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`);
+      return;
+    }
     setError("");
     setVerifying(true);
     try {
       const s = await api.verifyPhone(pendingPhone, otp.join(""));
+      otpLimiter.reset();
       login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
       onNavigate("kyc");
     } catch (e) {
@@ -47,6 +76,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
   };
 
   const resend = async () => {
+    if (lockoutRemaining > 0) return;
     setError("");
     try {
       await api.resendOtp(pendingPhone);
@@ -117,15 +147,15 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
         {error && <p style={{ fontSize: 12, color: "#EF4444", textAlign: "center", marginBottom: 8 }}>{error}</p>}
         <button
           onClick={verify}
-          disabled={!filled || verifying}
+          disabled={!filled || verifying || lockoutRemaining > 0}
           style={{
-            width: "100%", height: 52, borderRadius: 14, cursor: filled && !verifying ? "pointer" : "not-allowed",
-            background: filled ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB",
-            color: filled ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: filled ? "0 4px 16px rgba(13,92,58,0.3)" : "none",
+            width: "100%", height: 52, borderRadius: 14, cursor: filled && !verifying && lockoutRemaining <= 0 ? "pointer" : "not-allowed",
+            background: filled && lockoutRemaining <= 0 ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "#E5E7EB",
+            color: filled && lockoutRemaining <= 0 ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
+            boxShadow: filled && lockoutRemaining <= 0 ? "0 4px 16px rgba(13,92,58,0.3)" : "none",
           }}
         >
-          {verifying ? "Verifying…" : t("phoneVerify.verifyAndContinue")}
+          {lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : verifying ? "Verifying…" : t("phoneVerify.verifyAndContinue")}
         </button>
       </div>
     </div>

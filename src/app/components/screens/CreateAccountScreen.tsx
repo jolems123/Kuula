@@ -1,9 +1,10 @@
 import { ArrowLeft, User, Phone, Mail, CreditCard, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { useAppContext } from "../../context/AppContext";
+import { customerLoginLimiter } from "../../lib/rate-limiter";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -14,6 +15,25 @@ export function CreateAccountScreen({ onNavigate }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ name: "", phone: "", email: "", nin: "", password: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+  // Countdown timer for rate-limit lockout
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutRemaining((prev) => {
+        if (prev <= 1000) { clearInterval(timer); return 0; }
+        return prev - 1000;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutRemaining]);
+
+  const formatLockout = useCallback((ms: number) => {
+    const secs = Math.ceil(ms / 1000);
+    if (secs >= 60) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+    return `${secs}s`;
+  }, []);
 
   const [hover, setHover] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -45,6 +65,14 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     setErrors(e);
     if (Object.keys(e).length) return;
 
+    // Client-side rate limiting: 10 attempts per 5 minutes
+    const rateCheck = customerLoginLimiter.check();
+    if (!rateCheck.allowed) {
+      setLockoutRemaining(rateCheck.retryAfterMs);
+      setErrors({ form: `Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.` });
+      return;
+    }
+
     // Create a real account against the active backend; demo builds skip to KYC.
     if (env.USE_API || env.BACKEND === "supabase") {
       setSubmitting(true);
@@ -66,6 +94,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       }
       return;
     }
+    customerLoginLimiter.reset();
     onNavigate("kyc");
   };
 
@@ -171,19 +200,19 @@ export function CreateAccountScreen({ onNavigate }: Props) {
         {errors.form && <p style={{ fontSize: 12, color: "#EF4444", textAlign: "center", marginBottom: 8 }}>{errors.form}</p>}
         <button
           onClick={submit}
-          disabled={submitting}
+          disabled={submitting || lockoutRemaining > 0}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: submitting ? "#8FCBAC" : hover ? "linear-gradient(135deg, #E05A2B, #374151)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
-            color: "white", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: hover ? "0 6px 24px rgba(13,92,58,0.45)" : "0 4px 16px rgba(13,92,58,0.3)",
-            cursor: submitting ? "wait" : "pointer", transform: hover ? "translateY(-1px)" : "none",
+            background: lockoutRemaining > 0 ? "#9CA3AF" : submitting ? "#D4A574" : hover ? "linear-gradient(135deg, #E05A2B, #374151)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            color: lockoutRemaining > 0 ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none",
+            boxShadow: lockoutRemaining > 0 ? "none" : hover ? "0 6px 24px rgba(255,107,53,0.45)" : "0 4px 16px rgba(255,107,53,0.3)",
+            cursor: lockoutRemaining > 0 ? "not-allowed" : submitting ? "wait" : "pointer", transform: lockoutRemaining > 0 || submitting ? "none" : hover ? "translateY(-1px)" : "none",
             transition: "all 0.15s ease",
           }}
         >
-          {submitting ? t("createAccount.creating") : t("createAccount.createAccount")}
+          {lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : submitting ? t("createAccount.creating") : t("createAccount.createAccount")}
         </button>
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 10 }}>
           {t("createAccount.alreadyHaveAccount")}{" "}

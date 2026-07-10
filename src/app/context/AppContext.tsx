@@ -128,7 +128,7 @@ function reducer(state: AppState, action: Action): AppState {
       };
 
     case "LOGOUT":
-      return { ...INITIAL_STATE, messages: state.messages };
+      return { ...INITIAL_STATE };
 
     case "UPDATE_PROFILE":
       return state.user
