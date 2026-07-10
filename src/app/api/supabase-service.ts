@@ -42,6 +42,12 @@ let cachedAdminId: string | null = null;
 let cachedRole: "user" | "admin" | null = null;
 const isAdminSession = () => cachedRole === "admin";
 
+/** Clear module-level caches so stale data never leaks between sessions. */
+export function clearServiceCache(): void {
+  cachedAdminId = null;
+  cachedRole = null;
+}
+
 async function adminId(): Promise<string> {
   if (cachedAdminId) return cachedAdminId;
   const sb = requireSupabase();
@@ -76,6 +82,7 @@ async function buildSession(token: string): Promise<SessionPayload> {
   if (!p) throw new ApiError("Profile not found", 404);
   const isAdmin = p.role === "admin";
   cachedRole = isAdmin ? "admin" : "user";
+  cachedAdminId = null; // Reset so admin ID is re-fetched for the new session
 
   const { data: sav } = await sb.from("savings_accounts").select("balance").eq("user_id", uid).single();
   const { data: msgs } = await sb.from("messages").select("*").order("created_at", { ascending: true });
@@ -112,12 +119,19 @@ async function buildSession(token: string): Promise<SessionPayload> {
 
     const totalCount = Number((p as ProfileRow).loans_total ?? 0);
 
+    // Derive available credit from the user's credit score tier.
+    // This is an indicative limit — the real underwriting check happens at
+    // application time (server-side pricing + admin approval).
+    // If there's an active loan, no new credit is available until it's repaid.
+    const scoreValue = credit?.score ?? 0;
+    const tierLimit = scoreValue >= 750 ? 2_000_000
+      : scoreValue >= 700 ? 1_000_000
+      : scoreValue >= 600 ? 500_000
+      : scoreValue >= 500 ? 200_000
+      : 0;
+
     loan = {
-      // Fail safe: there is no server-owned credit-limit source yet, so we do NOT
-      // fabricate a borrowing limit. 0 = "no pre-approved credit" until the
-      // backend exposes a real, underwritten limit (Edge Function / persisted
-      // column). Showing a fixed figure here would be fabricated financial data.
-      availableCredit: 0,
+      availableCredit: activeApp ? 0 : tierLimit,
       creditIncreaseFromLastMonth: 0,
       totalLoansCount: totalCount,
       activeLoan: activeApp
@@ -458,12 +472,9 @@ export const supabaseApi = {
   },
 
   requestTopUp: async (_token: string, body: { amount: number; term_days: number; purpose: string; disbursement_method: string }) => {
-    const sb = requireSupabase();
-    const { data: auth } = await sb.auth.getUser();
-    const uid = auth.user?.id ?? "";
-    const { data, error } = await sb.functions.invoke("loan-top-up", { body: { user_id: uid, ...body } });
-    if (error) throw new ApiError(error.message, 502);
-    return (data ?? { success: false, reason: "Edge function not deployed" }) as { success: boolean; loan_id?: string; status?: string; reason?: string; pricing?: Record<string, unknown> };
+    // Loan top-up is not yet supported — there is no matching Edge Function.
+    // Return a clear reason so the UI can show an appropriate message.
+    return { success: false, reason: "Loan top-up is not available yet. Please apply for a new loan." };
   },
 
   deleteAccount: async (_token: string) => {

@@ -98,10 +98,10 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       {/* Details */}
       <div style={{ width: "100%", flex: 1, overflowY: "auto", padding: "20px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
         {status === "approved" && (
-          <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #B6DCC8" }}>
-            <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: "0 0 4px" }}>Amount Disbursed</p>
+          <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
+            <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Amount Disbursed</p>
             <p style={{ fontSize: 32, fontWeight: 900, color: "#E05A2B", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
-            <p style={{ fontSize: 12, color: "#157A4E", margin: "4px 0 0" }}>{phone ? `Sent to your mobile money ${phone}` : "Sent to your mobile money"}</p>
+            <p style={{ fontSize: 12, color: "#6B7280", margin: "4px 0 0" }}>{phone ? `Sent to your mobile money ${phone}` : "Sent to your mobile money"}</p>
           </div>
         )}
 

@@ -120,8 +120,8 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:20,fontWeight:800,color:"#1F2937",margin:"4px 0" }}>{ugx(1500000)}</p>
                 </div>
                 <div style={{ display:"flex",alignItems:"center",fontSize:20 }}>→</div>
-                <div style={{ flex:1,textAlign:"center",padding:"12px",background:"#FFF0E8",borderRadius:10,border:"1.5px solid #B6DCC8" }}>
-                  <p style={{ fontSize:11,color:"#157A4E",margin:0 }}>Requested</p>
+                <div style={{ flex:1,textAlign:"center",padding:"12px",background:"#FFF0E8",borderRadius:10,border:"1.5px solid #FFDCC8" }}>
+                  <p style={{ fontSize:11,color:"#6B7280",margin:0 }}>Requested</p>
                   <p style={{ fontSize:20,fontWeight:800,color:"#FF6B35",margin:"4px 0" }}>{ugx(Number(requested))}</p>
                 </div>
               </div>
@@ -138,7 +138,7 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
               <textarea value={reason} onChange={e=>setReason(e.target.value)} rows={4} placeholder="Explain why you need a higher credit limit..." style={{ width:"100%",borderRadius:10,border:"1.5px solid #E5E7EB",padding:"10px 14px",fontSize:13,outline:"none",resize:"none",...S }}/>
             </div>
             <div style={{ padding:"10px 14px",borderRadius:10,background:"#FFF0E8",border:"1px solid #FFDCC8" }}>
-              <p style={{ fontSize:12,color:"#083A24",margin:0 }}>💡 Your credit score of <strong>742</strong> makes you eligible for up to <strong>UGX 3,000,000</strong>.</p>
+              <p style={{ fontSize:12,color:"#374151",margin:0 }}>💡 Your credit score of <strong>742</strong> makes you eligible for up to <strong>UGX 3,000,000</strong>.</p>
             </div>
           </>
         )}
@@ -197,10 +197,10 @@ export function CustomerLoanRefinanceScreen({ onNavigate }: Props) {
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Refinance Loan</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:16 }}>
-        <div style={{ background:"linear-gradient(135deg,#FFF0E8,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #B6DCC8" }}>
-          <p style={{ fontSize:12,color:"#157A4E",fontWeight:600,margin:0 }}>Current Remaining Balance</p>
+        <div style={{ background:"linear-gradient(135deg,#FFF0E8,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #FFDCC8" }}>
+          <p style={{ fontSize:12,color:"#6B7280",fontWeight:600,margin:0 }}>Current Remaining Balance</p>
           <p style={{ fontSize:28,fontWeight:900,color:"#E05A2B",margin:"4px 0" }}>{ugx(balance)}</p>
-          <p style={{ fontSize:12,color:"#157A4E",margin:0 }}>KUL-2026-04821 · Original 30-day term</p>
+          <p style={{ fontSize:12,color:"#6B7280",margin:0 }}>KUL-2026-04821 · Original 30-day term</p>
         </div>
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
           <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",marginBottom:12 }}>Extend Repayment Term</p>
@@ -260,7 +260,7 @@ export function AdminRiskAssessmentScreen({ onNavigate }: Props) {
     <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
       <AdminCard>
         <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Risk Factors</h3>
-        {[["Payment History (35%)","92/100","#10B981"],["Credit Utilization (30%)","68/100","#157A4E"],["Income Stability (15%)","75/100","#F59E0B"],["Identity Verification (10%)","100/100","#10B981"],["Loan-to-Income Ratio (10%)","80/100","#8B5CF6"]].map(([l,v,c])=>(
+        {[["Payment History (35%)","92/100","#10B981"],["Credit Utilization (30%)","68/100","#06B6D4"],["Income Stability (15%)","75/100","#F59E0B"],["Identity Verification (10%)","100/100","#10B981"],["Loan-to-Income Ratio (10%)","80/100","#8B5CF6"]].map(([l,v,c])=>(
           <div key={l} style={{ marginBottom:12 }}>
             <div style={{ display:"flex",justifyContent:"space-between",marginBottom:4 }}>
               <span style={{ fontSize:11,color:"#374151" }}>{l}</span>
@@ -385,7 +385,7 @@ export function CustomerReverifyIdentityScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",padding:"20px 16px",gap:16 }}>
         <div style={{ background:"#FFF0E8",borderRadius:12,padding:"14px",border:"1px solid #FFDCC8" }}>
-          <p style={{ fontSize:12,color:"#083A24",margin:0 }}>🛡 UMRA regulations require identity re-verification every 6 months. This keeps your account secure.</p>
+          <p style={{ fontSize:12,color:"#374151",margin:0 }}>🛡 UMRA regulations require identity re-verification every 6 months. This keeps your account secure.</p>
         </div>
         {[1,2,3].map(s=>(
           <div key={s} style={{ display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:14,background:step>=s?"#FFF0E8":"white",border:`2px solid ${step===s?"#FF6B35":step>s?"#10B981":"#E5E7EB"}` }}>
@@ -445,7 +445,7 @@ export function AdminDataRetentionScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:560 }}>
         <AdminCard style={{ marginBottom:14 }}>
           <div style={{ padding:"10px 14px",borderRadius:10,background:"#FFF0E8",border:"1px solid #FFDCC8",marginBottom:16 }}>
-            <p style={{ fontSize:12,color:"#083A24",margin:0 }}>📋 UMRA requires Kuula to retain customer loan records for a minimum of <strong>10 years</strong> from the date of last transaction.</p>
+            <p style={{ fontSize:12,color:"#374151",margin:0 }}>📋 UMRA requires Kuula to retain customer loan records for a minimum of <strong>10 years</strong> from the date of last transaction.</p>
           </div>
           <div style={{ marginBottom:20 }}>
             <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:10 }}>Retention Period (years)</label>

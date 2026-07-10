@@ -42,7 +42,7 @@ export function CreditDashboardScreen({ onNavigate }: Props) {
           {[
             { label: "Poor", range: "300–499", color: "#EF4444", min: 300, max: 499 },
             { label: "Fair", range: "500–599", color: "#F59E0B", min: 500, max: 599 },
-            { label: "Good", range: "600–699", color: "#157A4E", min: 600, max: 699 },
+            { label: "Good", range: "600–699", color: "#E05A2B", min: 600, max: 699 },
             { label: "Very Good", range: "700–749", color: "#8B5CF6", min: 700, max: 749 },
             { label: "Excellent", range: "750–850", color: "#10B981", min: 750, max: 850 },
           ].map((band) => {

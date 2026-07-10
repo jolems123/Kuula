@@ -3,6 +3,8 @@
  */
 import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
+import { clearSelectionState } from "../lib/selection";
+import { clearServiceCache } from "../api/supabase-service";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -215,6 +217,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // End the Supabase session too (clears the persisted token) — otherwise the
     // user stays authenticated to Supabase after "logging out".
     if (supabase) supabase.auth.signOut().catch(() => {});
+    // Clear module-level caches so stale data never leaks into the next session.
+    clearSelectionState();
+    clearServiceCache();
     dispatch({ type: "LOGOUT" });
   }, []);
 

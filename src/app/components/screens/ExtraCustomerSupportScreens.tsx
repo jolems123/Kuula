@@ -309,7 +309,7 @@ export function CustomerEmailSupportScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:14 }}>
         <div style={{ background:"#FFF0E8",borderRadius:12,padding:"12px 14px",border:"1px solid #FFDCC8" }}>
-          <p style={{ fontSize:12,color:"#083A24",margin:0 }}>📧 Sending to <strong>support@kuula.ug</strong> · Reply within 24 hours</p>
+          <p style={{ fontSize:12,color:"#374151",margin:0 }}>📧 Sending to <strong>support@kuula.ug</strong> · Reply within 24 hours</p>
         </div>
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:12 }}>
           <div>
@@ -410,7 +410,7 @@ export function CustomerFAQDetailScreen({ onNavigate }: Props) {
             </div>
           ))}
           <div style={{ padding:"12px 14px",borderRadius:10,background:"#FFF0E8",border:"1px solid #FFDCC8",marginTop:16 }}>
-            <p style={{ fontSize:12,color:"#083A24",margin:0 }}>💡 Tip: Enable Auto-Pay so you never miss a due date. Go to Settings → Auto-Payment.</p>
+            <p style={{ fontSize:12,color:"#374151",margin:0 }}>💡 Tip: Enable Auto-Pay so you never miss a due date. Go to Settings → Auto-Payment.</p>
           </div>
         </div>
         <div style={{ marginTop:14,display:"flex",gap:10 }}>

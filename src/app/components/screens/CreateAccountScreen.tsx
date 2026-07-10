@@ -160,7 +160,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
 
         {/* Terms notice */}
         <div style={{ padding: "12px 14px", borderRadius: 10, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
-          <p style={{ fontSize: 11, color: "#083A24", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
             {t("createAccount.termsNotice")}
           </p>
         </div>
@@ -176,7 +176,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           onMouseLeave={() => setHover(false)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: submitting ? "#8FCBAC" : hover ? "linear-gradient(135deg, #E05A2B, #083A24)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: submitting ? "#8FCBAC" : hover ? "linear-gradient(135deg, #E05A2B, #374151)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
             color: "white", fontSize: 16, fontWeight: 700, border: "none",
             boxShadow: hover ? "0 6px 24px rgba(13,92,58,0.45)" : "0 4px 16px rgba(13,92,58,0.3)",
             cursor: submitting ? "wait" : "pointer", transform: hover ? "translateY(-1px)" : "none",

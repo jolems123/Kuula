@@ -41,3 +41,9 @@ export function setLastPayment(p: PaymentResult | null): void {
 export function getLastPayment(): PaymentResult | null {
   return _lastPayment;
 }
+
+/** Clear all ephemeral selection state — call on logout to prevent stale data leaking into the next session. */
+export function clearSelectionState(): void {
+  _selectedTransaction = null;
+  _lastPayment = null;
+}

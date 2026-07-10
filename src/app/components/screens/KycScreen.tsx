@@ -81,8 +81,8 @@ export function KycScreen({ onNavigate }: Props) {
             >
               <User size={18} color="#FF6B35" style={{ marginTop: 2 }} />
               <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#083A24" }}>{t("kyc.ninRequired")}</p>
-                <p style={{ fontSize: 12, color: "#157A4E", marginTop: 2 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{t("kyc.ninRequired")}</p>
+                <p style={{ fontSize: 12, color: "#E05A2B", marginTop: 2 }}>
                   {t("kyc.niraVerification")}
                 </p>
               </div>

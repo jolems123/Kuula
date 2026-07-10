@@ -75,7 +75,7 @@ export function LanguageScreen({ onNavigate }: Props) {
               alignItems: "center",
               justifyContent: "center",
               margin: "0 auto 12px",
-              border: "2px solid #B6DCC8",
+              border: "2px solid #FFDCC8",
             }}
           >
             <Globe size={28} color="#FF6B35" />
@@ -160,8 +160,8 @@ export function LanguageScreen({ onNavigate }: Props) {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 14,
-                  background: isActive ? "#F0FDF4" : "white",
-                  border: isActive ? "1.5px solid #A7F3D0" : "1.5px solid #E5E7EB",
+                  background: isActive ? "#FFF0E8" : "white",
+                  border: isActive ? "1.5px solid #FFDCC8" : "1.5px solid #E5E7EB",
                   cursor: "pointer",
                   opacity: 0.7,
                   boxShadow: "0 1px 4px rgba(0,0,0,0.05)",

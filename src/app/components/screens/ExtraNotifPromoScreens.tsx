@@ -160,7 +160,7 @@ export function AdminCampaignTargetingScreen({ onNavigate }: Props) {
             </div>
           )}
           <div style={{ marginTop:16,padding:"10px 14px",borderRadius:10,background:"#FFF0E8",border:"1px solid #FFDCC8" }}>
-            <p style={{ fontSize:12,color:"#083A24",margin:0 }}>📊 Estimated reach: <strong>1,200 customers</strong> match this criteria</p>
+            <p style={{ fontSize:12,color:"#374151",margin:0 }}>📊 Estimated reach: <strong>1,200 customers</strong> match this criteria</p>
           </div>
         </AdminCard>
         <button onClick={()=>onNavigate("admin-campaigns-list")} style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>
@@ -362,7 +362,7 @@ export function AdminCreditMilestoneScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:600 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
           {[
-            { score:600,label:"Good",reward:"Access to UGX 500K loans",color:"#157A4E" },
+            { score:600,label:"Good",reward:"Access to UGX 500K loans",color:"#E05A2B" },
             { score:700,label:"Very Good",reward:"Access to UGX 1M loans",color:"#8B5CF6" },
             { score:750,label:"Excellent",reward:"0.5% lower interest rate",color:"#10B981" },
             { score:800,label:"Elite",reward:"1% lower interest + higher limit",color:"#F59E0B" },

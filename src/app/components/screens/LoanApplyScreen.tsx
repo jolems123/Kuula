@@ -205,7 +205,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
                 className="flex items-center gap-3 p-3 rounded-xl"
                 style={{
                   background: method === m.id ? "#FFF0E8" : "#F9FAFB",
-                  border: method === m.id ? "1.5px solid #B6DCC8" : "1.5px solid transparent",
+                  border: method === m.id ? "1.5px solid #FFDCC8" : "1.5px solid transparent",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
@@ -238,10 +238,10 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           className="p-4 rounded-2xl"
           style={{
             background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
-            border: "1px solid #B6DCC8",
+            border: "1px solid #FFDCC8",
           }}
         >
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#083A24", marginBottom: 12 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 12 }}>
             {t("loanApply.totalRepaymentSummary")}
           </p>
           {[
@@ -249,13 +249,13 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             { label: t("loanApply.interest", { apr: quote.aprPercent }), value: formatUGX(interest) },
             { label: t("loanApply.serviceFee"), value: "UGX 0" },
           ].map((row) => (
-            <div key={row.label} className="flex justify-between py-1.5" style={{ borderBottom: "1px solid rgba(13,92,58,0.1)" }}>
-              <span style={{ fontSize: 13, color: "#157A4E" }}>{row.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#083A24" }}>{row.value}</span>
+            <div key={row.label} className="flex justify-between py-1.5" style={{ borderBottom: "1px solid rgba(255,107,53,0.1)" }}>
+              <span style={{ fontSize: 13, color: "#374151" }}>{row.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{row.value}</span>
             </div>
           ))}
           <div className="flex justify-between pt-3 mt-1">
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#083A24" }}>{t("loanApply.totalRepayment")}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#374151" }}>{t("loanApply.totalRepayment")}</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: "#E05A2B" }}>{formatUGX(total)}</span>
           </div>
         </div>

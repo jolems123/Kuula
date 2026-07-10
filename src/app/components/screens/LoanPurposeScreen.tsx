@@ -53,7 +53,7 @@ export function LoanPurposeScreen({ onNavigate }: Props) {
                   <Icon size={20} color={active ? "#FF6B35" : color} />
                 </div>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: active ? "#083A24" : "#1F2937", margin: 0 }}>{label}</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: active ? "#374151" : "#1F2937", margin: 0 }}>{label}</p>
                   <p style={{ fontSize: 10, color: "#9CA3AF", margin: 0 }}>{sub}</p>
                 </div>
                 {active && <div style={{ position: "absolute" }} />}

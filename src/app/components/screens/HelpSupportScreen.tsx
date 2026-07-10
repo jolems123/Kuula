@@ -67,7 +67,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
         </div>
 
         <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
-          <p style={{ fontSize: 12, color: "#083A24", margin: 0 }}>{t("support.emergency")}</p>
+          <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("support.emergency")}</p>
         </div>
       </div>
     </div>

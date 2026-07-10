@@ -74,10 +74,10 @@ export function LoanReviewScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 130px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Loan summary */}
-        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #B6DCC8" }}>
-          <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: "0 0 4px" }}>Loan Amount</p>
+        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
+          <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Loan Amount</p>
           <p style={{ fontSize: 34, fontWeight: 900, color: "#E05A2B", margin: 0, letterSpacing: -1 }}>{ugx(amount)}</p>
-          <p style={{ fontSize: 12, color: "#157A4E", margin: "4px 0 0" }}>{term}-day term · Business purpose · MTN MoMo</p>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: "4px 0 0" }}>{term}-day term · Business purpose · MTN MoMo</p>
         </div>
 
         {/* Breakdown */}

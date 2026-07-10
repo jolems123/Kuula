@@ -30,11 +30,11 @@ export function BiometricSetupScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 20px", gap: 20, flex: 1 }}>
         {/* Hero */}
-        <div style={{ width: 96, height: 96, borderRadius: 48, background: done ? "#F0FDF4" : "#FFF0E8", border: `2px solid ${done ? "#10B981" : "#B6DCC8"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 96, height: 96, borderRadius: 48, background: done ? "#F0FDF4" : "#FFF0E8", border: `2px solid ${done ? "#10B981" : "#FFDCC8"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {done
             ? <ShieldCheck size={48} color="#10B981" strokeWidth={1.5} />
             : scanning
-            ? <div style={{ width: 44, height: 44, border: "3px solid #B6DCC8", borderTopColor: "#FF6B35", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+            ? <div style={{ width: 44, height: 44, border: "3px solid #FFDCC8", borderTopColor: "#FF6B35", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
             : selected === "face"
             ? <Scan size={48} color="#FF6B35" strokeWidth={1.5} />
             : <Fingerprint size={48} color={selected ? "#FF6B35" : "#9CA3AF"} strokeWidth={1.5} />
@@ -68,7 +68,7 @@ export function BiometricSetupScreen({ onNavigate }: Props) {
               >
                 <Icon size={28} color={selected === id ? "#FF6B35" : "#9CA3AF"} />
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: selected === id ? "#083A24" : "#1F2937", margin: 0 }}>{label}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: selected === id ? "#374151" : "#1F2937", margin: 0 }}>{label}</p>
                   <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>{sub}</p>
                 </div>
                 <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === id ? "#FF6B35" : "#D1D5DB"}`, background: selected === id ? "#FF6B35" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>

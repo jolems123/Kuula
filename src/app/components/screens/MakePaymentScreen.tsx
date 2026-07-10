@@ -129,9 +129,9 @@ export function MakePaymentScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 130px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Outstanding summary */}
-        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #B6DCC8" }}>
+        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
           {dataLoading ? (
-            <p style={{ fontSize: 14, color: "#157A4E", fontWeight: 600, margin: 0 }}>{t("common.loading")}…</p>
+            <p style={{ fontSize: 14, color: "#374151", fontWeight: 600, margin: 0 }}>{t("common.loading")}…</p>
           ) : dataError ? (
             <p style={{ fontSize: 14, color: "#EF4444", fontWeight: 700, margin: 0 }}>{t("makePayment.loadError")}</p>
           ) : outstanding == null ? (
@@ -140,11 +140,11 @@ export function MakePaymentScreen({ onNavigate }: Props) {
             <>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div>
-                  <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: 0 }}>{t("makePayment.outstandingBalance")}</p>
+                  <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: 0 }}>{t("makePayment.outstandingBalance")}</p>
                   <p style={{ fontSize: 28, fontWeight: 900, color: "#E05A2B", margin: "4px 0 0" }}>{ugx(outstanding)}</p>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <p style={{ fontSize: 11, color: "#157A4E", margin: 0 }}>{t("makePayment.minDue")}</p>
+                  <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>{t("makePayment.minDue")}</p>
                   <p style={{ fontSize: 16, fontWeight: 800, color: "#EF4444", margin: "2px 0 0" }}>{ugx(minDue)}</p>
                 </div>
               </div>

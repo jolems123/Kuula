@@ -23,7 +23,7 @@ export function AdminOTPScreen({ onNavigate }: Props) {
         <ArrowLeft size={18} color="white" />
       </button>
       <div style={{ width: "100%", maxWidth: 400, background: "white", borderRadius: 20, padding: 36, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 36, background: "#FFF0E8", border: "2px solid #B6DCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 72, height: 72, borderRadius: 36, background: "#FFF0E8", border: "2px solid #FFDCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Shield size={36} color="#FF6B35" strokeWidth={1.5} />
         </div>
         <div style={{ textAlign: "center" }}>

@@ -67,7 +67,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px", gap: 24 }}>
         {/* Icon */}
-        <div style={{ width: 80, height: 80, borderRadius: 40, background: "#FFF0E8", border: "2px solid #B6DCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 80, height: 80, borderRadius: 40, background: "#FFF0E8", border: "2px solid #FFDCC8", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MessageSquare size={36} color="#FF6B35" strokeWidth={1.5} />
         </div>
 

@@ -123,13 +123,13 @@ export function HomeScreen({ onNavigate }: Props) {
           className="p-5 rounded-2xl"
           style={{
             background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
-            border: "1px solid #B6DCC8",
+            border: "1px solid #FFDCC8",
             boxShadow: "0 2px 12px rgba(13,92,58,0.1)",
           }}
         >
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 500 }}>{t("home.availableCredit")}</p>
+              <p style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{t("home.availableCredit")}</p>
               <p style={{ fontSize: 30, fontWeight: 800, color: "#E05A2B", letterSpacing: -1, marginTop: 2 }}>
                 {formatUGX(loan?.availableCredit ?? 0)}
               </p>

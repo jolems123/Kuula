@@ -47,7 +47,7 @@ export function AddPaymentMethodScreen({ onNavigate }: Props) {
               style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, border: `2px solid ${selected === t.id ? "#FF6B35" : "#E5E7EB"}`, background: selected === t.id ? "#FFF0E8" : "white", cursor: "pointer", textAlign: "left" }}
             >
               <span style={{ fontSize: 28 }}>{t.logo}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: selected === t.id ? "#083A24" : "#1F2937", flex: 1 }}>{t.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: selected === t.id ? "#374151" : "#1F2937", flex: 1 }}>{t.label}</span>
               <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === t.id ? "#FF6B35" : "#D1D5DB"}`, background: selected === t.id ? "#FF6B35" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {selected === t.id && <div style={{ width: 8, height: 8, borderRadius: 4, background: "white" }} />}
               </div>

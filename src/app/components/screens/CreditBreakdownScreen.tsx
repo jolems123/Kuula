@@ -7,13 +7,13 @@ import { useTranslation } from "react-i18next";
 
 interface Props { onNavigate: (s: string) => void; }
 
-const COLORS = ["#10B981", "#157A4E", "#F59E0B", "#8B5CF6", "#06B6D4"];
+const COLORS = ["#10B981", "#E05A2B", "#F59E0B", "#8B5CF6", "#06B6D4"];
 const ratingLabel = (pct: number) =>
   pct >= 85 ? "Excellent" : pct >= 70 ? "Very Good" : pct >= 55 ? "Good" : pct >= 40 ? "Fair" : "Needs work";
 
 const FALLBACK = [
   { label: "Payment History", score: 92, weight: "35%", status: "Excellent", color: "#10B981", tip: "You've made all payments on time." },
-  { label: "Credit Utilization", score: 68, weight: "30%", status: "Good", color: "#157A4E", tip: "Using 32% of available credit." },
+  { label: "Credit Utilization", score: 68, weight: "30%", status: "Good", color: "#E05A2B", tip: "Using 32% of available credit." },
   { label: "Length of History", score: 45, weight: "15%", status: "Fair", color: "#F59E0B", tip: "Longer history improves your score." },
   { label: "Credit Mix", score: 80, weight: "10%", status: "Very Good", color: "#8B5CF6", tip: "Good mix of loan types." },
   { label: "New Inquiries", score: 90, weight: "10%", status: "Excellent", color: "#10B981", tip: "No recent hard inquiries." },
@@ -49,10 +49,10 @@ export function CreditBreakdownScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 30px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 14, padding: "14px 16px", border: "1px solid #B6DCC8" }}>
-          <p style={{ fontSize: 12, color: "#157A4E", fontWeight: 600, margin: 0 }}>Your Credit Score</p>
+        <div style={{ background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)", borderRadius: 14, padding: "14px 16px", border: "1px solid #FFDCC8" }}>
+          <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: 0 }}>Your Credit Score</p>
           <p style={{ fontSize: 36, fontWeight: 900, color: "#E05A2B", margin: "2px 0" }}>{headerScore} / 850</p>
-          <p style={{ fontSize: 12, color: "#157A4E", margin: 0 }}>{headerTier} · {data ? "Computed from 5 data sources" : "Top 15% of borrowers"}</p>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>{headerTier} · {data ? "Computed from 5 data sources" : "Top 15% of borrowers"}</p>
         </div>
 
         {factors.map((f) => (

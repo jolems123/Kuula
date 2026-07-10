@@ -100,7 +100,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             {/* Track fill */}
             <div style={{
               position: "absolute", left: 0, height: 6, borderRadius: 3,
-              width: `${sliderPct}%`, background: "linear-gradient(90deg, #FF6B35, #157A4E)",
+              width: `${sliderPct}%`, background: "linear-gradient(90deg, #FF6B35, #F59E0B)",
               pointerEvents: "none", zIndex: 1,
             }} />
             {/* Track bg */}
@@ -213,7 +213,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}>{t("loanApply.summary")}</p>
             <button
               onClick={() => setShowBreakdown(!showBreakdown)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#157A4E", fontSize: 12 }}
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#E05A2B", fontSize: 12 }}
             >
               <Info size={13} />
               Details

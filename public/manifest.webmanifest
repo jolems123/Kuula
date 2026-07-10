@@ -13,14 +13,14 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "./kuula-tile-green-1024.png",
+      "src": "./kuula-icon-1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any",
       "label": "Kuula"
     },
     {
-      "src": "./kuula-tile-green-1024.png",
+      "src": "./kuula-icon-1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "maskable",

@@ -43,9 +43,9 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
           </div>
         ) : (
           <>
-            <div style={{ background:"linear-gradient(135deg,#FFF0E8,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #B6DCC8" }}>
+            <div style={{ background:"linear-gradient(135deg,#FFF0E8,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #FFDCC8" }}>
               <h3 style={{ fontSize:15,fontWeight:800,color:"#E05A2B",margin:"0 0 6px" }}>Never Miss a Payment</h3>
-              <p style={{ fontSize:12,color:"#157A4E",margin:0,lineHeight:1.6 }}>Auto-Payment deducts your loan repayment automatically on the due date from your linked MoMo account. No manual action needed.</p>
+              <p style={{ fontSize:12,color:"#374151",margin:0,lineHeight:1.6 }}>Auto-Payment deducts your loan repayment automatically on the due date from your linked MoMo account. No manual action needed.</p>
             </div>
             <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:12 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
@@ -369,7 +369,7 @@ export function CustomerAutoPayNotificationScreen({ onNavigate }: Props) {
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Auto-Pay Alert</span>
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 20px",gap:20 }}>
-        <div style={{ width:72,height:72,borderRadius:36,background:"#FFF0E8",border:"2px solid #B6DCC8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36 }}>🔔</div>
+        <div style={{ width:72,height:72,borderRadius:36,background:"#FFF0E8",border:"2px solid #FFDCC8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36 }}>🔔</div>
         <div style={{ textAlign:"center" }}>
           <h2 style={{ fontSize:20,fontWeight:800,color:"#1F2937",margin:0 }}>Auto-Payment Reminder</h2>
           <p style={{ fontSize:13,color:"#6B7280",marginTop:8,lineHeight:1.7 }}>Your loan payment of <strong>UGX 92,083</strong> will be automatically deducted from your <strong>MTN MoMo (+256 770 123 456)</strong> tomorrow, <strong>Jun 25, 2026 at 8:00 AM</strong>.</p>
@@ -546,7 +546,7 @@ export function AdminRepaymentNegotiationScreen({ onNavigate }: Props) {
           <div style={{ padding:"12px 14px",borderRadius:10,background:"#FFF0E8",border:"1px solid #FFDCC8",marginBottom:14 }}>
             {[["Total to Repay",ugx(Number(monthly)*Number(months))],["vs Original Owed",ugx(570000)],["Difference",ugx(Number(monthly)*Number(months)-570000)]].map(([l,v])=>(
               <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"4px 0" }}>
-                <span style={{ fontSize:12,color:"#157A4E" }}>{l}</span><span style={{ fontSize:12,fontWeight:700,color:"#E05A2B" }}>{v}</span>
+                <span style={{ fontSize:12,color:"#374151" }}>{l}</span><span style={{ fontSize:12,fontWeight:700,color:"#E05A2B" }}>{v}</span>
               </div>
             ))}
           </div>

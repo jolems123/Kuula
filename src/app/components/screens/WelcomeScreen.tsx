@@ -210,7 +210,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
         <button
           onClick={() => onNavigate("language")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "#FFF0E8", border: "1px solid #B6DCC8", cursor: "pointer" }}
+          style={{ background: "#FFF0E8", border: "1px solid #FFDCC8", cursor: "pointer" }}
         >
           <Globe size={13} color="#FF6B35" />
           <span style={{ fontSize: 11, fontWeight: 600, color: "#FF6B35" }}>
@@ -252,7 +252,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
               color: "#FF6B35",
               fontSize: 15,
               fontWeight: 600,
-              border: "1.5px solid #B6DCC8",
+              border: "1.5px solid #FFDCC8",
               cursor: "pointer",
             }}
           >
@@ -277,7 +277,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
                   color: isAdmin ? "#DC2626" : "#FF6B35",
                   fontSize: 13,
                   fontWeight: 600,
-                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #B6DCC8",
+                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #FFDCC8",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -297,16 +297,19 @@ export function WelcomeScreen({ onNavigate }: Props) {
         )}
 
         <button
-          onClick={() => onNavigate("kyc")}
+          disabled
           className="w-full flex items-center justify-center gap-2"
+          title="Google Sign-In coming soon"
           style={{
             height: 52,
             borderRadius: 16,
-            background: "white",
-            color: "#374151",
+            background: "#F9FAFB",
+            color: "#9CA3AF",
             fontSize: 15,
             fontWeight: 500,
             border: "1.5px solid #E5E7EB",
+            cursor: "not-allowed",
+            opacity: 0.7,
           }}
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -315,7 +318,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335" />
           </svg>
-          {t("welcome.continueGoogle")}
+          {t("welcome.continueGoogle")} — coming soon
         </button>
 
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 4 }}>

@@ -36,7 +36,7 @@ export function ContactSupportScreen({ onNavigate }: Props) {
           <>
             <div style={{ flex: 1 }}>
               <div style={{ background: "#FFF0E8", borderRadius: "16px 16px 16px 4px", padding: "12px 14px", maxWidth: "80%", marginBottom: 10 }}>
-                <p style={{ fontSize: 13, color: "#083A24", margin: "0 0 2px", fontWeight: 600 }}>Kuula Support 🤖</p>
+                <p style={{ fontSize: 13, color: "#374151", margin: "0 0 2px", fontWeight: 600 }}>Kuula Support 🤖</p>
                 <p style={{ fontSize: 13, color: "#374151", margin: 0 }}>Hello Amara! How can I help you today? Please describe your issue and I'll assist you right away.</p>
                 <span style={{ fontSize: 10, color: "#9CA3AF" }}>09:41 AM</span>
               </div>

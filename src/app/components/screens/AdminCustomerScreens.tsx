@@ -160,7 +160,7 @@ export function AdminCustomerRiskScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Risk Score Breakdown</h3>
           {[
             { label:"Payment History",score:92,color:"#10B981" },
-            { label:"Credit Utilization",score:68,color:"#157A4E" },
+            { label:"Credit Utilization",score:68,color:"#E05A2B" },
             { label:"Income Stability",score:75,color:"#F59E0B" },
             { label:"Identity Verification",score:100,color:"#10B981" },
             { label:"Loan-to-Income Ratio",score:80,color:"#8B5CF6" },
@@ -204,7 +204,7 @@ export function AdminBlockCustomerScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:560 }}>
         <AdminCard>
           <div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:20 }}>
-            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"#FFF0E8",border:`2px solid ${blocked?"#FECACA":"#B6DCC8"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"#FFF0E8",border:`2px solid ${blocked?"#FECACA":"#FFDCC8"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
               {blocked ? <Lock size={28} color="#EF4444"/> : <Unlock size={28} color="#FF6B35"/>}
             </div>
             <div>

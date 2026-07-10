@@ -103,7 +103,7 @@ export function SettingsScreen({ onNavigate }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            border: "3px solid #B6DCC8",
+            border: "3px solid #FFDCC8",
           }}
         >
           <span style={{ fontSize: 24, fontWeight: 800, color: "white" }}>{user?.initials ?? "?"}</span>

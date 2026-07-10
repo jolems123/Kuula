@@ -55,7 +55,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
               <span style={{ fontSize: 32 }}>{m.logo}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: active ? "#083A24" : "#1F2937" }}>{m.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: active ? "#374151" : "#1F2937" }}>{m.label}</span>
                   {m.badge && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "#F0FDF4", padding: "2px 8px", borderRadius: 20 }}>
                       {m.badge}
@@ -80,7 +80,7 @@ export function LoanDisbursementScreen({ onNavigate }: Props) {
         </button>
 
         <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
-          <p style={{ fontSize: 12, color: "#083A24", margin: 0 }}>
+          <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>
             ⚡ MTN MoMo and Airtel Money are disbursed <strong>instantly</strong>. Bank transfers take 2–4 business hours.
           </p>
         </div>
