@@ -1,11 +1,11 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import { authenticateToken, requireRoles } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 
 const router = Router();
 
-router.use(authenticateToken, requireAdmin);
+router.use(authenticateToken, requireRoles("admin", "manager", "officer"));
 
 function mapApplication(a: any) {
   return {
