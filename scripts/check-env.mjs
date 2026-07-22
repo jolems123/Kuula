@@ -11,9 +11,9 @@
  */
 const env = process.env;
 const useApi = env.VITE_USE_API === "true";
-// Default to supabase — the only supported backend for Kuula.
-// The legacy "node" path is kept only for local dev convenience.
-const backend = env.VITE_BACKEND || "supabase";
+// Local dev defaults to the Node/Express backend.
+// Set VITE_BACKEND=supabase to target the Supabase backend in production.
+const backend = env.VITE_BACKEND || "node";
 const apiBase = env.VITE_API_BASE_URL || "";
 
 const errors = [];

@@ -200,33 +200,62 @@ const nodeApi = {
       body: JSON.stringify(body),
     }),
 
-  // ── Savings goals (node stubs — not implemented in reference server) ────────
-  getGoals: async (_token: string) => ({ goals: [] as import("./supabase-service").SavingsGoal[] }),
-  createGoal: async (_token: string, _body: { name: string; emoji: string; target: number; color?: string }) => {
-    throw new ApiError("Goals require Supabase backend", 501);
-  },
-  updateGoal: async (_token: string, _id: string, _patch: Record<string, unknown>) => {
-    throw new ApiError("Goals require Supabase backend", 501);
-  },
-  deleteGoal: async (_token: string, _id: string) => {
-    throw new ApiError("Goals require Supabase backend", 501);
-  },
+  // ── Savings goals ───────────────────────────────────────────────────────────
+  getGoals: (token: string) =>
+    request<{ goals: import("./supabase-service").SavingsGoal[] }>("/api/goals", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  createGoal: (token: string, body: { name: string; emoji: string; target: number; color?: string }) =>
+    request<{ goal: import("./supabase-service").SavingsGoal }>("/api/goals", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  updateGoal: (token: string, id: string, patch: Record<string, unknown>) =>
+    request<{ goal: import("./supabase-service").SavingsGoal }>(`/api/goals/${id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch),
+    }),
+  deleteGoal: (token: string, id: string) =>
+    request<{ ok: boolean }>(`/api/goals/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-  // ── Notifications (node stubs) ─────────────────────────────────────────────
-  getNotifications: async (_token: string) => ({ notifications: [] as import("./supabase-service").AppNotification[] }),
-  markNotificationRead: async (_token: string, _id: string) => ({ ok: true as const }),
-  markAllNotificationsRead: async (_token: string) => ({ ok: true as const }),
+  // ── Notifications ──────────────────────────────────────────────────────────
+  getNotifications: (token: string) =>
+    request<{ notifications: import("./supabase-service").AppNotification[] }>("/api/notifications", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  markNotificationRead: (token: string, id: string) =>
+    request<{ ok: true }>(`/api/notifications/${id}/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  markAllNotificationsRead: (token: string) =>
+    request<{ ok: true }>("/api/notifications/read-all", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-  // ── Admin stats (node stubs) ───────────────────────────────────────────────
-  getAdminStats: async (_token: string): Promise<import("./supabase-service").AdminStats> => ({
-    totalCustomers: 0, pendingApprovals: 0, overdueLoans: 0,
-    recentApplications: [], monthlyChart: [],
-  }),
-  getCustomers: async (_token: string) => ({ customers: [] as import("./supabase-service").CustomerRow[] }),
-  getSavingsOverview: async (_token: string) => ({ accounts: [], total: 0 }),
-  getInvestorReport: async (_token: string): Promise<import("./supabase-service").InvestorReport> => {
-    throw new ApiError("Investor report requires Supabase backend", 501);
-  },
+  // ── Admin stats ────────────────────────────────────────────────────────────
+  getAdminStats: (token: string) =>
+    request<import("./supabase-service").AdminStats>("/api/admin/stats", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getCustomers: (token: string) =>
+    request<{ customers: import("./supabase-service").CustomerRow[] }>("/api/admin/customers", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getSavingsOverview: (token: string) =>
+    request<{ accounts: { user_id: string; full_name: string; balance: number }[]; total: number }>("/api/admin/savings-overview", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getInvestorReport: (token: string) =>
+    request<import("./supabase-service").InvestorReport>("/api/admin/investor-report", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 };
 
 import { supabaseApi } from "./supabase-service";

@@ -15,37 +15,87 @@ import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 
+const STORAGE_KEY = "kuula_session_token";
+
+function persistToken(token: string): void {
+  try { localStorage.setItem(STORAGE_KEY, token); } catch { /* noop */ }
+}
+
+function clearPersistedToken(): void {
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
+}
+
+function readPersistedToken(): string | null {
+  try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
+}
+
 /**
- * Restores an existing Supabase session on app start so the user stays logged
- * in across reloads (and is signed out app-wide when the token is revoked).
- * No-op unless the Supabase backend is active. Returns whether the initial
- * check is still running so the UI can hold a splash until it resolves.
+ * Restores an existing session on app start so the user stays logged
+ * in across reloads. Supports both Supabase and the local Node backend.
+ * Returns whether the initial check is still running so the UI can hold
+ * a splash until it resolves.
  */
 function useSessionBootstrap(): boolean {
   const { state, login, logout } = useAppContext();
-  const useSupabase = env.BACKEND === "supabase" && !!supabase;
-  const [checking, setChecking] = useState(useSupabase);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!useSupabase || !supabase) return;
     let active = true;
+    const backend = env.BACKEND;
 
     (async () => {
-      const { data } = await supabase!.auth.getSession();
-      const token = data.session?.access_token;
-      if (token && !state.session.isAuthenticated) {
-        try {
-          const s = await api.me(token);
-          if (active) login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
-        } catch { /* fall through to unauthenticated */ }
+      // ── Supabase backend: restore from persisted auth session ──────────
+      if (backend === "supabase" && supabase) {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token && !state.session.isAuthenticated) {
+          try {
+            const s = await api.me(token);
+            if (active) {
+              login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
+              persistToken(s.token);
+            }
+          } catch { /* fall through to unauthenticated */ }
+        }
+        if (active) setChecking(false);
+        return;
       }
+
+      // ── Node backend: restore from localStorage token ─────────────────
+      if (backend === "node") {
+        const token = readPersistedToken();
+        if (token && !state.session.isAuthenticated) {
+          try {
+            const s = await api.me(token);
+            if (active) {
+              login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
+              persistToken(s.token);
+            }
+          } catch {
+            // Token expired or invalid — clean up
+            clearPersistedToken();
+          }
+        }
+        if (active) setChecking(false);
+        return;
+      }
+
+      // ── No backend configured (demo mode) ─────────────────────────────
       if (active) setChecking(false);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" && state.session.isAuthenticated) logout();
-    });
-    return () => { active = false; sub.subscription.unsubscribe(); };
+    // ── Supabase auth state listener ────────────────────────────────────
+    if (backend === "supabase" && supabase) {
+      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT" && state.session.isAuthenticated) {
+          clearPersistedToken();
+          logout();
+        }
+      });
+      return () => { active = false; sub.subscription.unsubscribe(); };
+    }
+
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

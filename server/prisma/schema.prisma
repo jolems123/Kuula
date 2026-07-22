@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users (replaces Supabase auth.users) ───────────────────────────────────
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  role           String   @default("user") // "user" | "admin"
+  fullName       String   @default("") @map("full_name")
+  phone          String?  @unique
+  email          String?  @unique
+  nationalId     String?  @map("national_id")
+  district       String?  @default("")
+  occupation     String?  @default("")
+  verified       Boolean  @default(false)
+  momoMonths     Int      @default(0) @map("momo_months")
+  momoTxnCount   Int      @default(0) @map("momo_txn_count")
+  crbStatus      String   @default("thin") @map("crb_status") // "clean" | "thin" | "adverse"
+  kycVerified    Boolean  @default(false) @map("kyc_verified")
+  loansTotal     Int      @default(0) @map("loans_total")
+  loansRepaid    Int      @default(0) @map("loans_repaid")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Auth fields (replaces Supabase Auth)
+  passwordHash   String?  @map("password_hash")
+  otpCode        String?  @map("otp_code")
+  otpExpiresAt   DateTime? @map("otp_expires_at")
+  phoneVerified  Boolean  @default(false) @map("phone_verified")
+
+  // Relations
+  savingsAccount   SavingsAccount?
+  wallet           Wallet?
+  sentMessages     Message[]        @relation("sender")
+  receivedMessages Message[]        @relation("receiver")
+  loanApplications LoanApplication[]
+  repayments       Repayment[]
+  transactions     Transaction[]
+  savingsGoals     SavingsGoal[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+// ── Savings accounts (one per user) ────────────────────────────────────────
+model SavingsAccount {
+  userId    String   @id @map("user_id") @db.Uuid
+  balance   BigInt   @default(0)
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("savings_accounts")
+}
+
+// ── Wallets (one per user) ─────────────────────────────────────────────────
+model Wallet {
+  userId  String @id @map("user_id") @db.Uuid
+  balance BigInt @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+// ── Messages ───────────────────────────────────────────────────────────────
+model Message {
+  id         String   @id @default(uuid()) @db.Uuid
+  senderId   String   @map("sender_id") @db.Uuid
+  receiverId String   @map("receiver_id") @db.Uuid
+  content    String
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sender   User @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId, createdAt])
+  @@map("messages")
+}
+
+// ── Loan Applications ──────────────────────────────────────────────────────
+model LoanApplication {
+  id                String    @id @default(uuid()) @db.Uuid
+  applicantId       String    @map("applicant_id") @db.Uuid
+  applicantName     String    @default("") @map("applicant_name")
+  amount            BigInt
+  purpose           String    @default("Personal")
+  termDays          Int       @default(90) @map("term_days")
+  channel           String    @default("MTN MoMo")
+  apr               Decimal   @default(0.336) @db.Decimal(5, 4)
+  interest          BigInt    @default(0)
+  total             BigInt    @default(0)
+  interestRate      Decimal   @default(0.26) @map("interest_rate") @db.Decimal(5, 4)
+  serviceFeeRate    Decimal   @default(0.10) @map("service_fee_rate") @db.Decimal(5, 4)
+  serviceFee        BigInt    @default(0) @map("service_fee")
+  disbursementMethod String   @default("mtn_momo") @map("disbursement_method")
+  approvedBy        String?   @map("approved_by")
+  dueDate           DateTime?  @map("due_date")
+  status            String    @default("pending") // pending | offered | approved | rejected | active | paid | overdue | failed
+  disbursementRef   String?   @map("disbursement_ref")
+  loanId            String?   @map("loan_id")
+  decisionNotes     String?   @map("decision_notes")
+  acceptedAt        DateTime?  @map("accepted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  decidedAt         DateTime?  @map("decided_at")
+
+  applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@index([applicantId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("loan_applications")
+}
+
+// ── Repayments ─────────────────────────────────────────────────────────────
+model Repayment {
+  id         String   @id @default(uuid()) @db.Uuid
+  loanId     String   @map("loan_id")
+  userId     String   @map("user_id") @db.Uuid
+  total      BigInt
+  amountPaid BigInt   @default(0) @map("amount_paid")
+  dueDate    DateTime @map("due_date")
+  status     String   @default("scheduled") // scheduled | paid | overdue
+  receiptId  String?  @map("receipt_id")
+  attempts   Json     @default("[]")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("repayments")
+}
+
+// ── Transactions ───────────────────────────────────────────────────────────
+model Transaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  loanId        String?  @map("loan_id")
+  type          String   // loan_disbursement | loan_payment | savings_deposit | savings_withdrawal | wallet_topup
+  amount        BigInt
+  status        String   @default("pending") // pending | completed | failed
+  transactionId String?  @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([loanId])
+  @@index([status])
+  @@map("transactions")
+}
+
+// ── Savings Goals ──────────────────────────────────────────────────────────
+model SavingsGoal {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  emoji     String   @default("🎯")
+  target    BigInt
+  saved     BigInt   @default(0)
+  color     String   @default("#2563EB")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("savings_goals")
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String
+  body      String
+  type      String   @default("info") // success | warning | info | alert
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
