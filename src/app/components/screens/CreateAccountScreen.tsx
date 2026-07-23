@@ -5,6 +5,7 @@ import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { useAppContext } from "../../context/AppContext";
 import { customerLoginLimiter } from "../../lib/rate-limiter";
+import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -63,7 +64,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     if (!form.email.trim()) e.email = t("createAccount.errorEmailRequired");
     else if (!emailValid(form.email)) e.email = t("createAccount.errorEmailInvalid");
     if (!form.nin.trim()) e.nin = t("createAccount.errorNinRequired");
-    else if (!/^\d{10,12}$/.test(form.nin.replace(/\s/g, ""))) e.nin = t("createAccount.errorNinInvalid");
+    else if (!isValidUgandaNin(form.nin)) e.nin = t("createAccount.errorNinInvalid");
     if (!form.password.trim()) e.password = t("createAccount.errorPasswordRequired");
     else if (form.password.length < 8) e.password = t("createAccount.errorPasswordMinLength");
     if (!agreed) e.terms = t("createAccount.mustAgree");
@@ -83,7 +84,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       setSubmitting(true);
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
-        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, ""), acceptedTerms: true, termsVersion: TERMS_VERSION });
+        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: normalizeNin(form.nin), acceptedTerms: true, termsVersion: TERMS_VERSION });
         // Node backend flow: continue to KYC.
         onNavigate("kyc");
       } catch (err) {
@@ -165,7 +166,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>{t("createAccount.ninLabel")}</label>
           <div style={{ position: "relative" }}>
             <CreditCard size={16} color="#9CA3AF" style={iconStyle} />
-            <input value={form.nin} onChange={(e) => set("nin", e.target.value)} placeholder="e.g. CM86H00123PL" style={inputStyle(errors.nin)} />
+            <input value={form.nin} onChange={(e) => set("nin", e.target.value.toUpperCase())} placeholder="e.g. CM8602410E8EWE" maxLength={14} style={inputStyle(errors.nin)} />
           </div>
           {errors.nin && <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{errors.nin}</p>}
         </div>

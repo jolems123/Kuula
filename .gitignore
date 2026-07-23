@@ -57,3 +57,6 @@ ios/DerivedData/
 # ── Supabase CLI local artifacts ──────────────────────────────────────────────
 supabase/.branches/
 supabase/.temp/
+
+# ── KYC document uploads — NEVER commit users' ID images ──────────────────────
+server/uploads/

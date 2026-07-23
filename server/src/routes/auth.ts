@@ -5,6 +5,7 @@ import prisma from "../lib/prisma.js";
 import { generateToken, authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { computeCreditScore } from "../lib/credit-score.js";
+import { isValidUgandaNin, normalizeNin } from "../lib/nin.js";
 
 const router = Router();
 
@@ -131,6 +132,10 @@ router.post("/signup", async (req: Request, res: Response) => {
     const { name, phone, email, password, nationalId, acceptedTerms, termsVersion } = req.body;
     if (!name?.trim() || !phone?.trim() || !password) throw new AppError("Name, phone, and password are required", 400);
     if (!acceptedTerms) throw new AppError("You must accept the Terms of Service and Privacy Policy", 400);
+    const normalizedNin = nationalId ? normalizeNin(String(nationalId)) : "";
+    if (normalizedNin && !isValidUgandaNin(normalizedNin)) {
+      throw new AppError("A valid 14-character Uganda NIN is required", 400);
+    }
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ phone }, ...(email ? [{ email }] : [])] },
@@ -140,7 +145,7 @@ router.post("/signup", async (req: Request, res: Response) => {
     const passwordHash = await bcrypt.hash(password, 12);
     await prisma.user.create({
       data: {
-        fullName: name, phone, email: email || null, nationalId: nationalId || null, passwordHash,
+        fullName: name, phone, email: email || null, nationalId: normalizedNin || null, passwordHash,
         role: "user", phoneVerified: false,
         // Timestamp is set server-side so consent can't be back-dated by the client.
         termsAcceptedAt: new Date(),

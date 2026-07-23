@@ -84,7 +84,16 @@ const nodeApi = {
 
   submitKyc: (
     token: string,
-    body: { nationalId: string; fullName: string; dob: string; documentType?: string; documentRef?: string }
+    body: {
+      nationalId: string;
+      fullName: string;
+      dob: string;
+      documentType?: string;
+      /** Front ID image as a base64 data URL (data:image/...;base64,...). */
+      documentFront: string;
+      /** Back ID image as a base64 data URL. */
+      documentBack: string;
+    }
   ) =>
     request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", {
       method: "POST",

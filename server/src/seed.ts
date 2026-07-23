@@ -45,7 +45,7 @@ async function main() {
         email: "demo@kuula.ug",
         passwordHash,
         role: "user",
-        nationalId: "CM1234567890",
+        nationalId: "CM8602410E8EWE",
         district: "Kampala",
         occupation: "Software Engineer",
         phoneVerified: true,
