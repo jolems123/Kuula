@@ -35,23 +35,38 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
 });
 
 // POST /api/loans/applications
-router.post("/applications", authenticateToken, async (req: Request, res: Response) => {
-  const { amount, purpose, termDays, channel } = req.body;
-  const userId = req.user!.userId;
+const mapApplication = (application: any) => ({
+  id: application.id,
+  applicantId: application.applicantId,
+  applicantName: application.applicantName,
+  amount: Number(application.amount),
+  purpose: application.purpose,
+  termDays: application.termDays,
+  channel: application.channel,
+  status: application.status,
+  total: Number(application.total),
+  createdAt: application.createdAt,
+  decidedAt: application.decidedAt ?? null,
+  decisionNotes: application.decisionNotes ?? null,
+});
 
+async function createLoanApplicationForUser(
+  userId: string,
+  payload: { amount: number; purpose?: string; termDays: number; channel?: string }
+) {
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { savingsAccount: true } });
   if (!user) throw new AppError("User not found", 404);
 
-  const quote = localQuote(Number(amount), Number(termDays), Number(user.savingsAccount?.balance ?? 0));
+  const quote = localQuote(Number(payload.amount), Number(payload.termDays), Number(user.savingsAccount?.balance ?? 0));
 
   const application = await prisma.loanApplication.create({
     data: {
       applicantId: userId,
       applicantName: user.fullName,
-      amount: BigInt(Math.round(Number(amount))),
-      purpose: purpose || "Personal",
+      amount: BigInt(Math.round(Number(payload.amount))),
+      purpose: payload.purpose || "Personal",
       termDays: quote.termDays,
-      channel: channel || "MTN MoMo",
+      channel: payload.channel || "MTN MoMo",
       apr: quote.apr,
       interest: BigInt(Math.round(quote.interest)),
       total: BigInt(Math.round(quote.total)),
@@ -59,20 +74,54 @@ router.post("/applications", authenticateToken, async (req: Request, res: Respon
     },
   });
 
+  return application;
+}
+
+router.post("/applications", authenticateToken, async (req: Request, res: Response) => {
+  const { amount, purpose, termDays, channel } = req.body as {
+    amount: number;
+    purpose?: string;
+    termDays: number;
+    channel?: string;
+  };
+  const userId = req.user!.userId;
+
+  const application = await createLoanApplicationForUser(userId, {
+    amount: Number(amount),
+    purpose,
+    termDays: Number(termDays),
+    channel,
+  });
+
+  res.json({ application: mapApplication(application) });
+});
+
+// POST /api/loans/top-up
+router.post("/top-up", authenticateToken, async (req: Request, res: Response) => {
+  const { amount, term_days, purpose, disbursement_method } = req.body as {
+    amount: number;
+    term_days: number;
+    purpose?: string;
+    disbursement_method?: string;
+  };
+  const userId = req.user!.userId;
+
+  const application = await createLoanApplicationForUser(userId, {
+    amount: Number(amount),
+    purpose: purpose || "Top-up",
+    termDays: Number(term_days),
+    channel: disbursement_method || "MTN MoMo",
+  });
+
   res.json({
-    application: {
-      id: application.id,
-      applicantId: application.applicantId,
-      applicantName: application.applicantName,
-      amount: Number(application.amount),
-      purpose: application.purpose,
-      termDays: application.termDays,
-      channel: application.channel,
-      status: application.status,
+    success: true,
+    loan_id: application.id,
+    status: application.status,
+    pricing: {
+      apr: application.apr,
+      interest: Number(application.interest),
       total: Number(application.total),
-      createdAt: application.createdAt,
-      decidedAt: null,
-      decisionNotes: null,
+      term_days: application.termDays,
     },
   });
 });
@@ -89,22 +138,86 @@ router.post("/applications/decision", authenticateToken, async (req: Request, re
     data: { status, decisionNotes: notes || null, decidedAt: new Date() },
   });
 
-  if (!application) throw new AppError("Application not found or already decided", 404);
+  res.json({ application: mapApplication(application) });
+});
+
+// POST /api/loans/:id/accept
+router.post("/:id/accept", authenticateToken, async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const userId = req.user!.userId;
+
+  const existing = await prisma.loanApplication.findUnique({ where: { id } });
+  if (!existing || existing.applicantId !== userId) {
+    throw new AppError("Loan offer not found", 404);
+  }
+  if (existing.status !== "offered") {
+    throw new AppError("Only offered loans can be accepted", 400);
+  }
+
+  const principal = Math.max(0, Number(existing.amount));
+  const total = Math.max(Number(existing.total), principal);
+  const loanId = existing.loanId ?? existing.id;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const application = await tx.loanApplication.update({
+      where: { id: existing.id },
+      data: {
+        status: "active",
+        loanId,
+      },
+    });
+
+    const repayment = await tx.repayment.findFirst({
+      where: { userId, loanId, status: { not: "paid" } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const effectiveRepayment = repayment ?? await tx.repayment.create({
+      data: {
+        userId,
+        loanId,
+        total: BigInt(Math.round(total)),
+        amountPaid: BigInt(0),
+        dueDate: new Date(Date.now() + application.termDays * 24 * 60 * 60 * 1000),
+        status: "scheduled",
+        attempts: [],
+      },
+    });
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        loanId,
+        type: "loan_disbursement",
+        amount: BigInt(Math.round(principal)),
+        status: "completed",
+      },
+    });
+
+    await tx.wallet.upsert({
+      where: { userId },
+      update: { balance: { increment: Math.round(principal) } },
+      create: { userId, balance: BigInt(Math.round(principal)) },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId,
+        title: "Loan Disbursed",
+        body: `Your loan of UGX ${Math.round(principal).toLocaleString()} has been disbursed to your wallet.`,
+        type: "success",
+      },
+    });
+
+    return { application, repayment: effectiveRepayment };
+  });
 
   res.json({
-    application: {
-      id: application.id,
-      applicantId: application.applicantId,
-      applicantName: application.applicantName,
-      amount: Number(application.amount),
-      purpose: application.purpose,
-      termDays: application.termDays,
-      channel: application.channel,
-      status: application.status,
-      total: Number(application.total),
-      createdAt: application.createdAt,
-      decidedAt: application.decidedAt,
-      decisionNotes: application.decisionNotes,
+    application: mapApplication(result.application),
+    repayment: {
+      ...result.repayment,
+      total: Number(result.repayment.total),
+      amountPaid: Number(result.repayment.amountPaid),
     },
   });
 });

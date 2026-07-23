@@ -147,9 +147,11 @@ const nodeApi = {
       body: JSON.stringify({ id, decision, notes }),
     }),
 
-  acceptLoan: async (_token: string, _id: string): Promise<{ application: LoanApplication }> => {
-    throw new ApiError("Loan acceptance requires Supabase backend", 501);
-  },
+  acceptLoan: (token: string, id: string) =>
+    request<{ application: LoanApplication }>(`/api/loans/${id}/accept`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
   compliance: () => request<Compliance>("/api/compliance"),
 
