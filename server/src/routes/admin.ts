@@ -103,8 +103,8 @@ router.get("/savings-overview", async (req: Request, res: Response) => {
   });
 });
 
-// GET /api/admin/investor-report
-router.get("/investor-report", async (req: Request, res: Response) => {
+// Build investor report payload shared by both /investor-report and legacy /report paths
+async function buildInvestorReportPayload() {
   const [txns, apps, reps, savings, profileRows] = await Promise.all([
     prisma.transaction.findMany({ select: { type: true, amount: true, status: true, createdAt: true } }),
     prisma.loanApplication.findMany({ select: { amount: true, interest: true, status: true, createdAt: true } }),
@@ -211,7 +211,7 @@ router.get("/investor-report", async (req: Request, res: Response) => {
     else if (t.type === "loan_payment") b.collected += num(t.amount);
   }
 
-  res.json({
+  return {
     generatedAt: new Date().toISOString(),
     customers: {
       total: profileRows.length,
@@ -231,7 +231,19 @@ router.get("/investor-report", async (req: Request, res: Response) => {
       collected: txToday.filter((t) => t.type === "loan_payment").reduce((s, t) => s + num(t.amount), 0),
     },
     daily: dayBuckets.map((b) => ({ day: b.day, applications: b.applications, approved: b.approved, disbursed: b.disbursed, collected: b.collected })),
-  });
+  };
+}
+
+// GET /api/admin/investor-report
+router.get("/investor-report", async (_req: Request, res: Response) => {
+  const report = await buildInvestorReportPayload();
+  res.json(report);
+});
+
+// GET /api/admin/report (legacy alias for backward compatibility)
+router.get("/report", async (_req: Request, res: Response) => {
+  const report = await buildInvestorReportPayload();
+  res.json(report);
 });
 
 router.post("/loans/:id/approve", async (req: Request, res: Response) => {
@@ -277,6 +289,12 @@ router.post("/loans/:id/approve", async (req: Request, res: Response) => {
       amount: BigInt(principal),
       status: "completed",
     },
+  });
+
+  await prisma.wallet.upsert({
+    where: { userId: approved.applicantId },
+    update: { balance: { increment: BigInt(principal) } },
+    create: { userId: approved.applicantId, balance: BigInt(principal) },
   });
 
   await prisma.notification.create({
