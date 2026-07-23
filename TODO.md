@@ -1,82 +1,43 @@
-# Production Hardening & Release Readiness TODO
+# Production Hardening & Full Coverage TODO
 
-## 0) Audit Baseline (Completed)
-- [x] Read core backend entrypoint and middleware
-- [x] Read Prisma schema and role model
-- [x] Read all major API routes
-- [x] Read frontend API client integration
-- [x] Identify critical auth/security/data-access risks
+## Approval workflow implementation (current sprint)
+- [ ] Add admin action endpoints in `server/src/routes/admin.ts`
+  - [ ] `POST /api/admin/loans/:id/approve`
+  - [ ] `POST /api/admin/loans/:id/reject`
+  - [ ] `POST /api/admin/loans/:id/resubmit`
+- [ ] Enforce safe state transitions and validation
+  - [ ] Only reviewable statuses can be approved/rejected
+  - [ ] Reject requires decision notes
+- [ ] Implement side effects
+  - [ ] Update status/decision fields/timestamps
+  - [ ] Create applicant notification entries
+  - [ ] Create repayment + disbursement transaction on approve
+  - [ ] Persist audit history (or best available equivalent)
 
-## 1) Backend Security Foundation
-- [x] Remove insecure JWT secret fallback and enforce required secret
-- [x] Expand JWT role typing and normalize role checks
-- [x] Add secure HTTP headers (`helmet`)
-- [x] Add constrained CORS policy via env allowlist
-- [x] Add request rate limiting for auth and API
-- [x] Harden JSON body limits and request parsing
-- [ ] Ensure consistent, safe error responses (no sensitive leakage)
+## Endpoint testing matrix (curl)
+- [ ] Approval workflow lifecycle
+  - [ ] Submit -> approve -> verify status
+  - [ ] Submit -> reject -> verify status
+  - [ ] Rejected -> resubmit -> verify status
+- [ ] Role-access controls
+  - [ ] Admin allowed
+  - [ ] Manager/officer allowed (if seeded)
+  - [ ] Customer forbidden on admin actions
+- [ ] IDOR checks
+  - [ ] Cross-user access blocked for data mutation
+  - [ ] Cross-user reads blocked where required
+- [ ] Consistency checks
+  - [ ] Notification records match decisions
+  - [ ] Loan/repayment/transaction state is coherent
 
-## 2) Authorization & Data Isolation
-- [x] Add reusable role guard middleware (admin/manager/officer/customer/user)
-- [ ] Enforce ownership checks on all user resources
-- [ ] Prevent cross-account reads/writes via ID/URL tampering
-- [ ] Verify admin-only endpoints are protected centrally
-- [ ] Ensure deleted users cannot continue normal access
-
-## 3) Route/Database Stability Fixes
-- [ ] Fix Prisma `update/delete` patterns that misuse non-unique `where`
-- [ ] Add input validation for route payloads (amounts, IDs, enums, notes)
-- [ ] Wrap money/state-changing operations in transactions where needed
-- [ ] Normalize numeric conversions for BigInt-backed fields
-- [ ] Add deterministic not-found and conflict handling
-
-## 4) Approval Workflow Integrity
-- [ ] Validate loan status transition rules
-- [ ] Ensure decision endpoints guard current state
-- [ ] Add/verify approval/rejection notes handling
-- [ ] Ensure UI-consumed status labels and backend states are consistent
-- [ ] Add/verify audit trail entries for decisions and updates
-
-## 5) Frontend/API Contract Alignment
-- [ ] Reconcile client endpoints with implemented server routes
-- [ ] Fix failed API call paths and payload mismatches
-- [ ] Add robust loading/error/success states in critical flows
-- [ ] Remove placeholder/fake/unfinished integration points
-- [ ] Ensure token handling is safe and consistent
-
-## 6) UI Professionalism & Responsiveness
-- [ ] Remove duplicate/inconsistent UI patterns
-- [ ] Improve forms/tables/cards/buttons/empty/loading/error states
-- [ ] Tighten spacing/typography consistency to existing brand
-- [ ] Validate mobile/tablet/desktop behavior on core screens
-- [ ] Keep current brand identity; avoid unnecessary redesign
-
-## 7) Play Store / App Store Readiness
-- [ ] Privacy policy link present and accessible
-- [ ] Terms & conditions link present and accessible
-- [ ] Account deletion process discoverable and functional
-- [ ] Permission rationale screens/messages verified
-- [ ] No exposed API keys/secrets in frontend bundle
-- [ ] Icons/splash assets validated for Android/iOS
-- [ ] Production env configuration documented and validated
-- [ ] Error reporting/release checks documented
-
-## 8) Verification & Build Gates
-- [ ] Run backend typecheck
-- [ ] Run frontend typecheck
-- [ ] Run lint (backend + frontend)
-- [ ] Run tests (existing suites)
-- [ ] Run production builds (backend/frontend/mobile if configured)
-- [ ] Fix all surfaced errors
-
-## 9) Final Delivery Report
-- [ ] Bugs fixed summary
-- [ ] Files changed list
-- [ ] Security improvements summary
-- [ ] Approval workflows tested summary
-- [ ] Role-access tests completed summary
-- [ ] UI improvements summary
-- [ ] Remaining risks
-- [ ] Run/build commands
-- [ ] Google Play readiness checklist
-- [ ] Apple App Store readiness checklist
+## Remaining full 24-point closure checks
+- [ ] Backend full matrix: loans/savings/messages/transactions/goals/notifications/admin
+- [ ] Frontend full traversal of affected auth/KYC/admin/customer screens
+- [ ] Mobile responsiveness checks
+- [ ] Security sweep and release-readiness checks
+  - [ ] Privacy policy link
+  - [ ] Terms & conditions
+  - [ ] Account deletion path
+  - [ ] Secure auth/no exposed secrets
+  - [ ] App icon/splash/prod config/error reporting
+- [ ] Final lint/type/test/build pass

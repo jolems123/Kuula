@@ -234,4 +234,124 @@ router.get("/investor-report", async (req: Request, res: Response) => {
   });
 });
 
+router.post("/loans/:id/approve", async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const decisionNotes = (req.body?.decisionNotes ?? "").toString().trim();
+
+  const app = await prisma.loanApplication.findUnique({ where: { id } });
+  if (!app) throw new AppError("Loan application not found", 404);
+
+  if (!["pending", "resubmitted"].includes(app.status)) {
+    throw new AppError("Only pending or resubmitted applications can be approved", 400);
+  }
+
+  const approved = await prisma.loanApplication.update({
+    where: { id },
+    data: {
+      status: "approved",
+      decidedAt: new Date(),
+      decisionNotes: decisionNotes || "Approved",
+    },
+  });
+
+  const total = Number(approved.total);
+  const principal = Number(approved.amount);
+
+  await prisma.repayment.create({
+    data: {
+      userId: approved.applicantId,
+      loanId: approved.loanId ?? approved.id,
+      total: BigInt(Math.max(total, principal)),
+      amountPaid: BigInt(0),
+      dueDate: new Date(Date.now() + approved.termDays * 24 * 60 * 60 * 1000),
+      status: "scheduled",
+      attempts: [],
+    },
+  });
+
+  await prisma.transaction.create({
+    data: {
+      userId: approved.applicantId,
+      loanId: approved.loanId ?? approved.id,
+      type: "loan_disbursement",
+      amount: BigInt(principal),
+      status: "completed",
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: approved.applicantId,
+      title: "Loan Approved",
+      body: `Your loan request for UGX ${principal.toLocaleString()} was approved.`,
+      type: "success",
+    },
+  });
+
+  res.json({ ok: true, application: mapApplication(approved) });
+});
+
+router.post("/loans/:id/reject", async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const decisionNotes = (req.body?.decisionNotes ?? "").toString().trim();
+  if (!decisionNotes) throw new AppError("Decision notes are required to reject", 400);
+
+  const app = await prisma.loanApplication.findUnique({ where: { id } });
+  if (!app) throw new AppError("Loan application not found", 404);
+
+  if (!["pending", "resubmitted"].includes(app.status)) {
+    throw new AppError("Only pending or resubmitted applications can be rejected", 400);
+  }
+
+  const rejected = await prisma.loanApplication.update({
+    where: { id },
+    data: {
+      status: "rejected",
+      decidedAt: new Date(),
+      decisionNotes,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: rejected.applicantId,
+      title: "Loan Rejected",
+      body: `Your loan request was rejected: ${decisionNotes}`,
+      type: "warning",
+    },
+  });
+
+  res.json({ ok: true, application: mapApplication(rejected) });
+});
+
+router.post("/loans/:id/resubmit", async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  const app = await prisma.loanApplication.findUnique({ where: { id } });
+  if (!app) throw new AppError("Loan application not found", 404);
+
+  if (app.status !== "rejected") {
+    throw new AppError("Only rejected applications can be resubmitted", 400);
+  }
+
+  const resubmitted = await prisma.loanApplication.update({
+    where: { id },
+    data: {
+      status: "resubmitted",
+      decidedAt: null,
+      decisionNotes: (req.body?.decisionNotes ?? "Resubmitted for review").toString(),
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: resubmitted.applicantId,
+      title: "Loan Resubmitted",
+      body: "Your loan application was resubmitted for review.",
+      type: "info",
+    },
+  });
+
+  res.json({ ok: true, application: mapApplication(resubmitted) });
+});
+
 export default router;

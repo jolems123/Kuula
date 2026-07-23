@@ -11,6 +11,7 @@ const router = Router();
 async function buildSession(user: any) {
   const isAdmin = user.role === "admin";
   const savingsBalance = Number(user.savingsAccount?.balance ?? 0);
+  console.log("[auth.buildSession] start", { userId: user.id, role: user.role });
 
   let credit = null;
   if (!isAdmin) {
@@ -26,22 +27,39 @@ async function buildSession(user: any) {
   }
 
   // Fetch messages separately (not available as relation called "messages")
-  const messages = await prisma.message.findMany({
-    where: { OR: [{ senderId: user.id }, { receiverId: user.id }] },
-    orderBy: { createdAt: "asc" },
-  });
+  let messages: any[] = [];
+  try {
+    messages = await prisma.message.findMany({
+      where: { OR: [{ senderId: user.id }, { receiverId: user.id }] },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (err) {
+    console.error("[auth.buildSession] message.findMany failed", err);
+    throw err;
+  }
 
   let activeApp = null;
   let nextRep = null;
   if (!isAdmin) {
-    activeApp = await prisma.loanApplication.findFirst({
-      where: { applicantId: user.id, status: { in: ["approved", "active"] } },
-      orderBy: { decidedAt: "desc" },
-    });
-    nextRep = await prisma.repayment.findFirst({
-      where: { userId: user.id, status: { not: "paid" } },
-      orderBy: { dueDate: "asc" },
-    });
+    try {
+      activeApp = await prisma.loanApplication.findFirst({
+        where: { applicantId: user.id, status: { in: ["approved", "active"] } },
+        orderBy: { decidedAt: "desc" },
+      });
+    } catch (err) {
+      console.error("[auth.buildSession] loanApplication.findFirst failed", err);
+      throw err;
+    }
+
+    try {
+      nextRep = await prisma.repayment.findFirst({
+        where: { userId: user.id, status: { not: "paid" } },
+        orderBy: { dueDate: "asc" },
+      });
+    } catch (err) {
+      console.error("[auth.buildSession] repayment.findFirst failed", err);
+      throw err;
+    }
   }
 
   const scoreValue = credit?.score ?? 0;
@@ -95,49 +113,68 @@ async function buildSession(user: any) {
       createdAt: m.createdAt,
       isRead: m.isRead,
     })),
-    unreadNotifications: user._count?.notifications ?? 0,
+    unreadNotifications: await (async () => {
+      try {
+        return await prisma.notification.count({
+          where: { userId: user.id, isRead: false },
+        });
+      } catch (err) {
+        console.error("[auth.buildSession] notification.count failed", err);
+        throw err;
+      }
+    })(),
   };
 }
 
 router.post("/signup", async (req: Request, res: Response) => {
-  const { name, phone, email, password, nationalId } = req.body;
-  if (!name?.trim() || !phone?.trim() || !password) throw new AppError("Name, phone, and password are required", 400);
+  try {
+    const { name, phone, email, password, nationalId } = req.body;
+    if (!name?.trim() || !phone?.trim() || !password) throw new AppError("Name, phone, and password are required", 400);
 
-  const existing = await prisma.user.findFirst({
-    where: { OR: [{ phone }, ...(email ? [{ email }] : [])] },
-  });
-  if (existing) throw new AppError("Phone or email already registered", 409);
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ phone }, ...(email ? [{ email }] : [])] },
+    });
+    if (existing) throw new AppError("Phone or email already registered", 409);
 
-  const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({
-    data: {
-      fullName: name, phone, email: email || null, nationalId: nationalId || null, passwordHash,
-      role: "user", phoneVerified: false,
-      savingsAccount: { create: { balance: 0 } },
-      wallet: { create: { balance: 0 } },
-    },
-  });
+    const passwordHash = await bcrypt.hash(password, 12);
+    await prisma.user.create({
+      data: {
+        fullName: name, phone, email: email || null, nationalId: nationalId || null, passwordHash,
+        role: "user", phoneVerified: false,
+        savingsAccount: { create: { balance: 0 } },
+        wallet: { create: { balance: 0 } },
+      },
+    });
 
-  res.json({ ok: true, needsConfirmation: true });
+    res.json({ ok: true, needsConfirmation: true });
+  } catch (err) {
+    console.error("signup route failure:", err);
+    throw err;
+  }
 });
 
 router.post("/login", async (req: Request, res: Response) => {
-  const { phone, pin } = req.body;
-  if (!phone || !pin) throw new AppError("Phone and PIN are required", 400);
+  try {
+    const { phone, pin } = req.body;
+    if (!phone || !pin) throw new AppError("Phone and PIN are required", 400);
 
-  const user = await prisma.user.findUnique({
-    where: { phone },
-    include: { savingsAccount: true, wallet: true },
-  });
-  if (!user || !user.passwordHash) throw new AppError("Invalid phone number or PIN", 401);
+    const user = await prisma.user.findUnique({
+      where: { phone },
+      include: { savingsAccount: true, wallet: true },
+    });
+    if (!user || !user.passwordHash) throw new AppError("Invalid phone number or PIN", 401);
 
-  const valid = await bcrypt.compare(pin, user.passwordHash);
-  if (!valid) throw new AppError("Invalid phone number or PIN", 401);
+    const valid = await bcrypt.compare(pin, user.passwordHash);
+    if (!valid) throw new AppError("Invalid phone number or PIN", 401);
 
-  const role = user.role === "admin" ? "admin" as const : "user" as const;
-  const token = generateToken({ userId: user.id, role });
-  const session = await buildSession(user);
-  res.json({ token, refreshToken: "", ...session });
+    const role = user.role === "admin" ? "admin" as const : "user" as const;
+    const token = generateToken({ userId: user.id, role });
+    const session = await buildSession(user);
+    res.json({ token, refreshToken: "", ...session });
+  } catch (err) {
+    console.error("login route failure:", err);
+    throw err;
+  }
 });
 
 router.post("/admin-login", async (req: Request, res: Response) => {

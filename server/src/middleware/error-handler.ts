@@ -23,6 +23,10 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   }
 
   // Unexpected errors
-  console.error("Unhandled error:", err);
-  res.status(500).json({ error: "Internal server error" });
+  console.error("Unhandled error:", {
+    name: err?.name,
+    message: err?.message,
+    stack: err?.stack,
+  });
+  res.status(500).json({ error: "Internal server error", detail: err?.message || "unknown" });
 }
