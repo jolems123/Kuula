@@ -173,40 +173,13 @@ export function WelcomeScreen({ onNavigate }: Props) {
 
       {/* Logo area */}
       <div className="relative flex flex-col items-center pt-14 pb-8">
-        <div
-          className="mb-4"
-          style={{
-            width: 112,
-            height: 112,
-            borderRadius: 28,
-            overflow: "hidden",
-            border: "1px solid rgba(255,255,255,0.24)",
-            background: "rgba(255,255,255,0.12)",
-            backdropFilter: "blur(4px)",
-            boxShadow: "0 18px 50px rgba(2,6,23,0.38)",
-            display: "grid",
-            placeItems: "center",
-            padding: 12,
-          }}
-        >
+        <div style={{ width: 224, maxWidth: "72%", marginBottom: 14 }}>
           <ImageWithFallback
             src={kuulaLogo}
-            alt="Kuula logo"
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            alt="Kuula"
+            style={{ width: "100%", height: "auto", objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(2,6,23,0.4))" }}
           />
         </div>
-        <h1
-          style={{
-            fontSize: 36,
-            fontWeight: 800,
-            color: "#F8FAFC",
-            letterSpacing: -1,
-            marginBottom: 6,
-            textShadow: "0 8px 24px rgba(2,6,23,0.35)",
-          }}
-        >
-          Kuula
-        </h1>
         <p style={{ fontSize: 14, color: "#DCFCE7", textAlign: "center", maxWidth: 240 }}>
           {t("welcome.subtitle")}
         </p>

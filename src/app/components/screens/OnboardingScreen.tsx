@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, PiggyBank, TrendingUp, ChevronRight } from "lucide-react";
-import kuulaLogo from "../../../imports/kuula-tile-1024.png";
+import kuulaLogo from "/kuula-logo-dark.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface Props {
@@ -64,11 +64,8 @@ export function OnboardingScreen({ onNavigate }: Props) {
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
       {/* Top bar: brand + skip */}
       <div className="flex items-center justify-between px-5 pt-5">
-        <div className="flex items-center gap-2">
-          <div style={{ width: 28, height: 28, borderRadius: 8, overflow: "hidden" }}>
-            <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#1F2937", letterSpacing: -0.3 }}>Kuula</span>
+        <div className="flex items-center">
+          <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ height: 26, width: "auto", objectFit: "contain" }} />
         </div>
         <button
           onClick={finish}

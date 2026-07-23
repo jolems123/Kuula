@@ -1,6 +1,6 @@
 import { Eye, EyeOff, Shield, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import kuulaLogo from "../../../imports/kuula-tile-1024.png";
+import kuulaLogo from "/kuula-logo-light.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { useAppContext, type UserProfile } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";
@@ -116,11 +116,11 @@ export function AdminLoginScreen({ onNavigate }: Props) {
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 24 }}>
         {/* Logo */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, overflow: "hidden" }}>
-            <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ width: 190, maxWidth: "70%" }}>
+            <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "auto", objectFit: "contain" }} />
           </div>
           <div style={{ textAlign: "center" }}>
-            <h1 style={{ fontSize: 28, fontWeight: 900, color: "white", margin: 0 }}>Kuula Admin</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "white", margin: 0, letterSpacing: -0.3 }}>Admin Portal</h1>
             <p style={{ fontSize: 13, color: "#64748B", margin: "4px 0 0" }}>Staff access · Authorized personnel only</p>
           </div>
         </div>
