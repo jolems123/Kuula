@@ -1,7 +1,8 @@
 import { ArrowLeft, Camera, CheckCircle, User } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
+import { useAppContext } from "../../context/AppContext";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -9,62 +10,87 @@ interface Props {
 
 export function KycScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
+  const { state } = useAppContext();
   const [idNumber, setIdNumber] = useState("");
   const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
-  const [uploaded, setUploaded] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [frontFile, setFrontFile] = useState<File | null>(null);
+  const [backFile, setBackFile] = useState<File | null>(null);
+  const [frontPreviewUrl, setFrontPreviewUrl] = useState<string>("");
+  const [backPreviewUrl, setBackPreviewUrl] = useState<string>("");
+
+  const frontInputRef = useRef<HTMLInputElement | null>(null);
+  const backInputRef = useRef<HTMLInputElement | null>(null);
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const token = useMemo(() => {
-    try {
-      return localStorage.getItem("kuula_auth_token") || sessionStorage.getItem("kuula_auth_token") || "";
-    } catch {
-      return "";
-    }
-  }, []);
-
   const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FILE_TYPES = new Set(["image/jpeg", "image/png", "image/jpg", "image/webp"]);
 
-  const onPickFile = () => {
-    fileInputRef.current?.click();
+  const getToken = () => {
+    if (state.session.token) return state.session.token;
+    try {
+      return (
+        localStorage.getItem("kuula_auth_token") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("kuula_auth_token") ||
+        sessionStorage.getItem("token") ||
+        ""
+      );
+    } catch {
+      return "";
+    }
   };
 
-  const onFileSelected = (file?: File) => {
+  const onPickFile = (side: "front" | "back") => {
+    if (side === "front") frontInputRef.current?.click();
+    else backInputRef.current?.click();
+  };
+
+  const onFileSelected = (side: "front" | "back", file?: File) => {
     if (!file) return;
 
     if (!ALLOWED_FILE_TYPES.has(file.type)) {
       setError("Only JPG, PNG, or WEBP images are allowed.");
-      setUploaded(false);
-      setSelectedFile(null);
-      setPreviewUrl("");
+      if (side === "front") {
+        setFrontFile(null);
+        setFrontPreviewUrl("");
+      } else {
+        setBackFile(null);
+        setBackPreviewUrl("");
+      }
       return;
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       setError("Image is too large. Please upload a file up to 5MB.");
-      setUploaded(false);
-      setSelectedFile(null);
-      setPreviewUrl("");
+      if (side === "front") {
+        setFrontFile(null);
+        setFrontPreviewUrl("");
+      } else {
+        setBackFile(null);
+        setBackPreviewUrl("");
+      }
       return;
     }
 
     setError("");
-    setSelectedFile(file);
-    setUploaded(true);
     const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    if (side === "front") {
+      setFrontFile(file);
+      setFrontPreviewUrl(objectUrl);
+    } else {
+      setBackFile(file);
+      setBackPreviewUrl(objectUrl);
+    }
   };
 
   return (
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
-      {/* Header */}
       <div className="flex items-center px-4 pt-4 pb-2">
         <button
           onClick={() => onNavigate("welcome")}
@@ -78,7 +104,6 @@ export function KycScreen({ onNavigate }: Props) {
         </span>
       </div>
 
-      {/* Progress steps */}
       <div className="flex items-center px-6 py-4">
         {[{ label: t("kyc.stepId"), n: 1 }, { label: t("kyc.stepPhoto"), n: 2 }, { label: t("kyc.stepComplete"), n: 3 }].map((s, i) => (
           <div key={s.n} className="flex items-center flex-1">
@@ -218,20 +243,28 @@ export function KycScreen({ onNavigate }: Props) {
               {t("kyc.uploadInstruction")}
             </p>
             <input
-              ref={fileInputRef}
+              ref={frontInputRef}
               type="file"
               accept="image/png,image/jpeg,image/jpg,image/webp"
               style={{ display: "none" }}
-              onChange={(e) => onFileSelected(e.target.files?.[0])}
+              onChange={(e) => onFileSelected("front", e.target.files?.[0])}
             />
+            <input
+              ref={backInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              style={{ display: "none" }}
+              onChange={(e) => onFileSelected("back", e.target.files?.[0])}
+            />
+
             <button
-              onClick={onPickFile}
+              onClick={() => onPickFile("front")}
               style={{
                 width: "100%",
                 minHeight: 160,
                 borderRadius: 16,
-                border: uploaded ? "2px solid #12B984" : "2px dashed #D1D5DB",
-                background: uploaded ? "#F0FDF4" : "#F9FAFB",
+                border: frontFile ? "2px solid #12B984" : "2px dashed #D1D5DB",
+                background: frontFile ? "#F0FDF4" : "#F9FAFB",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -242,21 +275,59 @@ export function KycScreen({ onNavigate }: Props) {
                 padding: 10,
               }}
             >
-              {uploaded && previewUrl ? (
+              {frontFile && frontPreviewUrl ? (
                 <>
                   <img
-                    src={previewUrl}
-                    alt="Uploaded ID preview"
+                    src={frontPreviewUrl}
+                    alt="Front ID preview"
                     style={{ width: "100%", maxHeight: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #A7F3D0" }}
                   />
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#065F46" }}>
-                    {selectedFile?.name || t("kyc.photoUploaded")}
+                    {frontFile.name}
                   </span>
                 </>
               ) : (
                 <>
                   <Camera size={40} color="#9CA3AF" />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "#6B7280" }}>{t("kyc.tapToUpload")}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#6B7280" }}>Upload ID Front</span>
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>{t("kyc.fileHint")}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => onPickFile("back")}
+              style={{
+                width: "100%",
+                minHeight: 160,
+                borderRadius: 16,
+                border: backFile ? "2px solid #12B984" : "2px dashed #D1D5DB",
+                background: backFile ? "#F0FDF4" : "#F9FAFB",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                cursor: "pointer",
+                overflow: "hidden",
+                padding: 10,
+              }}
+            >
+              {backFile && backPreviewUrl ? (
+                <>
+                  <img
+                    src={backPreviewUrl}
+                    alt="Back ID preview"
+                    style={{ width: "100%", maxHeight: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #A7F3D0" }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#065F46" }}>
+                    {backFile.name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Camera size={40} color="#9CA3AF" />
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#6B7280" }}>Upload ID Back</span>
                   <span style={{ fontSize: 12, color: "#9CA3AF" }}>{t("kyc.fileHint")}</span>
                 </>
               )}
@@ -335,12 +406,14 @@ export function KycScreen({ onNavigate }: Props) {
             }
 
             if (step === 2) {
-              if (!uploaded) {
-                setError("Please upload your ID photo before continuing.");
+              if (!frontFile || !backFile) {
+                setError("Please upload both front and back sides of your ID before continuing.");
                 return;
               }
+              const token = getToken();
               if (!token) {
                 setError("Your session has expired. Please log in again.");
+                setTimeout(() => onNavigate("welcome"), 300);
                 return;
               }
 
@@ -350,8 +423,8 @@ export function KycScreen({ onNavigate }: Props) {
                   nationalId: idNumber.trim(),
                   fullName: fullName.trim(),
                   dob,
-                  documentType: selectedFile ? selectedFile.type || "id-photo" : "id-photo",
-                  documentRef: selectedFile ? selectedFile.name : "",
+                  documentType: "national-id",
+                  documentRef: `${frontFile.name}|${backFile.name}`,
                 });
                 setSuccess("KYC submitted successfully. We will review and notify you.");
                 setStep(3);
