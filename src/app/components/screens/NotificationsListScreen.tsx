@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { AppNotification } from "../../api/supabase-service";
+import type { AppNotification } from "../../api/types-compat";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -128,3 +128,4 @@ export function NotificationsListScreen({ onNavigate }: Props) {
     </div>
   );
 }
+

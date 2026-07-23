@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { SavingsGoal } from "../../api/supabase-service";
+import type { SavingsGoal } from "../../api/types-compat";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -222,3 +222,4 @@ export function GoalsScreen({ onNavigate }: Props) {
     </div>
   );
 }
+

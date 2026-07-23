@@ -1,4 +1,4 @@
-/**
+cont/**
  * Admin Customer Management Screens
  * A4.1 CustomerList | A4.2 CustomerDetail | A4.3 CustomerKYC
  * A4.4 CustomerRisk | A4.5 BlockCustomer
@@ -10,7 +10,7 @@ import { AdminLayout, AdminTable, StatusBadge, AdminPageHeader, AdminCard, StatC
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { CustomerRow } from "../../api/supabase-service";
+import type { CustomerRow } from "../../api/types-compat";
 
 interface Props { onNavigate: (s: string) => void; }
 

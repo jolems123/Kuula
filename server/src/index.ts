@@ -12,6 +12,7 @@ import transactionRoutes from "./routes/transactions.js";
 import goalRoutes from "./routes/goals.js";
 import notificationRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
+import kycRoutes from "./routes/kyc.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 
 // Validate DATABASE_URL at startup
@@ -86,6 +87,7 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/kyc", kycRoutes);
 
 // Credit score
 import { authenticateToken } from "./middleware/auth.js";

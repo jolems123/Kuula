@@ -3,7 +3,7 @@
  * downloadable PDF / Excel / CSV files. Shared by the admin dashboard and the
  * admin reports screens so the same numbers export everywhere.
  */
-import type { InvestorReport } from "../api/supabase-service";
+import type { InvestorReport } from "../api/types-compat";
 import { downloadPdf, downloadExcel, downloadCsv, formatUGX } from "./export";
 
 function kpiRows(r: InvestorReport): [string, string][] {
@@ -76,3 +76,4 @@ export function exportInvestorReportExcel(r: InvestorReport): void {
 export function exportInvestorReportCsv(r: InvestorReport): void {
   downloadCsv("kuula-investor-report", ["Metric", "Value"], kpiRows(r));
 }
+

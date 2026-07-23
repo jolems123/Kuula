@@ -10,7 +10,6 @@ interface Props { onNavigate: (s: string) => void; }
 
 export function CreateAccountScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
-  const { setPendingPhone } = useAppContext();
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ name: "", phone: "", email: "", nin: "", password: "" });
@@ -73,20 +72,14 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       return;
     }
 
-    // Create a real account against the active backend; demo builds skip to KYC.
-    if (env.USE_API || env.BACKEND === "supabase") {
+    // Create a real account against the Node backend.
+    if (env.USE_API) {
       setSubmitting(true);
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
         await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, "") });
-        if (env.BACKEND === "supabase") {
-          // Supabase has now texted an OTP via Twilio — confirm it before KYC.
-          setPendingPhone(phone);
-          onNavigate("phone-verify");
-        } else {
-          // Legacy node backend has no SMS OTP step.
-          onNavigate("kyc");
-        }
+        // Node backend flow: continue to KYC.
+        onNavigate("kyc");
       } catch (err) {
         setErrors({ form: err instanceof ApiError ? err.message : "Could not create your account. Try again." });
       } finally {

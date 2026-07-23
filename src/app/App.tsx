@@ -10,7 +10,6 @@ import {
 import { useAppContext } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { env } from "./config/env";
-import { supabase } from "./lib/supabase";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
@@ -31,69 +30,31 @@ function readPersistedToken(): string | null {
 
 /**
  * Restores an existing session on app start so the user stays logged
- * in across reloads. Supports both Supabase and the local Node backend.
+ * in across reloads using the Node backend token.
  * Returns whether the initial check is still running so the UI can hold
  * a splash until it resolves.
  */
 function useSessionBootstrap(): boolean {
-  const { state, login, logout } = useAppContext();
+  const { state, login } = useAppContext();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     let active = true;
-    const backend = env.BACKEND;
-
     (async () => {
-      // ── Supabase backend: restore from persisted auth session ──────────
-      if (backend === "supabase" && supabase) {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (token && !state.session.isAuthenticated) {
-          try {
-            const s = await api.me(token);
-            if (active) {
-              login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
-              persistToken(s.token);
-            }
-          } catch { /* fall through to unauthenticated */ }
-        }
-        if (active) setChecking(false);
-        return;
-      }
-
-      // ── Node backend: restore from localStorage token ─────────────────
-      if (backend === "node") {
-        const token = readPersistedToken();
-        if (token && !state.session.isAuthenticated) {
-          try {
-            const s = await api.me(token);
-            if (active) {
-              login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
-              persistToken(s.token);
-            }
-          } catch {
-            // Token expired or invalid — clean up
-            clearPersistedToken();
+      const token = readPersistedToken();
+      if (token && !state.session.isAuthenticated) {
+        try {
+          const s = await api.me(token);
+          if (active) {
+            login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
+            persistToken(s.token);
           }
+        } catch {
+          clearPersistedToken();
         }
-        if (active) setChecking(false);
-        return;
       }
-
-      // ── No backend configured (demo mode) ─────────────────────────────
       if (active) setChecking(false);
     })();
-
-    // ── Supabase auth state listener ────────────────────────────────────
-    if (backend === "supabase" && supabase) {
-      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "SIGNED_OUT" && state.session.isAuthenticated) {
-          clearPersistedToken();
-          logout();
-        }
-      });
-      return () => { active = false; sub.subscription.unsubscribe(); };
-    }
 
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

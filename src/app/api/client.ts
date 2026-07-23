@@ -1,9 +1,8 @@
 /**
  * Kuula API client.
  *
- * `api` is provider-switched by VITE_BACKEND: the default "node" target is the
- * fetch wrapper below (legacy stubs); "supabase" routes to the Supabase
- * service. Screens import `{ api }` and never care which backend is active.
+ * Node/Express backend only.
+ * Screens import `{ api }` directly and do not switch providers.
  */
 import { env } from "../config/env";
 import type { Message } from "../context/AppContext";
@@ -12,6 +11,7 @@ import {
   type SessionPayload, type LoanApplication, type LoanQuote,
   type CreditScore, type Compliance,
 } from "./types";
+import type { AdminStats, InvestorReport, CustomerRow, SavingsGoal, AppNotification } from "./types-compat";
 
 export { ApiError };
 export type { SessionPayload, LoanApplication, LoanQuote, CreditScore, Compliance };
@@ -80,6 +80,21 @@ const nodeApi = {
     request<SessionPayload>("/api/auth/verify-phone", {
       method: "POST",
       body: JSON.stringify({ phone, code }),
+    }),
+
+  submitKyc: (
+    token: string,
+    body: { nationalId: string; fullName: string; dob: string; documentType?: string; documentRef?: string }
+  ) =>
+    request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+
+  getKycStatus: (token: string) =>
+    request<{ kyc: Record<string, unknown> }>("/api/kyc/status", {
+      headers: { Authorization: `Bearer ${token}` },
     }),
 
   resendOtp: (phone: string) =>
@@ -187,7 +202,7 @@ const nodeApi = {
     }),
 
   payRepayment: (token: string, amount?: number) =>
-    request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean }>("/api/loans/repayment/pay", {
+    request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean; amount?: number; reference?: string; uuid?: string }>("/api/loans/repayment/pay", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: amount !== undefined ? JSON.stringify({ amount }) : undefined,
@@ -202,17 +217,17 @@ const nodeApi = {
 
   // ── Savings goals ───────────────────────────────────────────────────────────
   getGoals: (token: string) =>
-    request<{ goals: import("./supabase-service").SavingsGoal[] }>("/api/goals", {
+    request<{ goals: SavingsGoal[] }>("/api/goals", {
       headers: { Authorization: `Bearer ${token}` },
     }),
   createGoal: (token: string, body: { name: string; emoji: string; target: number; color?: string }) =>
-    request<{ goal: import("./supabase-service").SavingsGoal }>("/api/goals", {
+    request<{ goal: SavingsGoal }>("/api/goals", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }),
   updateGoal: (token: string, id: string, patch: Record<string, unknown>) =>
-    request<{ goal: import("./supabase-service").SavingsGoal }>(`/api/goals/${id}`, {
+    request<{ goal: SavingsGoal }>(`/api/goals/${id}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(patch),
@@ -225,7 +240,7 @@ const nodeApi = {
 
   // ── Notifications ──────────────────────────────────────────────────────────
   getNotifications: (token: string) =>
-    request<{ notifications: import("./supabase-service").AppNotification[] }>("/api/notifications", {
+    request<{ notifications: AppNotification[] }>("/api/notifications", {
       headers: { Authorization: `Bearer ${token}` },
     }),
   markNotificationRead: (token: string, id: string) =>
@@ -241,11 +256,11 @@ const nodeApi = {
 
   // ── Admin stats ────────────────────────────────────────────────────────────
   getAdminStats: (token: string) =>
-    request<import("./supabase-service").AdminStats>("/api/admin/stats", {
+    request<AdminStats>("/api/admin/stats", {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getCustomers: (token: string) =>
-    request<{ customers: import("./supabase-service").CustomerRow[] }>("/api/admin/customers", {
+    request<{ customers: CustomerRow[] }>("/api/admin/customers", {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getSavingsOverview: (token: string) =>
@@ -253,11 +268,9 @@ const nodeApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getInvestorReport: (token: string) =>
-    request<import("./supabase-service").InvestorReport>("/api/admin/investor-report", {
+    request<InvestorReport>("/api/admin/investor-report", {
       headers: { Authorization: `Bearer ${token}` },
     }),
 };
 
-import { supabaseApi } from "./supabase-service";
-
-export const api = env.BACKEND === "supabase" ? supabaseApi : nodeApi;
+export const api = nodeApi;

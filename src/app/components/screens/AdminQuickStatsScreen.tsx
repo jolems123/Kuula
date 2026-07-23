@@ -4,7 +4,7 @@ import { AdminLayout, AdminPageHeader, AdminCard } from "../AdminLayout";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { InvestorReport } from "../../api/supabase-service";
+import type { InvestorReport } from "../../api/types-compat";
 import { formatUGX } from "../../lib/export";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -89,3 +89,4 @@ export function AdminQuickStatsScreen({ onNavigate }: Props) {
     </AdminLayout>
   );
 }
+

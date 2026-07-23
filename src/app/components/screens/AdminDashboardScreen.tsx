@@ -4,7 +4,7 @@ import { AdminLayout, StatCard, AdminTable, StatusBadge, AdminPageHeader } from 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
-import type { AdminStats } from "../../api/supabase-service";
+import type { AdminStats } from "../../api/types-compat";
 import { exportInvestorReportPdf } from "../../lib/investorReport";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -72,7 +72,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
           icon={<FileText size={18} color="#F59E0B" />} />
         <StatCard label="Overdue Loans" value={loading ? "…" : String(stats.overdueLoans)} sub="Require follow-up" color="#EF4444"
           icon={<AlertTriangle size={18} color="#EF4444" />} />
-        <StatCard label="Active Backend" value="Supabase" sub="Live data" color="#10B981"
+        <StatCard label="Active Backend" value="Node API" sub="Live data" color="#10B981"
           icon={<DollarSign size={18} color="#10B981" />} />
       </div>
 
@@ -101,7 +101,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         <div style={{ background: "white", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F1F5F9" }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: "0 0 16px" }}>Quick Stats</h3>
           {[
-            { label: "Total Customers", value: loading ? "…" : stats.totalCustomers.toLocaleString(), change: "From Supabase profiles", color: "#FF6B35" },
+            { label: "Total Customers", value: loading ? "…" : stats.totalCustomers.toLocaleString(), change: "From user profiles", color: "#FF6B35" },
             { label: "Pending Applications", value: loading ? "…" : String(stats.pendingApprovals), change: "Awaiting admin decision", color: "#F59E0B" },
             { label: "Overdue Loans", value: loading ? "…" : String(stats.overdueLoans), change: "Past due date", color: "#EF4444" },
             { label: "Recent Applications", value: loading ? "…" : String(stats.recentApplications.length), change: "Last 5 submissions", color: "#8B5CF6" },
