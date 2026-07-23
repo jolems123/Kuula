@@ -10,7 +10,7 @@ import { Download, AlertTriangle } from "lucide-react";
 import { AdminLayout, AdminTable, StatusBadge, AdminPageHeader, AdminCard, StatCard } from "../AdminLayout";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { InvestorReport, CustomerRow } from "../../api/supabase-service";
+import type { InvestorReport, CustomerRow } from "../../api/types-compat";
 import { formatUGX } from "../../lib/export";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -437,3 +437,4 @@ export function AdminFailedTransactionsScreen({ onNavigate }: Props) {
     </AdminLayout>
   );
 }
+

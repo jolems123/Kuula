@@ -1,6 +1,7 @@
-import { ArrowLeft, Camera, CheckCircle, Circle, User } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Camera, CheckCircle, User } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { api, ApiError } from "../../api/client";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -9,8 +10,21 @@ interface Props {
 export function KycScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const [idNumber, setIdNumber] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [dob, setDob] = useState("");
   const [uploaded, setUploaded] = useState(false);
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const token = useMemo(() => {
+    try {
+      return localStorage.getItem("kuula_auth_token") || sessionStorage.getItem("kuula_auth_token") || "";
+    } catch {
+      return "";
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
@@ -119,6 +133,8 @@ export function KycScreen({ onNavigate }: Props) {
                 {t("kyc.fullNameLabel")}
               </label>
               <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 placeholder={t("kyc.fullNamePlaceholder")}
                 style={{
                   width: "100%",
@@ -141,6 +157,8 @@ export function KycScreen({ onNavigate }: Props) {
               </label>
               <input
                 type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
                 style={{
                   width: "100%",
                   height: 52,
@@ -244,9 +262,58 @@ export function KycScreen({ onNavigate }: Props) {
           {t("kyc.footerNote")}
         </p>
         <button
-          onClick={() => {
-            if (step < 3) setStep(step + 1);
-            else onNavigate("home");
+          onClick={async () => {
+            setError("");
+            setSuccess("");
+
+            if (step === 1) {
+              if (!idNumber.trim() || idNumber.trim().length < 6) {
+                setError("Please enter a valid National ID number.");
+                return;
+              }
+              if (!fullName.trim() || fullName.trim().length < 2) {
+                setError("Please enter your full legal name.");
+                return;
+              }
+              if (!dob) {
+                setError("Please select your date of birth.");
+                return;
+              }
+              setStep(2);
+              return;
+            }
+
+            if (step === 2) {
+              if (!uploaded) {
+                setError("Please upload your ID photo before continuing.");
+                return;
+              }
+              if (!token) {
+                setError("Your session has expired. Please log in again.");
+                return;
+              }
+
+              try {
+                setIsSubmitting(true);
+                await api.submitKyc(token, {
+                  nationalId: idNumber.trim(),
+                  fullName: fullName.trim(),
+                  dob,
+                  documentType: "id-photo",
+                  documentRef: uploaded ? "uploaded" : "",
+                });
+                setSuccess("KYC submitted successfully. We will review and notify you.");
+                setStep(3);
+              } catch (e) {
+                const message = e instanceof ApiError ? e.message : "Could not submit KYC. Please try again.";
+                setError(message);
+              } finally {
+                setIsSubmitting(false);
+              }
+              return;
+            }
+
+            onNavigate("home");
           }}
           style={{
             width: "100%",
@@ -260,8 +327,14 @@ export function KycScreen({ onNavigate }: Props) {
             boxShadow: "0 4px 16px rgba(255,107,53,0.3)",
           }}
         >
-          {step < 3 ? t("common.continue") : t("common.goToDashboard")}
+          {isSubmitting ? "Submitting..." : step < 3 ? t("common.continue") : t("common.goToDashboard")}
         </button>
+        {error ? (
+          <p style={{ fontSize: 12, color: "#DC2626", textAlign: "center", marginTop: 10 }}>{error}</p>
+        ) : null}
+        {success ? (
+          <p style={{ fontSize: 12, color: "#059669", textAlign: "center", marginTop: 10 }}>{success}</p>
+        ) : null}
       </div>
     </div>
   );

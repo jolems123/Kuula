@@ -9,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
-import type { InvestorReport } from "../../api/supabase-service";
+import type { InvestorReport } from "../../api/types-compat";
 import { formatUGX, downloadPdf } from "../../lib/export";
 import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportCsv } from "../../lib/investorReport";
 
@@ -768,3 +768,4 @@ export function AdminBulkEmailScreen({ onNavigate }: Props) {
     </AdminLayout>
   );
 }
+

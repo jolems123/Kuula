@@ -4,7 +4,7 @@
 import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { clearSelectionState } from "../lib/selection";
-import { clearServiceCache } from "../api/supabase-service";
+import { clearServiceCache } from "../api/types-compat";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,3 +292,4 @@ export const useCredit = () => useAppContext().state.credit;
 export const useLoan = () => useAppContext().state.loan;
 export const useRole = () => useAppContext().state.role;
 export const useMessages = () => useAppContext().state.messages;
+
