@@ -15,6 +15,7 @@ const TERMS_VERSION = "2026-07-23";
 
 export function CreateAccountScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
+  const { setPendingPhone } = useAppContext();
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ name: "", phone: "", email: "", nin: "", password: "" });
@@ -85,8 +86,10 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
         await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: normalizeNin(form.nin), acceptedTerms: true, termsVersion: TERMS_VERSION });
-        // Node backend flow: continue to KYC.
-        onNavigate("kyc");
+        // Verify the phone next; that step establishes the auth session (token)
+        // that KYC and the rest of the app require.
+        setPendingPhone(phone);
+        onNavigate("phone-verify");
       } catch (err) {
         setErrors({ form: err instanceof ApiError ? err.message : "Could not create your account. Try again." });
       } finally {

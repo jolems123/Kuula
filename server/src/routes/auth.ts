@@ -143,10 +143,14 @@ router.post("/signup", async (req: Request, res: Response) => {
     if (existing) throw new AppError("Phone or email already registered", 409);
 
     const passwordHash = await bcrypt.hash(password, 12);
+    // Generate the phone-verification OTP up front so the verify screen works
+    // immediately after signup (no separate "resend" tap needed).
+    const otpCode = crypto.randomInt(100000, 999999).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.user.create({
       data: {
         fullName: name, phone, email: email || null, nationalId: normalizedNin || null, passwordHash,
-        role: "user", phoneVerified: false,
+        role: "user", phoneVerified: false, otpCode, otpExpiresAt,
         // Timestamp is set server-side so consent can't be back-dated by the client.
         termsAcceptedAt: new Date(),
         termsVersion: typeof termsVersion === "string" ? termsVersion : null,
@@ -154,6 +158,8 @@ router.post("/signup", async (req: Request, res: Response) => {
         wallet: { create: { balance: 0 } },
       },
     });
+    // TODO: send via SMS provider in production. For now, dev-log like resend-otp.
+    console.log(`[DEV] Signup OTP for ${phone}: ${otpCode}`);
 
     res.json({ ok: true, needsConfirmation: true });
   } catch (err) {
