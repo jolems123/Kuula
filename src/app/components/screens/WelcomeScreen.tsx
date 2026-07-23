@@ -305,7 +305,22 @@ export function WelcomeScreen({ onNavigate }: Props) {
 
 
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 4 }}>
-          {t("welcome.termsNotice")}
+          {t("welcome.agreePrefix")}{" "}
+          <button
+            type="button"
+            onClick={() => onNavigate("customer-terms")}
+            style={{ border: "none", background: "none", padding: 0, color: "#166534", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
+          >
+            {t("welcome.termsLink")}
+          </button>{" "}
+          {t("welcome.and")}{" "}
+          <button
+            type="button"
+            onClick={() => onNavigate("customer-privacy-policy")}
+            style={{ border: "none", background: "none", padding: 0, color: "#166534", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
+          >
+            {t("welcome.privacyLink")}
+          </button>
         </p>
       </div>
 

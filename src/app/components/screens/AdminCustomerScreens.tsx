@@ -1,4 +1,4 @@
-cont/**
+/**
  * Admin Customer Management Screens
  * A4.1 CustomerList | A4.2 CustomerDetail | A4.3 CustomerKYC
  * A4.4 CustomerRisk | A4.5 BlockCustomer

@@ -8,11 +8,16 @@ import { customerLoginLimiter } from "../../lib/rate-limiter";
 
 interface Props { onNavigate: (s: string) => void; }
 
+// Version of the Terms & Privacy Policy the user is consenting to. Bump this
+// when the published terms change so re-consent can be detected.
+const TERMS_VERSION = "2026-07-23";
+
 export function CreateAccountScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ name: "", phone: "", email: "", nin: "", password: "" });
+  const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
@@ -61,6 +66,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     else if (!/^\d{10,12}$/.test(form.nin.replace(/\s/g, ""))) e.nin = t("createAccount.errorNinInvalid");
     if (!form.password.trim()) e.password = t("createAccount.errorPasswordRequired");
     else if (form.password.length < 8) e.password = t("createAccount.errorPasswordMinLength");
+    if (!agreed) e.terms = t("createAccount.mustAgree");
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -77,7 +83,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       setSubmitting(true);
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
-        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, "") });
+        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, ""), acceptedTerms: true, termsVersion: TERMS_VERSION });
         // Node backend flow: continue to KYC.
         onNavigate("kyc");
       } catch (err) {
@@ -99,6 +105,12 @@ export function CreateAccountScreen({ onNavigate }: Props) {
 
   const iconStyle: React.CSSProperties = {
     position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+  };
+
+  const linkStyle: React.CSSProperties = {
+    border: "none", background: "none", padding: 0, margin: 0,
+    color: "#166534", fontWeight: 800, fontSize: 12,
+    textDecoration: "underline", cursor: "pointer",
   };
 
   return (
@@ -180,11 +192,27 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           )}
         </div>
 
-        {/* Terms notice */}
-        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#ECFDF5", border: "1px solid #BBF7D0" }}>
-          <p style={{ fontSize: 11, color: "#14532D", lineHeight: 1.6 }}>
-            {t("createAccount.termsNotice")}
-          </p>
+        {/* Terms & Privacy consent — required before an account can be created */}
+        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#ECFDF5", border: `1px solid ${errors.terms ? "#FCA5A5" : "#BBF7D0"}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              aria-label={t("createAccount.agreePrefix")}
+              onChange={(ev) => {
+                setAgreed(ev.target.checked);
+                if (ev.target.checked) setErrors(({ terms, ...rest }) => rest);
+              }}
+              style={{ width: 18, height: 18, marginTop: 1, accentColor: "#16A34A", flexShrink: 0, cursor: "pointer" }}
+            />
+            <span style={{ fontSize: 12, color: "#14532D", lineHeight: 1.6 }}>
+              {t("createAccount.agreePrefix")}{" "}
+              <button type="button" onClick={() => onNavigate("customer-terms")} style={linkStyle}>{t("createAccount.termsLink")}</button>
+              {" "}{t("createAccount.and")}{" "}
+              <button type="button" onClick={() => onNavigate("customer-privacy-policy")} style={linkStyle}>{t("createAccount.privacyLink")}</button>
+            </span>
+          </div>
+          {errors.terms && <p style={{ fontSize: 11, color: "#DC2626", marginTop: 6, marginLeft: 28 }}>{errors.terms}</p>}
         </div>
       </div>
 

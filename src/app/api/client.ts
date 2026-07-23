@@ -56,7 +56,7 @@ const nodeApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  signUp: (input: { name: string; phone: string; email: string; password: string; nationalId: string }) =>
+  signUp: (input: { name: string; phone: string; email: string; password: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) =>
     request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(input),
