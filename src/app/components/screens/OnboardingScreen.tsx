@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, PiggyBank, TrendingUp, ChevronRight } from "lucide-react";
-import kuulaLogo from "/kuula-logo-dark.png";
+import kuulaLogo from "/kuula-logo-light.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface Props {

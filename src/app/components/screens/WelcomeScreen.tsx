@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, X, Globe } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import kuulaLogo from "/kuula-logo-light.png";
+import kuulaLogo from "/kuula-logo-dark.png";
 import { useAppContext, type UserProfile, type CreditProfile, type LoanProfile, type Role, type Message } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";
 import { api, ApiError } from "../../api/client";
