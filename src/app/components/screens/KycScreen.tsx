@@ -1,5 +1,5 @@
 import { ArrowLeft, Camera, CheckCircle, User } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 
@@ -13,6 +13,9 @@ export function KycScreen({ onNavigate }: Props) {
   const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
   const [uploaded, setUploaded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +28,39 @@ export function KycScreen({ onNavigate }: Props) {
       return "";
     }
   }, []);
+
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_FILE_TYPES = new Set(["image/jpeg", "image/png", "image/jpg", "image/webp"]);
+
+  const onPickFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const onFileSelected = (file?: File) => {
+    if (!file) return;
+
+    if (!ALLOWED_FILE_TYPES.has(file.type)) {
+      setError("Only JPG, PNG, or WEBP images are allowed.");
+      setUploaded(false);
+      setSelectedFile(null);
+      setPreviewUrl("");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setError("Image is too large. Please upload a file up to 5MB.");
+      setUploaded(false);
+      setSelectedFile(null);
+      setPreviewUrl("");
+      return;
+    }
+
+    setError("");
+    setSelectedFile(file);
+    setUploaded(true);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
 
   return (
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
@@ -181,11 +217,18 @@ export function KycScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 14, color: "#6B7280", marginBottom: 4 }}>
               {t("kyc.uploadInstruction")}
             </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              style={{ display: "none" }}
+              onChange={(e) => onFileSelected(e.target.files?.[0])}
+            />
             <button
-              onClick={() => setUploaded(true)}
+              onClick={onPickFile}
               style={{
                 width: "100%",
-                height: 160,
+                minHeight: 160,
                 borderRadius: 16,
                 border: uploaded ? "2px solid #12B984" : "2px dashed #D1D5DB",
                 background: uploaded ? "#F0FDF4" : "#F9FAFB",
@@ -193,14 +236,22 @@ export function KycScreen({ onNavigate }: Props) {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 12,
+                gap: 10,
                 cursor: "pointer",
+                overflow: "hidden",
+                padding: 10,
               }}
             >
-              {uploaded ? (
+              {uploaded && previewUrl ? (
                 <>
-                  <CheckCircle size={40} color="#12B984" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "#065F46" }}>{t("kyc.photoUploaded")}</span>
+                  <img
+                    src={previewUrl}
+                    alt="Uploaded ID preview"
+                    style={{ width: "100%", maxHeight: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #A7F3D0" }}
+                  />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#065F46" }}>
+                    {selectedFile?.name || t("kyc.photoUploaded")}
+                  </span>
                 </>
               ) : (
                 <>
@@ -299,8 +350,8 @@ export function KycScreen({ onNavigate }: Props) {
                   nationalId: idNumber.trim(),
                   fullName: fullName.trim(),
                   dob,
-                  documentType: "id-photo",
-                  documentRef: uploaded ? "uploaded" : "",
+                  documentType: selectedFile ? selectedFile.type || "id-photo" : "id-photo",
+                  documentRef: selectedFile ? selectedFile.name : "",
                 });
                 setSuccess("KYC submitted successfully. We will review and notify you.");
                 setStep(3);
