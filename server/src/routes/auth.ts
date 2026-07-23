@@ -128,8 +128,9 @@ async function buildSession(user: any) {
 
 router.post("/signup", async (req: Request, res: Response) => {
   try {
-    const { name, phone, email, password, nationalId } = req.body;
+    const { name, phone, email, password, nationalId, acceptedTerms, termsVersion } = req.body;
     if (!name?.trim() || !phone?.trim() || !password) throw new AppError("Name, phone, and password are required", 400);
+    if (!acceptedTerms) throw new AppError("You must accept the Terms of Service and Privacy Policy", 400);
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ phone }, ...(email ? [{ email }] : [])] },
@@ -141,6 +142,9 @@ router.post("/signup", async (req: Request, res: Response) => {
       data: {
         fullName: name, phone, email: email || null, nationalId: nationalId || null, passwordHash,
         role: "user", phoneVerified: false,
+        // Timestamp is set server-side so consent can't be back-dated by the client.
+        termsAcceptedAt: new Date(),
+        termsVersion: typeof termsVersion === "string" ? termsVersion : null,
         savingsAccount: { create: { balance: 0 } },
         wallet: { create: { balance: 0 } },
       },

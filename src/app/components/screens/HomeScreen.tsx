@@ -81,7 +81,7 @@ export function HomeScreen({ onNavigate }: Props) {
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 pt-4 pb-4"
-        style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}
+        style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)" }}
       >
         <div className="flex items-center gap-3">
           <div
@@ -111,7 +111,7 @@ export function HomeScreen({ onNavigate }: Props) {
         >
           <Bell size={20} color="white" />
           {unread > 0 && (
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#EF4444", position: "absolute", top: 8, right: 8, border: "1.5px solid #E05A2B" }} />
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#EF4444", position: "absolute", top: 8, right: 8, border: "1.5px solid #D9531F" }} />
           )}
         </button>
       </div>
@@ -122,7 +122,7 @@ export function HomeScreen({ onNavigate }: Props) {
         <div
           className="p-5 rounded-2xl"
           style={{
-            background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
+            background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)",
             border: "1px solid #FFDCC8",
             boxShadow: "0 2px 12px rgba(255,107,53,0.1)",
           }}
@@ -130,7 +130,7 @@ export function HomeScreen({ onNavigate }: Props) {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{t("home.availableCredit")}</p>
-              <p style={{ fontSize: 30, fontWeight: 800, color: "#E05A2B", letterSpacing: -1, marginTop: 2 }}>
+              <p style={{ fontSize: 30, fontWeight: 800, color: "#D9531F", letterSpacing: -1, marginTop: 2 }}>
                 {formatUGX(loan?.availableCredit ?? 0)}
               </p>
             </div>
@@ -139,7 +139,7 @@ export function HomeScreen({ onNavigate }: Props) {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#C4920A",
+                background: "#12B984",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -150,20 +150,20 @@ export function HomeScreen({ onNavigate }: Props) {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ArrowUpRight size={14} color="#10B981" />
+              <ArrowUpRight size={14} color="#12B984" />
               {loan?.creditIncreaseFromLastMonth ? (
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 500 }}>
+                <span style={{ fontSize: 12, color: "#12B984", fontWeight: 500 }}>
                   +{formatUGX(loan.creditIncreaseFromLastMonth)} from last month
                 </span>
               ) : (
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 500 }}>
+                <span style={{ fontSize: 12, color: "#12B984", fontWeight: 500 }}>
                   {formatUGX(loan?.availableCredit ?? 0)} available
                 </span>
               )}
             </div>
             <button
               onClick={() => onNavigate("dashboard")}
-              style={{ fontSize: 11, fontWeight: 700, color: "#FF6B35", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              style={{ fontSize: 11, fontWeight: 700, color: "#F4612B", background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
               {t("home.dashboard")} →
             </button>
@@ -218,7 +218,7 @@ export function HomeScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             color: "white",
             fontSize: 17,
             fontWeight: 700,
@@ -243,7 +243,7 @@ export function HomeScreen({ onNavigate }: Props) {
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <PiggyBank size={16} color="#10B981" />
+              <PiggyBank size={16} color="#12B984" />
               <span style={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>{t("home.savings")}</span>
             </div>
             <p style={{ fontSize: 18, fontWeight: 800, color: "#065F46" }}>
@@ -268,8 +268,8 @@ export function HomeScreen({ onNavigate }: Props) {
             </div>
             <p style={{ fontSize: 24, fontWeight: 800, color: "#1F2937" }}>{credit?.score ?? "—"}</p>
             <div className="flex items-center gap-1 mt-1">
-              <ArrowUpRight size={12} color="#10B981" />
-              <span style={{ fontSize: 11, color: "#10B981", fontWeight: 600 }}>{credit?.tier ?? "—"}</span>
+              <ArrowUpRight size={12} color="#12B984" />
+              <span style={{ fontSize: 11, color: "#12B984", fontWeight: 600 }}>{credit?.tier ?? "—"}</span>
             </div>
           </div>
         </div>
@@ -283,7 +283,7 @@ export function HomeScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937" }}>{t("home.recentActivity")}</p>
             <button
               onClick={() => onNavigate("loan-history")}
-              style={{ fontSize: 12, color: "#FF6B35", fontWeight: 600, border: "none", background: "none" }}
+              style={{ fontSize: 12, color: "#F4612B", fontWeight: 600, border: "none", background: "none" }}
             >
               {t("common.viewAll")}
             </button>
@@ -318,7 +318,7 @@ export function HomeScreen({ onNavigate }: Props) {
                   <p style={{ fontSize: 11, color: "#9CA3AF" }}>{item.date}</p>
                 </div>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: item.type === "credit" ? "#10B981" : "#EF4444" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: item.type === "credit" ? "#12B984" : "#EF4444" }}>
                 {item.amount >= 0 ? "+" : ""}{formatUGX(Math.abs(item.amount))}
               </span>
             </div>
@@ -343,7 +343,7 @@ export function HomeScreen({ onNavigate }: Props) {
                 style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  color: "#10B981",
+                  color: "#12B984",
                   background: "#F0FDF4",
                   padding: "2px 10px",
                   borderRadius: 20,
@@ -357,10 +357,10 @@ export function HomeScreen({ onNavigate }: Props) {
             <div className="mt-2">
               <div className="flex justify-between mb-1">
                 <span style={{ fontSize: 11, color: "#6B7280" }}>{t("home.repaid")}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#10B981" }}>{loan.activeLoan.repaidPercent}%</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#12B984" }}>{loan.activeLoan.repaidPercent}%</span>
               </div>
               <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3 }}>
-                <div style={{ width: `${loan.activeLoan.repaidPercent}%`, height: "100%", background: "#10B981", borderRadius: 3 }} />
+                <div style={{ width: `${loan.activeLoan.repaidPercent}%`, height: "100%", background: "#12B984", borderRadius: 3 }} />
               </div>
             </div>
           </div>

@@ -8,11 +8,16 @@ import { customerLoginLimiter } from "../../lib/rate-limiter";
 
 interface Props { onNavigate: (s: string) => void; }
 
+// Version of the Terms & Privacy Policy the user is consenting to. Bump this
+// when the published terms change so re-consent can be detected.
+const TERMS_VERSION = "2026-07-23";
+
 export function CreateAccountScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ name: "", phone: "", email: "", nin: "", password: "" });
+  const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
@@ -44,7 +49,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     if (p.length < 8) return { level: 1, label: t("createAccount.weak"), color: "#EF4444" };
     if (p.length < 10 || !/[A-Z]/.test(p) || !/\d/.test(p))
       return { level: 2, label: t("createAccount.fair"), color: "#F59E0B" };
-    return { level: 3, label: t("createAccount.strong"), color: "#10B981" };
+    return { level: 3, label: t("createAccount.strong"), color: "#12B984" };
   };
 
   const strength = passwordStrength(form.password);
@@ -61,6 +66,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     else if (!/^\d{10,12}$/.test(form.nin.replace(/\s/g, ""))) e.nin = t("createAccount.errorNinInvalid");
     if (!form.password.trim()) e.password = t("createAccount.errorPasswordRequired");
     else if (form.password.length < 8) e.password = t("createAccount.errorPasswordMinLength");
+    if (!agreed) e.terms = t("createAccount.mustAgree");
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -77,7 +83,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       setSubmitting(true);
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
-        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, "") });
+        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: form.nin.replace(/\s/g, ""), acceptedTerms: true, termsVersion: TERMS_VERSION });
         // Node backend flow: continue to KYC.
         onNavigate("kyc");
       } catch (err) {
@@ -92,28 +98,34 @@ export function CreateAccountScreen({ onNavigate }: Props) {
   };
 
   const inputStyle = (err?: string): React.CSSProperties => ({
-    width: "100%", height: 50, borderRadius: 12, border: `1.5px solid ${err ? "#EF4444" : "#E5E7EB"}`,
-    paddingLeft: 42, paddingRight: 16, fontSize: 14, color: "#1F2937",
-    background: "#F9FAFB", outline: "none", boxSizing: "border-box",
+    width: "100%", height: 50, borderRadius: 12, border: `1.5px solid ${err ? "#EF4444" : "#D1FAE5"}`,
+    paddingLeft: 42, paddingRight: 16, fontSize: 14, color: "#0F172A",
+    background: "#F8FFFC", outline: "none", boxSizing: "border-box",
   });
 
   const iconStyle: React.CSSProperties = {
     position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
   };
 
+  const linkStyle: React.CSSProperties = {
+    border: "none", background: "none", padding: 0, margin: 0,
+    color: "#166534", fontWeight: 800, fontSize: 12,
+    textDecoration: "underline", cursor: "pointer",
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#fff", paddingTop: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FFFC", paddingTop: 0 }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 12px", borderBottom: "1px solid #F3F4F6" }}>
-        <button onClick={() => onNavigate("welcome")} style={{ width: 36, height: 36, borderRadius: 10, background: "#F3F4F6", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-          <ArrowLeft size={18} color="#374151" />
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 12px", borderBottom: "1px solid #DCFCE7", background: "linear-gradient(180deg, #ECFDF5 0%, #F8FFFC 100%)" }}>
+        <button onClick={() => onNavigate("welcome")} style={{ width: 36, height: 36, borderRadius: 10, background: "#DCFCE7", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <ArrowLeft size={18} color="#166534" />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "#1F2937", marginLeft: 12 }}>{t("createAccount.title")}</span>
+        <span style={{ fontSize: 17, fontWeight: 800, color: "#14532D", marginLeft: 12 }}>{t("createAccount.title")}</span>
       </div>
 
       {/* Form */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 4 }}>{t("createAccount.subtitle")}</p>
+        <p style={{ fontSize: 13, color: "#166534", marginBottom: 4, fontWeight: 600 }}>{t("createAccount.subtitle")}</p>
 
         {/* Full Name */}
         <div>
@@ -129,7 +141,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>{t("createAccount.phoneLabel")}</label>
           <div style={{ position: "relative", display: "flex", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", height: 50, padding: "0 12px", background: "#F3F4F6", borderRadius: 12, border: "1.5px solid #E5E7EB", fontSize: 14, fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>🇺🇬 +256</div>
+            <div style={{ display: "flex", alignItems: "center", height: 50, padding: "0 12px", background: "#ECFDF5", borderRadius: 12, border: "1.5px solid #D1FAE5", fontSize: 14, fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>🇺🇬 +256</div>
             <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="7XX XXX XXX" style={{ ...inputStyle(errors.phone), paddingLeft: 16, flex: 1 }} />
           </div>
           {errors.phone && <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{errors.phone}</p>}
@@ -144,7 +156,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           </div>
           {errors.email && <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{errors.email}</p>}
           {form.email && !errors.email && emailValid(form.email) && (
-            <p style={{ fontSize: 11, color: "#10B981", marginTop: 4 }}>✓ {t("createAccount.validEmail")}</p>
+            <p style={{ fontSize: 11, color: "#12B984", marginTop: 4 }}>✓ {t("createAccount.validEmail")}</p>
           )}
         </div>
 
@@ -180,16 +192,32 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           )}
         </div>
 
-        {/* Terms notice */}
-        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
-          <p style={{ fontSize: 11, color: "#374151", lineHeight: 1.6 }}>
-            {t("createAccount.termsNotice")}
-          </p>
+        {/* Terms & Privacy consent — required before an account can be created */}
+        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#ECFDF5", border: `1px solid ${errors.terms ? "#FCA5A5" : "#BBF7D0"}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              aria-label={t("createAccount.agreePrefix")}
+              onChange={(ev) => {
+                setAgreed(ev.target.checked);
+                if (ev.target.checked) setErrors(({ terms, ...rest }) => rest);
+              }}
+              style={{ width: 18, height: 18, marginTop: 1, accentColor: "#16A34A", flexShrink: 0, cursor: "pointer" }}
+            />
+            <span style={{ fontSize: 12, color: "#14532D", lineHeight: 1.6 }}>
+              {t("createAccount.agreePrefix")}{" "}
+              <button type="button" onClick={() => onNavigate("customer-terms")} style={linkStyle}>{t("createAccount.termsLink")}</button>
+              {" "}{t("createAccount.and")}{" "}
+              <button type="button" onClick={() => onNavigate("customer-privacy-policy")} style={linkStyle}>{t("createAccount.privacyLink")}</button>
+            </span>
+          </div>
+          {errors.terms && <p style={{ fontSize: 11, color: "#DC2626", marginTop: 6, marginLeft: 28 }}>{errors.terms}</p>}
         </div>
       </div>
 
       {/* Bottom CTA */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 20px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 20px 36px", background: "white", borderTop: "1px solid #DCFCE7" }}>
         {errors.form && <p style={{ fontSize: 12, color: "#EF4444", textAlign: "center", marginBottom: 8 }}>{errors.form}</p>}
         <button
           onClick={submit}
@@ -198,9 +226,9 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           onMouseLeave={() => setHover(false)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: lockoutRemaining > 0 ? "#9CA3AF" : submitting ? "#D4A574" : hover ? "linear-gradient(135deg, #E05A2B, #374151)" : "linear-gradient(135deg, #FF6B35, #E05A2B)",
-            color: lockoutRemaining > 0 ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: lockoutRemaining > 0 ? "none" : hover ? "0 6px 24px rgba(255,107,53,0.45)" : "0 4px 16px rgba(255,107,53,0.3)",
+            background: lockoutRemaining > 0 ? "#9CA3AF" : submitting ? "#86EFAC" : hover ? "linear-gradient(135deg, #15803D, #14532D)" : "linear-gradient(135deg, #16A34A, #15803D)",
+            color: lockoutRemaining > 0 ? "#6B7280" : "white", fontSize: 16, fontWeight: 800, border: "none",
+            boxShadow: lockoutRemaining > 0 ? "none" : hover ? "0 8px 24px rgba(21,128,61,0.35)" : "0 4px 16px rgba(21,128,61,0.3)",
             cursor: lockoutRemaining > 0 ? "not-allowed" : submitting ? "wait" : "pointer", transform: lockoutRemaining > 0 || submitting ? "none" : hover ? "translateY(-1px)" : "none",
             transition: "all 0.15s ease",
           }}
@@ -209,7 +237,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
         </button>
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 10 }}>
           {t("createAccount.alreadyHaveAccount")}{" "}
-          <button onClick={() => onNavigate("welcome")} style={{ color: "#FF6B35", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>{t("createAccount.logIn")}</button>
+          <button onClick={() => onNavigate("welcome")} style={{ color: "#166534", fontWeight: 800, border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>{t("createAccount.logIn")}</button>
         </p>
       </div>
     </div>

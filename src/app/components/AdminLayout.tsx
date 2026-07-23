@@ -145,10 +145,10 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                     width: "100%", display: "flex", alignItems: "center", gap: 9,
                     padding: "9px 14px", background: isActive && !item.children ? "rgba(255,107,53,0.15)" : "transparent",
                     border: "none", cursor: "pointer", textAlign: "left",
-                    borderLeft: isActive && !item.children ? "2px solid #FF6B35" : "2px solid transparent",
+                    borderLeft: isActive && !item.children ? "2px solid #F4612B" : "2px solid transparent",
                   }}
                 >
-                  <Icon size={15} color={isActive ? "#FF6B35" : "#475569"} />
+                  <Icon size={15} color={isActive ? "#F4612B" : "#475569"} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? "#E2E8F0" : "#64748B", flex: 1, whiteSpace: "nowrap" }}>
                     {item.label}
                   </span>
@@ -168,7 +168,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                           width: "100%", display: "block", padding: "7px 14px 7px 0",
                           background: "transparent", border: "none", cursor: "pointer", textAlign: "left",
                           fontSize: 11, fontWeight: activeScreen === child.id ? 600 : 400,
-                          color: activeScreen === child.id ? "#FF6B35" : "#475569",
+                          color: activeScreen === child.id ? "#F4612B" : "#475569",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -224,7 +224,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
             <Bell size={17} color="#64748B" />
             <div style={{ width: 7, height: 7, borderRadius: 4, background: "#EF4444", position: "absolute", top: 0, right: 0 }} />
           </button>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #FF6B35, #E05A2B)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #F4612B, #D9531F)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "white" }}>AK</span>
           </div>
         </div>
@@ -241,7 +241,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
 // ── Shared admin components ───────────────────────────────────────────────────
 
 export function StatCard({
-  label, value, sub, color = "#FF6B35", icon,
+  label, value, sub, color = "#F4612B", icon,
 }: {
   label: string; value: string; sub?: string; color?: string; icon: React.ReactNode;
 }) {
@@ -298,11 +298,11 @@ export function AdminTable({
 
 export function StatusBadge({ status }: { status: string }) {
   const MAP: Record<string, { bg: string; color: string }> = {
-    active:    { bg: "#F0FDF4", color: "#10B981" },
-    approved:  { bg: "#F0FDF4", color: "#10B981" },
-    verified:  { bg: "#F0FDF4", color: "#10B981" },
-    completed: { bg: "#FFF0E8", color: "#FF6B35" },
-    paid:      { bg: "#F0FDF4", color: "#10B981" },
+    active:    { bg: "#F0FDF4", color: "#12B984" },
+    approved:  { bg: "#F0FDF4", color: "#12B984" },
+    verified:  { bg: "#F0FDF4", color: "#12B984" },
+    completed: { bg: "#FFF6EF", color: "#F4612B" },
+    paid:      { bg: "#F0FDF4", color: "#12B984" },
     pending:   { bg: "#FFF7ED", color: "#F59E0B" },
     offered:   { bg: "#F5F3FF", color: "#8B5CF6" },
     upcoming:  { bg: "#F5F3FF", color: "#8B5CF6" },
@@ -310,7 +310,7 @@ export function StatusBadge({ status }: { status: string }) {
     overdue:   { bg: "#FEF2F2", color: "#EF4444" },
     failed:    { bg: "#FEF2F2", color: "#EF4444" },
     blocked:   { bg: "#FEF2F2", color: "#EF4444" },
-    low:       { bg: "#F0FDF4", color: "#10B981" },
+    low:       { bg: "#F0FDF4", color: "#12B984" },
     medium:    { bg: "#FFF7ED", color: "#F59E0B" },
     high:      { bg: "#FEF2F2", color: "#EF4444" },
   };

@@ -11,10 +11,10 @@ function ugx(n: number) { return "UGX " + n.toLocaleString(); }
 
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   pending:  { color: "#F59E0B", bg: "#FFF7ED" },
-  approved: { color: "#10B981", bg: "#F0FDF4" },
-  active:   { color: "#10B981", bg: "#F0FDF4" },
-  completed:{ color: "#FF6B35", bg: "#FFF0E8" },
-  paid:     { color: "#FF6B35", bg: "#FFF0E8" },
+  approved: { color: "#12B984", bg: "#F0FDF4" },
+  active:   { color: "#12B984", bg: "#F0FDF4" },
+  completed:{ color: "#F4612B", bg: "#FFF6EF" },
+  paid:     { color: "#F4612B", bg: "#FFF6EF" },
   rejected: { color: "#EF4444", bg: "#FEF2F2" },
   overdue:  { color: "#EF4444", bg: "#FEF2F2" },
 };
@@ -64,7 +64,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -92,7 +92,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
             onClick={() => setFilter(f)}
             style={{
               padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-              background: filter === f ? "#FF6B35" : "#F3F4F6",
+              background: filter === f ? "#F4612B" : "#F3F4F6",
               color: filter === f ? "white" : "#6B7280",
             }}
           >
@@ -137,17 +137,17 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                 <div style={{ marginTop: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "#9CA3AF" }}>{t("loanHistory.due")} {loan.decidedAt ? new Date(new Date(loan.decidedAt).getTime() + loan.termDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#10B981" }}>{t("loanHistory.percentPaid", { pct: 0 })}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#12B984" }}>{t("loanHistory.percentPaid", { pct: 0 })}</span>
                   </div>
                   <div style={{ height: 6, background: "#F3F4F6", borderRadius: 3 }}>
-                    <div style={{ width: "0%", height: "100%", background: "#10B981", borderRadius: 3 }} />
+                    <div style={{ width: "0%", height: "100%", background: "#12B984", borderRadius: 3 }} />
                   </div>
                 </div>
               )}
               {isPaidOrActive && loan.status === "paid" && (
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
-                  <TrendingUp size={12} color="#10B981" />
-                  <span style={{ fontSize: 11, color: "#10B981", fontWeight: 600 }}>{t("loanHistory.fullyRepaid")}</span>
+                  <TrendingUp size={12} color="#12B984" />
+                  <span style={{ fontSize: 11, color: "#12B984", fontWeight: 600 }}>{t("loanHistory.fullyRepaid")}</span>
                 </div>
               )}
             </button>

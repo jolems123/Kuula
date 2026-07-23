@@ -35,7 +35,7 @@ export function useNativeChrome(): void {
         // there's no grey gap above the header. iOS ignores this (uses the
         // safe area inset + transparent style).
         if (Capacitor.getPlatform() === "android") {
-          await StatusBar.setBackgroundColor({ color: "#E05A2B" });
+          await StatusBar.setBackgroundColor({ color: "#D9531F" });
         }
       } catch {
         /* StatusBar plugin unavailable — silently ignore */

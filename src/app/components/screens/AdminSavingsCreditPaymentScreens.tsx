@@ -91,8 +91,8 @@ export function AdminAllSavingsScreen({ onNavigate }: Props) {
       {loading ? <LoadingBlock /> : error ? <ErrorBlock message={error} /> : (
         <>
           <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-            <StatCard label="Total Savings" value={formatUGX(total)} color="#10B981" icon={<></>}/>
-            <StatCard label="Active Accounts" value={accounts.length.toLocaleString()} color="#FF6B35" icon={<></>}/>
+            <StatCard label="Total Savings" value={formatUGX(total)} color="#12B984" icon={<></>}/>
+            <StatCard label="Active Accounts" value={accounts.length.toLocaleString()} color="#F4612B" icon={<></>}/>
             <StatCard label="Avg Balance" value={formatUGX(avgBalance)} color="#8B5CF6" icon={<></>}/>
             <StatCard label="Total Deposits" value={formatUGX(report?.savings.deposits ?? 0)} color="#F59E0B" icon={<></>}/>
           </div>
@@ -172,17 +172,17 @@ export function AdminInterestRateScreen({ onNavigate }: Props) {
           <div style={{ display:"flex",alignItems:"center",gap:16 }}>
             <div style={{ flex:1 }}>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Annual Rate (%)</label>
-              <input type="number" value={savingsRate} onChange={(e)=>setSavingsRate(e.target.value)} step="0.1" min="0" max="20" style={{ width:"100%",height:46,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 14px",fontSize:24,fontWeight:800,color:"#10B981",background:"#F9FAFB",outline:"none",boxSizing:"border-box" }}/>
+              <input type="number" value={savingsRate} onChange={(e)=>setSavingsRate(e.target.value)} step="0.1" min="0" max="20" style={{ width:"100%",height:46,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 14px",fontSize:24,fontWeight:800,color:"#12B984",background:"#F9FAFB",outline:"none",boxSizing:"border-box" }}/>
             </div>
             <div style={{ textAlign:"center" }}>
               <p style={{ fontSize:11,color:"#9CA3AF",margin:0 }}>Monthly equivalent</p>
-              <p style={{ fontSize:22,fontWeight:800,color:"#10B981",margin:"4px 0" }}>{(Number(savingsRate)/12).toFixed(2)}%</p>
+              <p style={{ fontSize:22,fontWeight:800,color:"#12B984",margin:"4px 0" }}>{(Number(savingsRate)/12).toFixed(2)}%</p>
             </div>
           </div>
           <div style={{ marginTop:16,padding:"12px",borderRadius:10,background:"#F0FDF4",border:"1px solid #A7F3D0" }}>
             <p style={{ fontSize:12,color:"#065F46",margin:0 }}>Impact: On UGX 1M balance, customers earn UGX {Math.round(10000000*Number(savingsRate)/100/12).toLocaleString()} per month.</p>
           </div>
-          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rate Settings</button>
+          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rate Settings</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -257,14 +257,14 @@ export function AdminCreditModelScreen({ onNavigate }: Props) {
             <div key={k} style={{ marginBottom:14 }}>
               <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
                 <label style={{ fontSize:13,fontWeight:600,color:"#374151",textTransform:"capitalize" }}>{k.replace("_"," ")}</label>
-                <span style={{ fontSize:13,fontWeight:800,color:"#FF6B35" }}>{v}%</span>
+                <span style={{ fontSize:13,fontWeight:800,color:"#F4612B" }}>{v}%</span>
               </div>
               <input type="range" min={0} max={50} value={v}
                 onChange={(e)=>setWeights((w)=>({...w,[k]:Number(e.target.value)}))}
-                style={{ width:"100%",accentColor:"#FF6B35" }}/>
+                style={{ width:"100%",accentColor:"#F4612B" }}/>
             </div>
           ))}
-          <button style={{ width:"100%",height:44,marginTop:8,borderRadius:10,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Model Configuration</button>
+          <button style={{ width:"100%",height:44,marginTop:8,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Model Configuration</button>
         </AdminCard>
         <AdminCard>
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Model Thresholds</h3>
@@ -311,8 +311,8 @@ export function AdminAllTransactionsScreen({ onNavigate }: Props) {
       {loading ? <LoadingBlock /> : error ? <ErrorBlock message={error} /> : (
         <>
           <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-            <StatCard label="Today's Volume" value={formatUGX(todaysVolume)} color="#FF6B35" icon={<></>}/>
-            <StatCard label="Transactions Today" value={todays.length.toLocaleString()} color="#10B981" icon={<></>}/>
+            <StatCard label="Today's Volume" value={formatUGX(todaysVolume)} color="#F4612B" icon={<></>}/>
+            <StatCard label="Transactions Today" value={todays.length.toLocaleString()} color="#12B984" icon={<></>}/>
             <StatCard label="Failed Today" value={todaysFailed.length.toLocaleString()} color="#EF4444" icon={<></>}/>
             <StatCard label="Success Rate (Today)" value={`${successRate}%`} color="#8B5CF6" icon={<></>}/>
           </div>
@@ -376,7 +376,7 @@ export function AdminPaymentProcessingScreen({ onNavigate }: Props) {
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Payment Method</label>
             <div style={{ display:"flex",gap:8 }}>
               {["mtn","airtel","bank"].map((m)=>(
-                <button key={m} onClick={()=>setMethod(m)} style={{ flex:1,height:40,borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:method===m?"#FF6B35":"#F3F4F6",color:method===m?"white":"#6B7280",textTransform:"capitalize" }}>{m==="mtn"?"MTN MoMo":m==="airtel"?"Airtel Money":"Bank"}</button>
+                <button key={m} onClick={()=>setMethod(m)} style={{ flex:1,height:40,borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:method===m?"#F4612B":"#F3F4F6",color:method===m?"white":"#6B7280",textTransform:"capitalize" }}>{m==="mtn"?"MTN MoMo":m==="airtel"?"Airtel Money":"Bank"}</button>
               ))}
             </div>
           </div>
@@ -384,7 +384,7 @@ export function AdminPaymentProcessingScreen({ onNavigate }: Props) {
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Notes</label>
             <textarea rows={2} placeholder="Reason for manual processing..." style={{ width:"100%",borderRadius:10,border:"1.5px solid #E5E7EB",padding:"8px 12px",fontSize:13,outline:"none",boxSizing:"border-box",resize:"none" }}/>
           </div>
-          <button style={{ width:"100%",height:46,borderRadius:10,background:"linear-gradient(135deg,#FF6B35,#E05A2B)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>Process Payment</button>
+          <button style={{ width:"100%",height:46,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>Process Payment</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -430,7 +430,7 @@ export function AdminFailedTransactionsScreen({ onNavigate }: Props) {
             labelForType(String(t.type)),
             formatUGX(Number(t.amount ?? 0)),
             fmtDate(t.created_at),
-            <button key={String(t.id)} onClick={()=>onNavigate("admin-payment-processing")} style={{ padding:"4px 10px",borderRadius:6,background:"#FF6B35",color:"white",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>,
+            <button key={String(t.id)} onClick={()=>onNavigate("admin-payment-processing")} style={{ padding:"4px 10px",borderRadius:6,background:"#F4612B",color:"white",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>,
           ])}
         />
       )}

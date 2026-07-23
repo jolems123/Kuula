@@ -82,7 +82,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)", padding: "16px 16px 14px" }}>
+      <div style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)", padding: "16px 16px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={() => onNavigate("wallet")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -97,7 +97,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", gap: 8, padding: "10px 16px", background: "white", borderBottom: "1px solid #F3F4F6", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["all", "loans", "savings", "payments"] as Filter[]).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "#FF6B35" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "#F4612B" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
         ))}
       </div>
 
@@ -110,13 +110,13 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
         {!loading && list.map((t) => (
           <button key={t.id} onClick={() => { setSelectedTransaction({ id: t.id, type: t.rawType, amount: t.amount, status: t.status, reference: t.reference, createdAt: t.createdAtISO }); onNavigate("transaction-detail"); }} style={{ background: "white", borderRadius: 14, padding: "14px 16px", border: "1px solid #F3F4F6", boxShadow: "0 2px 4px rgba(0,0,0,0.04)", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 12, width: "100%" }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: t.type === "in" ? "#F0FDF4" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {t.type === "in" ? <ArrowDownLeft size={18} color="#10B981" /> : <ArrowUpRight size={18} color="#EF4444" />}
+              {t.type === "in" ? <ArrowDownLeft size={18} color="#12B984" /> : <ArrowUpRight size={18} color="#EF4444" />}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</p>
               <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}>{t.sub ? `${t.sub} · ` : ""}{t.date}</p>
             </div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: t.type === "in" ? "#10B981" : "#EF4444", flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: t.type === "in" ? "#12B984" : "#EF4444", flexShrink: 0 }}>
               {t.type === "in" ? "+" : ""}{ugx(Math.abs(t.amount))}
             </span>
           </button>

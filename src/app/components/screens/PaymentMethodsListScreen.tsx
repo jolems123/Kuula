@@ -6,14 +6,14 @@ interface Props { onNavigate: (s: string) => void; }
 const METHODS = [
   { logo: "🟡", name: "MTN MoMo", number: "+256 770 123 456", default: true, color: "#F59E0B" },
   { logo: "🔴", name: "Airtel Money", number: "+256 752 987 654", default: false, color: "#EF4444" },
-  { logo: "🏦", name: "Stanbic Bank", number: "Acc: ****4532", default: false, color: "#FF6B35" },
+  { logo: "🏦", name: "Stanbic Bank", number: "Acc: ****4532", default: false, color: "#F4612B" },
 ];
 
 export function PaymentMethodsListScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("wallet")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -29,15 +29,15 @@ export function PaymentMethodsListScreen({ onNavigate }: Props) {
         <p style={{ fontSize: 13, color: "#6B7280" }}>Manage your linked payment accounts used for loan disbursement and repayment.</p>
 
         {METHODS.map((m, i) => (
-          <div key={i} style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", border: m.default ? "2px solid #FF6B35" : "1px solid #F3F4F6" }}>
+          <div key={i} style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", border: m.default ? "2px solid #F4612B" : "1px solid #F3F4F6" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <span style={{ fontSize: 32 }}>{m.logo}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: "#1F2937" }}>{m.name}</span>
                   {m.default && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#FF6B35", background: "#FFF0E8", padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Star size={9} fill="#FF6B35" /> Default
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#F4612B", background: "#FFF6EF", padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Star size={9} fill="#F4612B" /> Default
                     </span>
                   )}
                 </div>

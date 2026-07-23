@@ -29,10 +29,10 @@ export function AdminQuickStatsScreen({ onNavigate }: Props) {
   }, [token]);
 
   const stats = report ? [
-    { label: "Total Customers", value: report.customers.total.toLocaleString(), color: "#FF6B35", Icon: Users },
-    { label: "Active Loans", value: report.loans.active.toLocaleString(), color: "#10B981", Icon: FileText },
+    { label: "Total Customers", value: report.customers.total.toLocaleString(), color: "#F4612B", Icon: Users },
+    { label: "Active Loans", value: report.loans.active.toLocaleString(), color: "#12B984", Icon: FileText },
     { label: "Total Disbursed", value: formatUGX(report.revenue.totalDisbursed), color: "#8B5CF6", Icon: DollarSign },
-    { label: "Total Collected", value: formatUGX(report.revenue.totalCollected), color: "#10B981", Icon: TrendingUp },
+    { label: "Total Collected", value: formatUGX(report.revenue.totalCollected), color: "#12B984", Icon: TrendingUp },
     { label: "Outstanding", value: formatUGX(report.loans.outstanding), color: "#F59E0B", Icon: AlertTriangle },
     { label: "Default Rate", value: `${report.ratios.defaultRatePct}%`, color: "#EF4444", Icon: TrendingDown },
   ] : [];
@@ -78,8 +78,8 @@ export function AdminQuickStatsScreen({ onNavigate }: Props) {
                   <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${Math.round(Number(v) / 1_000_000)}M`} />
                   <Tooltip formatter={(v: number) => formatUGX(Number(v))} contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                   <Legend />
-                  <Line key="disbursed" type="monotone" dataKey="disbursed" stroke="#FF6B35" strokeWidth={2.5} dot={{ fill: "#FF6B35", r: 3 }} name="Disbursed" />
-                  <Line key="collected" type="monotone" dataKey="collected" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", r: 3 }} name="Collected" />
+                  <Line key="disbursed" type="monotone" dataKey="disbursed" stroke="#F4612B" strokeWidth={2.5} dot={{ fill: "#F4612B", r: 3 }} name="Disbursed" />
+                  <Line key="collected" type="monotone" dataKey="collected" stroke="#12B984" strokeWidth={2.5} dot={{ fill: "#12B984", r: 3 }} name="Collected" />
                 </LineChart>
               </ResponsiveContainer>
             )}

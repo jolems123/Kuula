@@ -7,14 +7,21 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFFFFF",
-  "theme_color": "#FF6B35",
+  "theme_color": "#F4612B",
   "categories": ["finance", "business", "productivity"],
   "lang": "en-UG",
   "dir": "ltr",
   "icons": [
     {
-      "src": "./kuula-icon-1024.png",
-      "sizes": "1024x1024",
+      "src": "./favicon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any",
+      "label": "Kuula"
+    },
+    {
+      "src": "./kuula-icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any",
       "label": "Kuula"

@@ -52,7 +52,7 @@ export function KycScreen({ onNavigate }: Props) {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  background: step >= s.n ? "#FF6B35" : "#F3F4F6",
+                  background: step >= s.n ? "#F4612B" : "#F3F4F6",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -66,7 +66,7 @@ export function KycScreen({ onNavigate }: Props) {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 10, color: step >= s.n ? "#FF6B35" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
+              <span style={{ fontSize: 10, color: step >= s.n ? "#F4612B" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
                 {s.label}
               </span>
             </div>
@@ -75,7 +75,7 @@ export function KycScreen({ onNavigate }: Props) {
                 style={{
                   flex: 1,
                   height: 2,
-                  background: step > s.n ? "#FF6B35" : "#E5E7EB",
+                  background: step > s.n ? "#F4612B" : "#E5E7EB",
                   margin: "0 8px",
                   marginBottom: 20,
                 }}
@@ -91,12 +91,12 @@ export function KycScreen({ onNavigate }: Props) {
           <>
             <div
               className="p-4 rounded-xl flex items-start gap-3"
-              style={{ background: "#FFF0E8", border: "1px solid #FFDCC8" }}
+              style={{ background: "#FFF6EF", border: "1px solid #FFDCC8" }}
             >
-              <User size={18} color="#FF6B35" style={{ marginTop: 2 }} />
+              <User size={18} color="#F4612B" style={{ marginTop: 2 }} />
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{t("kyc.ninRequired")}</p>
-                <p style={{ fontSize: 12, color: "#E05A2B", marginTop: 2 }}>
+                <p style={{ fontSize: 12, color: "#D9531F", marginTop: 2 }}>
                   {t("kyc.niraVerification")}
                 </p>
               </div>
@@ -187,7 +187,7 @@ export function KycScreen({ onNavigate }: Props) {
                 width: "100%",
                 height: 160,
                 borderRadius: 16,
-                border: uploaded ? "2px solid #10B981" : "2px dashed #D1D5DB",
+                border: uploaded ? "2px solid #12B984" : "2px dashed #D1D5DB",
                 background: uploaded ? "#F0FDF4" : "#F9FAFB",
                 display: "flex",
                 flexDirection: "column",
@@ -199,7 +199,7 @@ export function KycScreen({ onNavigate }: Props) {
             >
               {uploaded ? (
                 <>
-                  <CheckCircle size={40} color="#10B981" />
+                  <CheckCircle size={40} color="#12B984" />
                   <span style={{ fontSize: 14, fontWeight: 600, color: "#065F46" }}>{t("kyc.photoUploaded")}</span>
                 </>
               ) : (
@@ -230,13 +230,13 @@ export function KycScreen({ onNavigate }: Props) {
                 height: 80,
                 borderRadius: 40,
                 background: "#F0FDF4",
-                border: "2px solid #10B981",
+                border: "2px solid #12B984",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <CheckCircle size={40} color="#10B981" />
+              <CheckCircle size={40} color="#12B984" />
             </div>
             <div className="text-center">
               <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1F2937" }}>{t("kyc.submittedTitle")}</h2>
@@ -319,7 +319,7 @@ export function KycScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             color: "white",
             fontSize: 16,
             fontWeight: 600,

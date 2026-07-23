@@ -34,6 +34,10 @@ model User {
   otpExpiresAt   DateTime? @map("otp_expires_at")
   phoneVerified  Boolean  @default(false) @map("phone_verified")
 
+  // Terms & Privacy Policy consent captured at sign-up
+  termsAcceptedAt DateTime? @map("terms_accepted_at")
+  termsVersion    String?   @map("terms_version")
+
   // Relations
   savingsAccount   SavingsAccount?
   wallet           Wallet?

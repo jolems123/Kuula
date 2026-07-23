@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 1500,
-      backgroundColor: '#FF6B35',
+      backgroundColor: '#F4612B',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
       // Auto-hide is also triggered from useNativeChrome() once React has
@@ -30,7 +30,7 @@ const config: CapacitorConfig = {
       // Default styling — overridden at runtime by useNativeChrome() so the
       // status bar matches the active screen's header.
       style: 'LIGHT',
-      backgroundColor: '#E05A2B',
+      backgroundColor: '#D9531F',
       overlaysWebView: false,
     },
   },

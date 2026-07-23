@@ -60,7 +60,7 @@ export function WalletOverviewScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -79,7 +79,7 @@ export function WalletOverviewScreen({ onNavigate }: Props) {
         {[
           { logo: "🟡", name: "MTN MoMo", color: "#F59E0B" },
           { logo: "🔴", name: "Airtel Money", color: "#EF4444" },
-          { logo: "🏦", name: "Bank Transfer", color: "#FF6B35" },
+          { logo: "🏦", name: "Bank Transfer", color: "#F4612B" },
         ].map((m) => (
           <div key={m.name} style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", display: "flex", alignItems: "center", gap: 14 }}>
             <span style={{ fontSize: 32 }}>{m.logo}</span>
@@ -93,8 +93,8 @@ export function WalletOverviewScreen({ onNavigate }: Props) {
         {/* Quick actions */}
         <div style={{ display: "flex", gap: 10 }}>
           {[
-            { Icon: Send, label: t("wallet.payLoan"), color: "#FF6B35", bg: "#FFF0E8", screen: "make-payment" },
-            { Icon: ArrowUpRight, label: t("wallet.addMoney"), color: "#10B981", bg: "#F0FDF4", screen: "add-money" },
+            { Icon: Send, label: t("wallet.payLoan"), color: "#F4612B", bg: "#FFF6EF", screen: "make-payment" },
+            { Icon: ArrowUpRight, label: t("wallet.addMoney"), color: "#12B984", bg: "#F0FDF4", screen: "add-money" },
             { Icon: ArrowDownLeft, label: t("wallet.withdraw"), color: "#F59E0B", bg: "#FFF7ED", screen: "withdraw-savings" },
           ].map(({ Icon, label, color, bg, screen }) => (
             <button key={label} onClick={() => onNavigate(screen)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 10px", borderRadius: 14, background: "white", border: "1px solid #F3F4F6", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", cursor: "pointer" }}>
@@ -110,7 +110,7 @@ export function WalletOverviewScreen({ onNavigate }: Props) {
         <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: "#1F2937" }}>{t("wallet.recentTransactions")}</span>
-            <button onClick={() => onNavigate("transaction-history")} style={{ fontSize: 12, color: "#FF6B35", fontWeight: 600, border: "none", background: "none", cursor: "pointer" }}>{t("wallet.viewAll")}</button>
+            <button onClick={() => onNavigate("transaction-history")} style={{ fontSize: 12, color: "#F4612B", fontWeight: 600, border: "none", background: "none", cursor: "pointer" }}>{t("wallet.viewAll")}</button>
           </div>
           {txnLoading ? (
             <div style={{ textAlign: "center", padding: "16px 0", color: "#9CA3AF", fontSize: 12 }}>Loading…</div>
@@ -122,13 +122,13 @@ export function WalletOverviewScreen({ onNavigate }: Props) {
             recent.map((tx, i) => (
               <div key={tx.id || i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < recent.length - 1 ? "1px solid #F3F4F6" : "none" }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: tx.type === "in" ? "#F0FDF4" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {tx.type === "in" ? <ArrowDownLeft size={16} color="#10B981" /> : <ArrowUpRight size={16} color="#EF4444" />}
+                  {tx.type === "in" ? <ArrowDownLeft size={16} color="#12B984" /> : <ArrowUpRight size={16} color="#EF4444" />}
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>{tx.label}</p>
                   <p style={{ fontSize: 10, color: "#9CA3AF", margin: 0 }}>{tx.date} · {tx.method}</p>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: tx.type === "in" ? "#10B981" : "#EF4444" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: tx.type === "in" ? "#12B984" : "#EF4444" }}>
                   {tx.type === "in" ? "+" : "-"}{formatUGX(Math.abs(tx.amount))}
                 </span>
               </div>

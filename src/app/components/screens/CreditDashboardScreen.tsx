@@ -15,7 +15,7 @@ export function CreditDashboardScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -42,9 +42,9 @@ export function CreditDashboardScreen({ onNavigate }: Props) {
           {[
             { label: "Poor", range: "300–499", color: "#EF4444", min: 300, max: 499 },
             { label: "Fair", range: "500–599", color: "#F59E0B", min: 500, max: 599 },
-            { label: "Good", range: "600–699", color: "#E05A2B", min: 600, max: 699 },
+            { label: "Good", range: "600–699", color: "#D9531F", min: 600, max: 699 },
             { label: "Very Good", range: "700–749", color: "#8B5CF6", min: 700, max: 749 },
-            { label: "Excellent", range: "750–850", color: "#10B981", min: 750, max: 850 },
+            { label: "Excellent", range: "750–850", color: "#12B984", min: 750, max: 850 },
           ].map((band) => {
             const r = { ...band, active: credit ? credit.score >= band.min && credit.score <= band.max : false };
             return (
@@ -52,7 +52,7 @@ export function CreditDashboardScreen({ onNavigate }: Props) {
               <div style={{ width: 12, height: 12, borderRadius: 6, background: r.color, flexShrink: 0 }} />
               <span style={{ fontSize: 13, fontWeight: r.active ? 700 : 500, color: r.active ? "#065F46" : "#374151", flex: 1 }}>{r.label}</span>
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>{r.range}</span>
-              {r.active && <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981" }}>You are here</span>}
+              {r.active && <span style={{ fontSize: 10, fontWeight: 700, color: "#12B984" }}>You are here</span>}
             </div>
             );
           })}

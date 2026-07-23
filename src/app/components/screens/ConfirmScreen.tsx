@@ -64,7 +64,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
             marginBottom: 16,
           }}
         >
-          <CheckCircle size={56} color="#10B981" strokeWidth={1.5} />
+          <CheckCircle size={56} color="#12B984" strokeWidth={1.5} />
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: "#065F46", letterSpacing: -0.5 }}>
           Payment Requested
@@ -101,7 +101,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,

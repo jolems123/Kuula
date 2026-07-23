@@ -68,7 +68,7 @@ function FullScreenMessage({
               fontSize: 15,
               fontWeight: 600,
               color: "white",
-              background: "#FF6B35",
+              background: "#F4612B",
               cursor: "pointer",
             }}
           >
