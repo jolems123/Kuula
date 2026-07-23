@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, X, Globe } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import kuulaLogo from "../../../imports/kuula-tile-1024.png";
+import kuulaLogo from "../../../../public/kuula-logo-light.png";
 import { useAppContext, type UserProfile, type CreditProfile, type LoanProfile, type Role, type Message } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";
 import { api, ApiError } from "../../api/client";
@@ -166,8 +166,8 @@ export function WelcomeScreen({ onNavigate }: Props) {
       <div
         className="absolute top-0 left-0 right-0"
         style={{
-          height: 320,
-          background: "linear-gradient(160deg, #FFF0E8 0%, #FFDCC8 60%, #fff 100%)",
+          height: 340,
+          background: "linear-gradient(165deg, #0F172A 0%, #166534 52%, #ECFDF5 100%)",
         }}
       />
 
@@ -176,31 +176,38 @@ export function WelcomeScreen({ onNavigate }: Props) {
         <div
           className="mb-4"
           style={{
-            width: 96,
-            height: 96,
-            borderRadius: 24,
+            width: 112,
+            height: 112,
+            borderRadius: 28,
             overflow: "hidden",
-            boxShadow: "0 8px 28px rgba(16,185,129,0.3)",
+            border: "1px solid rgba(255,255,255,0.24)",
+            background: "rgba(255,255,255,0.12)",
+            backdropFilter: "blur(4px)",
+            boxShadow: "0 18px 50px rgba(2,6,23,0.38)",
+            display: "grid",
+            placeItems: "center",
+            padding: 12,
           }}
         >
           <ImageWithFallback
             src={kuulaLogo}
             alt="Kuula logo"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
         <h1
           style={{
             fontSize: 36,
-            fontWeight: 700,
-            color: "#1F2937",
+            fontWeight: 800,
+            color: "#F8FAFC",
             letterSpacing: -1,
             marginBottom: 6,
+            textShadow: "0 8px 24px rgba(2,6,23,0.35)",
           }}
         >
           Kuula
         </h1>
-        <p style={{ fontSize: 14, color: "#6B7280", textAlign: "center", maxWidth: 220 }}>
+        <p style={{ fontSize: 14, color: "#DCFCE7", textAlign: "center", maxWidth: 240 }}>
           {t("welcome.subtitle")}
         </p>
       </div>
@@ -210,13 +217,13 @@ export function WelcomeScreen({ onNavigate }: Props) {
         <button
           onClick={() => onNavigate("language")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "#FFF0E8", border: "1px solid #FFDCC8", cursor: "pointer" }}
+          style={{ background: "rgba(255,255,255,0.95)", border: "1px solid #BBF7D0", cursor: "pointer", boxShadow: "0 10px 26px rgba(22,101,52,0.16)" }}
         >
-          <Globe size={13} color="#FF6B35" />
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#FF6B35" }}>
+          <Globe size={13} color="#166534" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#166534" }}>
             {i18n.language === "en" ? "English" : i18n.language === "lg" ? "Oluganda" : i18n.language === "sw" ? "Kiswahili" : i18n.language}
           </span>
-          <ChevronRight size={12} color="#FF6B35" />
+          <ChevronRight size={12} color="#166534" />
         </button>
       </div>
 
@@ -232,7 +239,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             color: "white",
             fontSize: 16,
             fontWeight: 600,
-            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
+            boxShadow: "0 12px 28px rgba(21,128,61,0.35)",
             border: "none",
           }}
         >
@@ -248,11 +255,11 @@ export function WelcomeScreen({ onNavigate }: Props) {
             style={{
               height: 52,
               borderRadius: 16,
-              background: "#FFF0E8",
-              color: "#FF6B35",
+              background: "#ECFDF5",
+              color: "#166534",
               fontSize: 15,
               fontWeight: 600,
-              border: "1.5px solid #FFDCC8",
+              border: "1.5px solid #BBF7D0",
               cursor: "pointer",
             }}
           >
@@ -273,11 +280,11 @@ export function WelcomeScreen({ onNavigate }: Props) {
                   flex: 1,
                   height: 52,
                   borderRadius: 14,
-                  background: isAdmin ? "#FEF2F2" : "#FFF0E8",
-                  color: isAdmin ? "#DC2626" : "#FF6B35",
+                  background: isAdmin ? "#FEF2F2" : "#ECFDF5",
+                  color: isAdmin ? "#B91C1C" : "#166534",
                   fontSize: 13,
-                  fontWeight: 600,
-                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #FFDCC8",
+                  fontWeight: 700,
+                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #BBF7D0",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -296,30 +303,6 @@ export function WelcomeScreen({ onNavigate }: Props) {
         </div>
         )}
 
-        <button
-          disabled
-          className="w-full flex items-center justify-center gap-2"
-          title="Google Sign-In coming soon"
-          style={{
-            height: 52,
-            borderRadius: 16,
-            background: "#F9FAFB",
-            color: "#9CA3AF",
-            fontSize: 15,
-            fontWeight: 500,
-            border: "1.5px solid #E5E7EB",
-            cursor: "not-allowed",
-            opacity: 0.7,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
-            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853" />
-            <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
-            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335" />
-          </svg>
-          {t("welcome.continueGoogle")} — coming soon
-        </button>
 
         <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 4 }}>
           {t("welcome.termsNotice")}
@@ -375,7 +358,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             <button
               onClick={handleApiLogin}
               disabled={apiLoading}
-              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#F5B89A" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
+              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#86EFAC" : "linear-gradient(135deg, #166534, #15803D)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
             >
               {apiLoading ? t("common.signingIn") : t("welcome.signIn")}
             </button>
