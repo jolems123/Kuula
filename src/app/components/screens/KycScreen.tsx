@@ -12,9 +12,11 @@ interface Props {
 export function KycScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const { state } = useAppContext();
-  const [idNumber, setIdNumber] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [dob, setDob] = useState("");
+  // Pre-fill from the account created at sign-up so the user doesn't re-enter
+  // their NIN and name. DOB is not captured at sign-up, so it starts empty.
+  const [idNumber, setIdNumber] = useState(state.user?.nationalId ?? "");
+  const [fullName, setFullName] = useState(state.user?.fullName ?? "");
+  const [dob, setDob] = useState(state.user?.dateOfBirth ?? "");
 
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
