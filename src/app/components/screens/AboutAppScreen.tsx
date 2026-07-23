@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
-import kuulaLogo from "../../../imports/kuula-tile-1024.png";
+import kuulaLogo from "/kuula-logo-light.png";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { api, type Compliance } from "../../api/client";
 import { useTranslation } from "react-i18next";
@@ -29,11 +29,10 @@ export function AboutAppScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 30px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
         {/* Logo */}
-        <div style={{ width: 80, height: 80, borderRadius: 20, overflow: "hidden", boxShadow: "0 4px 16px rgba(16,185,129,0.25)" }}>
-          <ImageWithFallback src={kuulaLogo} alt="Kuula logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <div style={{ width: 180, maxWidth: "62%" }}>
+          <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "auto", objectFit: "contain" }} />
         </div>
         <div style={{ textAlign: "center" }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: "#1F2937", margin: 0, letterSpacing: -1 }}>Kuula</h1>
           <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0" }}>Version 2.4.1 (Build 241)</p>
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 4 }}>
             <Shield size={14} color="#12B984" />
