@@ -38,7 +38,7 @@ export function LanguageScreen({ onNavigate }: Props) {
           alignItems: "center",
           gap: 12,
           padding: "16px 16px 14px",
-          background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+          background: "linear-gradient(135deg, #F4612B, #D9531F)",
         }}
       >
         <button
@@ -70,7 +70,7 @@ export function LanguageScreen({ onNavigate }: Props) {
               width: 56,
               height: 56,
               borderRadius: 28,
-              background: "linear-gradient(135deg, #FFF0E8, #FFDCC8)",
+              background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -78,7 +78,7 @@ export function LanguageScreen({ onNavigate }: Props) {
               border: "2px solid #FFDCC8",
             }}
           >
-            <Globe size={28} color="#FF6B35" />
+            <Globe size={28} color="#F4612B" />
           </div>
           <p style={{ fontSize: 14, color: "#1F2937", fontWeight: 600, margin: "0 0 4px" }}>
             {t("language.subtitle")}
@@ -105,7 +105,7 @@ export function LanguageScreen({ onNavigate }: Props) {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 14,
-                  background: isActive ? "linear-gradient(135deg, #FF6B35, #E05A2B)" : "white",
+                  background: isActive ? "linear-gradient(135deg, #F4612B, #D9531F)" : "white",
                   border: isActive ? "none" : "1.5px solid #E5E7EB",
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -160,7 +160,7 @@ export function LanguageScreen({ onNavigate }: Props) {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 14,
-                  background: isActive ? "#FFF0E8" : "white",
+                  background: isActive ? "#FFF6EF" : "white",
                   border: isActive ? "1.5px solid #FFDCC8" : "1.5px solid #E5E7EB",
                   cursor: "pointer",
                   opacity: 0.7,

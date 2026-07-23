@@ -79,7 +79,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
   const header = (
     <div
       className="flex items-center justify-between px-4 pt-4 pb-4"
-      style={{ background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}
+      style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)" }}
     >
       <div className="flex items-center gap-3">
         <button
@@ -91,7 +91,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
         <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>{t("loanDetail.title")}</span>
       </div>
       {activeLoan && (
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#10B981", background: "#F0FDF4", padding: "4px 12px", borderRadius: 20 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#12B984", background: "#F0FDF4", padding: "4px 12px", borderRadius: 20 }}>
           {t("loanDetail.activeStatus")}
         </span>
       )}
@@ -139,10 +139,10 @@ export function LoanDetailScreen({ onNavigate }: Props) {
         <div className="mt-4">
           <div className="flex justify-between mb-1.5">
             <span style={{ fontSize: 12, color: "#6B7280" }}>{t("loanDetail.repaymentProgress")}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#10B981" }}>{t("loanDetail.percentPaid", { pct })}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#12B984" }}>{t("loanDetail.percentPaid", { pct })}</span>
           </div>
           <div style={{ height: 10, background: "#F3F4F6", borderRadius: 5, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #10B981, #059669)", borderRadius: 5, transition: "width 0.4s ease" }} />
+            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #12B984, #059669)", borderRadius: 5, transition: "width 0.4s ease" }} />
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
             >
               <div className="flex items-center gap-3">
                 {item.status === "paid" ? (
-                  <CheckCircle size={18} color="#10B981" />
+                  <CheckCircle size={18} color="#12B984" />
                 ) : item.status === "pending" ? (
                   <Clock size={18} color="#F59E0B" />
                 ) : item.status === "failed" ? (
@@ -211,7 +211,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
                   style={{
                     fontSize: 10,
                     fontWeight: 600,
-                    color: item.status === "paid" ? "#10B981" : item.status === "pending" ? "#F59E0B" : item.status === "failed" ? "#EF4444" : "#9CA3AF",
+                    color: item.status === "paid" ? "#12B984" : item.status === "pending" ? "#F59E0B" : item.status === "failed" ? "#EF4444" : "#9CA3AF",
                   }}
                 >
                   {item.status === "paid" ? t("loanDetail.paid") : item.status === "pending" ? t("loanDetail.due") : item.status === "failed" ? t("loanDetail.due") : t("loanDetail.scheduled")}
@@ -226,7 +226,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 flex gap-3" style={{ background: "white", borderTop: "1px solid #F3F4F6" }}>
         <button
           onClick={() => onNavigate("confirm")}
-          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(255,107,53,0.3)" }}
+          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(255,107,53,0.3)" }}
         >
           {t("loanDetail.makePayment")}
         </button>

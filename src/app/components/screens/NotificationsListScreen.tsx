@@ -16,9 +16,9 @@ const TYPE_ICON: Record<string, typeof Bell> = {
 };
 
 const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
-  success: { color: "#10B981", bg: "#F0FDF4" },
+  success: { color: "#12B984", bg: "#F0FDF4" },
   warning: { color: "#F59E0B", bg: "#FFF7ED" },
-  info:    { color: "#FF6B35", bg: "#FFF0E8" },
+  info:    { color: "#F4612B", bg: "#FFF6EF" },
   alert:   { color: "#8B5CF6", bg: "#F5F3FF" },
 };
 
@@ -71,7 +71,7 @@ export function NotificationsListScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -103,7 +103,7 @@ export function NotificationsListScreen({ onNavigate }: Props) {
               onClick={() => handleMarkRead(n.id)}
               style={{ background: !n.is_read ? "white" : "#F9FAFB", borderRadius: 16, padding: "14px 16px", border: !n.is_read ? "1px solid #FFDCC8" : "1px solid #F3F4F6", boxShadow: !n.is_read ? "0 2px 8px rgba(255,107,53,0.08)" : "none", cursor: "pointer", textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", width: "100%", position: "relative" }}
             >
-              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#FF6B35", position: "absolute", top: 12, right: 12 }} />}
+              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#F4612B", position: "absolute", top: 12, right: 12 }} />}
               <div style={{ width: 44, height: 44, borderRadius: 14, background: style.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Icon size={22} color={style.color} />
               </div>

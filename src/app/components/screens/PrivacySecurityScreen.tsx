@@ -13,7 +13,7 @@ export function PrivacySecurityScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -24,14 +24,14 @@ export function PrivacySecurityScreen({ onNavigate }: Props) {
         {/* PIN Change */}
         <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: showChange ? 16 : 0 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#FFF0E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Lock size={18} color="#FF6B35" />
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#FFF6EF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Lock size={18} color="#F4612B" />
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", margin: 0 }}>Change PIN</p>
               <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>4-digit app PIN</p>
             </div>
-            <button onClick={() => setShowChange(!showChange)} style={{ padding: "6px 12px", borderRadius: 8, background: "#FFF0E8", border: "none", color: "#FF6B35", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => setShowChange(!showChange)} style={{ padding: "6px 12px", borderRadius: 8, background: "#FFF6EF", border: "none", color: "#F4612B", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               {showChange ? "Cancel" : "Change"}
             </button>
           </div>
@@ -42,10 +42,10 @@ export function PrivacySecurityScreen({ onNavigate }: Props) {
                 {pin.map((d, i) => (
                   <input key={i} type="password" maxLength={1} value={d}
                     onChange={(e) => { const next = [...pin]; next[i] = e.target.value; setPin(next); }}
-                    style={{ width: 50, height: 56, borderRadius: 12, border: d ? "2px solid #FF6B35" : "2px solid #E5E7EB", textAlign: "center", fontSize: 22, fontWeight: 800, color: "#1F2937", background: "#F9FAFB", outline: "none" }} />
+                    style={{ width: 50, height: 56, borderRadius: 12, border: d ? "2px solid #F4612B" : "2px solid #E5E7EB", textAlign: "center", fontSize: 22, fontWeight: 800, color: "#1F2937", background: "#F9FAFB", outline: "none" }} />
                 ))}
               </div>
-              <button style={{ width: "100%", height: 44, marginTop: 14, borderRadius: 10, background: "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+              <button style={{ width: "100%", height: 44, marginTop: 14, borderRadius: 10, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
                 Set New PIN
               </button>
             </div>
@@ -54,7 +54,7 @@ export function PrivacySecurityScreen({ onNavigate }: Props) {
 
         {/* Toggles */}
         {[
-          { icon: Fingerprint, label: "Biometric Login", sub: "Use fingerprint or Face ID", color: "#10B981", key: "biometric", val: biometric, set: setBiometric },
+          { icon: Fingerprint, label: "Biometric Login", sub: "Use fingerprint or Face ID", color: "#12B984", key: "biometric", val: biometric, set: setBiometric },
           { icon: Shield, label: "Two-Factor Authentication", sub: "Extra OTP on each login", color: "#8B5CF6", key: "twoFA", val: twoFA, set: setTwoFA },
         ].map(({ icon: Icon, label, sub, color, key, val, set }) => (
           <div key={key} style={{ background: "white", borderRadius: 16, padding: "14px 16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -81,7 +81,7 @@ export function PrivacySecurityScreen({ onNavigate }: Props) {
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 2 ? "1px solid #F3F4F6" : "none" }}>
               <span style={{ fontSize: 13, color: "#374151" }}>{item.label}</span>
-              <span onClick={() => item.target && onNavigate(item.target)} style={{ fontSize: 12, color: "#FF6B35", fontWeight: 700, cursor: "pointer" }}>{item.action}</span>
+              <span onClick={() => item.target && onNavigate(item.target)} style={{ fontSize: 12, color: "#F4612B", fontWeight: 700, cursor: "pointer" }}>{item.action}</span>
             </div>
           ))}
         </div>

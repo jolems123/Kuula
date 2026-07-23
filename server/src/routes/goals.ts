@@ -44,7 +44,7 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
   }
 
   const goal = await prisma.savingsGoal.create({
-    data: { userId, name: name.trim(), emoji: emoji || "🎯", target: BigInt(Math.round(parsedTarget)), color: color || "#FF6B35" },
+    data: { userId, name: name.trim(), emoji: emoji || "🎯", target: BigInt(Math.round(parsedTarget)), color: color || "#F4612B" },
   });
 
   res.json({ goal: mapGoal(goal) });

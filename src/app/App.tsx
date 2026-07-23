@@ -80,7 +80,7 @@ function ScreenLoader() {
           width: 28,
           height: 28,
           border: "3px solid #E5E7EB",
-          borderTopColor: "#FF6B35",
+          borderTopColor: "#F4612B",
           borderRadius: "50%",
           animation: "kuula-spin 0.7s linear infinite",
         }}

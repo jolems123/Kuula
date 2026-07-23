@@ -14,7 +14,7 @@ function formatUGX(n: number) {
   return "UGX " + n.toLocaleString("en-UG");
 }
 
-const GOAL_COLORS = ["#FF6B35", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
+const GOAL_COLORS = ["#F4612B", "#12B984", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
 const GOAL_EMOJIS = ["🎯", "🎓", "🛡️", "📱", "🌾", "💼", "🏦", "🏠", "✈️", "🚗"];
 
 export function GoalsScreen({ onNavigate }: Props) {
@@ -74,7 +74,7 @@ export function GoalsScreen({ onNavigate }: Props) {
     <div className="flex flex-col h-full bg-gray-50" style={{ paddingTop: 0 }}>
       <div
         className="flex items-center px-4 pt-4 pb-4"
-        style={{ background: "linear-gradient(135deg, #065F46, #10B981)" }}
+        style={{ background: "linear-gradient(135deg, #065F46, #12B984)" }}
       >
         <button
           onClick={() => onNavigate("home")}
@@ -99,14 +99,14 @@ export function GoalsScreen({ onNavigate }: Props) {
             </p>
             {totalSaved > 0 && (
               <div className="flex items-center gap-1.5 mt-1">
-                <TrendingUp size={13} color="#10B981" />
-                <span style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>
+                <TrendingUp size={13} color="#12B984" />
+                <span style={{ fontSize: 12, color: "#12B984", fontWeight: 600 }}>
                   {formatUGX(totalSaved)} {t("goals.acrossGoals", { defaultValue: "across goals" })}
                 </span>
               </div>
             )}
           </div>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(16,185,129,0.3)" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "#12B984", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(16,185,129,0.3)" }}>
             <Target size={24} color="white" />
           </div>
         </div>
@@ -118,7 +118,7 @@ export function GoalsScreen({ onNavigate }: Props) {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1"
-            style={{ padding: "5px 12px", borderRadius: 20, background: "#FFF0E8", border: "none", color: "#FF6B35", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            style={{ padding: "5px 12px", borderRadius: 20, background: "#FFF6EF", border: "none", color: "#F4612B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
           >
             <Plus size={13} /> {t("goals.newGoal")}
           </button>
@@ -164,7 +164,7 @@ export function GoalsScreen({ onNavigate }: Props) {
               <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 6 }}>Emoji</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {GOAL_EMOJIS.map((e) => (
-                  <button key={e} onClick={() => setNewEmoji(e)} style={{ fontSize: 18, padding: "4px 8px", borderRadius: 8, border: newEmoji === e ? "2px solid #FF6B35" : "1.5px solid #E5E7EB", background: newEmoji === e ? "#FFF0E8" : "white", cursor: "pointer" }}>{e}</button>
+                  <button key={e} onClick={() => setNewEmoji(e)} style={{ fontSize: 18, padding: "4px 8px", borderRadius: 8, border: newEmoji === e ? "2px solid #F4612B" : "1.5px solid #E5E7EB", background: newEmoji === e ? "#FFF6EF" : "white", cursor: "pointer" }}>{e}</button>
                 ))}
               </div>
             </div>
@@ -179,7 +179,7 @@ export function GoalsScreen({ onNavigate }: Props) {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowCreate(false)} style={{ flex: 1, height: 40, borderRadius: 10, background: "#F3F4F6", border: "none", color: "#6B7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
               <button onClick={handleCreate} disabled={creating || !newName.trim() || !newTarget}
-                style={{ flex: 2, height: 40, borderRadius: 10, background: creating ? "#9CA3AF" : "#10B981", border: "none", color: "white", fontSize: 13, fontWeight: 700, cursor: creating ? "not-allowed" : "pointer" }}>
+                style={{ flex: 2, height: 40, borderRadius: 10, background: creating ? "#9CA3AF" : "#12B984", border: "none", color: "white", fontSize: 13, fontWeight: 700, cursor: creating ? "not-allowed" : "pointer" }}>
                 {creating ? "Creating…" : "Create Goal"}
               </button>
             </div>

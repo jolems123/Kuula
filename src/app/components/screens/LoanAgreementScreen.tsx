@@ -98,7 +98,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("loan-detail")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -113,7 +113,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       {/* Agreement status banner */}
       <div style={{ background: signed ? "#F0FDF4" : "#FFF7ED", padding: "10px 16px", borderBottom: `1px solid ${signed ? "#A7F3D0" : "#FED7AA"}`, display: "flex", alignItems: "center", gap: 8 }}>
         {signed
-          ? <><CheckCircle size={16} color="#10B981" /><span style={{ fontSize: 12, color: "#065F46", fontWeight: 600 }}>Digitally signed by {borrower} · {fmtDate(signedDate.toISOString())}</span></>
+          ? <><CheckCircle size={16} color="#12B984" /><span style={{ fontSize: 12, color: "#065F46", fontWeight: 600 }}>Digitally signed by {borrower} · {fmtDate(signedDate.toISOString())}</span></>
           : <><Pen size={16} color="#D97706" /><span style={{ fontSize: 12, color: "#92400E", fontWeight: 600 }}>Requires your e-signature below</span></>
         }
       </div>
@@ -143,10 +143,10 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
           )}
 
           {signed && (
-            <div style={{ border: "2px solid #10B981", borderRadius: 12, padding: "16px", background: "#F0FDF4" }}>
+            <div style={{ border: "2px solid #12B984", borderRadius: 12, padding: "16px", background: "#F0FDF4" }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#065F46", margin: "0 0 4px" }}>Digitally Signed</p>
               <p style={{ fontSize: 24, fontFamily: "cursive", color: "#1F2937", margin: "0 0 4px" }}>{borrower}</p>
-              <p style={{ fontSize: 11, color: "#10B981", margin: 0 }}>Signed {fmtDate(signedDate.toISOString())} · Kuula App v2.4.1</p>
+              <p style={{ fontSize: 11, color: "#12B984", margin: 0 }}>Signed {fmtDate(signedDate.toISOString())} · Kuula App v2.4.1</p>
             </div>
           )}
         </div>
@@ -167,9 +167,9 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         ) : (
           <button
             onClick={() => setSigned(true)}
-            style={{ width: "100%", height: 52, borderRadius: 14, background: signed ? "#F3F4F6" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: signed ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            style={{ width: "100%", height: 52, borderRadius: 14, background: signed ? "#F3F4F6" : "linear-gradient(135deg, #F4612B, #D9531F)", color: signed ? "#6B7280" : "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
-            {signed ? <><CheckCircle size={18} color="#10B981" /> Agreement Signed</> : <><Pen size={18} /> {isOffer ? "Sign to Continue" : "Sign Agreement"}</>}
+            {signed ? <><CheckCircle size={18} color="#12B984" /> Agreement Signed</> : <><Pen size={18} /> {isOffer ? "Sign to Continue" : "Sign Agreement"}</>}
           </button>
         )}
       </div>

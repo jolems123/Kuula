@@ -24,7 +24,7 @@ export function GoalDetailScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #065F46, #10B981)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #065F46, #12B984)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("goals")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -43,7 +43,7 @@ export function GoalDetailScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 36, fontWeight: 900, color: "#065F46", margin: "4px 0", letterSpacing: -1 }}>{ugx(current)}</p>
           <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px" }}>{t("goalDetail.ofGoal", { amount: ugx(target) })}</p>
           <div style={{ height: 12, background: "rgba(0,0,0,0.08)", borderRadius: 6 }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #10B981, #059669)", borderRadius: 6 }} />
+            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #12B984, #059669)", borderRadius: 6 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
             <span style={{ fontSize: 12, color: "#065F46", fontWeight: 600 }}>{t("goalDetail.pctSaved", { pct })}</span>
@@ -54,8 +54,8 @@ export function GoalDetailScreen({ onNavigate }: Props) {
         {/* Stats row */}
         <div style={{ display: "flex", gap: 10 }}>
           {[
-            { label: t("goalDetail.targetDate"), value: "Oct 2026", Icon: Calendar, color: "#FF6B35" },
-            { label: t("goalDetail.monthlyNeeded"), value: ugx(monthly), Icon: TrendingUp, color: "#10B981" },
+            { label: t("goalDetail.targetDate"), value: "Oct 2026", Icon: Calendar, color: "#F4612B" },
+            { label: t("goalDetail.monthlyNeeded"), value: ugx(monthly), Icon: TrendingUp, color: "#12B984" },
             { label: t("goalDetail.autoSave"), value: "UGX 30K/mo", Icon: Plus, color: "#F59E0B" },
           ].map(({ label, value, Icon, color }) => (
             <div key={label} style={{ flex: 1, background: "white", borderRadius: 12, padding: "12px 10px", textAlign: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
@@ -80,14 +80,14 @@ export function GoalDetailScreen({ onNavigate }: Props) {
                   <p style={{ fontSize: 10, color: "#9CA3AF", margin: 0 }}>{h.date}</p>
                 </div>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#10B981" }}>+{ugx(h.amount)}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#12B984" }}>+{ugx(h.amount)}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div style={{ padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6", display: "flex", gap: 10 }}>
-        <button onClick={() => onNavigate("add-money")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #10B981, #059669)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
+        <button onClick={() => onNavigate("add-money")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #12B984, #059669)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
           {t("goals.addMoney")}
         </button>
         <button onClick={() => onNavigate("withdraw-savings")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F4F6", color: "#374151", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>

@@ -90,7 +90,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
             width: 132,
             height: 132,
             borderRadius: 36,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -99,7 +99,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
             position: "relative",
           }}
         >
-          <Icon size={56} color="#C4920A" strokeWidth={2.2} />
+          <Icon size={56} color="#12B984" strokeWidth={2.2} />
         </div>
         <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: -0.5, marginBottom: 12 }}>
           {slides[index].title}
@@ -123,7 +123,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
               border: "none",
               padding: 0,
               cursor: "pointer",
-              background: i === index ? "#FF6B35" : "#D1D5DB",
+              background: i === index ? "#F4612B" : "#D1D5DB",
               transition: "width 0.25s, background 0.25s",
             }}
           />
@@ -138,7 +138,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,
@@ -155,7 +155,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           {t("onboarding.haveAccount")}{" "}
           <button
             onClick={finish}
-            style={{ background: "none", border: "none", color: "#FF6B35", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "#F4612B", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
           >
             {t("onboarding.logIn")}
           </button>

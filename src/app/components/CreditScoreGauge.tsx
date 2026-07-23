@@ -7,8 +7,8 @@ interface Props {
 }
 
 function scoreLabel(s: number) {
-  if (s >= 750) return { text: "Excellent", color: "#10B981" };
-  if (s >= 700) return { text: "Good", color: "#E05A2B" };
+  if (s >= 750) return { text: "Excellent", color: "#12B984" };
+  if (s >= 700) return { text: "Good", color: "#D9531F" };
   if (s >= 650) return { text: "Fair", color: "#F59E0B" };
   if (s >= 580) return { text: "Poor", color: "#EF4444" };
   return { text: "Very Poor", color: "#DC2626" };

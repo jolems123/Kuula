@@ -44,7 +44,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     if (p.length < 8) return { level: 1, label: t("createAccount.weak"), color: "#EF4444" };
     if (p.length < 10 || !/[A-Z]/.test(p) || !/\d/.test(p))
       return { level: 2, label: t("createAccount.fair"), color: "#F59E0B" };
-    return { level: 3, label: t("createAccount.strong"), color: "#10B981" };
+    return { level: 3, label: t("createAccount.strong"), color: "#12B984" };
   };
 
   const strength = passwordStrength(form.password);
@@ -144,7 +144,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
           </div>
           {errors.email && <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{errors.email}</p>}
           {form.email && !errors.email && emailValid(form.email) && (
-            <p style={{ fontSize: 11, color: "#10B981", marginTop: 4 }}>✓ {t("createAccount.validEmail")}</p>
+            <p style={{ fontSize: 11, color: "#12B984", marginTop: 4 }}>✓ {t("createAccount.validEmail")}</p>
           )}
         </div>
 

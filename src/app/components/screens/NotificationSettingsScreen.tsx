@@ -47,7 +47,7 @@ export function NotificationSettingsScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -66,7 +66,7 @@ export function NotificationSettingsScreen({ onNavigate }: Props) {
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>{item.label}</p>
                   <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>{item.sub}</p>
                 </div>
-                <button onClick={() => toggle(item.key)} style={{ width: 46, height: 26, borderRadius: 13, background: settings[item.key] ? "#FF6B35" : "#D1D5DB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: settings[item.key] ? "flex-end" : "flex-start", padding: 3, transition: "all 0.2s", flexShrink: 0 }}>
+                <button onClick={() => toggle(item.key)} style={{ width: 46, height: 26, borderRadius: 13, background: settings[item.key] ? "#F4612B" : "#D1D5DB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: settings[item.key] ? "flex-end" : "flex-start", padding: 3, transition: "all 0.2s", flexShrink: 0 }}>
                   <div style={{ width: 20, height: 20, borderRadius: 10, background: "white" }} />
                 </button>
               </div>

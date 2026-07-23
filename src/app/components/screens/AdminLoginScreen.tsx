@@ -148,22 +148,22 @@ export function AdminLoginScreen({ onNavigate }: Props) {
                 </button>
               </div>
             </div>
-            <button onClick={resetPw} style={{ fontSize: 12, color: "#FF6B35", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
+            <button onClick={resetPw} style={{ fontSize: 12, color: "#F4612B", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
           </div>
 
           {notice && (
-            <p style={{ fontSize: 12, color: "#10B981", margin: "-6px 0 0", textAlign: "center" }}>{notice}</p>
+            <p style={{ fontSize: 12, color: "#12B984", margin: "-6px 0 0", textAlign: "center" }}>{notice}</p>
           )}
           {error && (
             <p style={{ fontSize: 12, color: "#EF4444", margin: "-6px 0 0", textAlign: "center" }}>{error}</p>
           )}
 
-          <button onClick={submit} disabled={loading || lockoutRemaining > 0} style={{ width: "100%", height: 48, borderRadius: 12, background: (loading || lockoutRemaining > 0) ? "#9CA3AF" : "linear-gradient(135deg, #FF6B35, #E05A2B)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: (loading || lockoutRemaining > 0) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(255,107,53,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={submit} disabled={loading || lockoutRemaining > 0} style={{ width: "100%", height: 48, borderRadius: 12, background: (loading || lockoutRemaining > 0) ? "#9CA3AF" : "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: (loading || lockoutRemaining > 0) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(255,107,53,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {loading ? <><div style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Signing in...</> : lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : "Sign In to Admin"}
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#FFF0E8", border: "1px solid #FFDCC8" }}>
-            <Shield size={14} color="#FF6B35" />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#FFF6EF", border: "1px solid #FFDCC8" }}>
+            <Shield size={14} color="#F4612B" />
             <span style={{ fontSize: 11, color: "#374151" }}>Two-factor authentication required for all staff accounts</span>
           </div>
         </div>

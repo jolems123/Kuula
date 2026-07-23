@@ -18,7 +18,7 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #FF6B35, #E05A2B)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
         <button onClick={() => onNavigate("credit-dashboard")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -47,12 +47,12 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>{tip.title}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: tip.impact === "+High" ? "#10B981" : tip.impact === "+Medium" ? "#F59E0B" : "#9CA3AF", background: "#F3F4F6", padding: "2px 6px", borderRadius: 6 }}>{tip.impact}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: tip.impact === "+High" ? "#12B984" : tip.impact === "+Medium" ? "#F59E0B" : "#9CA3AF", background: "#F3F4F6", padding: "2px 6px", borderRadius: 6 }}>{tip.impact}</span>
               </div>
               <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>{tip.desc}</p>
             </div>
             {tip.done
-              ? <CheckCircle size={20} color="#10B981" style={{ flexShrink: 0 }} />
+              ? <CheckCircle size={20} color="#12B984" style={{ flexShrink: 0 }} />
               : <Clock size={20} color="#D1D5DB" style={{ flexShrink: 0 }} />
             }
           </div>

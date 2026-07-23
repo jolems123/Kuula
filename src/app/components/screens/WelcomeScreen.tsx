@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, X, Globe } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import kuulaLogo from "../../../../public/kuula-logo-light.png";
+import kuulaLogo from "/kuula-logo-light.png";
 import { useAppContext, type UserProfile, type CreditProfile, type LoanProfile, type Role, type Message } from "../../context/AppContext";
 import mockData from "../../data/mockData.json";
 import { api, ApiError } from "../../api/client";
@@ -235,7 +235,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+            background: "linear-gradient(135deg, #F4612B, #D9531F)",
             color: "white",
             fontSize: 16,
             fontWeight: 600,
@@ -440,7 +440,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
                 width: "100%",
                 height: 48,
                 borderRadius: 14,
-                background: "linear-gradient(135deg, #FF6B35, #E05A2B)",
+                background: "linear-gradient(135deg, #F4612B, #D9531F)",
                 color: "white",
                 fontSize: 15,
                 fontWeight: 700,
