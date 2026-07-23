@@ -66,6 +66,10 @@ app.use(
   })
 );
 
+// KYC accepts two base64-encoded ID images, so it needs a larger body limit
+// than the rest of the API. This is scoped to /api/kyc and runs before the
+// global 1mb parser; express.json is idempotent (skips if body already read).
+app.use("/api/kyc", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 // Health check

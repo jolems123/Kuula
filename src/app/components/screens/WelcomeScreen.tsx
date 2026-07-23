@@ -203,7 +203,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
       {/* CTA buttons */}
       <div className="relative flex-1 flex flex-col justify-end px-6 pb-10 gap-3">
         <button
-          onClick={() => onNavigate("kyc")}
+          onClick={() => onNavigate("create-account")}
           className="w-full flex items-center justify-center gap-2"
           style={{
             height: 56,
@@ -216,7 +216,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             border: "none",
           }}
         >
-          {t("welcome.continueNationalId")}
+          {t("createAccount.createAccount")}
           <ChevronRight size={18} />
         </button>
 

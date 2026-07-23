@@ -22,6 +22,11 @@ model User {
   momoTxnCount   Int      @default(0) @map("momo_txn_count")
   crbStatus      String   @default("thin") @map("crb_status") // "clean" | "thin" | "adverse"
   kycVerified    Boolean  @default(false) @map("kyc_verified")
+  kycDocFrontRef String?  @map("kyc_doc_front_ref")
+  kycDocBackRef  String?  @map("kyc_doc_back_ref")
+  kycProvider    String?  @map("kyc_provider")
+  kycReference   String?  @map("kyc_reference")
+  kycSubmittedAt DateTime? @map("kyc_submitted_at")
   loansTotal     Int      @default(0) @map("loans_total")
   loansRepaid    Int      @default(0) @map("loans_repaid")
   deletedAt      DateTime? @map("deleted_at")

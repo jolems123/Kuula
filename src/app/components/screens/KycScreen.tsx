@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
+import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -45,6 +46,14 @@ export function KycScreen({ onNavigate }: Props) {
       return "";
     }
   };
+
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Could not read the selected image."));
+      reader.readAsDataURL(file);
+    });
 
   const onPickFile = (side: "front" | "back") => {
     if (side === "front") frontInputRef.current?.click();
@@ -93,7 +102,17 @@ export function KycScreen({ onNavigate }: Props) {
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
       <div className="flex items-center px-4 pt-4 pb-2">
         <button
-          onClick={() => onNavigate("welcome")}
+          onClick={() => {
+            if (step === 1) {
+              onNavigate("create-account");
+              return;
+            }
+            if (step === 2) {
+              setStep(1);
+              return;
+            }
+            onNavigate("welcome");
+          }}
           className="flex items-center justify-center"
           style={{ width: 40, height: 40, borderRadius: 12, background: "#F3F4F6", border: "none" }}
         >
@@ -169,7 +188,8 @@ export function KycScreen({ onNavigate }: Props) {
               </label>
               <input
                 value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value)}
+                onChange={(e) => setIdNumber(e.target.value.toUpperCase())}
+                maxLength={14}
                 placeholder={t("kyc.ninPlaceholder")}
                 style={{
                   width: "100%",
@@ -389,8 +409,8 @@ export function KycScreen({ onNavigate }: Props) {
             setSuccess("");
 
             if (step === 1) {
-              if (!idNumber.trim() || idNumber.trim().length < 6) {
-                setError("Please enter a valid National ID number.");
+              if (!idNumber.trim() || !isValidUgandaNin(idNumber)) {
+                setError("Please enter a valid 14-character National ID (NIN), e.g. CM8602410E8EWE.");
                 return;
               }
               if (!fullName.trim() || fullName.trim().length < 2) {
@@ -419,12 +439,17 @@ export function KycScreen({ onNavigate }: Props) {
 
               try {
                 setIsSubmitting(true);
+                const [documentFront, documentBack] = await Promise.all([
+                  readFileAsDataUrl(frontFile),
+                  readFileAsDataUrl(backFile),
+                ]);
                 await api.submitKyc(token, {
-                  nationalId: idNumber.trim(),
+                  nationalId: normalizeNin(idNumber),
                   fullName: fullName.trim(),
                   dob,
                   documentType: "national-id",
-                  documentRef: `${frontFile.name}|${backFile.name}`,
+                  documentFront,
+                  documentBack,
                 });
                 setSuccess("KYC submitted successfully. We will review and notify you.");
                 setStep(3);
@@ -437,7 +462,7 @@ export function KycScreen({ onNavigate }: Props) {
               return;
             }
 
-            onNavigate("home");
+            onNavigate("welcome");
           }}
           style={{
             width: "100%",
