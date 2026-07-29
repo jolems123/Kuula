@@ -10,47 +10,40 @@ import {
 import { useAppContext } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { env } from "./config/env";
-import { api } from "./api/client";
+import type { SessionPayload } from "./api/types";
+import { restoreSession, onSessionLost } from "./lib/session";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 
-const STORAGE_KEY = "kuula_session_token";
-
-function persistToken(token: string): void {
-  try { localStorage.setItem(STORAGE_KEY, token); } catch { /* noop */ }
-}
-
-function clearPersistedToken(): void {
-  try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
-}
-
-function readPersistedToken(): string | null {
-  try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
-}
-
 /**
- * Restores an existing session on app start so the user stays logged
- * in across reloads using the Node backend token.
- * Returns whether the initial check is still running so the UI can hold
- * a splash until it resolves.
+ * Restores an existing session on app start (C-03).
+ *
+ * There is deliberately no token in `localStorage` to read any more. Restoration
+ * is an exchange of the refresh token — an httpOnly cookie on web, an OS
+ * keystore entry on native — for a fresh 15-minute access token that is held
+ * only in memory.
+ *
+ * Returns whether the initial check is still running so the UI can hold a
+ * splash until it resolves.
  */
 function useSessionBootstrap(): boolean {
-  const { state, login } = useAppContext();
+  const { state, login, logout } = useAppContext();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     let active = true;
+
+    // A refresh that fails later (revoked token, expired session, password
+    // change, another device signing everyone out) drops the user to welcome
+    // rather than leaving a half-authenticated UI.
+    onSessionLost(() => { if (active) logout(); });
+
     (async () => {
-      const token = readPersistedToken();
-      if (token && !state.session.isAuthenticated) {
-        try {
-          const s = await api.me(token);
-          if (active) {
-            login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
-            persistToken(s.token);
-          }
-        } catch {
-          clearPersistedToken();
+      if (!state.session.isAuthenticated) {
+        const s = await restoreSession();
+        if (active && s) {
+          const p = s as unknown as SessionPayload;
+          login(p.token, p.user, p.credit, p.loan, p.savingsBalance, p.role, p.messages, p.unreadNotifications);
         }
       }
       if (active) setChecking(false);

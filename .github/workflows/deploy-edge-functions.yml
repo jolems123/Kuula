@@ -1,22 +1,31 @@
-name: Deploy Supabase Edge Functions
+# DISABLED — Supabase Edge Functions are retired.
+#
+# See KUULA_PAYMENT_ARCHITECTURE.md and supabase/functions/RETIRED.md.
+#
+# The Node backend in server/ is the single authoritative backend for loan
+# state, disbursement, repayment, payment verification and webhooks. This
+# workflow used to deploy the Supabase payment functions on every push touching
+# supabase/functions/**, which would stand a second financial backend back up
+# and reintroduce finding C-05.
+#
+# The push trigger is removed deliberately. Do not restore it. If Supabase
+# functions are ever needed again, that decision belongs in an architecture
+# review, not in a path filter.
+name: Deploy Supabase Edge Functions (DISABLED)
 
 on:
-  push:
-    branches: [main]
-    paths: ['supabase/functions/**']
   workflow_dispatch:
 
 jobs:
-  deploy:
+  blocked:
+    name: Refuse to deploy a retired backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Deploy all Edge Functions
-        run: supabase functions deploy --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Explain and fail
+        run: |
+          echo "::error::Supabase Edge Functions are retired. Kuula has ONE authoritative"
+          echo "::error::backend: the Node/Express service in server/. Deploying these"
+          echo "::error::functions would create a second system writing the same loans and"
+          echo "::error::money, which is finding C-05 in the launch audit."
+          echo "::error::See KUULA_PAYMENT_ARCHITECTURE.md before changing this."
+          exit 1

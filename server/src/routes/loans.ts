@@ -3,8 +3,19 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { localQuote } from "../lib/pricing.js";
+import { requestDisbursement } from "../lib/disbursement.js";
+import { requestCollection } from "../lib/repayment.js";
+import { audit } from "../lib/audit.js";
+import { lockLoanApplication, LockContendedError } from "../lib/db-lock.js";
 
 const router = Router();
+
+/** Client-supplied dedupe key, when the app sends one. */
+function idempotencyKey(req: Request): string | undefined {
+  const raw = req.headers["idempotency-key"];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value ? String(value).slice(0, 200) : undefined;
+}
 
 // GET /api/loans/applications
 router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
@@ -57,7 +68,22 @@ async function createLoanApplicationForUser(
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { savingsAccount: true } });
   if (!user) throw new AppError("User not found", 404);
 
-  const quote = localQuote(Number(payload.amount), Number(payload.termDays), Number(user.savingsAccount?.balance ?? 0));
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new AppError("Enter a loan amount greater than zero", 400);
+  }
+
+  // One live loan at a time. The database enforces this too
+  // (`loan_applications_one_live_loan_per_borrower`); checking here turns a
+  // constraint violation into a clear message.
+  const live = await prisma.loanApplication.findFirst({
+    where: { applicantId: userId, status: { in: ["disbursing", "active", "overdue"] } },
+  });
+  if (live) {
+    throw new AppError("You already have an active loan. Repay it before applying for another.", 409);
+  }
+
+  const quote = localQuote(amount, Number(payload.termDays), Number(user.savingsAccount?.balance ?? 0));
 
   const application = await prisma.loanApplication.create({
     data: {
@@ -126,98 +152,104 @@ router.post("/top-up", authenticateToken, async (req: Request, res: Response) =>
   });
 });
 
-// POST /api/loans/applications/decision
+/**
+ * POST /api/loans/applications/decision — admin approve/reject.
+ *
+ * Approval produces an OFFER and nothing else. No money moves and no loan is
+ * booked here: the borrower must accept, and only a provider-confirmed payout
+ * makes the loan active (C-01).
+ *
+ * The decision is taken under a row lock with a status precondition, so two
+ * admins deciding simultaneously, a double-clicked button, and a client retry
+ * all converge on one decision (C-06).
+ */
 router.post("/applications/decision", authenticateToken, async (req: Request, res: Response) => {
   if (req.user!.role !== "admin") throw new AppError("Admin access required", 403);
 
   const { id, decision, notes } = req.body;
+  if (!id) throw new AppError("Application id is required", 400);
+  if (decision !== "approved" && decision !== "rejected") {
+    throw new AppError("Decision must be 'approved' or 'rejected'", 400);
+  }
   const status = decision === "approved" ? "offered" : "rejected";
 
-  const application = await prisma.loanApplication.update({
-    where: { id, status: "pending" },
-    data: { status, decisionNotes: notes || null, decidedAt: new Date() },
-  });
+  try {
+    const application = await prisma.$transaction(async (tx) => {
+      const found = await lockLoanApplication(tx, String(id));
+      if (!found) throw new AppError("Loan application not found", 404);
 
-  res.json({ application: mapApplication(application) });
+      const app = await tx.loanApplication.findUniqueOrThrow({ where: { id: String(id) } });
+      if (!["pending", "resubmitted"].includes(app.status)) {
+        // The second admin through sees the first admin's committed decision.
+        throw new AppError(`This application has already been decided (${app.status}).`, 409);
+      }
+
+      const updated = await tx.loanApplication.update({
+        where: { id: app.id },
+        data: { status, decisionNotes: notes || null, decidedAt: new Date(), approvedBy: req.user!.userId },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: app.applicantId,
+          title: decision === "approved" ? "Loan approved" : "Loan not approved",
+          body:
+            decision === "approved"
+              ? `Your loan offer for UGX ${Number(app.amount).toLocaleString()} is ready. Accept it to receive the funds.`
+              : `Your loan application was not approved.${notes ? ` ${notes}` : ""}`,
+          type: decision === "approved" ? "success" : "warning",
+        },
+      });
+
+      await audit(
+        {
+          actorId: req.user!.userId,
+          actorRole: "admin",
+          action: `loan.${decision}`,
+          entityType: "loan_application",
+          entityId: app.id,
+          metadata: { amount: Number(app.amount), notes: notes || null },
+        },
+        tx
+      );
+
+      return updated;
+    });
+
+    res.json({ application: mapApplication(application) });
+  } catch (err) {
+    if (err instanceof LockContendedError) {
+      throw new AppError("This application is already being decided by another reviewer.", 409);
+    }
+    throw err;
+  }
 });
 
-// POST /api/loans/:id/accept
+/**
+ * POST /api/loans/:id/accept — borrower accepts an offer, triggering a REAL
+ * mobile-money payout (C-01).
+ *
+ * Responds 202: the loan is NOT disbursed yet. It becomes active only when the
+ * provider confirms the payout on the webhook.
+ */
 router.post("/:id/accept", authenticateToken, async (req: Request, res: Response) => {
-  const id = String(req.params.id);
-  const userId = req.user!.userId;
-
-  const existing = await prisma.loanApplication.findUnique({ where: { id } });
-  if (!existing || existing.applicantId !== userId) {
-    throw new AppError("Loan offer not found", 404);
-  }
-  if (existing.status !== "offered") {
-    throw new AppError("Only offered loans can be accepted", 400);
-  }
-
-  const principal = Math.max(0, Number(existing.amount));
-  const total = Math.max(Number(existing.total), principal);
-  const loanId = existing.loanId ?? existing.id;
-
-  const result = await prisma.$transaction(async (tx) => {
-    const application = await tx.loanApplication.update({
-      where: { id: existing.id },
-      data: {
-        status: "active",
-        loanId,
-      },
-    });
-
-    const repayment = await tx.repayment.findFirst({
-      where: { userId, loanId, status: { not: "paid" } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const effectiveRepayment = repayment ?? await tx.repayment.create({
-      data: {
-        userId,
-        loanId,
-        total: BigInt(Math.round(total)),
-        amountPaid: BigInt(0),
-        dueDate: new Date(Date.now() + application.termDays * 24 * 60 * 60 * 1000),
-        status: "scheduled",
-        attempts: [],
-      },
-    });
-
-    await tx.transaction.create({
-      data: {
-        userId,
-        loanId,
-        type: "loan_disbursement",
-        amount: BigInt(Math.round(principal)),
-        status: "completed",
-      },
-    });
-
-    await tx.wallet.upsert({
-      where: { userId },
-      update: { balance: { increment: Math.round(principal) } },
-      create: { userId, balance: BigInt(Math.round(principal)) },
-    });
-
-    await tx.notification.create({
-      data: {
-        userId,
-        title: "Loan Disbursed",
-        body: `Your loan of UGX ${Math.round(principal).toLocaleString()} has been disbursed to your wallet.`,
-        type: "success",
-      },
-    });
-
-    return { application, repayment: effectiveRepayment };
+  const result = await requestDisbursement({
+    applicantId: req.user!.userId,
+    applicationId: String(req.params.id),
+    idempotencyKey: idempotencyKey(req),
   });
 
-  res.json({
-    application: mapApplication(result.application),
-    repayment: {
-      ...result.repayment,
-      total: Number(result.repayment.total),
-      amountPaid: Number(result.repayment.amountPaid),
+  const application = await prisma.loanApplication.findUnique({ where: { id: String(req.params.id) } });
+
+  res.status(result.status === "failed" ? 200 : 202).json({
+    application: application ? mapApplication(application) : null,
+    disbursement: {
+      status: result.status,
+      reference: result.reference,
+      providerRef: result.providerRef,
+      amount: result.amount,
+      message: result.message,
+      needsReconciliation: result.needsReconciliation ?? false,
     },
   });
 });
@@ -261,69 +293,43 @@ router.get("/repayment", authenticateToken, async (req: Request, res: Response) 
   });
 });
 
-// POST /api/loans/repayment/pay
+/**
+ * POST /api/loans/repayment/pay — borrower initiates a REAL mobile-money
+ * collection (C-02).
+ *
+ * Responds 202. Nothing about the loan balance changes here: this only sends a
+ * request-to-pay prompt to the borrower's handset and records a pending ledger
+ * row. The balance moves when — and only when — the provider confirms it on the
+ * webhook.
+ */
 router.post("/repayment/pay", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
-  const { amount } = req.body;
+  const rawAmount = req.body?.amount;
+  // The client value is a cap, not an instruction; the server recomputes what
+  // is actually payable under a row lock.
+  const requestedAmount = rawAmount == null || rawAmount === "" ? null : Number(rawAmount);
+
+  const result = await requestCollection({ userId, requestedAmount, idempotencyKey: idempotencyKey(req) });
 
   const repayment = await prisma.repayment.findFirst({
     where: { userId, status: { not: "paid" } },
     orderBy: { dueDate: "asc" },
   });
 
-  if (!repayment) {
-    res.json({
-      repayment: null,
-      attempt: { success: false, reason: "no-active-loan" },
-      isPartial: false,
-    });
-    return;
-  }
-
-  const wallet = await prisma.wallet.findUnique({ where: { userId } });
-  const balance = Number(wallet?.balance ?? 0);
-  const outstanding = Number(repayment.total) - Number(repayment.amountPaid);
-  const payAmount = amount ? Math.min(Math.round(Number(amount)), outstanding) : outstanding;
-
-  if (balance < payAmount || payAmount <= 0) {
-    res.json({
-      repayment: { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid) },
-      attempt: { success: false, reason: "insufficient-wallet-balance" },
-      isPartial: false,
-    });
-    return;
-  }
-
-  const newPaid = Number(repayment.amountPaid) + payAmount;
-  const receiptId = "RCPT-" + Date.now();
-  const isPartial = payAmount < outstanding;
-
-  await prisma.wallet.update({ where: { userId }, data: { balance: { decrement: payAmount } } });
-
-  if (newPaid >= Number(repayment.total)) {
-    await prisma.repayment.update({
-      where: { id: repayment.id },
-      data: { status: "paid", amountPaid: repayment.total, receiptId },
-    });
-    await prisma.loanApplication.updateMany({
-      where: { applicantId: userId, loanId: repayment.loanId },
-      data: { status: "paid" },
-    });
-  } else {
-    await prisma.repayment.update({
-      where: { id: repayment.id },
-      data: { amountPaid: newPaid, receiptId },
-    });
-  }
-
-  await prisma.transaction.create({
-    data: { userId, loanId: repayment.loanId, type: "loan_payment", amount: BigInt(payAmount), status: "completed" },
-  });
-
-  res.json({
-    repayment: { ...repayment, total: Number(repayment.total), amountPaid: newPaid, receiptId },
-    attempt: { success: true, reason: isPartial ? "partial-payment-collected" : "collected" },
-    isPartial,
+  res.status(result.status === "pending" ? 202 : 200).json({
+    repayment: repayment
+      ? { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid) }
+      : null,
+    // The balance is unchanged until settlement, so `success` here would be a
+    // lie. Callers key off `isPending`.
+    attempt: { success: false, reason: result.reason },
+    isPending: result.isPending,
+    isPartial: result.outstanding > 0 && result.amount < result.outstanding,
+    status: result.status,
+    amount: result.amount,
+    reference: result.reference,
+    uuid: result.providerRef,
+    message: result.message,
   });
 });
 

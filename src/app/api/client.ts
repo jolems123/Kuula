@@ -6,6 +6,8 @@
  */
 import { env } from "../config/env";
 import type { Message } from "../context/AppContext";
+import { getAccessToken, adoptSession, endSession } from "../lib/session";
+import { isNativePlatform } from "../lib/secure-store";
 import {
   ApiError,
   type SessionPayload, type LoanApplication, type LoanQuote,
@@ -16,13 +18,38 @@ import type { AdminStats, InvestorReport, CustomerRow, SavingsGoal, AppNotificat
 export { ApiError };
 export type { SessionPayload, LoanApplication, LoanQuote, CreditScore, Compliance };
 
+function platformHeaders(): Record<string, string> {
+  // Tells the server to return the refresh token in the body (for the OS
+  // keystore) rather than as a cookie. Web gets the httpOnly cookie instead.
+  return isNativePlatform() ? { "X-Client-Platform": "native" } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), env.API_TIMEOUT_MS);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...platformHeaders(),
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+
+  // Screens still pass the token they were handed at login. Access tokens now
+  // expire after 15 minutes, so that value goes stale while a screen is open.
+  // Any request that wants authentication gets the CURRENT token instead,
+  // refreshing it transparently — which is why no screen had to change.
+  if (headers.Authorization) {
+    const fresh = await getAccessToken();
+    if (!fresh) throw new ApiError("Your session has expired. Please sign in again.", 401);
+    headers.Authorization = `Bearer ${fresh}`;
+  }
+
   try {
     const res = await fetch(env.API_BASE_URL + path, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers,
+      // Carries the httpOnly refresh cookie on web.
+      credentials: "include",
       signal: controller.signal,
     });
     const body = await res.json().catch(() => ({}));
@@ -41,20 +68,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+/** Wraps a call that establishes a session so the token is captured centrally. */
+async function withSession(promise: Promise<SessionPayload>): Promise<SessionPayload> {
+  const payload = await promise;
+  await adoptSession(payload as unknown as { token: string; refreshToken?: string; expiresIn?: number });
+  return payload;
+}
+
 const nodeApi = {
   health: () => request<{ ok: boolean }>("/api/health"),
 
   login: (phone: string, pin: string) =>
-    request<SessionPayload>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ phone, pin }),
-    }),
+    withSession(
+      request<SessionPayload>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ phone, pin }),
+      })
+    ),
 
   adminLogin: (email: string, password: string) =>
-    request<SessionPayload>("/api/auth/admin-login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
+    withSession(
+      request<SessionPayload>("/api/auth/admin-login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      })
+    ),
 
   signUp: (input: { name: string; phone: string; email: string; password: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) =>
     request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", {
@@ -62,7 +100,15 @@ const nodeApi = {
       body: JSON.stringify(input),
     }),
 
-  signOut: async (): Promise<void> => {},
+  /** Revokes the refresh token server-side, then clears local credentials. */
+  signOut: (): Promise<void> => endSession(),
+
+  /** Signs out every device — used after a password change or a security concern. */
+  signOutAll: (token: string) =>
+    request<{ ok: boolean; revoked: number }>("/api/auth/signout-all", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
   deleteAccount: (token: string) =>
     request<{ ok: boolean }>("/api/users/me/delete", {
@@ -77,10 +123,12 @@ const nodeApi = {
     }),
 
   verifyPhone: (phone: string, code: string) =>
-    request<SessionPayload>("/api/auth/verify-phone", {
-      method: "POST",
-      body: JSON.stringify({ phone, code }),
-    }),
+    withSession(
+      request<SessionPayload>("/api/auth/verify-phone", {
+        method: "POST",
+        body: JSON.stringify({ phone, code }),
+      })
+    ),
 
   submitKyc: (
     token: string,
@@ -156,10 +204,31 @@ const nodeApi = {
       body: JSON.stringify({ id, decision, notes }),
     }),
 
+  /**
+   * Accepts a loan offer, which requests a REAL mobile-money payout.
+   *
+   * Resolves as soon as the provider ACKNOWLEDGES the request — the loan is not
+   * disbursed yet. `disbursement.status` is "pending" until the provider
+   * confirms it on the server's webhook.
+   */
   acceptLoan: (token: string, id: string) =>
-    request<{ application: LoanApplication }>(`/api/loans/${id}/accept`, {
+    request<{
+      application: LoanApplication | null;
+      disbursement: {
+        status: "pending" | "failed" | "already_requested" | "already_disbursed";
+        reference: string | null;
+        providerRef: string | null;
+        amount: number;
+        message: string;
+        needsReconciliation: boolean;
+      };
+    }>(`/api/loans/${id}/accept`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Collapses a double-tap, a client retry and a reconnect onto one payout.
+        "Idempotency-Key": `disburse:${id}`,
+      },
     }),
 
   compliance: () => request<Compliance>("/api/compliance"),
@@ -212,11 +281,26 @@ const nodeApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  /**
+   * Requests a REAL mobile-money collection. The borrower's balance is NOT
+   * reduced here — `isPending` means a prompt was sent to their handset, and
+   * the balance moves only when the provider confirms it on the webhook.
+   */
   payRepayment: (token: string, amount?: number) =>
-    request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean; amount?: number; reference?: string; uuid?: string }>("/api/loans/repayment/pay", {
+    request<{
+      repayment: Record<string, unknown> | null;
+      attempt: { success: boolean; reason: string };
+      isPending: boolean;
+      isPartial?: boolean;
+      status: "pending" | "failed" | "none";
+      amount?: number;
+      reference?: string;
+      uuid?: string;
+      message?: string;
+    }>("/api/loans/repayment/pay", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: amount !== undefined ? JSON.stringify({ amount }) : undefined,
+      body: amount !== undefined ? JSON.stringify({ amount }) : JSON.stringify({}),
     }),
 
   requestTopUp: (token: string, body: { amount: number; term_days: number; purpose: string; disbursement_method: string }) =>

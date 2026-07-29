@@ -34,20 +34,11 @@ export function KycScreen({ onNavigate }: Props) {
   const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
   const ALLOWED_FILE_TYPES = new Set(["image/jpeg", "image/png", "image/jpg", "image/webp"]);
 
-  const getToken = () => {
-    if (state.session.token) return state.session.token;
-    try {
-      return (
-        localStorage.getItem("kuula_auth_token") ||
-        localStorage.getItem("token") ||
-        sessionStorage.getItem("kuula_auth_token") ||
-        sessionStorage.getItem("token") ||
-        ""
-      );
-    } catch {
-      return "";
-    }
-  };
+  // Tokens are never kept in localStorage/sessionStorage any more (C-03). The
+  // API client refreshes whatever it is handed, so the in-memory value from
+  // context is the only source needed — and an empty one still routes through
+  // the client's refresh path.
+  const getToken = () => state.session.token ?? "";
 
   const readFileAsDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {

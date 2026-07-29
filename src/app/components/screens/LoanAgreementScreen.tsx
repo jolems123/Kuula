@@ -47,11 +47,19 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const isOffer = offer?.status === "offered";
 
   const handleAccept = async () => {
-    if (!token || !offer) return;
+    if (!token || !offer || accepting) return; // real money: never submit twice
     setAccepting(true);
     setAcceptError(null);
     try {
-      await api.acceptLoan(token, offer.id);
+      // Accepting requests a REAL mobile-money payout. The response is a
+      // provider acknowledgement, not a settlement — the loan becomes active
+      // only when MarzPay confirms on the webhook, so we must not claim the
+      // money has landed here.
+      const res = await api.acceptLoan(token, offer.id);
+      if (res.disbursement?.status === "failed") {
+        setAcceptError(res.disbursement.message ?? "The payment provider rejected the disbursement. Please try again.");
+        return;
+      }
       onNavigate("loan-approval");
     } catch (e) {
       setAcceptError(e instanceof Error ? e.message : "We couldn't process your acceptance. Please try again.");

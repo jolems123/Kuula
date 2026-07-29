@@ -35,9 +35,13 @@ model User {
 
   // Auth fields (replaces Supabase Auth)
   passwordHash   String?  @map("password_hash")
+  phoneVerified  Boolean  @default(false) @map("phone_verified")
+
+  /// DEPRECATED (C-04): plaintext OTP storage. No code reads or writes these
+  /// columns any more — OTPs live in `otp_challenges`, hashed. Retained only so
+  /// the migration is non-destructive; drop after one release.
   otpCode        String?  @map("otp_code")
   otpExpiresAt   DateTime? @map("otp_expires_at")
-  phoneVerified  Boolean  @default(false) @map("phone_verified")
 
   // Terms & Privacy Policy consent captured at sign-up
   termsAcceptedAt DateTime? @map("terms_accepted_at")
@@ -53,6 +57,8 @@ model User {
   transactions     Transaction[]
   savingsGoals     SavingsGoal[]
   notifications    Notification[]
+  otpChallenges    OtpChallenge[]
+  refreshTokens    RefreshToken[]
 
   @@map("users")
 }
@@ -68,7 +74,19 @@ model SavingsAccount {
   @@map("savings_accounts")
 }
 
-// ── Wallets (one per user) ─────────────────────────────────────────────────
+// ── Wallets — DEPRECATED (C-07) ────────────────────────────────────────────
+/// This table was a SIMULATION artefact: loan principal was credited here at
+/// approval and debited at "repayment", so the app appeared to move money
+/// without ever contacting a payment provider.
+///
+/// With real MarzPay disbursement/collection the principal lands in the
+/// borrower's own mobile-money account and repayments are collected from it.
+/// Kuula holds no customer funds, so there is no balance to model. NOTHING in
+/// the codebase mutates `balance` any more (enforced by a test).
+///
+/// The table is retained, empty, with a `balance >= 0` CHECK constraint so that
+/// historical rows survive for reconciliation. The authoritative record of money
+/// movement is `transactions` + `repayments`.
 model Wallet {
   userId  String @id @map("user_id") @db.Uuid
   balance BigInt @default(0)
@@ -112,11 +130,22 @@ model LoanApplication {
   disbursementMethod String   @default("mtn_momo") @map("disbursement_method")
   approvedBy        String?   @map("approved_by")
   dueDate           DateTime?  @map("due_date")
-  status            String    @default("pending") // pending | offered | approved | rejected | active | paid | overdue | failed
+  /// Lifecycle:
+  ///   pending ─(admin)→ offered ─(borrower accepts)→ disbursing
+  ///     disbursing ─(provider callback OK)→ active ─(repaid)→ paid
+  ///     disbursing ─(provider callback FAIL)→ disbursement_failed → offered (retry)
+  ///   pending ─(admin)→ rejected → resubmitted
+  /// `active` is reached ONLY from a verified provider callback. Nothing else in
+  /// the codebase may set it (C-01).
+  status            String    @default("pending")
   disbursementRef   String?   @map("disbursement_ref")
   loanId            String?   @map("loan_id")
   decisionNotes     String?   @map("decision_notes")
+  /// Compare-and-set disbursement lock: NULL -> now() claims the payout slot.
   acceptedAt        DateTime?  @map("accepted_at")
+  /// Set only by a verified successful disbursement callback.
+  disbursedAt       DateTime?  @map("disbursed_at")
+  disbursementTxnId String?    @map("disbursement_txn_id") @db.Uuid
   createdAt         DateTime  @default(now()) @map("created_at")
   decidedAt         DateTime?  @map("decided_at")
 
@@ -147,23 +176,146 @@ model Repayment {
   @@map("repayments")
 }
 
-// ── Transactions ───────────────────────────────────────────────────────────
+// ── Transactions — the authoritative money ledger ──────────────────────────
+/// One row per attempted money movement. A row is created `pending` at
+/// initiation and may only reach `completed`/`failed` via a verified provider
+/// callback. The partial unique indexes in the migration make double
+/// disbursement and concurrent collections impossible at the database level.
 model Transaction {
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @map("user_id") @db.Uuid
   loanId        String?  @map("loan_id")
-  type          String   // loan_disbursement | loan_payment | savings_deposit | savings_withdrawal | wallet_topup
+  repaymentId   String?  @map("repayment_id") @db.Uuid
+  type          String   // loan_disbursement | loan_payment | savings_deposit | savings_withdrawal
   amount        BigInt
   status        String   @default("pending") // pending | completed | failed
+  /// Legacy provider reference column, kept for existing rows.
   transactionId String?  @map("transaction_id")
+
+  /// Payment provider that handled this movement, e.g. "marzpay".
+  provider       String?
+  /// The provider's own transaction id/uuid. Unique so a callback can never be
+  /// applied to two ledger rows.
+  providerRef    String?  @unique @map("provider_ref")
+  /// OUR reference sent to the provider and echoed back on the callback,
+  /// e.g. "LOAN-<appId>" / "REPAY-<repaymentId>-<n>".
+  reference      String?  @unique
+  /// Client- or server-supplied dedupe key. UNIQUE, so a double-click, a client
+  /// retry, or a second server instance replaying the same request all collapse
+  /// onto one payout (C-06).
+  idempotencyKey String?  @unique @map("idempotency_key")
+  failureReason  String?  @map("failure_reason")
+  settledAt      DateTime? @map("settled_at")
+
   createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([loanId])
   @@index([status])
+  @@index([repaymentId])
   @@map("transactions")
+}
+
+// ── Webhook events — replay & duplicate protection (C-08) ──────────────────
+/// Every provider callback is recorded here BEFORE it is processed. `eventId` is
+/// UNIQUE, so a redelivered or replayed callback loses the insert race and is
+/// acknowledged without any financial effect.
+model WebhookEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  provider    String    @default("marzpay")
+  /// Provider event id when supplied, otherwise a deterministic hash of
+  /// (reference, providerRef, status) so redeliveries still collide.
+  eventId     String    @unique @map("event_id")
+  reference   String?
+  providerRef String?   @map("provider_ref")
+  eventType   String?   @map("event_type")
+  payloadHash String    @map("payload_hash")
+  payload     Json      @default("{}")
+  /// received | processed | ignored | rejected
+  status      String    @default("received")
+  result      String?
+  receivedAt  DateTime  @default(now()) @map("received_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@index([reference])
+  @@index([receivedAt(sort: Desc)])
+  @@map("webhook_events")
+}
+
+// ── OTP challenges — hashed, expiring, rate-limited (C-04) ─────────────────
+model OtpChallenge {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  /// Normalised E.164 destination.
+  phone         String
+  /// phone_verification | password_reset | admin_login
+  purpose       String    @default("phone_verification")
+  /// HMAC-SHA256(code, OTP_PEPPER). The plaintext code exists only in memory
+  /// and in the SMS. It is never persisted and never logged in production.
+  codeHash      String    @map("code_hash")
+  expiresAt     DateTime  @map("expires_at")
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5) @map("max_attempts")
+  /// Set on successful verification — a consumed challenge can never be reused.
+  consumedAt    DateTime? @map("consumed_at")
+  /// Set when superseded by a resend, so the old code stops working immediately.
+  invalidatedAt DateTime? @map("invalidated_at")
+  /// Delivery outcome, for support/debugging. Never contains the code.
+  deliveryState String    @default("pending") @map("delivery_state")
+  deliveryRef   String?   @map("delivery_ref")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone, purpose, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("otp_challenges")
+}
+
+// ── Refresh tokens — rotating, hashed, revocable (C-03) ────────────────────
+/// Access tokens are short-lived (15 min) and never persisted client-side in
+/// plaintext storage. Long-lived authority lives in these opaque, rotating
+/// refresh tokens, stored hashed so a database leak cannot mint sessions.
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  /// SHA-256 of the opaque token. The token itself is never stored.
+  tokenHash    String    @unique @map("token_hash")
+  /// All tokens rotated from one login share a family. Reuse of an already
+  /// rotated token revokes the whole family (stolen-token detection).
+  familyId     String    @map("family_id") @db.Uuid
+  deviceLabel  String?   @map("device_label")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  lastUsedAt   DateTime? @map("last_used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ── Audit trail ────────────────────────────────────────────────────────────
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorRole  String?  @map("actor_role")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_events")
 }
 
 // ── Savings Goals ──────────────────────────────────────────────────────────

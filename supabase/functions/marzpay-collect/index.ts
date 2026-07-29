@@ -10,7 +10,25 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { marzConfigured, marzCollect, webhookUrl } from "../_shared/marzpay.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RETIRED — see supabase/functions/RETIRED.md and KUULA_PAYMENT_ARCHITECTURE.md
+//
+// The Node backend in server/ is the single authoritative backend for money
+// movement. This function is kept only as a reference and must never handle
+// production traffic: two backends writing the same loans cannot guarantee
+// exactly-once financial effects.
+// ─────────────────────────────────────────────────────────────────────────────
+const RETIRED_RESPONSE = new Response(
+  JSON.stringify({
+    error: "This endpoint is retired. Kuula payments are served by the Node backend at /api.",
+  }),
+  { status: 410, headers: { "Content-Type": "application/json" } },
+);
+const FUNCTION_ENABLED = Deno.env.get("SUPABASE_FUNCTIONS_ENABLED") === "true";
+
 Deno.serve(async (req) => {
+  if (!FUNCTION_ENABLED) return RETIRED_RESPONSE.clone();
+
   const cors = corsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, cors);

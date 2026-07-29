@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requireRoles } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { audit } from "../lib/audit.js";
+import { lockLoanApplication, LockContendedError } from "../lib/db-lock.js";
 
 const router = Router();
 
@@ -246,67 +248,79 @@ router.get("/report", async (_req: Request, res: Response) => {
   res.json(report);
 });
 
+/**
+ * POST /api/admin/loans/:id/approve
+ *
+ * Approval creates an OFFER. It moves no money and books no loan.
+ *
+ * Before this change, approving credited `wallet.balance` with the principal
+ * and wrote a `completed` disbursement transaction — the simulated payout at
+ * the heart of C-01 — with no locking, so two admins clicking at once produced
+ * two credits and two repayment schedules (C-06).
+ *
+ * Now the whole decision happens inside one transaction, behind a
+ * `SELECT … FOR UPDATE NOWAIT` on the application, guarded by a status
+ * precondition. The second caller — whether that is a second admin, a
+ * double-click, a client retry, or another server instance — finds the
+ * committed decision and gets 409.
+ */
 router.post("/loans/:id/approve", async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const decisionNotes = (req.body?.decisionNotes ?? "").toString().trim();
 
-  const app = await prisma.loanApplication.findUnique({ where: { id } });
-  if (!app) throw new AppError("Loan application not found", 404);
+  try {
+    const approved = await prisma.$transaction(async (tx) => {
+      const found = await lockLoanApplication(tx, id);
+      if (!found) throw new AppError("Loan application not found", 404);
 
-  if (!["pending", "resubmitted"].includes(app.status)) {
-    throw new AppError("Only pending or resubmitted applications can be approved", 400);
+      const app = await tx.loanApplication.findUniqueOrThrow({ where: { id } });
+      if (!["pending", "resubmitted"].includes(app.status)) {
+        throw new AppError(`This application has already been decided (${app.status}).`, 409);
+      }
+
+      const updated = await tx.loanApplication.update({
+        where: { id: app.id },
+        data: {
+          status: "offered",
+          decidedAt: new Date(),
+          decisionNotes: decisionNotes || "Approved",
+          approvedBy: req.user!.userId,
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: app.applicantId,
+          title: "Loan approved",
+          body:
+            `Your loan offer for UGX ${Number(app.amount).toLocaleString()} is ready. ` +
+            `Accept it in the app to receive the funds on your mobile money.`,
+          type: "success",
+        },
+      });
+
+      await audit(
+        {
+          actorId: req.user!.userId,
+          actorRole: req.user!.role,
+          action: "loan.approved",
+          entityType: "loan_application",
+          entityId: app.id,
+          metadata: { amount: Number(app.amount), notes: decisionNotes || null },
+        },
+        tx
+      );
+
+      return updated;
+    });
+
+    res.json({ ok: true, application: mapApplication(approved) });
+  } catch (err) {
+    if (err instanceof LockContendedError) {
+      throw new AppError("This application is already being decided by another reviewer.", 409);
+    }
+    throw err;
   }
-
-  const approved = await prisma.loanApplication.update({
-    where: { id },
-    data: {
-      status: "approved",
-      decidedAt: new Date(),
-      decisionNotes: decisionNotes || "Approved",
-    },
-  });
-
-  const total = Number(approved.total);
-  const principal = Number(approved.amount);
-
-  await prisma.repayment.create({
-    data: {
-      userId: approved.applicantId,
-      loanId: approved.loanId ?? approved.id,
-      total: BigInt(Math.max(total, principal)),
-      amountPaid: BigInt(0),
-      dueDate: new Date(Date.now() + approved.termDays * 24 * 60 * 60 * 1000),
-      status: "scheduled",
-      attempts: [],
-    },
-  });
-
-  await prisma.transaction.create({
-    data: {
-      userId: approved.applicantId,
-      loanId: approved.loanId ?? approved.id,
-      type: "loan_disbursement",
-      amount: BigInt(principal),
-      status: "completed",
-    },
-  });
-
-  await prisma.wallet.upsert({
-    where: { userId: approved.applicantId },
-    update: { balance: { increment: BigInt(principal) } },
-    create: { userId: approved.applicantId, balance: BigInt(principal) },
-  });
-
-  await prisma.notification.create({
-    data: {
-      userId: approved.applicantId,
-      title: "Loan Approved",
-      body: `Your loan request for UGX ${principal.toLocaleString()} was approved.`,
-      type: "success",
-    },
-  });
-
-  res.json({ ok: true, application: mapApplication(approved) });
 });
 
 router.post("/loans/:id/reject", async (req: Request, res: Response) => {
@@ -314,32 +328,52 @@ router.post("/loans/:id/reject", async (req: Request, res: Response) => {
   const decisionNotes = (req.body?.decisionNotes ?? "").toString().trim();
   if (!decisionNotes) throw new AppError("Decision notes are required to reject", 400);
 
-  const app = await prisma.loanApplication.findUnique({ where: { id } });
-  if (!app) throw new AppError("Loan application not found", 404);
+  try {
+    const rejected = await prisma.$transaction(async (tx) => {
+      const found = await lockLoanApplication(tx, id);
+      if (!found) throw new AppError("Loan application not found", 404);
 
-  if (!["pending", "resubmitted"].includes(app.status)) {
-    throw new AppError("Only pending or resubmitted applications can be rejected", 400);
+      const app = await tx.loanApplication.findUniqueOrThrow({ where: { id } });
+      if (!["pending", "resubmitted"].includes(app.status)) {
+        throw new AppError(`This application has already been decided (${app.status}).`, 409);
+      }
+
+      const updated = await tx.loanApplication.update({
+        where: { id: app.id },
+        data: { status: "rejected", decidedAt: new Date(), decisionNotes, approvedBy: req.user!.userId },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: app.applicantId,
+          title: "Loan not approved",
+          body: `Your loan request was not approved: ${decisionNotes}`,
+          type: "warning",
+        },
+      });
+
+      await audit(
+        {
+          actorId: req.user!.userId,
+          actorRole: req.user!.role,
+          action: "loan.rejected",
+          entityType: "loan_application",
+          entityId: app.id,
+          metadata: { notes: decisionNotes },
+        },
+        tx
+      );
+
+      return updated;
+    });
+
+    res.json({ ok: true, application: mapApplication(rejected) });
+  } catch (err) {
+    if (err instanceof LockContendedError) {
+      throw new AppError("This application is already being decided by another reviewer.", 409);
+    }
+    throw err;
   }
-
-  const rejected = await prisma.loanApplication.update({
-    where: { id },
-    data: {
-      status: "rejected",
-      decidedAt: new Date(),
-      decisionNotes,
-    },
-  });
-
-  await prisma.notification.create({
-    data: {
-      userId: rejected.applicantId,
-      title: "Loan Rejected",
-      body: `Your loan request was rejected: ${decisionNotes}`,
-      type: "warning",
-    },
-  });
-
-  res.json({ ok: true, application: mapApplication(rejected) });
 });
 
 router.post("/loans/:id/resubmit", async (req: Request, res: Response) => {

@@ -65,7 +65,9 @@ export default defineConfig({
         // so app updates don't force users to re-download React/charts/etc.
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router'],
-          supabase: ['@supabase/supabase-js'],
+          // The Supabase client chunk is gone: the Edge Functions are retired
+          // and nothing in the app imports supabase-js any more, so shipping it
+          // would only give the bundle a way to reach a second backend.
           charts: ['recharts'],
           i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
         },

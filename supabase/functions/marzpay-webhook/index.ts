@@ -20,7 +20,25 @@ type Json = Record<string, unknown>;
 const obj = (v: unknown): Json => (v && typeof v === "object" ? v as Json : {});
 const str = (v: unknown): string => (v == null ? "" : String(v));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RETIRED — see supabase/functions/RETIRED.md and KUULA_PAYMENT_ARCHITECTURE.md
+//
+// The Node backend in server/ is the single authoritative backend for money
+// movement. This function is kept only as a reference and must never handle
+// production traffic: two backends writing the same loans cannot guarantee
+// exactly-once financial effects.
+// ─────────────────────────────────────────────────────────────────────────────
+const RETIRED_RESPONSE = new Response(
+  JSON.stringify({
+    error: "This endpoint is retired. Kuula payments are served by the Node backend at /api.",
+  }),
+  { status: 410, headers: { "Content-Type": "application/json" } },
+);
+const FUNCTION_ENABLED = Deno.env.get("SUPABASE_FUNCTIONS_ENABLED") === "true";
+
 Deno.serve(async (req) => {
+  if (!FUNCTION_ENABLED) return RETIRED_RESPONSE.clone();
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   // Fail CLOSED: this endpoint is the only place money is settled, so it must

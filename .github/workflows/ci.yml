@@ -31,6 +31,9 @@ jobs:
       - name: Pricing compliance (Apple 36% + UMRA 33.6% APR caps)
         run: node scripts/check-pricing-compliance.mjs
 
+      - name: Frontend unit tests
+        run: npm test
+
       - name: Production build
         run: npm run build
         env:
@@ -43,23 +46,6 @@ jobs:
           name: web-dist
           path: dist/
           retention-days: 7
-
-      - name: API smoke test (reference server)
-        run: |
-          node server/server.mjs &
-          for i in $(seq 1 20); do
-            curl -sf http://localhost:3000/api/health && break
-            sleep 0.5
-          done
-          # valid login succeeds
-          curl -sf -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256770123456","pin":"1234"}' | grep -q '"token"'
-          # invalid login is rejected
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256770123456","pin":"0000"}')
-          test "$code" = "401"
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -74,6 +60,9 @@ jobs:
           npm run sweep
 
   # ── Backend: typecheck + Postgres-backed test suite ──────────────────────────
+  # These tests run against a REAL PostgreSQL service. The financial guarantees
+  # they verify (row locks, partial unique indexes, CHECK constraints) do not
+  # exist in a mock, so this job must never be switched to an in-memory double.
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -94,9 +83,16 @@ jobs:
 
     env:
       DATABASE_URL: postgres://kuula:kuula@localhost:5432/kuula_test
-      JWT_SECRET: ci-test-secret-at-least-32-characters-long-please
       NODE_ENV: test
-      DEBUG_OTP: "true"
+      JWT_SECRET: ci-test-secret-at-least-32-characters-long-please
+      OTP_PEPPER: ci-test-pepper-at-least-32-characters-long-please
+      SMS_PROVIDER: log
+      MARZPAY_API_KEY: ci-test-key
+      MARZPAY_API_SECRET: ci-test-secret
+      MARZPAY_WEBHOOK_SECRET: test-webhook-secret
+      MARZPAY_WEBHOOK_MODE: hmac
+      MARZPAY_VERIFY_CALLBACKS: "false"
+      PUBLIC_API_BASE_URL: https://test.kuula.local
 
     steps:
       - uses: actions/checkout@v4
@@ -105,22 +101,43 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/package-lock.json
 
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
+      - name: Install dependencies
+        run: npm ci && npm ci --prefix server
+
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
 
       - name: Typecheck backend
-        working-directory: backend
+        working-directory: server
         run: npm run typecheck
 
       - name: Run migrations
-        working-directory: backend
-        run: npm run migrate
+        working-directory: server
+        run: npx prisma migrate deploy
 
-      - name: Run tests
-        working-directory: backend
+      # The suite reads .env.test; in CI the values above already point at the
+      # service container, so we materialise a matching file.
+      - name: Write test env
+        working-directory: server
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "NODE_ENV=test"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "OTP_PEPPER=$OTP_PEPPER"
+            echo "SMS_PROVIDER=$SMS_PROVIDER"
+            echo "MARZPAY_API_KEY=$MARZPAY_API_KEY"
+            echo "MARZPAY_API_SECRET=$MARZPAY_API_SECRET"
+            echo "MARZPAY_WEBHOOK_SECRET=$MARZPAY_WEBHOOK_SECRET"
+            echo "MARZPAY_WEBHOOK_MODE=$MARZPAY_WEBHOOK_MODE"
+            echo "MARZPAY_VERIFY_CALLBACKS=$MARZPAY_VERIFY_CALLBACKS"
+            echo "PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL"
+          } > .env.test
+
+      - name: Run backend tests (disbursement, repayment, webhook, auth, concurrency)
+        working-directory: server
         run: npm test
 
   # ── Capacitor sync sanity (web build → native projects) ─────────────────────

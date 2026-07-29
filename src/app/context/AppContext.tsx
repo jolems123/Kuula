@@ -2,7 +2,7 @@
  * Global app context — session, user profile, credit data, and messages.
  */
 import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
-import { supabase } from "../lib/supabase";
+import { endSession } from "../lib/session";
 import { clearSelectionState } from "../lib/selection";
 import { clearServiceCache } from "../api/types-compat";
 
@@ -214,9 +214,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    // End the Supabase session too (clears the persisted token) — otherwise the
-    // user stays authenticated to Supabase after "logging out".
-    if (supabase) supabase.auth.signOut().catch(() => {});
+    // Revoke the refresh token server-side and clear the OS keystore entry, so
+    // "log out" actually ends the session everywhere rather than only hiding
+    // the UI (C-03). Fire-and-forget: local state must clear even offline.
+    void endSession();
     // Clear module-level caches so stale data never leaks into the next session.
     clearSelectionState();
     clearServiceCache();
