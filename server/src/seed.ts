@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding database...");
 
-  // Create admin user
   const adminEmail = process.env.ADMIN_EMAIL || "admin@kuula.ug";
   const adminPassword = process.env.ADMIN_PASSWORD || "Admin@123456";
 
@@ -29,7 +28,6 @@ async function main() {
     console.log(`Created admin user: ${adminEmail}`);
   }
 
-  // Create a demo user for testing
   const demoPhone = process.env.DEMO_PHONE || "+256700000000";
   const demoPassword = process.env.DEMO_PASSWORD || "12345678";
 
@@ -50,8 +48,10 @@ async function main() {
         occupation: "Software Engineer",
         phoneVerified: true,
         kycVerified: true,
-        savingsAccount: { create: { balance: 500000 } },
-        wallet: { create: { balance: 100000 } },
+        // Seed accounts start at zero. Financial balances must only be created
+        // by provider-confirmed ledger settlement, never by demo fixtures.
+        savingsAccount: { create: { balance: 0 } },
+        wallet: { create: { balance: 0 } },
       },
     });
     console.log(`Created demo user: ${demoPhone} / ${demoPassword}`);
@@ -61,8 +61,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error("Seed error:", e);
+  .catch((error) => {
+    console.error("Seed error:", error);
     process.exit(1);
   })
   .finally(async () => {
