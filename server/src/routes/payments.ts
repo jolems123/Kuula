@@ -11,11 +11,7 @@ function attemptsArray(value: Prisma.JsonValue): Prisma.JsonArray {
 
 router.post("/marzpay/webhook", async (req: Request, res: Response) => {
   const expectedToken = process.env.MARZPAY_WEBHOOK_SECRET?.trim() || "";
-  const suppliedToken = String(
-    req.query.token
-      ?? req.headers["x-webhook-token"]
-      ?? ""
-  );
+  const suppliedToken = String(req.query.token ?? req.headers["x-webhook-token"] ?? "");
 
   if (!expectedToken) {
     console.error("MarZPay webhook rejected: MARZPAY_WEBHOOK_SECRET is not configured");
@@ -33,14 +29,8 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     return;
   }
 
-  const ledger = await prisma.transaction.findUnique({
-    where: { reference: event.reference },
-  });
-
+  const ledger = await prisma.transaction.findUnique({ where: { reference: event.reference } });
   if (!ledger) {
-    // A valid provider callback can arrive for an old or manually-created
-    // transaction. Acknowledge it to prevent endless retries, but do not mutate
-    // any Kuula account without a matching internal ledger reference.
     console.warn("Ignoring MarZPay webhook with unknown reference", event.reference);
     res.json({ received: true, ignored: true });
     return;
@@ -60,8 +50,8 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
   }
 
   const settled = await prisma.$transaction(async (tx) => {
-    // Idempotency claim: only a pending ledger row can alter financial state.
-    // Duplicate or reordered callbacks become safe no-ops.
+    // Only a pending ledger entry can mutate financial state. This compare-and-
+    // set makes duplicate and reordered callbacks harmless.
     const claim = await tx.transaction.updateMany({
       where: { id: ledger.id, status: "pending" },
       data: {
@@ -77,10 +67,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
       if (!ledger.loanId) throw new Error("Disbursement ledger is missing loanId");
 
       const application = await tx.loanApplication.findFirst({
-        where: {
-          applicantId: ledger.userId,
-          loanId: ledger.loanId,
-        },
+        where: { applicantId: ledger.userId, loanId: ledger.loanId },
       });
       if (!application) throw new Error("Loan application for disbursement was not found");
 
@@ -149,19 +136,16 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     if (ledger.type === "loan_payment") {
       if (!ledger.loanId) throw new Error("Repayment ledger is missing loanId");
 
+      // Match the exact locked collection reference. This prevents a callback
+      // from settling the wrong installment when multiple loans exist.
       const repayment = await tx.repayment.findFirst({
         where: {
           userId: ledger.userId,
           loanId: ledger.loanId,
-          status: { not: "paid" },
+          pendingCollectionRef: event.reference,
         },
-        orderBy: { createdAt: "asc" },
       });
-      if (!repayment) {
-        // No unpaid balance remains. The ledger claim still protects against
-        // duplicate credit; retain the completed provider record for review.
-        return true;
-      }
+      if (!repayment) return true;
 
       const attempts = attemptsArray(repayment.attempts);
       const paymentAmount = Number(ledger.amount);
@@ -180,6 +164,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
             amountPaid: BigInt(newPaid),
             status: fullyPaid ? "paid" : repayment.status,
             receiptId,
+            pendingCollectionRef: null,
             attempts: [
               ...attempts,
               {
@@ -224,6 +209,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
         await tx.repayment.update({
           where: { id: repayment.id },
           data: {
+            pendingCollectionRef: null,
             attempts: [
               ...attempts,
               {
@@ -250,8 +236,6 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
       return true;
     }
 
-    // This endpoint only settles loan money. Unknown transaction types are
-    // recorded but never allowed to mutate balances.
     return true;
   });
 
