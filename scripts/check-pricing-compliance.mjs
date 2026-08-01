@@ -1,68 +1,99 @@
 /**
  * Pricing compliance guard.
  *
- * Proves that NO loan the pricing engine can produce exceeds the regulatory
- * ceilings — Apple's 36% APR cap and Uganda's UMRA 33.6% EAIR limit — across
- * every amount × term × savings-balance combination, and that interest is
- * never compounded. Run in CI so a non-compliant price can never be merged.
- *
- *   node scripts/check-pricing-compliance.mjs
+ * The client and server engines are compared separately by
+ * scripts/check-pricing-parity.ts. This guard stress-tests the canonical rules:
+ * APR ceilings, simple interest, zero fees, and supported term boundaries.
  */
-
-// Inline the client-side pricing logic (mirrors src/app/lib/pricing.ts)
-// so this script runs without a bundler.
 const PRICING = {
   MAX_APR: 0.336,
   MIN_TERM_DAYS: 90,
+  MAX_TERM_DAYS: 365,
   SAVINGS_DISCOUNT: 0.05,
   SAVINGS_THRESHOLD: 100000,
 };
 
-function localQuote(principal, termDays, savingsBalance = 0) {
-  const term = Math.max(PRICING.MIN_TERM_DAYS, Math.round(termDays || PRICING.MIN_TERM_DAYS));
-  const discount = savingsBalance >= PRICING.SAVINGS_THRESHOLD ? PRICING.SAVINGS_DISCOUNT : 0;
+function normalizePrincipal(value) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError("Loan amount must be a positive number");
+  }
+  return Math.round(value);
+}
+
+function normalizeTerm(value) {
+  const requested = Number.isFinite(value) && value > 0
+    ? Math.round(value)
+    : PRICING.MIN_TERM_DAYS;
+  return Math.min(PRICING.MAX_TERM_DAYS, Math.max(PRICING.MIN_TERM_DAYS, requested));
+}
+
+function localQuote(principalInput, termDaysInput, savingsBalance = 0) {
+  const principal = normalizePrincipal(principalInput);
+  const termDays = normalizeTerm(termDaysInput);
+  const savingsDiscountApplied = Number(savingsBalance) >= PRICING.SAVINGS_THRESHOLD;
+  const discount = savingsDiscountApplied ? PRICING.SAVINGS_DISCOUNT : 0;
   const apr = Math.max(0, PRICING.MAX_APR - discount);
-  const interest = Math.round(principal * (apr / 365) * term);
+  const interest = Math.round(principal * (apr / 365) * termDays);
+
   return {
     principal,
-    termDays: term,
+    termDays,
     apr: Number(apr.toFixed(4)),
     aprPercent: Number((apr * 100).toFixed(1)),
     monthlyRatePercent: Number(((apr / 12) * 100).toFixed(2)),
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied: discount > 0,
+    savingsDiscountApplied,
     compound: false,
   };
 }
-
-// ── Compliance checks ─────────────────────────────────────────────────────────
 
 const APPLE_CAP = 0.36;
 const UMRA_CAP = 0.336;
 const EPS = 1e-6;
 
-const amounts = [20000, 50000, 200000, 500000, 1000000];
-const terms = [90, 91, 120, 180, 365];
-const savingsBalances = [0, 50000, 99999, 100000, 500000, 2000000];
+const amounts = [20_000, 50_000, 100_000.6, 200_000, 500_000, 1_000_000];
+const terms = [0, 30, 90, 91, 120, 180, 365, 720];
+const savingsBalances = [0, 50_000, 99_999, 100_000, 500_000, 2_000_000];
 
 let checks = 0;
 const failures = [];
 
-function assertCompliant(label, q) {
-  checks++;
-  if (q.compound !== false) failures.push(`${label}: interest is compounded`);
-  if (q.apr > UMRA_CAP + EPS) failures.push(`${label}: APR ${q.apr} exceeds UMRA 33.6%`);
-  if (q.apr > APPLE_CAP + EPS) failures.push(`${label}: APR ${q.apr} exceeds Apple 36%`);
-  if (q.termDays < PRICING.MIN_TERM_DAYS) failures.push(`${label}: term ${q.termDays}d below minimum ${PRICING.MIN_TERM_DAYS}d`);
+function assertCompliant(label, quote) {
+  checks += 1;
+  const expectedInterest = Math.round(
+    quote.principal * (quote.apr / 365) * quote.termDays
+  );
+
+  if (quote.compound !== false) failures.push(`${label}: interest is compounded`);
+  if (quote.fee !== 0) failures.push(`${label}: unexpected fee ${quote.fee}`);
+  if (quote.apr > UMRA_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds UMRA 33.6%`);
+  if (quote.apr > APPLE_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds Apple 36%`);
+  if (quote.termDays < PRICING.MIN_TERM_DAYS) failures.push(`${label}: term below ${PRICING.MIN_TERM_DAYS}`);
+  if (quote.termDays > PRICING.MAX_TERM_DAYS) failures.push(`${label}: term above ${PRICING.MAX_TERM_DAYS}`);
+  if (quote.interest !== expectedInterest) failures.push(`${label}: interest is not canonical simple interest`);
+  if (quote.total !== quote.principal + quote.interest + quote.fee) failures.push(`${label}: total does not reconcile`);
 }
 
 for (const amount of amounts) {
   for (const term of terms) {
     for (const savings of savingsBalances) {
-      const q = localQuote(amount, term, savings);
-      assertCompliant(`${amount}/${term}d/sav${savings}`, q);
+      assertCompliant(
+        `${amount}/${term}d/sav${savings}`,
+        localQuote(amount, term, savings)
+      );
+    }
+  }
+}
+
+for (const invalidAmount of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+  try {
+    localQuote(invalidAmount, 90);
+    failures.push(`invalid principal ${invalidAmount} was accepted`);
+  } catch (error) {
+    if (!(error instanceof RangeError)) {
+      failures.push(`invalid principal ${invalidAmount} threw the wrong error`);
     }
   }
 }
@@ -74,7 +105,10 @@ if (PRICING.MAX_APR >= APPLE_CAP) {
 console.log(`pricing combinations checked: ${checks}`);
 if (failures.length) {
   console.error(`FAIL: ${failures.length} non-compliant price(s):`);
-  for (const f of failures.slice(0, 20)) console.error("  ✗ " + f);
+  for (const failure of failures.slice(0, 20)) console.error("  ✗ " + failure);
   process.exit(1);
 }
-console.log("PASS: every price ≤ 33.6% APR (UMRA) and ≤ 36% APR (Apple); interest is simple; term ≥ 90 days.");
+
+console.log(
+  "PASS: all prices use simple interest, zero fees, APR ≤ 33.6%, and terms from 90 to 365 days."
+);
