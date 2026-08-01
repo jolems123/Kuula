@@ -7,10 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── Users (replaces Supabase auth.users) ───────────────────────────────────
 model User {
   id             String   @id @default(uuid()) @db.Uuid
-  role           String   @default("user") // "user" | "admin"
+  role           String   @default("user")
   fullName       String   @default("") @map("full_name")
   phone          String?  @unique
   email          String?  @unique
@@ -20,7 +19,7 @@ model User {
   verified       Boolean  @default(false)
   momoMonths     Int      @default(0) @map("momo_months")
   momoTxnCount   Int      @default(0) @map("momo_txn_count")
-  crbStatus      String   @default("thin") @map("crb_status") // "clean" | "thin" | "adverse"
+  crbStatus      String   @default("thin") @map("crb_status")
   kycVerified    Boolean  @default(false) @map("kyc_verified")
   kycDocFrontRef String?  @map("kyc_doc_front_ref")
   kycDocBackRef  String?  @map("kyc_doc_back_ref")
@@ -34,9 +33,15 @@ model User {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   passwordHash   String?  @map("password_hash")
-  otpCode        String?  @map("otp_code")
-  otpExpiresAt   DateTime? @map("otp_expires_at")
   phoneVerified  Boolean  @default(false) @map("phone_verified")
+  authVersion    Int      @default(0) @map("auth_version")
+
+  otpHash        String?  @map("otp_hash")
+  otpPurpose     String?  @map("otp_purpose")
+  otpExpiresAt   DateTime? @map("otp_expires_at")
+  otpAttempts    Int      @default(0) @map("otp_attempts")
+  otpLastSentAt  DateTime? @map("otp_last_sent_at")
+  otpLockedUntil DateTime? @map("otp_locked_until")
 
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
@@ -58,18 +63,14 @@ model SavingsAccount {
   userId    String   @id @map("user_id") @db.Uuid
   balance   BigInt   @default(0)
   updatedAt DateTime @default(now()) @map("updated_at")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@map("savings_accounts")
 }
 
 model Wallet {
   userId  String @id @map("user_id") @db.Uuid
   balance BigInt @default(0)
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@map("wallets")
 }
 
@@ -80,10 +81,8 @@ model Message {
   content    String
   isRead     Boolean  @default(false) @map("is_read")
   createdAt  DateTime @default(now()) @map("created_at")
-
   sender   User @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
-
   @@index([senderId, receiverId, createdAt])
   @@map("messages")
 }
@@ -105,16 +104,14 @@ model LoanApplication {
   disbursementMethod  String    @default("mtn_momo") @map("disbursement_method")
   approvedBy          String?   @map("approved_by")
   dueDate             DateTime? @map("due_date")
-  status              String    @default("pending") // pending | offered | disbursing | active | rejected | paid | overdue | failed
+  status              String    @default("pending")
   disbursementRef     String?   @map("disbursement_ref")
   loanId              String?   @map("loan_id")
   decisionNotes       String?   @map("decision_notes")
   acceptedAt          DateTime? @map("accepted_at")
   createdAt           DateTime  @default(now()) @map("created_at")
   decidedAt           DateTime? @map("decided_at")
-
   applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
-
   @@index([applicantId, createdAt(sort: Desc)])
   @@index([status])
   @@index([loanId])
@@ -128,14 +125,12 @@ model Repayment {
   total                BigInt
   amountPaid           BigInt   @default(0) @map("amount_paid")
   dueDate              DateTime @map("due_date")
-  status               String   @default("scheduled") // scheduled | paid | overdue
+  status               String   @default("scheduled")
   receiptId            String?  @map("receipt_id")
   pendingCollectionRef String?  @unique @map("pending_collection_ref")
   attempts             Json     @default("[]")
   createdAt            DateTime @default(now()) @map("created_at")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId])
   @@index([loanId])
   @@index([status])
@@ -156,9 +151,7 @@ model Transaction {
   transactionId   String?  @map("transaction_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId, createdAt(sort: Desc)])
   @@index([loanId])
   @@index([transactionId])
@@ -176,9 +169,7 @@ model SavingsGoal {
   color     String   @default("#2563EB")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @map("updated_at")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId, createdAt])
   @@map("savings_goals")
 }
@@ -191,9 +182,7 @@ model Notification {
   type      String   @default("info")
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, isRead])
   @@map("notifications")

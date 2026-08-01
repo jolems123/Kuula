@@ -1,0 +1,221 @@
+name: Authentication Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: auth-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kuula
+          POSTGRES_PASSWORD: kuula
+          POSTGRES_DB: kuula_auth_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kuula -d kuula_auth_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://kuula:kuula@localhost:5432/kuula_auth_test?schema=public
+      JWT_SECRET: auth-ci-jwt-secret-at-least-64-characters-long-for-kuula
+      OTP_PEPPER: auth-ci-independent-otp-pepper-at-least-64-characters-long
+      SMS_PROVIDER: test
+      TEST_OTP_CODE: "246810"
+      NODE_ENV: test
+      PORT: 3000
+      CORS_ORIGINS: http://localhost:5173
+      ADMIN_EMAIL: auth-admin@kuula.test
+      ADMIN_PASSWORD: Auth-Admin-CI-Password-2026
+      DEMO_PHONE: "+256700000000"
+      DEMO_PASSWORD: "12345678"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
+
+      - name: Generate Prisma client and compile
+        working-directory: server
+        run: |
+          npx prisma generate
+          npm run build
+          npm test
+
+      - name: Migrate and seed isolated PostgreSQL
+        working-directory: server
+        run: |
+          npm run db:migrate:deploy
+          npm run db:seed
+
+      - name: Verify OTP, recovery, revocation, and deletion
+        working-directory: server
+        run: |
+          set -euo pipefail
+
+          npm start > /tmp/kuula-auth-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill $API_PID 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:3000/api/health >/dev/null && break
+            sleep 0.5
+          done
+          curl -sf http://localhost:3000/api/health | grep -q '"ok":true'
+
+          SIGNUP_CODE=$(curl -s -o /tmp/signup.json -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/signup \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"Auth Test User","phone":"+256770111222","email":"auth-user@kuula.test","password":"Secure2026","nationalId":"CM8602410E8EWE","acceptedTerms":true,"termsVersion":"2026-08-01"}')
+          test "$SIGNUP_CODE" = "201"
+          grep -q '"needsConfirmation":true' /tmp/signup.json
+
+          # The six-digit code must never be stored in plaintext.
+          OTP_HASH=$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -Atc \
+            "SELECT otp_hash FROM users WHERE phone = '+256770111222';")
+          test "$OTP_HASH" != "246810"
+          test "${#OTP_HASH}" = "64"
+
+          # Unverified accounts cannot sign in, and immediate resend is throttled.
+          LOGIN_UNVERIFIED=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","pin":"Secure2026"}')
+          test "$LOGIN_UNVERIFIED" = "403"
+
+          RESEND_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/resend-otp \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222"}')
+          test "$RESEND_CODE" = "429"
+
+          WRONG_VERIFY=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/verify-phone \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","code":"111111"}')
+          test "$WRONG_VERIFY" = "401"
+
+          VERIFIED_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/verify-phone \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","code":"246810"}')
+          ORIGINAL_TOKEN=$(echo "$VERIFIED_JSON" | jq -r '.token')
+          test -n "$ORIGINAL_TOKEN"
+
+          curl -sf http://localhost:3000/api/auth/me \
+            -H "Authorization: Bearer $ORIGINAL_TOKEN" | grep -q '"fullName":"Auth Test User"'
+
+          # Clear the cross-purpose resend timestamp so the test does not sleep.
+          PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -c \
+            "UPDATE users SET otp_last_sent_at = NULL WHERE phone = '+256770111222';"
+
+          UNKNOWN_RESET=$(curl -s -o /tmp/unknown-reset.json -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/reset-password \
+            -H 'Content-Type: application/json' \
+            -d '{"identifier":"nobody@kuula.test"}')
+          test "$UNKNOWN_RESET" = "200"
+          grep -q '"ok":true' /tmp/unknown-reset.json
+
+          curl -sf -X POST http://localhost:3000/api/auth/reset-password \
+            -H 'Content-Type: application/json' \
+            -d '{"identifier":"auth-user@kuula.test"}' | grep -q '"ok":true'
+
+          WRONG_RESET=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/reset-password/confirm \
+            -H 'Content-Type: application/json' \
+            -d '{"identifier":"auth-user@kuula.test","code":"111111","newPassword":"NewSecure2027"}')
+          test "$WRONG_RESET" = "401"
+
+          curl -sf -X POST http://localhost:3000/api/auth/reset-password/confirm \
+            -H 'Content-Type: application/json' \
+            -d '{"identifier":"auth-user@kuula.test","code":"246810","newPassword":"NewSecure2027"}' \
+            | grep -q '"ok":true'
+
+          # Password reset revokes every token issued before it.
+          OLD_TOKEN_AFTER_RESET=$(curl -s -o /dev/null -w '%{http_code}' \
+            http://localhost:3000/api/auth/me \
+            -H "Authorization: Bearer $ORIGINAL_TOKEN")
+          test "$OLD_TOKEN_AFTER_RESET" = "401"
+
+          OLD_PASSWORD=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","pin":"Secure2026"}')
+          test "$OLD_PASSWORD" = "401"
+
+          NEW_LOGIN=$(curl -sf -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
+          NEW_TOKEN=$(echo "$NEW_LOGIN" | jq -r '.token')
+          test -n "$NEW_TOKEN"
+
+          curl -sf -X POST http://localhost:3000/api/auth/signout \
+            -H "Authorization: Bearer $NEW_TOKEN" | grep -q '"ok":true'
+          REVOKED_AFTER_LOGOUT=$(curl -s -o /dev/null -w '%{http_code}' \
+            http://localhost:3000/api/auth/me \
+            -H "Authorization: Bearer $NEW_TOKEN")
+          test "$REVOKED_AFTER_LOGOUT" = "401"
+
+          FINAL_LOGIN=$(curl -sf -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
+          FINAL_TOKEN=$(echo "$FINAL_LOGIN" | jq -r '.token')
+
+          curl -sf -X POST http://localhost:3000/api/users/me/delete \
+            -H "Authorization: Bearer $FINAL_TOKEN" | grep -q '"ok":true'
+
+          DELETED_TOKEN=$(curl -s -o /dev/null -w '%{http_code}' \
+            http://localhost:3000/api/auth/me \
+            -H "Authorization: Bearer $FINAL_TOKEN")
+          test "$DELETED_TOKEN" = "401"
+
+          DELETED_LOGIN=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
+          test "$DELETED_LOGIN" = "401"
+
+          # Five incorrect verification attempts lock a second account.
+          curl -sf -X POST http://localhost:3000/api/auth/signup \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"Locked User","phone":"+256770111333","email":"locked-user@kuula.test","password":"Secure2026","nationalId":"CM8602410E8EWF","acceptedTerms":true,"termsVersion":"2026-08-01"}' >/dev/null
+
+          for attempt in 1 2 3 4; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -X POST http://localhost:3000/api/auth/verify-phone \
+              -H 'Content-Type: application/json' \
+              -d '{"phone":"+256770111333","code":"111111"}')
+            test "$code" = "401"
+          done
+          FIFTH_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/verify-phone \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111333","code":"111111"}')
+          test "$FIFTH_CODE" = "429"
+
+          LOCKED_CORRECT=$(curl -s -o /dev/null -w '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/verify-phone \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256770111333","code":"246810"}')
+          test "$LOCKED_CORRECT" = "429"
+
+          # Ensure no OTP value was printed to application logs.
+          ! grep -q '246810' /tmp/kuula-auth-api.log
