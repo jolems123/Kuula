@@ -112,7 +112,7 @@ model LoanApplication {
   disbursementMethod String   @default("mtn_momo") @map("disbursement_method")
   approvedBy        String?   @map("approved_by")
   dueDate           DateTime?  @map("due_date")
-  status            String    @default("pending") // pending | offered | approved | rejected | active | paid | overdue | failed
+  status            String    @default("pending") // pending | offered | disbursing | active | rejected | paid | overdue | failed
   disbursementRef   String?   @map("disbursement_ref")
   loanId            String?   @map("loan_id")
   decisionNotes     String?   @map("decision_notes")
@@ -124,6 +124,7 @@ model LoanApplication {
 
   @@index([applicantId, createdAt(sort: Desc)])
   @@index([status])
+  @@index([loanId])
   @@map("loan_applications")
 }
 
@@ -143,11 +144,12 @@ model Repayment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([loanId])
   @@index([status])
   @@map("repayments")
 }
 
-// ── Transactions ───────────────────────────────────────────────────────────
+// ── Financial transaction ledger ───────────────────────────────────────────
 model Transaction {
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @map("user_id") @db.Uuid
@@ -155,13 +157,19 @@ model Transaction {
   type          String   // loan_disbursement | loan_payment | savings_deposit | savings_withdrawal | wallet_topup
   amount        BigInt
   status        String   @default("pending") // pending | completed | failed
+  reference     String?  @unique
+  provider      String?
+  providerStatus String? @map("provider_status")
+  providerPayload Json?  @map("provider_payload")
   transactionId String?  @map("transaction_id")
   createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([loanId])
+  @@index([transactionId])
   @@index([status])
   @@map("transactions")
 }
