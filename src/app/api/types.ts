@@ -1,7 +1,5 @@
 /**
- * Shared backend API types + error, used by both the Node client and the
- * Supabase service. Kept in its own module so the two implementations don't
- * import each other (avoids a circular dependency through the provider switch).
+ * Shared backend API types.
  */
 import type { UserProfile, CreditProfile, LoanProfile, Message, Role } from "../context/AppContext";
 
@@ -25,7 +23,7 @@ export interface LoanApplication {
   purpose: string;
   termDays: number;
   channel: string;
-  status: "pending" | "offered" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
+  status: "pending" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
   createdAt: string;
   decidedAt: string | null;
