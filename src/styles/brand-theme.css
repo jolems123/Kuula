@@ -1,0 +1,72 @@
+:root {
+  --kuula-green-950: #04351f;
+  --kuula-green-900: #064a2e;
+  --kuula-green-800: #0b5e3a;
+  --kuula-green-700: #0f7045;
+  --kuula-green-100: #e7f5ee;
+  --kuula-green-50: #f5fbf8;
+  --kuula-gold: #f2c94c;
+  --kuula-gold-soft: #fff5cf;
+  --kuula-ink: #102019;
+  --kuula-muted: #617069;
+  --kuula-line: #dde8e2;
+  --kuula-surface: #ffffff;
+  --kuula-bg: #f6f9f7;
+}
+
+html, body, #root { min-height: 100%; background: var(--kuula-bg); }
+body { color: var(--kuula-ink); font-family: Poppins, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+/* Replace the legacy orange visual language everywhere while leaving status colors intact. */
+[style*="#F4612B"], [style*="#f4612b"],
+[style*="#D9531F"], [style*="#d9531f"],
+[style*="#FF6B35"], [style*="#ff6b35"] {
+  color: var(--kuula-green-800) !important;
+  border-color: var(--kuula-green-800) !important;
+  accent-color: var(--kuula-green-800) !important;
+}
+
+button[style*="#F4612B"], button[style*="#D9531F"], button[style*="linear-gradient(135deg, #F4612B"],
+[style*="background: rgb(244, 97, 43)"], [style*="background-color: rgb(244, 97, 43)"] {
+  background: linear-gradient(135deg, var(--kuula-green-800), var(--kuula-green-900)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 20px rgba(11, 94, 58, .22) !important;
+}
+
+[style*="#FFF6EF"], [style*="#fff6ef"], [style*="#FFDCC8"], [style*="#ffdcc8"] {
+  background-color: var(--kuula-green-50) !important;
+  border-color: var(--kuula-line) !important;
+}
+
+[style*="linear-gradient(135deg, #FFF6EF"], [style*="linear-gradient(135deg, #fff6ef"] {
+  background: linear-gradient(135deg, var(--kuula-green-50), var(--kuula-gold-soft)) !important;
+}
+
+/* Shared mobile app surfaces */
+.rounded-2xl, [style*="borderRadius: 20"], [style*="border-radius: 20"] {
+  border-color: var(--kuula-line) !important;
+}
+
+input, select, textarea {
+  border-color: var(--kuula-line) !important;
+  background: #fbfdfc !important;
+  color: var(--kuula-ink) !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--kuula-green-700) !important;
+  box-shadow: 0 0 0 3px rgba(11, 94, 58, .10) !important;
+}
+
+/* Bottom navigation and active controls */
+nav button[aria-current="page"], [data-active="true"] {
+  color: var(--kuula-green-800) !important;
+}
+
+/* Brand utility classes for new and progressively updated screens. */
+.kuula-screen { min-height: 100%; background: var(--kuula-bg); color: var(--kuula-ink); }
+.kuula-header { background: linear-gradient(145deg, var(--kuula-green-800), var(--kuula-green-900)); color: #fff; }
+.kuula-card { background: #fff; border: 1px solid var(--kuula-line); border-radius: 20px; box-shadow: 0 10px 30px rgba(4, 53, 31, .08); }
+.kuula-primary { background: linear-gradient(135deg, var(--kuula-green-800), var(--kuula-green-900)); color: #fff; border: 0; border-radius: 14px; font-weight: 800; }
+.kuula-secondary { background: #fff; color: var(--kuula-green-800); border: 1.5px solid var(--kuula-line); border-radius: 14px; font-weight: 800; }
+.kuula-gold { color: var(--kuula-gold); }
