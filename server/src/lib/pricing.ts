@@ -2,7 +2,7 @@
  * Authoritative server-side loan pricing.
  *
  * This must remain exactly aligned with src/app/lib/pricing.ts. CI executes a
- * parity check across representative amount, term, and savings combinations.
+ * parity check across representative amount, term, and balance combinations.
  *
  * Interest is simple:
  *   interest = principal × APR × termDays / 365
@@ -13,8 +13,9 @@ export const PRICING = {
   MAX_APR: COMPLIANCE.maxAprPercent / 100,
   MIN_TERM_DAYS: COMPLIANCE.minTermDays,
   MAX_TERM_DAYS: 365,
-  SAVINGS_DISCOUNT: COMPLIANCE.savingsDiscountPercent / 100,
-  SAVINGS_THRESHOLD: COMPLIANCE.savingsThreshold,
+  // Savings is not a pricing input until real deposits are provider-settled.
+  SAVINGS_DISCOUNT: 0,
+  SAVINGS_THRESHOLD: Number.POSITIVE_INFINITY,
 } as const;
 
 export interface LoanQuote {
@@ -47,13 +48,11 @@ function normalizeTerm(value: number): number {
 export function localQuote(
   principalInput: number,
   termDaysInput: number,
-  savingsBalance = 0
+  _savingsBalance = 0
 ): LoanQuote {
   const principal = normalizePrincipal(principalInput);
   const termDays = normalizeTerm(termDaysInput);
-  const savingsDiscountApplied = Number(savingsBalance) >= PRICING.SAVINGS_THRESHOLD;
-  const discount = savingsDiscountApplied ? PRICING.SAVINGS_DISCOUNT : 0;
-  const apr = Math.max(0, PRICING.MAX_APR - discount);
+  const apr = PRICING.MAX_APR;
   const interest = Math.round(principal * (apr / 365) * termDays);
 
   return {
@@ -65,7 +64,7 @@ export function localQuote(
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied,
+    savingsDiscountApplied: false,
     compound: false,
   };
 }
