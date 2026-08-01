@@ -4,16 +4,17 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    branches: [main, master]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── Frontend: typecheck + pricing compliance + build + API smoke + sweep ─────
   frontend:
+    name: Frontend Verification
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -23,48 +24,47 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Pricing compliance (Apple 36% + UMRA 33.6% APR caps)
-        run: node scripts/check-pricing-compliance.mjs
+      - name: Unit tests
+        run: npm test
 
-      - name: Production build
+      - name: Pricing compliance
+        run: npm run check:pricing
+
+      # CI verifies that a production build can be produced with the required
+      # Node API configuration. The .invalid domain is reserved and cannot route
+      # to a real service. Manual mobile releases still require the repository's
+      # real VITE_API_BASE_URL secret.
+      - name: Guarded production build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_BACKEND: node
+          VITE_USE_API: "true"
+          VITE_API_BASE_URL: https://api-ci.kuula.invalid
+          VITE_APP_ENV: production
+          VITE_APP_VERSION: ${{ github.sha }}
+          VITE_ENABLE_BIOMETRIC: "true"
+          VITE_ENABLE_SAVINGS: "true"
+          VITE_REVIEWER_MODE: "false"
 
-      - name: Upload web build artifact
+      - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: dist/
           retention-days: 7
 
-      - name: API smoke test (reference server)
-        run: |
-          node server/server.mjs &
-          for i in $(seq 1 20); do
-            curl -sf http://localhost:3000/api/health && break
-            sleep 0.5
-          done
-          # valid login succeeds
-          curl -sf -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256770123456","pin":"1234"}' | grep -q '"token"'
-          # invalid login is rejected
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256770123456","pin":"0000"}')
-          test "$code" = "401"
-
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Route sweep (all screens, runtime errors + blank pages)
+      # The route sweep intentionally runs in local demo mode. It checks every
+      # registered screen for runtime crashes and blank renders; API behavior is
+      # tested separately against PostgreSQL in the server job.
+      - name: Route sweep
         run: |
           npm run dev -- --port 5173 &
           for i in $(seq 1 40); do
@@ -73,10 +73,10 @@ jobs:
           done
           npm run sweep
 
-  # ── Backend: typecheck + Postgres-backed test suite ──────────────────────────
-  backend:
+  server:
+    name: Node API + PostgreSQL
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -93,10 +93,15 @@ jobs:
           --health-retries 12
 
     env:
-      DATABASE_URL: postgres://kuula:kuula@localhost:5432/kuula_test
-      JWT_SECRET: ci-test-secret-at-least-32-characters-long-please
+      DATABASE_URL: postgresql://kuula:kuula@localhost:5432/kuula_test?schema=public
+      JWT_SECRET: ci-test-secret-at-least-64-characters-long-for-kuula-api
       NODE_ENV: test
-      DEBUG_OTP: "true"
+      PORT: 3000
+      CORS_ORIGINS: http://localhost:5173
+      ADMIN_EMAIL: admin-ci@kuula.test
+      ADMIN_PASSWORD: Admin-CI-Password-Only-2026
+      DEMO_PHONE: "+256700000000"
+      DEMO_PASSWORD: "12345678"
 
     steps:
       - uses: actions/checkout@v4
@@ -104,27 +109,57 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
 
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
+      - name: Install API dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
 
-      - name: Typecheck backend
-        working-directory: backend
-        run: npm run typecheck
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
 
-      - name: Run migrations
-        working-directory: backend
-        run: npm run migrate
+      - name: Build API
+        working-directory: server
+        run: npm run build
 
-      - name: Run tests
-        working-directory: backend
-        run: npm test
+      - name: Apply PostgreSQL migrations
+        working-directory: server
+        run: npm run db:migrate:deploy
 
-  # ── Capacitor sync sanity (web build → native projects) ─────────────────────
-  sync:
+      - name: Seed isolated CI database
+        working-directory: server
+        run: npm run db:seed
+
+      - name: API smoke tests
+        working-directory: server
+        run: |
+          npm start &
+          API_PID=$!
+          trap 'kill $API_PID' EXIT
+
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 0.5
+          done
+          test "$ready" = "true"
+
+          curl -sf http://localhost:3000/api/health | grep -q '"ok":true'
+
+          curl -sf -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256700000000","pin":"12345678"}' | grep -q '"token"'
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"phone":"+256700000000","pin":"wrong-password"}')
+          test "$code" = "401"
+
+  capacitor-sync:
+    name: Capacitor Sync
     needs: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -137,10 +172,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
-      - name: Build web assets
-        run: npm run build
+      - name: Download verified web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
 
       - name: Sync native projects
         run: npx cap sync android && npx cap sync ios
