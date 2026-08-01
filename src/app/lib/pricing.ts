@@ -1,36 +1,58 @@
 /**
- * Client-side loan pricing — mirrors supabase/functions/_shared/core.ts so
- * every build (even offline/demo) shows a compliant, APR-capped,
- * simple-interest quote and never the old 8%/month figure.
+ * Client-side loan pricing.
  *
- *  - All-in APR is capped at 33.6% (below Apple's 36% loan-app limit).
- *  - Minimum term 90 days keeps loans above Google Play's 60-day floor.
- *  - Interest is simple: cost = principal × (apr/365) × days.
+ * This mirrors server/src/lib/pricing.ts so customers see the same price that
+ * the Node API stores. CI compares both engines across representative inputs.
+ *
+ * Interest is simple:
+ *   interest = principal × APR × termDays / 365
  */
 import type { LoanQuote } from "../api/client";
 
 export const PRICING = {
   MAX_APR: 0.336,
   MIN_TERM_DAYS: 90,
+  MAX_TERM_DAYS: 365,
   SAVINGS_DISCOUNT: 0.05,
   SAVINGS_THRESHOLD: 100000,
-};
+} as const;
 
-export function localQuote(principal: number, termDays: number, savingsBalance = 0): LoanQuote {
-  const term = Math.max(PRICING.MIN_TERM_DAYS, Math.round(termDays || PRICING.MIN_TERM_DAYS));
-  const discount = savingsBalance >= PRICING.SAVINGS_THRESHOLD ? PRICING.SAVINGS_DISCOUNT : 0;
+function normalizePrincipal(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError("Loan amount must be a positive number");
+  }
+  return Math.round(value);
+}
+
+function normalizeTerm(value: number): number {
+  const requested = Number.isFinite(value) && value > 0
+    ? Math.round(value)
+    : PRICING.MIN_TERM_DAYS;
+  return Math.min(PRICING.MAX_TERM_DAYS, Math.max(PRICING.MIN_TERM_DAYS, requested));
+}
+
+export function localQuote(
+  principalInput: number,
+  termDaysInput: number,
+  savingsBalance = 0
+): LoanQuote {
+  const principal = normalizePrincipal(principalInput);
+  const termDays = normalizeTerm(termDaysInput);
+  const savingsDiscountApplied = Number(savingsBalance) >= PRICING.SAVINGS_THRESHOLD;
+  const discount = savingsDiscountApplied ? PRICING.SAVINGS_DISCOUNT : 0;
   const apr = Math.max(0, PRICING.MAX_APR - discount);
-  const interest = Math.round(principal * (apr / 365) * term);
+  const interest = Math.round(principal * (apr / 365) * termDays);
+
   return {
     principal,
-    termDays: term,
+    termDays,
     apr: Number(apr.toFixed(4)),
     aprPercent: Number((apr * 100).toFixed(1)),
     monthlyRatePercent: Number(((apr / 12) * 100).toFixed(2)),
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied: discount > 0,
+    savingsDiscountApplied,
     compound: false,
   };
 }
