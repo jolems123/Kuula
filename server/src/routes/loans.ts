@@ -1,8 +1,18 @@
 import { Router, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
+import {
+  buildMarzPayWebhookUrl,
+  collectMoney,
+  createPaymentReference,
+  marzPayConfigured,
+  normalizeMarzPayAmount,
+  normalizeUgandaMobileMoneyPhone,
+  sendMoney,
+} from "../lib/marzpay.js";
 
 const router = Router();
 
@@ -10,42 +20,42 @@ function quoteForRequest(amount: unknown, termDays: unknown, savingsBalance = 0)
   try {
     return localQuote(Number(amount), Number(termDays), savingsBalance);
   } catch (error) {
-    if (error instanceof RangeError) {
-      throw new AppError(error.message, 400);
-    }
+    if (error instanceof RangeError) throw new AppError(error.message, 400);
     throw error;
   }
 }
 
-// GET /api/loans/applications
-router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
-  const isAdmin = req.user!.role === "admin";
-  const where = isAdmin ? {} : { applicantId: req.user!.userId };
+function providerCallbackUrl(): string {
+  if (!marzPayConfigured()) {
+    throw new AppError("Mobile-money payments are not configured", 503);
+  }
+  try {
+    return buildMarzPayWebhookUrl();
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : "Payment callback is not configured", 503);
+  }
+}
 
-  const applications = await prisma.loanApplication.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-  });
+function providerPhone(phone: string | null): string {
+  try {
+    return normalizeUgandaMobileMoneyPhone(phone || "");
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : "Invalid mobile-money phone", 422);
+  }
+}
 
-  res.json({
-    applications: applications.map((a) => ({
-      id: a.id,
-      applicantId: a.applicantId,
-      applicantName: a.applicantName,
-      amount: Number(a.amount),
-      purpose: a.purpose,
-      termDays: a.termDays,
-      channel: a.channel,
-      status: a.status,
-      total: Number(a.total),
-      createdAt: a.createdAt,
-      decidedAt: a.decidedAt,
-      decisionNotes: a.decisionNotes,
-    })),
-  });
-});
+function providerAmount(amount: number): number {
+  try {
+    return normalizeMarzPayAmount(amount);
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : "Invalid mobile-money amount", 400);
+  }
+}
 
-// POST /api/loans/applications
+function jsonAttempts(value: Prisma.JsonValue): Prisma.JsonArray {
+  return Array.isArray(value) ? value as Prisma.JsonArray : [];
+}
+
 const mapApplication = (application: any) => ({
   id: application.id,
   applicantId: application.applicantId,
@@ -59,6 +69,17 @@ const mapApplication = (application: any) => ({
   createdAt: application.createdAt,
   decidedAt: application.decidedAt ?? null,
   decisionNotes: application.decisionNotes ?? null,
+});
+
+// GET /api/loans/applications
+router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
+  const isAdmin = req.user!.role === "admin";
+  const where = isAdmin ? {} : { applicantId: req.user!.userId };
+  const applications = await prisma.loanApplication.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({ applications: applications.map(mapApplication) });
 });
 
 async function createLoanApplicationForUser(
@@ -77,7 +98,7 @@ async function createLoanApplicationForUser(
     Number(user.savingsAccount?.balance ?? 0)
   );
 
-  const application = await prisma.loanApplication.create({
+  return prisma.loanApplication.create({
     data: {
       applicantId: userId,
       applicantName: user.fullName,
@@ -91,8 +112,6 @@ async function createLoanApplicationForUser(
       status: "pending",
     },
   });
-
-  return application;
 }
 
 router.post("/applications", authenticateToken, async (req: Request, res: Response) => {
@@ -102,19 +121,15 @@ router.post("/applications", authenticateToken, async (req: Request, res: Respon
     termDays: number;
     channel?: string;
   };
-  const userId = req.user!.userId;
-
-  const application = await createLoanApplicationForUser(userId, {
+  const application = await createLoanApplicationForUser(req.user!.userId, {
     amount: Number(amount),
     purpose,
     termDays: Number(termDays),
     channel,
   });
-
   res.json({ application: mapApplication(application) });
 });
 
-// POST /api/loans/top-up
 router.post("/top-up", authenticateToken, async (req: Request, res: Response) => {
   const { amount, term_days, purpose, disbursement_method } = req.body as {
     amount: number;
@@ -122,9 +137,7 @@ router.post("/top-up", authenticateToken, async (req: Request, res: Response) =>
     purpose?: string;
     disbursement_method?: string;
   };
-  const userId = req.user!.userId;
-
-  const application = await createLoanApplicationForUser(userId, {
+  const application = await createLoanApplicationForUser(req.user!.userId, {
     amount: Number(amount),
     purpose: purpose || "Top-up",
     termDays: Number(term_days),
@@ -146,103 +159,145 @@ router.post("/top-up", authenticateToken, async (req: Request, res: Response) =>
   });
 });
 
-// POST /api/loans/applications/decision
 router.post("/applications/decision", authenticateToken, async (req: Request, res: Response) => {
   if (req.user!.role !== "admin") throw new AppError("Admin access required", 403);
 
   const { id, decision, notes } = req.body;
-  const status = decision === "approved" ? "offered" : "rejected";
+  if (decision !== "approved" && decision !== "rejected") {
+    throw new AppError("Decision must be approved or rejected", 400);
+  }
 
   const application = await prisma.loanApplication.update({
     where: { id, status: "pending" },
-    data: { status, decisionNotes: notes || null, decidedAt: new Date() },
+    data: {
+      status: decision === "approved" ? "offered" : "rejected",
+      decisionNotes: notes || null,
+      decidedAt: new Date(),
+    },
   });
-
   res.json({ application: mapApplication(application) });
 });
 
-// POST /api/loans/:id/accept
+// Borrower acceptance initiates a real mobile-money disbursement. No loan,
+// repayment, or completed ledger entry is booked until the verified webhook.
 router.post("/:id/accept", authenticateToken, async (req: Request, res: Response) => {
-  const id = String(req.params.id);
+  const applicationId = String(req.params.id);
   const userId = req.user!.userId;
+  const existing = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    include: { applicant: true },
+  });
 
-  const existing = await prisma.loanApplication.findUnique({ where: { id } });
   if (!existing || existing.applicantId !== userId) {
     throw new AppError("Loan offer not found", 404);
   }
   if (existing.status !== "offered") {
-    throw new AppError("Only offered loans can be accepted", 400);
+    throw new AppError("Only offered loans can be accepted", 409);
+  }
+  if (!existing.applicant.phoneVerified) {
+    throw new AppError("Verify your phone before receiving a loan", 403);
+  }
+  if (!existing.applicant.kycVerified) {
+    throw new AppError("Complete identity verification before receiving a loan", 403);
   }
 
-  const principal = Math.max(0, Number(existing.amount));
-  const total = Math.max(Number(existing.total), principal);
-  const loanId = existing.loanId ?? existing.id;
+  const phone = providerPhone(existing.applicant.phone);
+  const amount = providerAmount(Number(existing.amount));
+  const callbackUrl = providerCallbackUrl();
+  const reference = createPaymentReference();
+  const loanId = existing.loanId || existing.id;
 
-  const result = await prisma.$transaction(async (tx) => {
-    const application = await tx.loanApplication.update({
-      where: { id: existing.id },
+  const claimedApplication = await prisma.$transaction(async (tx) => {
+    const claim = await tx.loanApplication.updateMany({
+      where: {
+        id: existing.id,
+        applicantId: userId,
+        status: "offered",
+        acceptedAt: null,
+      },
       data: {
-        status: "active",
+        status: "disbursing",
+        acceptedAt: new Date(),
         loanId,
       },
     });
-
-    const repayment = await tx.repayment.findFirst({
-      where: { userId, loanId, status: { not: "paid" } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const effectiveRepayment = repayment ?? await tx.repayment.create({
-      data: {
-        userId,
-        loanId,
-        total: BigInt(Math.round(total)),
-        amountPaid: BigInt(0),
-        dueDate: new Date(Date.now() + application.termDays * 24 * 60 * 60 * 1000),
-        status: "scheduled",
-        attempts: [],
-      },
-    });
+    if (claim.count !== 1) {
+      throw new AppError("This loan offer is already being processed", 409);
+    }
 
     await tx.transaction.create({
       data: {
         userId,
         loanId,
         type: "loan_disbursement",
-        amount: BigInt(Math.round(principal)),
-        status: "completed",
+        amount: BigInt(amount),
+        status: "pending",
+        reference,
+        provider: "marzpay",
+        providerStatus: "initiating",
       },
     });
 
-    await tx.wallet.upsert({
-      where: { userId },
-      update: { balance: { increment: Math.round(principal) } },
-      create: { userId, balance: BigInt(Math.round(principal)) },
-    });
-
-    await tx.notification.create({
-      data: {
-        userId,
-        title: "Loan Disbursed",
-        body: `Your loan of UGX ${Math.round(principal).toLocaleString()} has been disbursed to your wallet.`,
-        type: "success",
-      },
-    });
-
-    return { application, repayment: effectiveRepayment };
+    return tx.loanApplication.findUniqueOrThrow({ where: { id: existing.id } });
   });
 
+  const result = await sendMoney({
+    phone,
+    amount,
+    reference,
+    description: `Kuula loan ${loanId}`,
+    callbackUrl,
+  });
+
+  if (!result.accepted) {
+    await prisma.$transaction([
+      prisma.transaction.update({
+        where: { reference },
+        data: {
+          status: "failed",
+          providerStatus: result.status,
+          transactionId: result.uuid || null,
+          providerPayload: result.raw as Prisma.InputJsonValue,
+        },
+      }),
+      prisma.loanApplication.update({
+        where: { id: existing.id },
+        data: {
+          status: "offered",
+          acceptedAt: null,
+          disbursementRef: result.uuid || reference,
+        },
+      }),
+    ]);
+    throw new AppError(`Mobile-money disbursement was not accepted: ${result.message}`, 502);
+  }
+
+  await prisma.$transaction([
+    prisma.transaction.update({
+      where: { reference },
+      data: {
+        providerStatus: result.status || "processing",
+        transactionId: result.uuid || null,
+        providerPayload: result.raw as Prisma.InputJsonValue,
+      },
+    }),
+    prisma.loanApplication.update({
+      where: { id: existing.id },
+      data: { disbursementRef: result.uuid || reference },
+    }),
+  ]);
+
   res.json({
-    application: mapApplication(result.application),
-    repayment: {
-      ...result.repayment,
-      total: Number(result.repayment.total),
-      amountPaid: Number(result.repayment.amountPaid),
+    application: mapApplication(claimedApplication),
+    disbursement: {
+      status: "pending",
+      uuid: result.uuid,
+      reference,
+      message: "Your mobile-money disbursement is being processed.",
     },
   });
 });
 
-// POST /api/loans/quote
 router.post("/quote", authenticateToken, async (req: Request, res: Response) => {
   const { amount, termDays } = req.body;
   const user = await prisma.user.findUnique({
@@ -251,15 +306,13 @@ router.post("/quote", authenticateToken, async (req: Request, res: Response) => 
   });
   if (!user) throw new AppError("User not found", 404);
 
-  const quote = quoteForRequest(
+  res.json(quoteForRequest(
     amount,
     termDays,
     Number(user.savingsAccount?.balance ?? 0)
-  );
-  res.json(quote);
+  ));
 });
 
-// GET /api/loans/repayment
 router.get("/repayment", authenticateToken, async (req: Request, res: Response) => {
   const repayment = await prisma.repayment.findFirst({
     where: { userId: req.user!.userId, status: { not: "paid" } },
@@ -271,26 +324,29 @@ router.get("/repayment", authenticateToken, async (req: Request, res: Response) 
     return;
   }
 
-  const daysToDue = Math.ceil((new Date(repayment.dueDate).getTime() - Date.now()) / 86400000);
+  const daysToDue = Math.ceil((repayment.dueDate.getTime() - Date.now()) / 86_400_000);
   res.json({
     repayment: {
       ...repayment,
       total: Number(repayment.total),
       amountPaid: Number(repayment.amountPaid),
+      amount_paid: Number(repayment.amountPaid),
+      due_date: repayment.dueDate,
       collection: {
-        stage: repayment.status === "paid" ? "paid" : "scheduled",
-        label: repayment.status === "paid" ? "Repaid" : `Due in ${daysToDue} days`,
+        stage: repayment.pendingCollectionRef ? "processing" : "scheduled",
+        label: repayment.pendingCollectionRef
+          ? "Mobile-money payment pending"
+          : `Due in ${daysToDue} days`,
         daysToDue,
       },
     },
   });
 });
 
-// POST /api/loans/repayment/pay
+// A repayment request only creates a pending provider collection. The balance
+// changes later, and only in the verified MarZPay webhook transaction.
 router.post("/repayment/pay", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
-  const { amount } = req.body;
-
   const repayment = await prisma.repayment.findFirst({
     where: { userId, status: { not: "paid" } },
     orderBy: { dueDate: "asc" },
@@ -300,55 +356,138 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
     res.json({
       repayment: null,
       attempt: { success: false, reason: "no-active-loan" },
+      isPending: false,
       isPartial: false,
     });
     return;
   }
+  if (repayment.pendingCollectionRef) {
+    throw new AppError("A mobile-money repayment is already pending", 409);
+  }
 
-  const wallet = await prisma.wallet.findUnique({ where: { userId } });
-  const balance = Number(wallet?.balance ?? 0);
   const outstanding = Number(repayment.total) - Number(repayment.amountPaid);
-  const payAmount = amount ? Math.min(Math.round(Number(amount)), outstanding) : outstanding;
-
-  if (balance < payAmount || payAmount <= 0) {
-    res.json({
-      repayment: { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid) },
-      attempt: { success: false, reason: "insufficient-wallet-balance" },
-      isPartial: false,
-    });
-    return;
+  const requested = req.body?.amount === undefined
+    ? outstanding
+    : Math.round(Number(req.body.amount));
+  if (!Number.isFinite(requested) || requested <= 0 || requested > outstanding) {
+    throw new AppError("Payment amount must be positive and cannot exceed the outstanding balance", 400);
   }
 
-  const newPaid = Number(repayment.amountPaid) + payAmount;
-  const receiptId = "RCPT-" + Date.now();
-  const isPartial = payAmount < outstanding;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found", 404);
+  if (!user.phoneVerified) throw new AppError("Verify your phone before making a repayment", 403);
 
-  await prisma.wallet.update({ where: { userId }, data: { balance: { decrement: payAmount } } });
+  const phone = providerPhone(user.phone);
+  const amount = providerAmount(requested);
+  const callbackUrl = providerCallbackUrl();
+  const reference = createPaymentReference();
+  const attempts = jsonAttempts(repayment.attempts);
 
-  if (newPaid >= Number(repayment.total)) {
-    await prisma.repayment.update({
-      where: { id: repayment.id },
-      data: { status: "paid", amountPaid: repayment.total, receiptId },
+  await prisma.$transaction(async (tx) => {
+    const claim = await tx.repayment.updateMany({
+      where: {
+        id: repayment.id,
+        status: { not: "paid" },
+        pendingCollectionRef: null,
+      },
+      data: {
+        pendingCollectionRef: reference,
+        attempts: [
+          ...attempts,
+          {
+            at: new Date().toISOString(),
+            method: "mobile-money-collection",
+            amount,
+            success: false,
+            reason: "request-created",
+            reference,
+          },
+        ] as Prisma.InputJsonValue,
+      },
     });
-    await prisma.loanApplication.updateMany({
-      where: { applicantId: userId, loanId: repayment.loanId },
-      data: { status: "paid" },
+    if (claim.count !== 1) {
+      throw new AppError("A mobile-money repayment is already pending", 409);
+    }
+
+    await tx.transaction.create({
+      data: {
+        userId,
+        loanId: repayment.loanId,
+        type: "loan_payment",
+        amount: BigInt(amount),
+        status: "pending",
+        reference,
+        provider: "marzpay",
+        providerStatus: "initiating",
+      },
     });
-  } else {
-    await prisma.repayment.update({
-      where: { id: repayment.id },
-      data: { amountPaid: newPaid, receiptId },
-    });
+  });
+
+  const result = await collectMoney({
+    phone,
+    amount,
+    reference,
+    description: `Kuula repayment ${repayment.loanId}`,
+    callbackUrl,
+  });
+
+  if (!result.accepted) {
+    const current = await prisma.repayment.findUniqueOrThrow({ where: { id: repayment.id } });
+    await prisma.$transaction([
+      prisma.transaction.update({
+        where: { reference },
+        data: {
+          status: "failed",
+          providerStatus: result.status,
+          transactionId: result.uuid || null,
+          providerPayload: result.raw as Prisma.InputJsonValue,
+        },
+      }),
+      prisma.repayment.update({
+        where: { id: repayment.id },
+        data: {
+          pendingCollectionRef: null,
+          attempts: [
+            ...jsonAttempts(current.attempts),
+            {
+              at: new Date().toISOString(),
+              method: "mobile-money-collection",
+              amount,
+              success: false,
+              reason: "provider-request-rejected",
+              reference,
+              detail: result.message,
+            },
+          ] as Prisma.InputJsonValue,
+        },
+      }),
+    ]);
+    throw new AppError(`Mobile-money collection was not accepted: ${result.message}`, 502);
   }
 
-  await prisma.transaction.create({
-    data: { userId, loanId: repayment.loanId, type: "loan_payment", amount: BigInt(payAmount), status: "completed" },
+  await prisma.transaction.update({
+    where: { reference },
+    data: {
+      providerStatus: result.status || "processing",
+      transactionId: result.uuid || null,
+      providerPayload: result.raw as Prisma.InputJsonValue,
+    },
   });
 
   res.json({
-    repayment: { ...repayment, total: Number(repayment.total), amountPaid: newPaid, receiptId },
-    attempt: { success: true, reason: isPartial ? "partial-payment-collected" : "collected" },
-    isPartial,
+    repayment: {
+      ...repayment,
+      total: Number(repayment.total),
+      amountPaid: Number(repayment.amountPaid),
+      amount_paid: Number(repayment.amountPaid),
+    },
+    attempt: { success: false, reason: "pending-customer-approval" },
+    isPending: true,
+    isPartial: amount < outstanding,
+    amount,
+    reference,
+    uuid: result.uuid,
+    message: "Approve the mobile-money prompt on your phone to complete the repayment.",
   });
 });
 

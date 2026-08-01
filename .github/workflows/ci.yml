@@ -38,10 +38,6 @@ jobs:
       - name: Client-server pricing parity
         run: npm run check:pricing-parity
 
-      # CI verifies that a production build can be produced with the required
-      # Node API configuration. The .invalid domain is reserved and cannot route
-      # to a real service. Manual mobile releases still require the repository's
-      # real VITE_API_BASE_URL secret.
       - name: Guarded production build
         run: npm run build
         env:
@@ -64,9 +60,6 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      # The route sweep intentionally runs in local demo mode. It checks every
-      # registered screen for runtime crashes and blank renders; API behavior is
-      # tested separately against PostgreSQL in the server job.
       - name: Route sweep
         run: |
           npm run dev -- --port 5173 &
@@ -101,6 +94,11 @@ jobs:
       NODE_ENV: test
       PORT: 3000
       CORS_ORIGINS: http://localhost:5173
+      PUBLIC_API_URL: http://localhost:3000
+      MARZPAY_API_KEY: ci-key
+      MARZPAY_API_SECRET: ci-secret
+      MARZPAY_BASE_URL: http://127.0.0.1:3999/api/v1
+      MARZPAY_WEBHOOK_SECRET: ci-webhook-secret
       ADMIN_EMAIL: admin-ci@kuula.test
       ADMIN_PASSWORD: Admin-CI-Password-Only-2026
       DEMO_PHONE: "+256700000000"
@@ -137,15 +135,19 @@ jobs:
         working-directory: server
         run: npm run db:seed
 
-      - name: API smoke tests
+      - name: API and provider-settlement tests
         working-directory: server
         run: |
+          set -euo pipefail
+
+          npx tsx src/test/fake-marzpay-server.ts &
+          FAKE_PID=$!
           npm start &
           API_PID=$!
-          trap 'kill $API_PID' EXIT
+          trap 'kill $API_PID $FAKE_PID 2>/dev/null || true' EXIT
 
           ready=false
-          for i in $(seq 1 30); do
+          for i in $(seq 1 40); do
             if curl -sf http://localhost:3000/api/health > /dev/null; then
               ready=true
               break
@@ -153,17 +155,105 @@ jobs:
             sleep 0.5
           done
           test "$ready" = "true"
-
           curl -sf http://localhost:3000/api/health | grep -q '"ok":true'
 
-          curl -sf -X POST http://localhost:3000/api/auth/login \
+          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
-            -d '{"phone":"+256700000000","pin":"12345678"}' | grep -q '"token"'
+            -d '{"phone":"+256700000000","pin":"12345678"}')
+          CUSTOMER_TOKEN=$(echo "$CUSTOMER_JSON" | jq -r '.token')
+          test -n "$CUSTOMER_TOKEN"
+
+          ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"admin-ci@kuula.test","password":"Admin-CI-Password-Only-2026"}')
+          ADMIN_TOKEN=$(echo "$ADMIN_JSON" | jq -r '.token')
+          test -n "$ADMIN_TOKEN"
 
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256700000000","pin":"wrong-password"}')
           test "$code" = "401"
+
+          APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo"}')
+          APPLICATION_ID=$(echo "$APPLICATION_JSON" | jq -r '.application.id')
+          test -n "$APPLICATION_ID"
+
+          OFFER_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications/decision \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{\"id\":\"$APPLICATION_ID\",\"decision\":\"approved\",\"notes\":\"CI approval\"}")
+          test "$(echo "$OFFER_JSON" | jq -r '.application.status')" = "offered"
+
+          BEFORE_REPAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$BEFORE_REPAYMENT" | jq -r '.repayment')" = "null"
+
+          ACCEPT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json')
+          DISBURSEMENT_REF=$(echo "$ACCEPT_JSON" | jq -r '.disbursement.reference')
+          test "$(echo "$ACCEPT_JSON" | jq -r '.application.status')" = "disbursing"
+          test "$(echo "$ACCEPT_JSON" | jq -r '.disbursement.status')" = "pending"
+          test -n "$DISBURSEMENT_REF"
+
+          STILL_NO_REPAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$STILL_NO_REPAYMENT" | jq -r '.repayment')" = "null"
+
+          curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
+            -H 'Content-Type: application/json' \
+            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"uuid\":\"provider-disbursement\",\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}" \
+            | grep -q '"settled":true'
+
+          ACTIVE_APPLICATIONS=$(curl -sf http://localhost:3000/api/loans/applications \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$ACTIVE_APPLICATIONS" | jq -r '.applications[0].status')" = "active"
+
+          REPAYMENT_JSON=$(curl -sf http://localhost:3000/api/loans/repayment \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$REPAYMENT_JSON" | jq -r '.repayment.amount_paid')" = "0"
+
+          PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"amount":10000}')
+          PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
+          test "$(echo "$PAYMENT_JSON" | jq -r '.isPending')" = "true"
+          test -n "$PAYMENT_REF"
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/repayment/pay \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"amount":10000}')
+          test "$code" = "409"
+
+          curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
+            -H 'Content-Type: application/json' \
+            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
+            | grep -q '"settled":true'
+
+          AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
+
+          # A duplicate provider callback must not credit the loan twice.
+          curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
+            -H 'Content-Type: application/json' \
+            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\"}}" \
+            | grep -q '"settled":false'
+
+          AFTER_DUPLICATE=$(curl -sf http://localhost:3000/api/loans/repayment \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$AFTER_DUPLICATE" | jq -r '.repayment.amount_paid')" = "10000"
+
+          bad_token_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            'http://localhost:3000/api/payments/marzpay/webhook?token=wrong' \
+            -H 'Content-Type: application/json' \
+            -d '{}')
+          test "$bad_token_code" = "401"
 
   capacitor-sync:
     name: Capacitor Sync

@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import { errorHandler } from "./middleware/error-handler.js";
 import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
+import paymentRoutes from "./routes/payments.js";
 import savingsRoutes from "./routes/savings.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
@@ -15,7 +16,6 @@ import adminRoutes from "./routes/admin.js";
 import kycRoutes from "./routes/kyc.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 
-// Validate DATABASE_URL at startup
 const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
 const missing = requiredEnvVars.filter((key) => !process.env[key]);
 if (missing.length > 0) {
@@ -27,64 +27,44 @@ if (missing.length > 0) {
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
-// Middleware
 const corsOrigins = (process.env.CORS_ORIGINS || "")
   .split(",")
-  .map((v) => v.trim())
+  .map((value) => value.trim())
   .filter(Boolean);
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
-);
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({
+  origin: corsOrigins.length > 0 ? corsOrigins : true,
+  credentials: true,
+}));
 
-app.use(
-  cors({
-    origin: corsOrigins.length > 0 ? corsOrigins : true,
-    credentials: true,
-  })
-);
+app.use("/api/auth", rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+app.use("/api", rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
 
-app.use(
-  "/api/auth",
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
-
-app.use(
-  "/api",
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
-
-// KYC accepts two base64-encoded ID images, so it needs a larger body limit
-// than the rest of the API. This is scoped to /api/kyc and runs before the
-// global 1mb parser; express.json is idempotent (skips if body already read).
 app.use("/api/kyc", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
-// Health check
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString(), version: "2.4.1-local" });
 });
 
-// Compliance
 app.get("/api/compliance", (_req, res) => {
   res.json(COMPLIANCE);
 });
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/savings", savingsRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
@@ -93,7 +73,6 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/kyc", kycRoutes);
 
-// Credit score
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
 app.get("/api/credit/score", authenticateToken, async (req, res) => {
@@ -121,14 +100,12 @@ app.get("/api/credit/score", authenticateToken, async (req, res) => {
   res.json(score);
 });
 
-// Wallet top-up (disabled - must go through MarzPay)
 app.post("/api/wallet/topup", (_req, res) => {
   res.status(400).json({
     error: "Wallet top-ups are made from your mobile money when a payment is collected.",
   });
 });
 
-// User deletion
 app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
   const prisma = (await import("./lib/prisma.js")).default;
   await prisma.user.update({
@@ -138,10 +115,8 @@ app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Error handler (must be last)
 app.use(errorHandler);
 
-// Graceful shutdown
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`✓ Kuula server running on http://0.0.0.0:${PORT}`);
   console.log(`  Health: http://localhost:${PORT}/api/health`);
