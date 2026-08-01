@@ -1,37 +1,17 @@
-/**
- * Smile ID — Enhanced KYC / ID-number verification for Uganda NIN.
- *
- * This verifies a National ID *number* against the government registry (NIRA)
- * using the applicant's name and DOB. It does NOT require the ID photos to be
- * uploaded to storage, which is why it fits our current KYC flow (we only pass
- * the NIN + name + DOB to the backend).
- *
- * Wiring is gated behind environment configuration. When the SMILE_* secrets
- * are absent, verification is skipped and the caller falls back to manual
- * review (status "pending") — the flow never blocks or throws on a provider
- * outage (fail-safe).
- *
- * Required env to enable:
- *   SMILE_PARTNER_ID   Smile ID partner id
- *   SMILE_API_KEY      Smile ID API key (from the portal)
- *   SMILE_ENV          "sandbox" (default) or "production"
- *
- * Docs: https://docs.usesmileid.com/products/for-individuals-kyc/identity-lookup
- */
 import crypto from "node:crypto";
 
-export type KycVerificationStatus = "verified" | "rejected" | "pending";
+export type KycVerificationStatus =
+  | "verified"
+  | "rejected"
+  | "unavailable"
+  | "not_configured";
 
 export interface KycVerificationResult {
-  /** Whether Smile ID is configured and was actually called. */
   configured: boolean;
-  /** True only when the provider positively matched the identity. */
   verified: boolean;
   status: KycVerificationStatus;
   provider: "smile-id" | "none";
-  /** Provider job reference for audit/support, when available. */
   reference?: string;
-  /** Human-readable detail (result text or error) for logs. */
   detail?: string;
 }
 
@@ -48,15 +28,16 @@ function readConfig(): SmileConfig | null {
   const partnerId = process.env.SMILE_PARTNER_ID?.trim();
   const apiKey = process.env.SMILE_API_KEY?.trim();
   if (!partnerId || !apiKey) return null;
-  const baseUrl = process.env.SMILE_ENV?.trim() === "production" ? PRODUCTION_URL : SANDBOX_URL;
+  const baseUrl = process.env.SMILE_ENV?.trim() === "production"
+    ? PRODUCTION_URL
+    : SANDBOX_URL;
   return { partnerId, apiKey, baseUrl };
 }
 
-/**
- * Smile ID v2 request signature:
- *   base64( HMAC-SHA256( timestamp + partner_id + "sid_request", api_key ) )
- * Exported for unit testing (pure and deterministic given its inputs).
- */
+export function smileIdConfigured(): boolean {
+  return readConfig() !== null;
+}
+
 export function computeSignature(apiKey: string, partnerId: string, timestamp: string): string {
   return crypto
     .createHmac("sha256", apiKey)
@@ -66,7 +47,6 @@ export function computeSignature(apiKey: string, partnerId: string, timestamp: s
     .digest("base64");
 }
 
-/** Splits a full legal name into first / last for the provider payload. */
 export function splitName(fullName: string): { first: string; last: string } {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return { first: parts[0] ?? "", last: parts[0] ?? "" };
@@ -76,30 +56,25 @@ export function splitName(fullName: string): { first: string; last: string } {
 export interface VerifyNinInput {
   nationalId: string;
   fullName: string;
-  dob: string; // YYYY-MM-DD
+  dob: string;
   userId: string;
 }
 
-const NOT_CONFIGURED: KycVerificationResult = {
-  configured: false,
-  verified: false,
-  status: "pending",
-  provider: "none",
-};
-
-/**
- * Attempts to verify a Uganda NIN with Smile ID. Never throws — on missing
- * config, network failure, or a non-OK response it resolves to a "pending"
- * result so the KYC submission still records for manual review.
- */
 export async function verifyNinWithSmileId(input: VerifyNinInput): Promise<KycVerificationResult> {
   const config = readConfig();
-  if (!config) return NOT_CONFIGURED;
+  if (!config) {
+    return {
+      configured: false,
+      verified: false,
+      status: "not_configured",
+      provider: "none",
+      detail: "Smile ID is not configured",
+    };
+  }
 
   const timestamp = new Date().toISOString();
   const signature = computeSignature(config.apiKey, config.partnerId, timestamp);
   const { first, last } = splitName(input.fullName);
-
   const payload = {
     partner_id: config.partnerId,
     timestamp,
@@ -113,53 +88,75 @@ export async function verifyNinWithSmileId(input: VerifyNinInput): Promise<KycVe
     partner_params: {
       user_id: input.userId,
       job_id: `kyc-${input.userId}-${Date.now()}`,
-      job_type: 5, // Enhanced KYC (ID lookup)
+      job_type: 5,
     },
   };
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
-    const res = await fetch(`${config.baseUrl}/v1/id_verification`, {
+    const response = await fetch(`${config.baseUrl}/v1/id_verification`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
 
-    if (!res.ok) {
+    if (!response.ok) {
       return {
         configured: true,
         verified: false,
-        status: "pending",
+        status: "unavailable",
         provider: "smile-id",
-        detail: `Smile ID returned HTTP ${res.status}`,
+        detail: `Smile ID returned HTTP ${response.status}`,
       };
     }
 
-    const data = (await res.json()) as {
+    const data = (await response.json()) as {
       ResultCode?: string;
       ResultText?: string;
       Actions?: { Verify_ID_Number?: string };
       SmileJobID?: string;
     };
+    const action = data.Actions?.Verify_ID_Number?.trim() || "";
 
-    const verified = data.Actions?.Verify_ID_Number === "Verified";
-    return {
-      configured: true,
-      verified,
-      status: verified ? "verified" : "pending",
-      provider: "smile-id",
-      reference: data.SmileJobID,
-      detail: data.ResultText,
-    };
-  } catch (err) {
+    if (action.toLowerCase() === "verified") {
+      return {
+        configured: true,
+        verified: true,
+        status: "verified",
+        provider: "smile-id",
+        reference: data.SmileJobID,
+        detail: data.ResultText || action,
+      };
+    }
+
+    if (action) {
+      return {
+        configured: true,
+        verified: false,
+        status: "rejected",
+        provider: "smile-id",
+        reference: data.SmileJobID,
+        detail: data.ResultText || action,
+      };
+    }
+
     return {
       configured: true,
       verified: false,
-      status: "pending",
+      status: "unavailable",
       provider: "smile-id",
-      detail: err instanceof Error ? err.message : "Smile ID request failed",
+      reference: data.SmileJobID,
+      detail: data.ResultText || `Smile ID response did not contain a verification decision (${data.ResultCode || "no result code"})`,
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      verified: false,
+      status: "unavailable",
+      provider: "smile-id",
+      detail: error instanceof Error ? error.message : "Smile ID request failed",
     };
   }
 }
