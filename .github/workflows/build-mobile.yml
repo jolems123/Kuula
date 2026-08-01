@@ -1,18 +1,13 @@
-# Build and verify the Kuula web bundle, Node API, and Capacitor apps.
+# Build verified Capacitor applications on demand.
 #
 # Production architecture:
 #   React/Capacitor client -> Node/Express API -> PostgreSQL (managed with pgAdmin)
 #
-# Modes:
-#   pull request / push to main -> verify frontend, server, pricing, and production build
-#   workflow_dispatch          -> verify + build Android and/or iOS artifacts
+# Pull requests and pushes are verified by ci.yml. This workflow is deliberately
+# manual so it only consumes Android/iOS build resources when an artifact is needed.
 name: Build Mobile Apps
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       platforms:
@@ -75,8 +70,6 @@ jobs:
         working-directory: server
         run: npm run build
 
-      # Use npm run build rather than npx vite build so the prebuild
-      # environment guard cannot be bypassed.
       - name: Production web build
         run: npm run build
 
@@ -90,7 +83,7 @@ jobs:
   android:
     name: "Android (${{ github.event.inputs.build_type || 'debug' }})"
     needs: verify
-    if: github.event_name == 'workflow_dispatch' && contains(github.event.inputs.platforms || 'android', 'android')
+    if: contains(github.event.inputs.platforms || 'android', 'android')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -154,7 +147,7 @@ jobs:
   ios:
     name: Build iOS IPA
     needs: verify
-    if: github.event_name == 'workflow_dispatch' && contains(github.event.inputs.platforms || 'android', 'ios')
+    if: contains(github.event.inputs.platforms || 'android', 'ios')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
