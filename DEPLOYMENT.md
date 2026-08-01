@@ -1,72 +1,183 @@
-# Kuula — Deployment Guide (Supabase + Capacitor + App Stores)
+# Kuula Deployment Guide
 
-## Architecture
+## Production architecture
 
+Kuula uses one backend path:
+
+```text
+React / Capacitor application
+            |
+            | HTTPS JSON API
+            v
+Node.js / Express server
+            |
+            | Prisma
+            v
+PostgreSQL database
+            |
+            v
+pgAdmin 4 for database administration
 ```
-┌─────────────────────────────────────────────────────────┐
-│  GitHub (source code)                                    │
-│  └─ .github/workflows/                                  │
-│     ├─ deploy-supabase-fns.yml  → auto-deploys Edge Fns │
-│     └─ build-mobile.yml         → CI + signed APK/IPA   │
-└──────────┬──────────────────────────┬────────────────────┘
-           │                          │
-           ▼                          ▼
-┌─────────────────────┐    ┌──────────────────────┐
-│  Supabase (hosted)  │    │  Capacitor (local/CI) │
-│  ├─ Postgres DB     │    │  ├─ Android AAB ──────► Google Play  │
-│  ├─ Auth (JWT+SMS)  │    │  └─ iOS IPA ─────────► App Store     │
-│  └─ 5 Edge Functions│    └──────────────────────┘
-└─────────────────────┘
-```
 
-- **Supabase** = database + auth + API (they host everything)
-- **Capacitor** = wraps your web build into native Android/iOS apps
-- **Google Play / App Store** = app distribution (they host the download)
+**pgAdmin 4 is an administration interface, not the application backend.** The
+backend is the Node/Express API in `server/`; PostgreSQL stores the data and
+pgAdmin is used to inspect and manage that PostgreSQL database.
 
-> **Note:** This project uses **Capacitor** (not Expo/EAS). The web app builds with
-> Vite, then `cap sync` copies the `dist/` output into the native Android/iOS
-> projects. You build the native apps either locally (Android Studio / Xcode)
-> or in GitHub Actions (see `build-mobile.yml`).
+The `supabase/` directory is retained only as legacy reference during the
+migration. It is not part of the production build or deployment.
 
 ---
 
-## 1. Prerequisites
+## 1. Requirements
 
-| What | Details |
-|------|---------|
-| Supabase project | Already set up at `yuqhwjvmamjwklumlhtt.supabase.co` |
-| Node.js 20+ | Build machine only |
-| Android Studio | For local Android builds |
-| Xcode (Mac only) | For local iOS builds |
-| Google Play Console | $25 one-time, for Android distribution |
-| Apple Developer account | $99/year, Organization account (not Individual) |
-| UMRA money-lender license | Required for Google Play Personal Loan declaration |
+- Node.js 20 or newer
+- PostgreSQL 15 or newer
+- pgAdmin 4
+- A Linux server or managed application host for the Node API
+- HTTPS domain for the API, for example `https://api.kuula.ug`
+- Android Studio for local Android builds
+- Xcode on macOS for local iOS builds
 
 ---
 
-## 2. Clone & Install
+## 2. Install the application
 
 ```bash
 git clone https://github.com/jolems123/Kuula.git
 cd Kuula
 npm ci --legacy-peer-deps
+cd server
+npm install
+cd ..
 ```
+
+The frontend and API intentionally have separate dependency manifests. This
+prevents the API deployment from depending on frontend-only packages.
 
 ---
 
-## 3. Create Your Environment File
+## 3. Create the PostgreSQL database
 
-```bash
-cp .env.example .env.local
-```
+In pgAdmin 4:
 
-Edit `.env.local`:
+1. Connect to your PostgreSQL server.
+2. Create a login role named `kuula_user` with a strong unique password.
+3. Create a database named `kuula_db` owned by `kuula_user`.
+4. Do not use the PostgreSQL superuser for the running application.
+5. Restrict remote database access to the API server only.
+
+Example development connection string:
 
 ```env
-VITE_BACKEND=supabase
+DATABASE_URL="postgresql://kuula_user:<PASSWORD>@localhost:5432/kuula_db?schema=public"
+```
+
+For production, use the private hostname supplied by the database host. Keep the
+connection string only in the API server's secret environment variables.
+
+---
+
+## 4. Configure the Node API
+
+Create `server/.env` from `server/.env.example` and set at least:
+
+```env
+DATABASE_URL="postgresql://kuula_user:<PASSWORD>@<PRIVATE_DB_HOST>:5432/kuula_db?schema=public"
+JWT_SECRET="<64-or-more-random-characters>"
+PORT=3000
+CORS_ORIGINS="https://app.kuula.ug"
+
+ADMIN_EMAIL="<initial-admin-email>"
+ADMIN_PASSWORD="<strong-one-time-seed-password>"
+
+SMILE_PARTNER_ID=""
+SMILE_API_KEY=""
+SMILE_ENV="sandbox"
+KYC_STORAGE_DIR="/var/lib/kuula/kyc"
+```
+
+Generate a JWT secret with:
+
+```bash
+openssl rand -hex 64
+```
+
+Never place `DATABASE_URL`, `JWT_SECRET`, SMS credentials, KYC credentials, or
+mobile-money credentials in a `VITE_*` variable. Every `VITE_*` value is public
+inside the application bundle.
+
+---
+
+## 5. Apply database migrations
+
+From the repository root:
+
+```bash
+cd server
+npx prisma generate
+npm run db:migrate:deploy
+cd ..
+```
+
+For a new local development database, use:
+
+```bash
+cd server
+npm run db:migrate
+```
+
+Use `prisma migrate deploy` in production. Do not use `prisma db push` against a
+live financial database because it does not provide the same migration history
+and deployment control.
+
+---
+
+## 6. Start the API
+
+Build and start the server:
+
+```bash
+cd server
+npm run build
+npm start
+```
+
+The health endpoint is:
+
+```text
+GET https://api.kuula.ug/api/health
+```
+
+Run the API behind an HTTPS reverse proxy or a managed host that terminates TLS.
+The public application must never connect directly to PostgreSQL.
+
+Production process managers must restart the API after crashes and preserve API
+logs. Set the deployment health check to `/api/health`.
+
+---
+
+## 7. Configure the frontend
+
+Create `.env.local` for local development:
+
+```env
+VITE_BACKEND=node
 VITE_USE_API=true
-VITE_SUPABASE_URL=https://yuqhwjvmamjwklumlhtt.supabase.co
-VITE_SUPABASE_ANON_KEY=<your sb_publishable_... key from Supabase Dashboard → Settings → API>
+VITE_API_BASE_URL=http://localhost:3000
+VITE_API_TIMEOUT_MS=10000
+VITE_APP_ENV=development
+VITE_APP_VERSION=2.4.1
+VITE_ENABLE_BIOMETRIC=true
+VITE_ENABLE_SAVINGS=true
+VITE_REVIEWER_MODE=false
+```
+
+Production builds must use an HTTPS API URL:
+
+```env
+VITE_BACKEND=node
+VITE_USE_API=true
+VITE_API_BASE_URL=https://api.kuula.ug
 VITE_APP_ENV=production
 VITE_APP_VERSION=2.4.1
 VITE_ENABLE_BIOMETRIC=true
@@ -74,197 +185,102 @@ VITE_ENABLE_SAVINGS=true
 VITE_REVIEWER_MODE=false
 ```
 
-> **Never** put `SUPABASE_SERVICE_ROLE_KEY`, `MARZPAY_API_KEY`, or
-> `MARZPAY_WEBHOOK_SECRET` here — those are server-side secrets that live only
-> in Supabase Edge Function secrets. The anon key above is safe to embed.
+`npm run build` executes an environment guard before Vite. A production build
+fails when the backend is not `node`, the API URL is missing, the URL is local,
+or HTTPS is not used.
 
 ---
 
-## 4. Run Database Migrations
+## 8. GitHub Actions configuration
 
-In the **Supabase Dashboard → SQL Editor**, run each file in order:
+In **Repository settings → Secrets and variables → Actions**, add:
 
-1. `supabase/migrations/0001_init.sql`
-2. `supabase/migrations/0002_transactions_and_loan_fields.sql`
-3. `supabase/migrations/0003_goals_and_notifications.sql`
-4. `supabase/migrations/0004_repayment_rpc.sql`
-5. `supabase/migrations/0005_loan_offer_acceptance.sql`
+| Secret | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | Public HTTPS URL of the deployed Node API |
+| `ANDROID_KEYSTORE_BASE64` | Android release keystore, base64 encoded |
+| `ANDROID_KEY_ALIAS` | Android signing alias |
+| `ANDROID_KEY_PASSWORD` | Android key password |
+| `ANDROID_STORE_PASSWORD` | Android keystore password |
+| `APPLE_TEAM_ID` | Apple developer team ID |
+| `APPLE_CERT_BASE64` | Distribution certificate |
+| `APPLE_CERT_PASSWORD` | Certificate password |
+| `APPLE_PROVISION_BASE64` | Provisioning profile |
 
-Or via CLI:
+Do not add database or server secrets to GitHub variables prefixed with `VITE_`.
+Database credentials belong in the API hosting environment, not the mobile build.
 
-```bash
-npx supabase db push --project-ref yuqhwjvmamjwklumlhtt
-```
+The CI workflow now verifies:
 
----
-
-## 5. Deploy Edge Functions to Supabase
-
-### Option A — GitHub Actions (recommended)
-
-1. Go to **https://github.com/jolems123/Kuula/settings/secrets/actions**
-2. Add secret: `SUPABASE_ACCESS_TOKEN` → your `sbp_` token from
-   https://supabase.com/dashboard/account/tokens
-3. Add variable (not secret): `SUPABASE_PROJECT_REF` → `yuqhwjvmamjwklumlhtt`
-4. Every push to `main` that changes `supabase/functions/` auto-deploys.
-
-### Option B — Manual CLI
-
-```bash
-npx supabase functions deploy --project-ref yuqhwjvmamjwklumlhtt
-```
+1. Frontend dependency installation
+2. Server dependency installation
+3. Prisma client generation
+4. Frontend TypeScript
+5. Frontend unit tests
+6. Pricing compliance tests
+7. Server TypeScript build
+8. The guarded production web build
 
 ---
 
-## 6. Set Edge Function Secrets
+## 9. Build the mobile apps
 
-In **Supabase Dashboard → Edge Functions → Secrets**:
-
-| Secret | Value |
-|--------|-------|
-| `MARZPAY_API_KEY` | Your MarZPay API key |
-| `MARZPAY_API_SECRET` | Your MarZPay API secret |
-| `MARZPAY_WEBHOOK_SECRET` | A random 32+ char string |
-| `SUPABASE_SERVICE_ROLE_KEY` | From Supabase → Settings → API |
-| `CORS_ORIGIN` | `https://app.kuula.ug` (your production URL) |
-
----
-
-## 7. Build the Web App (for Capacitor sync)
+Build the verified web bundle and sync it to Capacitor:
 
 ```bash
-npm run build          # produces dist/
-npm run cap:sync       # copies dist/ into android/ and ios/
+npm run build
+npx cap sync
 ```
 
-For local native development:
+Android development:
+
 ```bash
-npm run cap:android    # opens Android Studio
-npm run cap:ios        # opens Xcode (Mac only)
+npm run cap:android
 ```
 
----
-
-## 8. Set Up GitHub Secrets for CI
-
-Go to **Settings → Secrets and variables → Actions** in your GitHub repo.
-
-### Required for CI (every push to main)
-
-| Secret | Value |
-|--------|-------|
-| `VITE_SUPABASE_URL` | `https://yuqhwjvmamjwklumlhtt.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Your publishable anon key |
-
-### Required for Edge Function auto-deploy
-
-| Type | Name | Value |
-|------|------|-------|
-| Secret | `SUPABASE_ACCESS_TOKEN` | `sbp_` token from Supabase dashboard |
-| Variable | `SUPABASE_PROJECT_REF` | `yuqhwjvmamjwklumlhtt` |
-
-### Required for signed Android builds
-
-Generate a release keystore:
+Android release bundle:
 
 ```bash
-keytool -genkeypair -v \
-  -keystore kuula-release.keystore \
-  -alias kuula \
-  -keyalg RSA \
-  -keysize 2048 \
-  -validity 10000
+cd android
+./gradlew bundleRelease
 ```
 
-Then add 4 secrets:
+The output is normally under:
 
-| Secret | Value |
-|--------|-------|
-| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 kuula-release.keystore` |
-| `ANDROID_KEY_ALIAS` | `kuula` |
-| `ANDROID_KEY_PASSWORD` | Your key password |
-| `ANDROID_STORE_PASSWORD` | Your keystore password |
-
-### Required for signed iOS builds
-
-| Secret | Value |
-|--------|-------|
-| `APPLE_TEAM_ID` | From Apple Developer → Membership |
-| `APPLE_CERT_BASE64` | `base64 -w0 distribution.p12` |
-| `APPLE_CERT_PASSWORD` | Your `.p12` export password |
-| `APPLE_PROVISION_BASE64` | `base64 -w0 Kuula.mobileprovision` |
-
----
-
-## 9. Build Signed Mobile Apps
-
-### Via GitHub Actions (recommended)
-
-1. Push your code to `main` — CI runs automatically (typecheck + build + test)
-2. For a signed build: go to **Actions → Build Mobile Apps → Run workflow**
-3. Select platforms (`android` and/or `ios`) and build type (`release`)
-4. Download the `.aab` or `.ipa` from the workflow artifacts
-
-### Via Local Machine
-
-**Android:**
-```bash
-npm run cap:sync
-cd android && ./gradlew bundleRelease
-# Output: android/app/build/outputs/bundle/release/app-release.aab
+```text
+android/app/build/outputs/bundle/release/
 ```
 
-**iOS (Mac only):**
+For iOS:
+
 ```bash
-npm run cap:sync
 npm run cap:ios
-# In Xcode: Product → Archive → Distribute App → App Store Connect
 ```
 
----
-
-## 10. Upload to Stores
-
-### Google Play
-
-1. Go to [Play Console](https://play.google.com/console)
-2. Create app → set package ID `ug.kuula.app`
-3. Complete the **Personal Loan declaration** (mandatory for Uganda)
-4. Fill in the **Data Safety form** (National ID, financial data, biometric data)
-5. Upload the `.aab` from step 9
-6. Start with **Internal Testing** → **Closed Testing** → **Production** (10% rollout)
-
-### Apple App Store
-
-1. Go to [App Store Connect](https://appstoreconnect.apple.com)
-2. Create app → SKU `kuula`, Bundle ID `ug.kuula.app`
-3. Upload the `.ipa` via Xcode or Transporter
-4. Fill in **Privacy Nutrition Labels** (financial data, National ID, biometric)
-5. Enable **3.2.1(viii) loan-app declaration** (submitting org must be the lender)
-6. Submit for review
+Archive and sign the application in Xcode.
 
 ---
 
-## 11. End-to-End Payment Test (before going live)
+## 10. Safe deployment order
 
-1. Register a new account in the app
-2. Apply for a loan (smallest amount, e.g. UGX 50,000)
-3. Admin logs in → approves the loan
-4. Customer sees "offered" status → taps Accept
-5. Confirm the MoMo prompt appears on the test phone
-6. MarZPay POSTs to the webhook → loan status → "approved"
-7. Customer makes a repayment → confirm webhook settles it → loan → "paid"
+Deploy in this order:
+
+1. Back up the PostgreSQL database.
+2. Apply reviewed Prisma migrations.
+3. Deploy and health-check the Node API.
+4. Test authentication and required API routes against staging.
+5. Build the frontend with the production API URL.
+6. Test the Android/iOS build on real devices.
+7. Release through controlled internal testing before production rollout.
+
+Do not release a mobile build until the API health check and end-to-end staging
+tests pass.
 
 ---
 
-## Quick Reference
+## 11. Current financial-operation restriction
 
-| Item | Value |
-|------|-------|
-| Supabase project | `yuqhwjvmamjwklumlhtt` |
-| Supabase dashboard | https://supabase.com/dashboard/project/yuqhwjvmamjwklumlhtt |
-| GitHub repo | https://github.com/jolems123/Kuula |
-| Bundle ID | `ug.kuula.app` |
-| Max APR | 33.6% (UMRA compliant, below Apple 36% cap) |
-| Min loan term | 90 days (above Google Play 60-day floor) |
-| Interest type | Simple (never compound) |
+The present Node routes still require separate remediation for real mobile-money
+disbursement, repayment, and savings settlement. Until those controls are fixed
+and tested, use this deployment only for development and sandbox operation—not
+for live customer funds.
