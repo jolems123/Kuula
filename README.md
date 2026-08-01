@@ -4,197 +4,247 @@
 
 **The lending app for Ugandans the banks ignore.**
 
-Instant micro-loans and goal-based savings delivered straight to
-MTN MoMo or Airtel Money — no branch visits, no paperwork, no collateral.
+A mobile-first lending and savings platform being developed by Kuula
+Microfinance Limited for Uganda and its partner applications.
 
 </div>
 
 ---
 
-## The Problem
+## Current status
 
-Over **70% of Ugandans are unbanked or underbanked.** Most adults have never
-had a formal credit history, which means traditional banks won't lend to them.
-When a market vendor needs UGX 200,000 to restock, or a boda-boda rider needs
-UGX 50,000 for fuel, their only options are loan sharks charging 20–30% per
-*month* or informal savings groups (NDOBs) that can take weeks to disburse.
+Kuula has a broad customer and operator interface, Android/iOS packaging,
+PostgreSQL data models, Node/Express APIs, KYC submission, loan application
+workflows, savings goals, reporting, and multilingual screens.
 
-The result is a **credit vacuum** — millions of hard-working Ugandans are locked
-out of affordable credit because they don't fit a bank's risk model. Mobile money
-(used by over 30 million Ugandans) already connects them to the financial system,
-but nobody is using that rail to lend responsibly.
+The repository is still under production hardening. **Do not use the current
+build for live disbursement, repayment collection, or customer savings until the
+real-money integrations and accounting controls are completed and tested.**
 
-## How Kuula Solves It
+## Product direction
 
-Kuula turns a borrower's **mobile money activity and app behavior** into a credit
-signal — no collateral, no bank statements, no credit bureau. The entire
-lifecycle happens on a phone:
+Kuula is intended to support:
 
-1. **Sign up in 60 seconds** — phone number + PIN, verified by OTP.
-2. **Get a credit decision in real time** — our scoring model evaluates
-   repayment ability instantly, not based on traditional credit history.
-3. **Receive funds directly on MTN MoMo or Airtel Money** — no bank account
-   needed. The money arrives as a mobile-money deposit the borrower can
-   immediately use.
-4. **Repay on your own schedule** — make a full repayment or pay a partial
-   amount from your mobile-money wallet. Auto-collection sweeps handle
-   overdue amounts.
-5. **Build a credit history** — every on-time repayment improves the user's
-   Kuula credit score, unlocking larger limits over time.
+- direct consumer and microenterprise loans;
+- restricted-purpose financing for partner applications;
+- healthcare financing initiated through TibaPay;
+- agricultural input financing initiated through SiliFi;
+- future property, logistics, and merchant-finance products;
+- customer credit history and portfolio-management tools.
 
-### Why this matters
+Partner financing requires additional API, payee, invoice, settlement, and
+reconciliation work. Those workflows are not yet production-complete.
 
-| | Banks & SACCOs | Loan sharks | **Kuula** |
-|---|---|---|---|
-| **Collateral** | Land titles, payslips | None (but 30%/mo) | **None** |
-| **Time to funds** | Days to weeks | Minutes | **Minutes** |
-| **APR** | 20–30% | 240–360% | **≤ 33.6%** (UMRA cap) |
-| **Apply from** | Branch | In person | **Your phone** |
-| **Disbursement** | Bank account | Cash | **MoMo / Airtel** |
-| **Credit building** | Yes | No | **Yes** |
+## Production architecture
 
-## Who Kuula Is For
-
-### Borrowers (Customers)
-
-- **Market vendors, traders, and small business owners** who need working
-  capital to restock inventory between market days.
-- **Boda-boda riders, taxi drivers, and gig workers** who need cash for fuel,
-  repairs, or emergencies and can repay from daily earnings.
-- **Salaried workers** waiting for payday who need a short-term bridge for
-  school fees, rent, or medical costs.
-- **Anyone with an MTN MoMo or Airtel Money wallet** and a phone — no bank
-  account required.
-
-### Operators (Admin)
-
-- **Loan officers** who review applications, approve or decline loans, and
-  initiate disbursements.
-- **Collections teams** tracking overdue repayments and triggering
-  auto-collection sweeps via mobile money.
-- **Support staff** handling customer inquiries, disputes, and account issues.
-- **Management** viewing dashboards for portfolio health, disbursement
-  volumes, and compliance reporting.
-
-## Key Features
-
-### For borrowers
-- **Instant loans** — apply, get approved, receive funds on mobile money in
-  minutes, not days.
-- **Flexible repayment** — pay the full balance or any partial amount; the
-  app calculates remaining interest accurately.
-- **Goal-based savings** — create savings goals (school fees, emergency fund),
-  set auto-save rules, and track progress visually.
-- **Wallet & transaction history** — top up, view balances, and see every
-  transaction with clear descriptions.
-- **Credit score dashboard** — see your score, understand what affects it,
-  and get actionable tips to improve it.
-- **Transparent pricing** — every loan shows the exact total cost before you
-  accept. No hidden fees, no compounding interest, APR capped by regulation.
-- **3 languages** — full UI in **English, Luganda, and Swahili** so users
-  interact in the language they're most comfortable with.
-- **Biometric login** — unlock the app with your fingerprint or face on
-  supported devices.
-
-### For operators
-- **Full loan lifecycle management** — application review, approval workflow,
-  disbursement, repayment tracking, and collections.
-- **Real-time dashboards** — portfolio health, active loans, disbursement
-  volumes, and delinquency rates at a glance.
-- **Customer management** — search, view profiles, manage savings accounts,
-  and handle support tickets.
-- **Compliance tools** — pricing guardrails enforced at build time (APR cap,
-  minimum term, simple interest only), audit-ready reporting.
-
-## How It Works (User Journey)
-
-```
-  Download app          Verify phone          Apply for loan
-  ──────────────►  ────────────────►  ─────────────────►
-   (Play Store /      (OTP via SMS)      (amount, purpose,
-    App Store)                               duration)
-
-  Credit decision       Receive funds         Repay on
-  ──────────────►  ────────────────►  ────────────►
-  (real-time         (straight to         (full or partial,
-   scoring)          MTN/Airtel MoMo)      via mobile money)
-
-  Credit score        Unlock higher        Repeat &
-  improves  ◄────   limits next time  ◄──── save goals
+```text
+React / TypeScript / Capacitor application
+                    |
+                    | HTTPS JSON API
+                    v
+          Node.js / Express server
+                    |
+                    | Prisma ORM
+                    v
+             PostgreSQL database
+                    |
+                    v
+       pgAdmin 4 administration tool
 ```
 
-## Tech Stack
+**pgAdmin 4 is used to administer PostgreSQL.** It is not the HTTP backend used
+by the mobile application. The frontend communicates only with the Node API in
+`server/`.
 
 | Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19 + TypeScript, Vite, Tailwind CSS, shadcn/ui |
-| **Mobile** | Capacitor (single codebase → Android APK + iOS IPA + PWA) |
-| **Backend** | Supabase (Postgres + Auth + Row-Level Security + Edge Functions) |
-| **Payments** | MarZPay → MTN MoMo & Airtel Money (collections + disbursements) |
-| **CI/CD** | GitHub Actions (typecheck, test, build, signed APK/AAB/IPA) |
-| **Languages** | react-i18next (English, Luganda, Swahili) |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Mobile | Capacitor for Android and iOS |
+| API | Node.js and Express |
+| Database | PostgreSQL |
+| Database ORM | Prisma |
+| Database administration | pgAdmin 4 |
+| Authentication | Node API, bcrypt password hashes, signed JWTs |
+| Internationalisation | English, Luganda, and Swahili |
+| CI | GitHub Actions with frontend, server, PostgreSQL, and Capacitor checks |
 
-## Quick Start
+The `supabase/` directory remains only as legacy implementation reference while
+the migration is completed. It is not the selected production backend.
 
-### Demo mode (no backend needed)
+## Repository structure
 
-```bash
-npm install            # install dependencies
-npm run dev            # start dev server → http://localhost:5000
+```text
+src/
+  app/
+    api/                    Node API client and shared response types
+    components/screens/     Customer and operator screens
+    config/                 Frontend environment validation
+    context/                Session and application state
+    lib/                    Pricing and application utilities
+    screens/registry.ts     Screen registration and access routing
+  i18n/locales/             English, Luganda, and Swahili translations
+  styles/                   Application styles
+
+server/
+  prisma/                   PostgreSQL schema and migrations
+  src/
+    middleware/             Authentication and error handling
+    routes/                 Auth, KYC, loans, savings, admin, and support APIs
+    lib/                    Prisma, scoring, pricing, storage, and compliance
+
+android/                    Capacitor Android project
+ios/                        Capacitor iOS project
+supabase/                   Legacy reference; not production runtime
 ```
 
-The app works fully offline with two demo accounts:
+## Local setup
 
-| Account | How to log in | PIN |
-|---------|---------------|-----|
-| Amara Nakato (customer) | Tap **USER** | `1234` |
-| Admin Kavuma (operator) | Tap **ADMIN** | `1234` |
-
-### Production mode (with Supabase)
+### 1. Install frontend dependencies
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local with your Supabase URL and anon key
+npm ci --legacy-peer-deps
+```
+
+### 2. Install API dependencies
+
+```bash
+cd server
+npm install
+cd ..
+```
+
+### 3. Create PostgreSQL in pgAdmin 4
+
+Create:
+
+- login role: `kuula_user`;
+- database: `kuula_db`;
+- database owner: `kuula_user`.
+
+Use a strong local password. Do not run the application as the PostgreSQL
+superuser.
+
+### 4. Configure the API
+
+Copy `server/.env.example` to `server/.env` and set a local connection string:
+
+```env
+DATABASE_URL="postgresql://kuula_user:<PASSWORD>@localhost:5432/kuula_db?schema=public"
+JWT_SECRET="replace-with-a-long-random-local-secret"
+PORT=3000
+CORS_ORIGINS="http://localhost:5000,http://localhost:5173"
+```
+
+Generate and migrate the database:
+
+```bash
+cd server
+npx prisma generate
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+The API health check is available at:
+
+```text
+http://localhost:3000/api/health
+```
+
+### 5. Configure and run the frontend
+
+Copy `.env.example` to `.env.local` and ensure it includes:
+
+```env
+VITE_BACKEND=node
+VITE_USE_API=true
+VITE_API_BASE_URL=http://localhost:3000
+VITE_APP_ENV=development
+VITE_REVIEWER_MODE=false
+```
+
+Start the app:
+
+```bash
+npm run dev
+```
+
+## Demo interface mode
+
+The interface can also run without the API for screen review and route testing.
+Demo data must never be enabled in a production build.
+
+```bash
+VITE_USE_API=false npm run dev
+```
+
+Demo accounts shown by the interface use PIN `1234`. They are not PostgreSQL
+accounts and must not be treated as real customers.
+
+## Verification commands
+
+Frontend:
+
+```bash
+npm run typecheck
+npm test
+npm run check:pricing
 npm run build
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the full production setup guide
-(Supabase, Capacitor, app store submission, signing keys).
+Server:
 
-## Project Structure
-
-```
-src/
-  app/
-    components/screens/    # All app screens (customer + admin)
-    api/                   # Supabase client & service layer
-    context/               # App state (user, loans, credit, wallet)
-    lib/                   # Pricing engine, receipt generator, exports
-    screens/registry.ts    # Screen routing & access control
-  i18n/locales/            # English, Luganda, Swahili translations
-  styles/                  # Tailwind + theme CSS
-supabase/
-  functions/               # Edge Functions (MarZPay, credit scoring, collections)
-  migrations/              # Database schema (5 migrations)
-android/                   # Capacitor Android project
-ios/                       # Capacitor iOS project
+```bash
+cd server
+npx prisma generate
+npm run build
 ```
 
-## Compliance & Safety
+Full pull-request verification is defined in `.github/workflows/ci.yml`. It uses
+an isolated PostgreSQL service, applies Prisma migrations, seeds test accounts,
+starts the Node API, tests successful and unsuccessful login, builds the
+frontend, sweeps registered screens, and syncs the native projects.
 
-- **No fabricated financial data.** In production, every balance, loan, and
-  transaction comes from the backend — the app shows clear error/empty states
-  rather than placeholder numbers.
-- **Pricing guardrails.** APR is hard-capped at 33.6% (UMRA limit), minimum
-  loan term is 90 days, and interest is simple (never compounded). These
-  rules are verified automatically on every build.
-- **Fail-closed security.** Sensitive operations (webhook processing, payments)
-  reject requests when required secrets are missing rather than proceeding
-  without verification.
-- **No secrets in the bundle.** Server-side keys (MarZPay, JWT, Supabase
-  service role) live only as Edge Function secrets — never as `VITE_*` env
-  vars.
+## Production configuration
+
+A production frontend build requires:
+
+```env
+VITE_BACKEND=node
+VITE_USE_API=true
+VITE_API_BASE_URL=https://<public-api-domain>
+VITE_APP_ENV=production
+VITE_REVIEWER_MODE=false
+```
+
+The build fails when the backend is not Node, the API URL is missing, the API
+uses HTTP instead of HTTPS, or the URL points to localhost.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for PostgreSQL, pgAdmin, Node API, GitHub
+Actions, Android, and iOS deployment instructions.
+
+## Security rules
+
+- Never expose `DATABASE_URL`, `JWT_SECRET`, KYC credentials, SMS credentials,
+  or payment-provider keys through variables beginning with `VITE_`.
+- Never serve stored national-ID images from a public directory.
+- Never mark a disbursement or repayment completed before confirmation from the
+  payment provider.
+- Never modify financial balances without a corresponding settled ledger entry.
+- Never deploy demo accounts, reviewer bypasses, or development OTP logging to
+  real customers.
+
+## Planned hardening order
+
+1. Establish Node/PostgreSQL as the single backend and correct CI.
+2. Unify frontend and server loan pricing.
+3. Replace simulated loan disbursement and repayment with provider-settled money movement.
+4. Disable or replace simulated savings deposits and withdrawals.
+5. Complete SMS OTP and password recovery.
+6. Complete production KYC storage, review, and audit controls.
+7. Add partner-financing APIs for TibaPay and SiliFi.
+8. Add financial-ledger reconciliation, audit logging, and operational monitoring.
 
 ## License
 
-Proprietary — © Kuula Ltd.
+Proprietary — © Kuula Microfinance Limited.
