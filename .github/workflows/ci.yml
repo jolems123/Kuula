@@ -35,6 +35,9 @@ jobs:
       - name: Pricing compliance
         run: npm run check:pricing
 
+      - name: Client-server pricing parity
+        run: npm run check:pricing-parity
+
       # CI verifies that a production build can be produced with the required
       # Node API configuration. The .invalid domain is reserved and cannot route
       # to a real service. Manual mobile releases still require the repository's
@@ -121,6 +124,10 @@ jobs:
       - name: Build API
         working-directory: server
         run: npm run build
+
+      - name: API unit tests
+        working-directory: server
+        run: npm test
 
       - name: Apply PostgreSQL migrations
         working-directory: server

@@ -2,9 +2,20 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { localQuote } from "../lib/pricing.js";
+import { localQuote, type LoanQuote } from "../lib/pricing.js";
 
 const router = Router();
+
+function quoteForRequest(amount: unknown, termDays: unknown, savingsBalance = 0): LoanQuote {
+  try {
+    return localQuote(Number(amount), Number(termDays), savingsBalance);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new AppError(error.message, 400);
+    }
+    throw error;
+  }
+}
 
 // GET /api/loans/applications
 router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
@@ -54,22 +65,29 @@ async function createLoanApplicationForUser(
   userId: string,
   payload: { amount: number; purpose?: string; termDays: number; channel?: string }
 ) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, include: { savingsAccount: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { savingsAccount: true },
+  });
   if (!user) throw new AppError("User not found", 404);
 
-  const quote = localQuote(Number(payload.amount), Number(payload.termDays), Number(user.savingsAccount?.balance ?? 0));
+  const quote = quoteForRequest(
+    payload.amount,
+    payload.termDays,
+    Number(user.savingsAccount?.balance ?? 0)
+  );
 
   const application = await prisma.loanApplication.create({
     data: {
       applicantId: userId,
       applicantName: user.fullName,
-      amount: BigInt(Math.round(Number(payload.amount))),
+      amount: BigInt(quote.principal),
       purpose: payload.purpose || "Personal",
       termDays: quote.termDays,
       channel: payload.channel || "MTN MoMo",
       apr: quote.apr,
-      interest: BigInt(Math.round(quote.interest)),
-      total: BigInt(Math.round(quote.total)),
+      interest: BigInt(quote.interest),
+      total: BigInt(quote.total),
       status: "pending",
     },
   });
@@ -118,10 +136,12 @@ router.post("/top-up", authenticateToken, async (req: Request, res: Response) =>
     loan_id: application.id,
     status: application.status,
     pricing: {
-      apr: application.apr,
+      principal: Number(application.amount),
+      apr: Number(application.apr),
       interest: Number(application.interest),
       total: Number(application.total),
       term_days: application.termDays,
+      compound: false,
     },
   });
 });
@@ -229,8 +249,13 @@ router.post("/quote", authenticateToken, async (req: Request, res: Response) => 
     where: { id: req.user!.userId },
     include: { savingsAccount: true },
   });
+  if (!user) throw new AppError("User not found", 404);
 
-  const quote = localQuote(Number(amount), Number(termDays), Number(user?.savingsAccount?.balance ?? 0));
+  const quote = quoteForRequest(
+    amount,
+    termDays,
+    Number(user.savingsAccount?.balance ?? 0)
+  );
   res.json(quote);
 });
 

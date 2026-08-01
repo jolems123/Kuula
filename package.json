@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "sweep": "node scripts/route-sweep.mjs",
     "check:pricing": "node scripts/check-pricing-compliance.mjs",
+    "check:pricing-parity": "tsx scripts/check-pricing-parity.ts",
     "cap:sync": "npm run build && cap sync",
     "cap:android": "npm run cap:sync && cap open android",
     "cap:ios": "npm run cap:sync && cap open ios"
@@ -41,7 +42,7 @@
     "react-i18next": "^17.0.8",
     "react-router": "^7.17.0",
     "recharts": "2.15.2",
-    "tw-animate-css": "1.3.8",
+    "tw-animate-css": "^1.3.8",
     "uuid": "^14.0.1",
     "xlsx": "^0.18.5"
   },
