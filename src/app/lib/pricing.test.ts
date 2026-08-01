@@ -9,29 +9,29 @@ describe("localQuote — loan pricing", () => {
   });
 
   it("keeps the all-in APR at or below the configured caps", () => {
-    const q = localQuote(500000, 180);
-    expect(q.apr).toBeLessThanOrEqual(PRICING.MAX_APR);
-    expect(q.apr).toBeLessThanOrEqual(0.36);
+    const quote = localQuote(500000, 180);
+    expect(quote.apr).toBeLessThanOrEqual(PRICING.MAX_APR);
+    expect(quote.apr).toBeLessThanOrEqual(0.36);
   });
 
   it("computes simple interest: principal × (apr/365) × days", () => {
     const principal = 100000;
     const term = 90;
-    const q = localQuote(principal, term);
+    const quote = localQuote(principal, term);
     const expectedInterest = Math.round(principal * (PRICING.MAX_APR / 365) * term);
-    expect(q.interest).toBe(expectedInterest);
-    expect(q.total).toBe(principal + expectedInterest);
-    expect(q.compound).toBe(false);
-    expect(q.fee).toBe(0);
+    expect(quote.interest).toBe(expectedInterest);
+    expect(quote.total).toBe(principal + expectedInterest);
+    expect(quote.compound).toBe(false);
+    expect(quote.fee).toBe(0);
   });
 
-  it("applies a five percentage-point savings discount at the threshold", () => {
-    const below = localQuote(100000, 90, PRICING.SAVINGS_THRESHOLD - 1);
-    const atOrAbove = localQuote(100000, 90, PRICING.SAVINGS_THRESHOLD);
-    expect(below.savingsDiscountApplied).toBe(false);
-    expect(atOrAbove.savingsDiscountApplied).toBe(true);
-    expect(atOrAbove.apr).toBeCloseTo(PRICING.MAX_APR - PRICING.SAVINGS_DISCOUNT, 5);
-    expect(atOrAbove.interest).toBeLessThan(below.interest);
+  it("does not let an unverified legacy savings balance change pricing", () => {
+    const noBalance = localQuote(100000, 90, 0);
+    const legacyBalance = localQuote(100000, 90, 10_000_000);
+
+    expect(legacyBalance).toEqual(noBalance);
+    expect(legacyBalance.savingsDiscountApplied).toBe(false);
+    expect(PRICING.SAVINGS_DISCOUNT).toBe(0);
   });
 
   it("rounds principal to whole Uganda shillings", () => {
