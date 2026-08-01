@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -35,12 +35,16 @@ jobs:
       - name: Pricing compliance
         run: npm run check:pricing
 
+      # CI verifies that a production build can be produced with the required
+      # Node API configuration. The .invalid domain is reserved and cannot route
+      # to a real service. Manual mobile releases still require the repository's
+      # real VITE_API_BASE_URL secret.
       - name: Guarded production build
         run: npm run build
         env:
           VITE_BACKEND: node
           VITE_USE_API: "true"
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: https://api-ci.kuula.invalid
           VITE_APP_ENV: production
           VITE_APP_VERSION: ${{ github.sha }}
           VITE_ENABLE_BIOMETRIC: "true"
@@ -104,7 +108,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install API dependencies
         working-directory: server
@@ -164,7 +168,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
