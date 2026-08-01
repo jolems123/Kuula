@@ -2,68 +2,73 @@
 /**
  * Build-time environment validation.
  *
- * Runs automatically before `npm run build` (npm "prebuild" hook) so a
- * misconfigured store binary fails the CI pipeline BEFORE artifacts are
- * produced — rather than shipping a broken APK/IPA that white-screens on
- * launch. Mirrors the runtime checks in src/app/config/env.ts.
+ * Runs automatically before `npm run build` so a misconfigured store binary
+ * fails before an APK, AAB, IPA, or web bundle is produced.
  *
- * Skips validation for demo/offline builds (VITE_USE_API !== "true").
+ * Production architecture is intentionally single-backend:
+ * React/Capacitor -> Node/Express API -> PostgreSQL.
  */
 const env = process.env;
 const useApi = env.VITE_USE_API === "true";
-// Local dev defaults to the Node/Express backend.
-// Set VITE_BACKEND=supabase to target the Supabase backend in production.
-const backend = env.VITE_BACKEND || "node";
-const apiBase = env.VITE_API_BASE_URL || "";
-
+const backend = (env.VITE_BACKEND || "node").trim().toLowerCase();
+const apiBase = (env.VITE_API_BASE_URL || "").trim();
+const isProd = env.VITE_APP_ENV === "production" || env.NODE_ENV === "production";
 const errors = [];
 
-// ── Production hard guards ──────────────────────────────────────────────────
-// Run regardless of useApi so a demo/reviewer build can't ship to real users.
-const isProd = env.VITE_APP_ENV === "production" || env.NODE_ENV === "production";
-if (isProd && !useApi) {
+if (backend !== "node") {
   errors.push(
-    "Production build must set VITE_USE_API=true — demo accounts (any 4-digit PIN) must not ship."
-  );
-}
-if (isProd && env.VITE_REVIEWER_MODE === "true") {
-  errors.push(
-    "VITE_REVIEWER_MODE must be false in production — the store-reviewer auto-login bypass must not ship."
+    `Unsupported VITE_BACKEND=${backend || "(empty)"}. Kuula uses the Node/Express API with PostgreSQL.`
   );
 }
 
-if (useApi) {
-  if (backend === "supabase") {
-    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
-      errors.push(
-        "VITE_BACKEND=supabase (default) but VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY are missing."
-      );
+if (isProd && !useApi) {
+  errors.push(
+    "Production build must set VITE_USE_API=true — demo accounts must never ship to customers."
+  );
+}
+
+if (isProd && env.VITE_REVIEWER_MODE === "true") {
+  errors.push(
+    "VITE_REVIEWER_MODE must be false in production — reviewer auto-login must not ship."
+  );
+}
+
+if (useApi && isProd) {
+  if (!apiBase) {
+    errors.push("Production build requires VITE_API_BASE_URL.");
+  } else {
+    let parsed;
+    try {
+      parsed = new URL(apiBase);
+    } catch {
+      errors.push("VITE_API_BASE_URL must be a valid absolute URL.");
     }
-    // Validate the URL looks like a real Supabase project URL.
-    if (env.VITE_SUPABASE_URL && !env.VITE_SUPABASE_URL.includes(".supabase.co")) {
-      errors.push(
-        "VITE_SUPABASE_URL doesn't look like a Supabase project URL (expected https://<project>.supabase.co)."
-      );
+
+    if (parsed) {
+      if (parsed.protocol !== "https:") {
+        errors.push("Production VITE_API_BASE_URL must use HTTPS.");
+      }
+      if (["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname)) {
+        errors.push("Production VITE_API_BASE_URL cannot point to a local machine.");
+      }
     }
   }
-  if (backend === "node" && isProd && (!apiBase || apiBase.startsWith("http://localhost"))) {
-    errors.push(
-      "Production build requires a real VITE_API_BASE_URL (https://…); refusing the localhost default."
-    );
-  }
-  // The service key must never be inlined into the public bundle.
-  for (const key of Object.keys(env)) {
-    if (key.startsWith("VITE_") && /sb_secret_|service_role/i.test(env[key] || "")) {
-      errors.push(`${key} looks like a Supabase service/secret key — never expose it as a VITE_* var.`);
-    }
+}
+
+// Browser variables are public. Reject values that look like server secrets.
+for (const key of Object.keys(env)) {
+  if (!key.startsWith("VITE_")) continue;
+  const value = env[key] || "";
+  if (/service_role|private[_-]?key|jwt[_-]?secret|database_url|password=/i.test(value)) {
+    errors.push(`${key} appears to contain a server secret. Never expose secrets as VITE_* variables.`);
   }
 }
 
 if (errors.length > 0) {
   console.error("\n✖ Environment validation failed:\n");
-  for (const e of errors) console.error("  • " + e);
+  for (const error of errors) console.error("  • " + error);
   console.error("\nFix the variables above before building for production.\n");
   process.exit(1);
 }
 
-console.log("✓ Environment validation passed (" + (useApi ? `${backend} backend` : "demo build") + ").");
+console.log(`✓ Environment validation passed (${useApi ? "Node/PostgreSQL backend" : "demo build"}).`);
