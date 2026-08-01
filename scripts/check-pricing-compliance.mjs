@@ -3,14 +3,15 @@
  *
  * The client and server engines are compared separately by
  * scripts/check-pricing-parity.ts. This guard stress-tests the canonical rules:
- * APR ceilings, simple interest, zero fees, and supported term boundaries.
+ * APR ceilings, simple interest, zero fees, supported terms, and no unbacked
+ * savings discount.
  */
 const PRICING = {
   MAX_APR: 0.336,
   MIN_TERM_DAYS: 90,
   MAX_TERM_DAYS: 365,
-  SAVINGS_DISCOUNT: 0.05,
-  SAVINGS_THRESHOLD: 100000,
+  SAVINGS_DISCOUNT: 0,
+  SAVINGS_THRESHOLD: Number.POSITIVE_INFINITY,
 };
 
 function normalizePrincipal(value) {
@@ -27,12 +28,10 @@ function normalizeTerm(value) {
   return Math.min(PRICING.MAX_TERM_DAYS, Math.max(PRICING.MIN_TERM_DAYS, requested));
 }
 
-function localQuote(principalInput, termDaysInput, savingsBalance = 0) {
+function localQuote(principalInput, termDaysInput, _savingsBalance = 0) {
   const principal = normalizePrincipal(principalInput);
   const termDays = normalizeTerm(termDaysInput);
-  const savingsDiscountApplied = Number(savingsBalance) >= PRICING.SAVINGS_THRESHOLD;
-  const discount = savingsDiscountApplied ? PRICING.SAVINGS_DISCOUNT : 0;
-  const apr = Math.max(0, PRICING.MAX_APR - discount);
+  const apr = PRICING.MAX_APR;
   const interest = Math.round(principal * (apr / 365) * termDays);
 
   return {
@@ -44,7 +43,7 @@ function localQuote(principalInput, termDaysInput, savingsBalance = 0) {
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied,
+    savingsDiscountApplied: false,
     compound: false,
   };
 }
@@ -68,6 +67,7 @@ function assertCompliant(label, quote) {
 
   if (quote.compound !== false) failures.push(`${label}: interest is compounded`);
   if (quote.fee !== 0) failures.push(`${label}: unexpected fee ${quote.fee}`);
+  if (quote.savingsDiscountApplied !== false) failures.push(`${label}: unbacked savings discount applied`);
   if (quote.apr > UMRA_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds UMRA 33.6%`);
   if (quote.apr > APPLE_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds Apple 36%`);
   if (quote.termDays < PRICING.MIN_TERM_DAYS) failures.push(`${label}: term below ${PRICING.MIN_TERM_DAYS}`);
@@ -78,11 +78,13 @@ function assertCompliant(label, quote) {
 
 for (const amount of amounts) {
   for (const term of terms) {
+    const baseline = localQuote(amount, term, 0);
     for (const savings of savingsBalances) {
-      assertCompliant(
-        `${amount}/${term}d/sav${savings}`,
-        localQuote(amount, term, savings)
-      );
+      const quote = localQuote(amount, term, savings);
+      assertCompliant(`${amount}/${term}d/sav${savings}`, quote);
+      if (JSON.stringify(quote) !== JSON.stringify(baseline)) {
+        failures.push(`${amount}/${term}d: savings balance changed the quote`);
+      }
     }
   }
 }
@@ -110,5 +112,5 @@ if (failures.length) {
 }
 
 console.log(
-  "PASS: all prices use simple interest, zero fees, APR ≤ 33.6%, and terms from 90 to 365 days."
+  "PASS: prices use simple interest, zero fees, APR ≤ 33.6%, terms 90–365 days, and no unbacked savings discount."
 );
