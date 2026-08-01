@@ -3,62 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#F4612B" />
-    <meta name="description" content="Offers Ugandan users a secure mobile platform to apply for loans, manage payments, and track savings using MTN MoMo and Airtel Money." />
+    <meta name="theme-color" content="#0B5E3A" />
+    <meta name="description" content="Kuula Microfinance Limited gives Ugandan customers secure access to fair loans, repayments, identity verification, and financial tools." />
     <meta name="robots" content="noindex, nofollow" />
-
-    <!-- PWA / installability (web) -->
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" type="image/png" sizes="256x256" href="./favicon-256.png" />
-    <link rel="apple-touch-icon" href="./kuula-icon-1024.png" />
+    <link rel="icon" type="image/svg+xml" href="./kuula-icon.svg" />
+    <link rel="apple-touch-icon" href="./kuula-icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Kuula" />
-
-    <!-- Capacitor: prevent phone-number-style date detection from breaking UI -->
     <meta name="format-detection" content="telephone=no" />
-
-    <title>Kuula Mobile</title>
-
+    <title>Kuula Microfinance</title>
     <style>
-      html, body { height: 100%; margin: 0; background: #F1F5F9; }
+      html, body { height: 100%; margin: 0; background: #F6F9F7; }
       #root { height: 100%; }
-      /* Avoid the iOS tap-highlight flash when a button is pressed inside
-         the WebView — it reads as a bug on a native-feeling app. */
-      * { -webkit-tap-highlight-color: transparent; }
-      /* Hide scrollbars on the device column for a cleaner app feel; the
-         scroll region still scrolls, just without visible chrome. Covers
-         Chrome/Safari (webkit), Firefox, and legacy Edge so no browser shows
-         a scrollbar gutter on the phone column. */
-      html, body { scrollbar-width: none; -ms-overflow-style: none; }
+      * { -webkit-tap-highlight-color: transparent; scrollbar-width: none; -ms-overflow-style: none; }
       *::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
-      * { scrollbar-width: none; -ms-overflow-style: none; }
-      /* No-JS fallback: shown only if the React bundle fails to load. */
-      .kuula-nojs {
-        position: fixed; inset: 0; display: none;
-        align-items: center; justify-content: center;
-        font-family: system-ui, -apple-system, sans-serif;
-        color: #475569; text-align: center; padding: 24px;
-      }
+      .kuula-nojs { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: #617069; text-align: center; padding: 24px; }
       .noscript .kuula-nojs { display: flex; }
     </style>
   </head>
-
   <body class="noscript">
     <div id="root"></div>
-    <noscript>
-      <div class="kuula-nojs">
-        <div>
-          <h1 style="margin: 0 0 8px; color: #1F2937;">Kuula Mobile needs JavaScript</h1>
-          <p style="margin: 0;">Please enable JavaScript in your browser to use the Kuula app.</p>
-        </div>
-      </div>
-    </noscript>
+    <noscript><div class="kuula-nojs"><div><h1 style="margin:0 0 8px;color:#0B5E3A;">Kuula needs JavaScript</h1><p style="margin:0;">Please enable JavaScript to use the Kuula app.</p></div></div></noscript>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Flip the body class once JS runs so the no-JS fallback is hidden.
-      document.body.classList.remove("noscript");
-    </script>
+    <script>document.body.classList.remove("noscript");</script>
   </body>
 </html>
