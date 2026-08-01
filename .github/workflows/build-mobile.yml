@@ -1,17 +1,16 @@
-# Build & verify web bundle + native mobile apps (Capacitor)
+# Build and verify the Kuula web bundle, Node API, and Capacitor apps.
 #
-# Three modes:
-#   push to main       → CI only (typecheck + build + test + pricing check)
-#   workflow_dispatch  → CI + Android APK/AAB and/or iOS IPA
+# Production architecture:
+#   React/Capacitor client -> Node/Express API -> PostgreSQL (managed with pgAdmin)
 #
-# build_type options:
-#   debug   → unsigned APK (install directly on phone, no secrets needed)
-#   release → signed AAB for Play Store (requires ANDROID_* secrets)
-#
-# For quick phone testing: Run workflow → build_type=debug → download APK artifact.
+# Modes:
+#   pull request / push to main -> verify frontend, server, pricing, and production build
+#   workflow_dispatch          -> verify + build Android and/or iOS artifacts
 name: Build Mobile Apps
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -22,7 +21,7 @@ on:
         default: "android"
         type: string
       build_type:
-        description: "debug = APK for testing (no secrets). release = signed AAB for Play Store."
+        description: "debug = APK for testing. release = signed AAB for Play Store."
         required: false
         default: "debug"
         type: choice
@@ -31,10 +30,9 @@ on:
           - release
 
 env:
-  VITE_BACKEND: supabase
+  VITE_BACKEND: node
   VITE_USE_API: "true"
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
   VITE_APP_ENV: production
   VITE_APP_VERSION: "2.4.1"
   VITE_ENABLE_BIOMETRIC: "true"
@@ -42,9 +40,8 @@ env:
   VITE_REVIEWER_MODE: "false"
 
 jobs:
-  # ── Job 1: Verify (always runs) ─────────────────────────────────────────
   verify:
-    name: Typecheck + Build + Test
+    name: Frontend + Server Verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,28 +51,42 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci --legacy-peer-deps
+      - name: Install frontend dependencies
+        run: npm ci --legacy-peer-deps
 
-      - name: TypeScript strict check
-        run: npx tsc --noEmit
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
 
-      - name: Unit tests
-        run: npx vitest run
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
+
+      - name: Frontend TypeScript check
+        run: npm run typecheck
+
+      - name: Frontend unit tests
+        run: npm test
 
       - name: Pricing compliance
-        run: node scripts/check-pricing-compliance.mjs
+        run: npm run check:pricing
 
-      - name: Production build
-        run: npx vite build
+      - name: Server TypeScript build
+        working-directory: server
+        run: npm run build
 
-      - name: Upload dist artifact
+      # Use npm run build rather than npx vite build so the prebuild
+      # environment guard cannot be bypassed.
+      - name: Production web build
+        run: npm run build
+
+      - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: dist/
           retention-days: 7
 
-  # ── Job 2: Android — debug APK or signed release AAB ─────────────────
   android:
     name: "Android (${{ github.event.inputs.build_type || 'debug' }})"
     needs: verify
@@ -96,7 +107,7 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Download web dist from verify job
+      - name: Download verified web bundle
         uses: actions/download-artifact@v4
         with:
           name: web-dist
@@ -105,7 +116,6 @@ jobs:
       - name: Sync to Android
         run: npx cap sync android
 
-      # ── Debug: unsigned APK (no secrets needed, install directly on phone) ──
       - name: Build debug APK
         if: github.event.inputs.build_type == 'debug'
         working-directory: android
@@ -119,8 +129,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
-      # ── Release: signed AAB (requires ANDROID_* secrets) ──
-      - name: Decode keystore
+      - name: Decode release keystore
         if: github.event.inputs.build_type == 'release'
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/kuula-release.keystore
 
@@ -142,7 +151,6 @@ jobs:
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
-  # ── Job 3: iOS signed IPA (manual trigger only, Mac only) ──────────────
   ios:
     name: Build iOS IPA
     needs: verify
@@ -158,7 +166,7 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Download web dist from verify job
+      - name: Download verified web bundle
         uses: actions/download-artifact@v4
         with:
           name: web-dist
