@@ -1,5 +1,9 @@
 /**
- * Credit scoring engine — mirrored from supabase/functions/_shared/core.ts
+ * Kuula credit scoring engine.
+ *
+ * Savings is temporarily unavailable. Its historical weight is held at a
+ * neutral value for every customer so legacy simulated balances neither reward
+ * nor penalize an applicant and the overall score scale remains stable.
  */
 
 interface ScoreInput {
@@ -29,8 +33,8 @@ export function computeCreditScore(d: ScoreInput) {
     },
     {
       key: "savings", label: "Savings Behavior", weight: 0.15,
-      value: clamp((d.savingsBalance ?? 0) / 500000, 0, 1),
-      detail: `UGX ${(d.savingsBalance ?? 0).toLocaleString()} saved`,
+      value: 0.5,
+      detail: "Savings product unavailable — neutral factor applied",
     },
     {
       key: "kyc", label: "KYC Verification", weight: 0.15,
@@ -44,7 +48,7 @@ export function computeCreditScore(d: ScoreInput) {
     },
   ];
 
-  const weighted = factors.reduce((acc, f) => acc + f.value * f.weight, 0);
+  const weighted = factors.reduce((acc, factor) => acc + factor.value * factor.weight, 0);
   const score = round(300 + 550 * weighted);
   const tier = score >= 800 ? "Excellent" : score >= 740 ? "Very Good" : score >= 670 ? "Good" : score >= 580 ? "Fair" : "Poor";
 
@@ -53,13 +57,13 @@ export function computeCreditScore(d: ScoreInput) {
     maxScore: 850,
     tier,
     percentile: clamp(round(weighted * 100), 1, 99),
-    factors: factors.map((f) => ({
-      key: f.key,
-      label: f.label,
-      detail: f.detail,
-      weightPercent: round(f.weight * 100),
-      contribution: round(f.value * f.weight * 550),
-      ratingPercent: round(f.value * 100),
+    factors: factors.map((factor) => ({
+      key: factor.key,
+      label: factor.label,
+      detail: factor.detail,
+      weightPercent: round(factor.weight * 100),
+      contribution: round(factor.value * factor.weight * 550),
+      ratingPercent: round(factor.value * 100),
     })),
   };
 }

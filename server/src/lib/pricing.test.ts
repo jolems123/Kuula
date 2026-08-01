@@ -29,14 +29,13 @@ test("returns the complete customer quote shape", () => {
   ].sort());
 });
 
-test("applies a five percentage-point savings discount at the threshold", () => {
-  const below = localQuote(100_000, 90, PRICING.SAVINGS_THRESHOLD - 1);
-  const eligible = localQuote(100_000, 90, PRICING.SAVINGS_THRESHOLD);
+test("ignores unverified legacy savings balances", () => {
+  const noBalance = localQuote(100_000, 90, 0);
+  const legacyBalance = localQuote(100_000, 90, 10_000_000);
 
-  assert.equal(below.apr, 0.336);
-  assert.equal(eligible.apr, 0.286);
-  assert.equal(eligible.savingsDiscountApplied, true);
-  assert.ok(eligible.interest < below.interest);
+  assert.deepEqual(legacyBalance, noBalance);
+  assert.equal(legacyBalance.savingsDiscountApplied, false);
+  assert.equal(PRICING.SAVINGS_DISCOUNT, 0);
 });
 
 test("clamps loan terms to the supported range", () => {

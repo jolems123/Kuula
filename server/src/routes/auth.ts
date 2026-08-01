@@ -6,12 +6,13 @@ import { generateToken, authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { computeCreditScore } from "../lib/credit-score.js";
 import { isValidUgandaNin, normalizeNin } from "../lib/nin.js";
+import { recognizedSavingsBalance } from "../lib/savings-policy.js";
 
 const router = Router();
 
 async function buildSession(user: any) {
   const isAdmin = user.role === "admin";
-  const savingsBalance = Number(user.savingsAccount?.balance ?? 0);
+  const savingsBalance = recognizedSavingsBalance(user.savingsAccount?.balance);
   console.log("[auth.buildSession] start", { userId: user.id, role: user.role });
 
   let credit = null;
@@ -27,7 +28,6 @@ async function buildSession(user: any) {
     });
   }
 
-  // Fetch messages separately (not available as relation called "messages")
   let messages: any[] = [];
   try {
     messages = await prisma.message.findMany({
@@ -143,22 +143,18 @@ router.post("/signup", async (req: Request, res: Response) => {
     if (existing) throw new AppError("Phone or email already registered", 409);
 
     const passwordHash = await bcrypt.hash(password, 12);
-    // Generate the phone-verification OTP up front so the verify screen works
-    // immediately after signup (no separate "resend" tap needed).
     const otpCode = crypto.randomInt(100000, 999999).toString();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await prisma.user.create({
       data: {
         fullName: name, phone, email: email || null, nationalId: normalizedNin || null, passwordHash,
         role: "user", phoneVerified: false, otpCode, otpExpiresAt,
-        // Timestamp is set server-side so consent can't be back-dated by the client.
         termsAcceptedAt: new Date(),
         termsVersion: typeof termsVersion === "string" ? termsVersion : null,
         savingsAccount: { create: { balance: 0 } },
         wallet: { create: { balance: 0 } },
       },
     });
-    // TODO: send via SMS provider in production. For now, dev-log like resend-otp.
     console.log(`[DEV] Signup OTP for ${phone}: ${otpCode}`);
 
     res.json({ ok: true, needsConfirmation: true });
@@ -271,4 +267,3 @@ router.post("/signout", (_req: Request, res: Response) => {
 });
 
 export default router;
-

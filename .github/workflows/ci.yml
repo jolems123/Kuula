@@ -47,7 +47,7 @@ jobs:
           VITE_APP_ENV: production
           VITE_APP_VERSION: ${{ github.sha }}
           VITE_ENABLE_BIOMETRIC: "true"
-          VITE_ENABLE_SAVINGS: "true"
+          VITE_ENABLE_SAVINGS: "false"
           VITE_REVIEWER_MODE: "false"
 
       - name: Upload web build
@@ -135,7 +135,7 @@ jobs:
         working-directory: server
         run: npm run db:seed
 
-      - name: API and provider-settlement tests
+      - name: API, savings safety, and provider-settlement tests
         working-directory: server
         run: |
           set -euo pipefail
@@ -162,6 +162,7 @@ jobs:
             -d '{"phone":"+256700000000","pin":"12345678"}')
           CUSTOMER_TOKEN=$(echo "$CUSTOMER_JSON" | jq -r '.token')
           test -n "$CUSTOMER_TOKEN"
+          test "$(echo "$CUSTOMER_JSON" | jq -r '.savingsBalance')" = "0"
 
           ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login \
             -H 'Content-Type: application/json' \
@@ -173,6 +174,35 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256700000000","pin":"wrong-password"}')
           test "$code" = "401"
+
+          SAVINGS_JSON=$(curl -sf http://localhost:3000/api/savings \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$SAVINGS_JSON" | jq -r '.balance')" = "0"
+          test "$(echo "$SAVINGS_JSON" | jq -r '.aprPercent')" = "0"
+          test "$(echo "$SAVINGS_JSON" | jq -r '.operationsEnabled')" = "false"
+          test "$(echo "$SAVINGS_JSON" | jq -r '.status')" = "unavailable"
+
+          deposit_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/savings/deposit \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"amount":50000}')
+          test "$deposit_code" = "503"
+
+          withdrawal_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/savings/withdraw \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"amount":10000}')
+          test "$withdrawal_code" = "503"
+
+          COMPLIANCE_JSON=$(curl -sf http://localhost:3000/api/compliance)
+          test "$(echo "$COMPLIANCE_JSON" | jq -r '.savingsAprPercent')" = "0"
+          test "$(echo "$COMPLIANCE_JSON" | jq -r '.savingsDiscountPercent')" = "0"
+
+          INVESTOR_JSON=$(curl -sf http://localhost:3000/api/admin/investor-report \
+            -H "Authorization: Bearer $ADMIN_TOKEN")
+          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.total')" = "0"
+          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.deposits')" = "0"
+          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.withdrawals')" = "0"
 
           APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" \
@@ -239,7 +269,6 @@ jobs:
             -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
 
-          # A duplicate provider callback must not credit the loan twice.
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
             -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\"}}" \

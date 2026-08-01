@@ -2,7 +2,8 @@
  * Client-side loan pricing.
  *
  * This mirrors server/src/lib/pricing.ts so customers see the same price that
- * the Node API stores. CI compares both engines across representative inputs.
+ * the Node API stores. Savings is not a pricing input until real deposits are
+ * collected, safeguarded, and provider-settled.
  *
  * Interest is simple:
  *   interest = principal × APR × termDays / 365
@@ -13,8 +14,8 @@ export const PRICING = {
   MAX_APR: 0.336,
   MIN_TERM_DAYS: 90,
   MAX_TERM_DAYS: 365,
-  SAVINGS_DISCOUNT: 0.05,
-  SAVINGS_THRESHOLD: 100000,
+  SAVINGS_DISCOUNT: 0,
+  SAVINGS_THRESHOLD: Number.POSITIVE_INFINITY,
 } as const;
 
 function normalizePrincipal(value: number): number {
@@ -34,13 +35,11 @@ function normalizeTerm(value: number): number {
 export function localQuote(
   principalInput: number,
   termDaysInput: number,
-  savingsBalance = 0
+  _savingsBalance = 0
 ): LoanQuote {
   const principal = normalizePrincipal(principalInput);
   const termDays = normalizeTerm(termDaysInput);
-  const savingsDiscountApplied = Number(savingsBalance) >= PRICING.SAVINGS_THRESHOLD;
-  const discount = savingsDiscountApplied ? PRICING.SAVINGS_DISCOUNT : 0;
-  const apr = Math.max(0, PRICING.MAX_APR - discount);
+  const apr = PRICING.MAX_APR;
   const interest = Math.round(principal * (apr / 365) * termDays);
 
   return {
@@ -52,7 +51,7 @@ export function localQuote(
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied,
+    savingsDiscountApplied: false,
     compound: false,
   };
 }
