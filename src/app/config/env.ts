@@ -31,7 +31,8 @@ export const env = {
   APP_VERSION: optional("VITE_APP_VERSION", "0.0.0"),
 
   ENABLE_BIOMETRIC: optional("VITE_ENABLE_BIOMETRIC", "true") === "true",
-  ENABLE_SAVINGS: optional("VITE_ENABLE_SAVINGS", "true") === "true",
+  // Fail closed. This flag controls savings money operations, not goal planning.
+  ENABLE_SAVINGS: optional("VITE_ENABLE_SAVINGS", "false") === "true",
 
   /** Sandbox-only store reviewer bypass. Must always be false in production. */
   REVIEWER_MODE: optional("VITE_REVIEWER_MODE", "false") === "true",
