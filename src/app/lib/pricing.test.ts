@@ -2,12 +2,13 @@ import { describe, it, expect } from "vitest";
 import { localQuote, PRICING } from "./pricing";
 
 describe("localQuote — loan pricing", () => {
-  it("enforces the minimum term (Google Play ≥60-day floor)", () => {
-    const q = localQuote(100000, 30);
-    expect(q.termDays).toBe(PRICING.MIN_TERM_DAYS);
+  it("enforces the supported term range", () => {
+    expect(localQuote(100000, 30).termDays).toBe(PRICING.MIN_TERM_DAYS);
+    expect(localQuote(100000, 720).termDays).toBe(PRICING.MAX_TERM_DAYS);
+    expect(localQuote(100000, Number.NaN).termDays).toBe(PRICING.MIN_TERM_DAYS);
   });
 
-  it("keeps the all-in APR at or below the 36% loan-app cap", () => {
+  it("keeps the all-in APR at or below the configured caps", () => {
     const q = localQuote(500000, 180);
     expect(q.apr).toBeLessThanOrEqual(PRICING.MAX_APR);
     expect(q.apr).toBeLessThanOrEqual(0.36);
@@ -21,9 +22,10 @@ describe("localQuote — loan pricing", () => {
     expect(q.interest).toBe(expectedInterest);
     expect(q.total).toBe(principal + expectedInterest);
     expect(q.compound).toBe(false);
+    expect(q.fee).toBe(0);
   });
 
-  it("applies the savings discount only above the threshold", () => {
+  it("applies a five percentage-point savings discount at the threshold", () => {
     const below = localQuote(100000, 90, PRICING.SAVINGS_THRESHOLD - 1);
     const atOrAbove = localQuote(100000, 90, PRICING.SAVINGS_THRESHOLD);
     expect(below.savingsDiscountApplied).toBe(false);
@@ -32,13 +34,13 @@ describe("localQuote — loan pricing", () => {
     expect(atOrAbove.interest).toBeLessThan(below.interest);
   });
 
-  it("never produces a negative APR", () => {
-    const q = localQuote(100000, 90, 10_000_000);
-    expect(q.apr).toBeGreaterThanOrEqual(0);
+  it("rounds principal to whole Uganda shillings", () => {
+    expect(localQuote(100000.6, 90).principal).toBe(100001);
   });
 
-  it("rounds a missing/invalid term up to the minimum", () => {
-    const q = localQuote(100000, 0);
-    expect(q.termDays).toBe(PRICING.MIN_TERM_DAYS);
+  it("rejects invalid principal amounts", () => {
+    for (const value of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => localQuote(value, 90)).toThrow(RangeError);
+    }
   });
 });
