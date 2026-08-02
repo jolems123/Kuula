@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Home, DollarSign, Wallet, Target, Settings } from "lucide-react";
+import { Home, Landmark, PiggyBank, Menu, Plus } from "lucide-react";
 
 interface BottomNavProps {
   active: "home" | "loans" | "wallet" | "goals" | "settings";
@@ -10,50 +10,49 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
   const { t } = useTranslation();
 
   const tabs = [
-    { id: "home", icon: Home, label: t("nav.home") },
-    { id: "loans", icon: DollarSign, label: t("nav.loans") },
-    { id: "wallet", icon: Wallet, label: t("nav.wallet") },
-    { id: "goals", icon: Target, label: t("nav.goals") },
-    { id: "settings", icon: Settings, label: t("nav.settings") },
+    { id: "home", icon: Home, label: t("nav.home"), screen: "home" },
+    { id: "loans", icon: Landmark, label: t("nav.loans"), screen: "loan-history" },
+    { id: "action", icon: Plus, label: "", screen: "quick-actions" },
+    { id: "goals", icon: PiggyBank, label: t("nav.goals"), screen: "goals" },
+    { id: "settings", icon: Menu, label: t("nav.settings"), screen: "settings" },
   ];
+
   return (
-    <div
-      className="absolute bottom-0 left-0 right-0 bg-white border-t"
-      style={{ borderColor: "rgba(0,0,0,0.08)", paddingBottom: 28 }}
-    >
-      <div className="flex items-center justify-around pt-2">
-        {tabs.map(({ id, icon: Icon, label }) => {
-          const isActive = active === id;
+    <nav className="kuula-bottom-nav absolute bottom-0 left-0 right-0" aria-label="Main navigation">
+      <div className="flex items-end justify-around" style={{ minHeight: 72, padding: "8px 8px 20px" }}>
+        {tabs.map(({ id, icon: Icon, label, screen }) => {
+          const isAction = id === "action";
+          const isActive = active === id || (active === "wallet" && id === "action");
           return (
             <button
               key={id}
-              onClick={() => {
-                if (id === "home") onNavigate("home");
-                else if (id === "goals") onNavigate("goals");
-                else if (id === "settings") onNavigate("settings");
-                else if (id === "loans") onNavigate("loan-history");
-                else onNavigate(id);
+              type="button"
+              aria-current={isActive && !isAction ? "page" : undefined}
+              onClick={() => onNavigate(screen)}
+              className="flex flex-col items-center justify-center"
+              style={{
+                width: isAction ? 58 : 64,
+                height: isAction ? 58 : 50,
+                marginTop: isAction ? -22 : 0,
+                border: isAction ? "6px solid white" : "none",
+                borderRadius: isAction ? 999 : 12,
+                background: isAction ? "linear-gradient(145deg, #0F7045, #04351F)" : "transparent",
+                color: isAction ? "white" : isActive ? "#0B5E3A" : "#7B8781",
+                boxShadow: isAction ? "0 10px 26px rgba(4,53,31,.28)" : "none",
+                cursor: "pointer",
+                gap: 3,
               }}
-              className="flex flex-col items-center gap-0.5 px-3 py-1"
             >
-              <Icon
-                size={22}
-                color={isActive ? "#F4612B" : "#9CA3AF"}
-                strokeWidth={isActive ? 2.2 : 1.8}
-              />
-              <span
-                style={{
-                  fontSize: 10,
-                  color: isActive ? "#F4612B" : "#9CA3AF",
-                  fontWeight: isActive ? 600 : 400,
-                }}
-              >
-                {label}
-              </span>
+              <Icon size={isAction ? 28 : 21} strokeWidth={isActive || isAction ? 2.35 : 1.9} />
+              {!isAction && (
+                <span style={{ fontSize: 9.5, fontWeight: isActive ? 700 : 500, lineHeight: 1 }}>
+                  {label}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }
