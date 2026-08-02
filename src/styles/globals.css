@@ -1,0 +1,229 @@
+/* Kuula Microfinance visual system
+   Approved palette: deep green, gold and clean white surfaces. */
+
+:root {
+  --kuula-green-950: #062d1c;
+  --kuula-green-900: #084629;
+  --kuula-green-800: #0b5e3a;
+  --kuula-green-700: #117548;
+  --kuula-green-600: #178654;
+  --kuula-green-100: #dff2e7;
+  --kuula-green-50: #edf7f1;
+  --kuula-gold: #f2c94c;
+  --kuula-gold-dark: #d7a91d;
+  --kuula-ink: #13241b;
+  --kuula-muted: #64736b;
+  --kuula-canvas: #f8faf9;
+  --kuula-card: #ffffff;
+  --kuula-border: rgba(11, 94, 58, 0.12);
+  --kuula-shadow: 0 12px 34px rgba(8, 70, 41, 0.09);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--kuula-canvas);
+}
+
+body {
+  color: var(--kuula-ink);
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(242, 201, 76, 0.35);
+  color: var(--kuula-green-950);
+}
+
+/* Turn the previous orange visual language into the approved Kuula green. */
+[style*="#F4612B"],
+[style*="#f4612b"],
+[style*="#D9531F"],
+[style*="#d9531f"],
+[style*="#FF6B35"],
+[style*="#ff6b35"] {
+  color: var(--kuula-green-800) !important;
+  border-color: var(--kuula-green-800) !important;
+}
+
+[style*="background: #F4612B"],
+[style*="background:#F4612B"],
+[style*="background: #D9531F"],
+[style*="background:#D9531F"],
+[style*="background: #FF6B35"],
+[style*="background:#FF6B35"] {
+  background: var(--kuula-green-800) !important;
+  color: #ffffff !important;
+}
+
+[style*="linear-gradient(135deg, #F4612B"],
+[style*="linear-gradient(135deg,#F4612B"],
+[style*="linear-gradient(135deg, #FF6B35"],
+[style*="linear-gradient(135deg,#FF6B35"] {
+  background: linear-gradient(145deg, var(--kuula-green-800), var(--kuula-green-950)) !important;
+  color: #ffffff !important;
+}
+
+[style*="#FFF6EF"],
+[style*="#fff6ef"],
+[style*="#FFDCC8"],
+[style*="#ffdcc8"] {
+  background-color: var(--kuula-green-50) !important;
+  border-color: rgba(11, 94, 58, 0.14) !important;
+}
+
+[style*="rgba(255,107,53"],
+[style*="rgba(244,97,43"] {
+  box-shadow: 0 10px 24px rgba(8, 70, 41, 0.2) !important;
+}
+
+/* Shared surfaces */
+.rounded-xl,
+.rounded-2xl,
+.rounded-3xl {
+  border-color: var(--kuula-border);
+}
+
+.bg-white,
+[style*="background: white"],
+[style*="background:#fff"],
+[style*="background: #fff"],
+[style*="background:#ffffff"],
+[style*="background: #ffffff"] {
+  background-color: var(--kuula-card) !important;
+}
+
+[style*="box-shadow: 0 2px 8px"],
+[style*="boxShadow: 0 2px 8px"] {
+  box-shadow: var(--kuula-shadow) !important;
+}
+
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+button:not(:disabled):active,
+[role="button"]:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid rgba(242, 201, 76, 0.55) !important;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+input,
+select,
+textarea {
+  color: var(--kuula-ink);
+  caret-color: var(--kuula-green-800);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #93a199;
+}
+
+input[type="range"] {
+  accent-color: var(--kuula-green-800) !important;
+}
+
+/* Consistent app bar and hero treatment. */
+.kuula-app-header,
+[data-kuula="header"] {
+  background: linear-gradient(145deg, var(--kuula-green-800), var(--kuula-green-950));
+  color: #ffffff;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+}
+
+.kuula-card,
+[data-kuula="card"] {
+  background: #ffffff;
+  border: 1px solid var(--kuula-border);
+  border-radius: 20px;
+  box-shadow: var(--kuula-shadow);
+}
+
+.kuula-primary-button,
+[data-kuula="primary-button"] {
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--kuula-green-700), var(--kuula-green-950));
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(8, 70, 41, 0.22);
+}
+
+.kuula-secondary-button,
+[data-kuula="secondary-button"] {
+  min-height: 48px;
+  border: 1.5px solid rgba(11, 94, 58, 0.25);
+  border-radius: 14px;
+  background: #ffffff;
+  color: var(--kuula-green-800);
+  font-weight: 650;
+}
+
+.kuula-gold-accent,
+[data-kuula="gold"] {
+  color: var(--kuula-gold-dark);
+}
+
+/* Bottom navigation used throughout the customer app. */
+.fixed.bottom-0,
+.absolute.bottom-0 {
+  border-top-color: rgba(11, 94, 58, 0.1) !important;
+}
+
+/* Status colours remain semantic but harmonised. */
+.text-green-600,
+.text-green-700,
+.text-emerald-600,
+.text-emerald-700 {
+  color: var(--kuula-green-700) !important;
+}
+
+.bg-green-50,
+.bg-emerald-50 {
+  background-color: var(--kuula-green-50) !important;
+}
+
+.bg-green-600,
+.bg-green-700,
+.bg-emerald-600,
+.bg-emerald-700 {
+  background-color: var(--kuula-green-800) !important;
+}
+
+/* Mobile safe-area support. */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
