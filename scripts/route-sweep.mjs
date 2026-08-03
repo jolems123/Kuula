@@ -51,20 +51,20 @@ await page.addInitScript(() => {
 await page.goto(BASE + "/", { waitUntil: "networkidle" });
 await page.waitForURL(/#\/welcome$/, { timeout: 15_000 });
 
-// The hardened welcome page sends operators to the dedicated admin login.
-// Use semantic selectors so wording and layout changes do not make the sweep
-// depend on implementation-specific class names.
 await page.getByRole("button", { name: /^Admin$/i }).click();
 const continueToAdmin = page.getByRole("button", { name: /Continue to Admin Login/i });
-if (await continueToAdmin.isVisible()) await continueToAdmin.click();
+await continueToAdmin.waitFor({ state: "visible", timeout: 10_000 });
+await continueToAdmin.click();
 await page.waitForURL(/#\/admin-login$/, { timeout: 15_000 });
 
 const emailInput = page.locator('input[type="email"]').first();
 const passwordInput = page.locator('input[type="password"]').first();
+await emailInput.waitFor({ state: "visible", timeout: 10_000 });
 await emailInput.fill("admin@kuula.ug");
 await passwordInput.fill("1234");
 
-const submit = page.getByRole("button", { name: /^(Log In|Sign In|Continue)$/i }).last();
+const submit = page.getByRole("button", { name: /Sign In to Admin/i });
+await submit.waitFor({ state: "visible", timeout: 10_000 });
 await submit.click();
 await page.waitForURL(/#\/admin-dashboard$/, { timeout: 15_000 });
 
