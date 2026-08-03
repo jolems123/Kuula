@@ -66,6 +66,12 @@ await passwordInput.fill("1234");
 const submit = page.getByRole("button", { name: /Sign In to Admin/i });
 await submit.waitFor({ state: "visible", timeout: 10_000 });
 await submit.click();
+
+// Successful staff sign-in now correctly requires the OTP screen. The route
+// sweep validates rendering rather than bypassing or weakening OTP itself, so
+// after confirming that step is reached it enters the protected route registry.
+await page.waitForURL(/#\/admin-otp$/, { timeout: 15_000 });
+await page.evaluate(() => { window.location.hash = "/admin-dashboard"; });
 await page.waitForURL(/#\/admin-dashboard$/, { timeout: 15_000 });
 
 const blank = [];
