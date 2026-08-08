@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { parseMarzPayWebhook, secureTokenEquals } from "../lib/marzpay.js";
+import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 
@@ -11,7 +12,10 @@ function attemptsArray(value: Prisma.JsonValue): Prisma.JsonArray {
 
 router.post("/marzpay/webhook", async (req: Request, res: Response) => {
   const expectedToken = process.env.MARZPAY_WEBHOOK_SECRET?.trim() || "";
-  const suppliedToken = String(req.query.token ?? req.headers["x-webhook-token"] ?? "");
+  const headerToken = String(req.headers["x-webhook-token"] ?? "");
+  const queryToken = String(req.query.token ?? "");
+  const allowQueryToken = process.env.NODE_ENV === "test" || process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN === "true";
+  const suppliedToken = headerToken || (allowQueryToken ? queryToken : "");
 
   if (!expectedToken) {
     console.error("MarZPay webhook rejected: MARZPAY_WEBHOOK_SECRET is not configured");
@@ -19,7 +23,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     return;
   }
   if (!secureTokenEquals(suppliedToken, expectedToken)) {
-    res.status(401).json({ error: "Invalid webhook token" });
+    res.status(401).json({ error: "Invalid webhook authentication" });
     return;
   }
 
@@ -31,9 +35,36 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
 
   const ledger = await prisma.transaction.findUnique({ where: { reference: event.reference } });
   if (!ledger) {
-    console.warn("Ignoring MarZPay webhook with unknown reference", event.reference);
-    res.json({ received: true, ignored: true });
+    console.warn("Rejecting MarZPay webhook with unknown reference", event.reference);
+    res.status(404).json({ error: "Unknown transaction reference" });
     return;
+  }
+  if (ledger.provider !== "marzpay") {
+    res.status(409).json({ error: "Transaction provider mismatch" });
+    return;
+  }
+  if (event.uuid && ledger.transactionId && event.uuid !== ledger.transactionId) {
+    await prisma.transaction.update({
+      where: { id: ledger.id },
+      data: { reconciliationStatus: "reconciliation_required" },
+    });
+    res.status(409).json({ error: "Provider transaction identifier mismatch" });
+    return;
+  }
+  if (event.isFinal && event.isSuccess) {
+    if (event.amount === null || event.amount !== Number(ledger.amount)) {
+      await prisma.transaction.update({
+        where: { id: ledger.id },
+        data: {
+          providerAmount: event.amount === null ? null : BigInt(event.amount),
+          providerCurrency: "UGX",
+          reconciliationStatus: "reconciliation_required",
+          providerPayload: event.payload as Prisma.InputJsonValue,
+        },
+      });
+      res.status(409).json({ error: "Provider amount does not match the expected transaction amount" });
+      return;
+    }
   }
 
   if (!event.isFinal) {
@@ -43,6 +74,8 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
         providerStatus: event.status,
         transactionId: event.uuid || ledger.transactionId,
         providerPayload: event.payload as Prisma.InputJsonValue,
+        providerAmount: event.amount === null ? ledger.providerAmount : BigInt(event.amount),
+        providerCurrency: event.amount === null ? ledger.providerCurrency : "UGX",
       },
     });
     res.json({ received: true, pending: true });
@@ -50,8 +83,6 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
   }
 
   const settled = await prisma.$transaction(async (tx) => {
-    // Only a pending ledger entry can mutate financial state. This compare-and-
-    // set makes duplicate and reordered callbacks harmless.
     const claim = await tx.transaction.updateMany({
       where: { id: ledger.id, status: "pending" },
       data: {
@@ -59,13 +90,16 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
         providerStatus: event.status,
         transactionId: event.uuid || ledger.transactionId,
         providerPayload: event.payload as Prisma.InputJsonValue,
+        providerAmount: event.amount === null ? null : BigInt(event.amount),
+        providerCurrency: event.amount === null ? null : "UGX",
+        reconciliationStatus: "matched",
+        reconciledAt: new Date(),
       },
     });
     if (claim.count !== 1) return false;
 
     if (ledger.type === "loan_disbursement") {
       if (!ledger.loanId) throw new Error("Disbursement ledger is missing loanId");
-
       const application = await tx.loanApplication.findFirst({
         where: { applicantId: ledger.userId, loanId: ledger.loanId },
       });
@@ -73,10 +107,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
 
       if (event.isSuccess) {
         const dueDate = new Date(Date.now() + application.termDays * 86_400_000);
-        const existingRepayment = await tx.repayment.findFirst({
-          where: { userId: ledger.userId, loanId: ledger.loanId },
-        });
-
+        const existingRepayment = await tx.repayment.findFirst({ where: { userId: ledger.userId, loanId: ledger.loanId } });
         if (!existingRepayment) {
           await tx.repayment.create({
             data: {
@@ -90,19 +121,11 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
             },
           });
         }
-
         await tx.loanApplication.update({
           where: { id: application.id },
-          data: {
-            status: "active",
-            dueDate,
-            disbursementRef: event.uuid || event.reference,
-          },
+          data: { status: "active", dueDate, disbursementRef: event.uuid || event.reference },
         });
-        await tx.user.update({
-          where: { id: ledger.userId },
-          data: { loansTotal: { increment: 1 } },
-        });
+        await tx.user.update({ where: { id: ledger.userId }, data: { loansTotal: { increment: 1 } } });
         await tx.notification.create({
           data: {
             userId: ledger.userId,
@@ -118,14 +141,14 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
             status: "offered",
             acceptedAt: null,
             disbursementRef: event.uuid || event.reference,
-            decisionNotes: "Mobile-money disbursement failed. The offer can be retried.",
+            decisionNotes: "Mobile-money disbursement failed. The offer can be retried while still valid.",
           },
         });
         await tx.notification.create({
           data: {
             userId: ledger.userId,
             title: "Disbursement Failed",
-            body: "We could not send your loan to mobile money. Your approved offer remains available.",
+            body: "We could not send your loan to mobile money. Your balance was not changed.",
             type: "warning",
           },
         });
@@ -135,29 +158,17 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
 
     if (ledger.type === "loan_payment") {
       if (!ledger.loanId) throw new Error("Repayment ledger is missing loanId");
-
-      // Match the exact locked collection reference. This prevents a callback
-      // from settling the wrong installment when multiple loans exist.
       const repayment = await tx.repayment.findFirst({
-        where: {
-          userId: ledger.userId,
-          loanId: ledger.loanId,
-          pendingCollectionRef: event.reference,
-        },
+        where: { userId: ledger.userId, loanId: ledger.loanId, pendingCollectionRef: event.reference },
       });
       if (!repayment) return true;
 
       const attempts = attemptsArray(repayment.attempts);
       const paymentAmount = Number(ledger.amount);
-
       if (event.isSuccess) {
-        const newPaid = Math.min(
-          Number(repayment.total),
-          Number(repayment.amountPaid) + paymentAmount
-        );
+        const newPaid = Math.min(Number(repayment.total), Number(repayment.amountPaid) + paymentAmount);
         const fullyPaid = newPaid >= Number(repayment.total);
         const receiptId = `RCPT-${event.reference.slice(0, 8).toUpperCase()}`;
-
         await tx.repayment.update({
           where: { id: repayment.id },
           data: {
@@ -165,43 +176,30 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
             status: fullyPaid ? "paid" : repayment.status,
             receiptId,
             pendingCollectionRef: null,
-            attempts: [
-              ...attempts,
-              {
-                at: new Date().toISOString(),
-                method: "mobile-money-collection",
-                amount: paymentAmount,
-                success: true,
-                reason: "provider-confirmed",
-                reference: event.reference,
-                provider_uuid: event.uuid,
-              },
-            ] as Prisma.InputJsonValue,
+            attempts: [...attempts, {
+              at: new Date().toISOString(),
+              method: "mobile-money-collection",
+              amount: paymentAmount,
+              success: true,
+              reason: "provider-confirmed",
+              reference: event.reference,
+              provider_uuid: event.uuid,
+            }] as Prisma.InputJsonValue,
           },
         });
 
         if (fullyPaid) {
           await tx.loanApplication.updateMany({
-            where: {
-              applicantId: ledger.userId,
-              loanId: ledger.loanId,
-              status: { not: "paid" },
-            },
+            where: { applicantId: ledger.userId, loanId: ledger.loanId, status: { not: "paid" } },
             data: { status: "paid" },
           });
-          await tx.user.update({
-            where: { id: ledger.userId },
-            data: { loansRepaid: { increment: 1 } },
-          });
+          await tx.user.update({ where: { id: ledger.userId }, data: { loansRepaid: { increment: 1 } } });
         }
-
         await tx.notification.create({
           data: {
             userId: ledger.userId,
             title: fullyPaid ? "Loan Repaid" : "Payment Received",
-            body: fullyPaid
-              ? `Your loan is fully paid. Receipt: ${receiptId}.`
-              : `UGX ${paymentAmount.toLocaleString()} was received. Receipt: ${receiptId}.`,
+            body: fullyPaid ? `Your loan is fully paid. Receipt: ${receiptId}.` : `UGX ${paymentAmount.toLocaleString()} was received. Receipt: ${receiptId}.`,
             type: "success",
           },
         });
@@ -210,18 +208,15 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
           where: { id: repayment.id },
           data: {
             pendingCollectionRef: null,
-            attempts: [
-              ...attempts,
-              {
-                at: new Date().toISOString(),
-                method: "mobile-money-collection",
-                amount: paymentAmount,
-                success: false,
-                reason: "provider-declined-or-failed",
-                reference: event.reference,
-                provider_uuid: event.uuid,
-              },
-            ] as Prisma.InputJsonValue,
+            attempts: [...attempts, {
+              at: new Date().toISOString(),
+              method: "mobile-money-collection",
+              amount: paymentAmount,
+              success: false,
+              reason: "provider-declined-or-failed",
+              reference: event.reference,
+              provider_uuid: event.uuid,
+            }] as Prisma.InputJsonValue,
           },
         });
         await tx.notification.create({
@@ -239,6 +234,15 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     return true;
   });
 
+  if (settled) {
+    await writeAuditEvent({
+      subjectUserId: ledger.userId,
+      action: event.isSuccess ? "payment.provider_settled" : "payment.provider_failed",
+      resourceType: "transaction",
+      resourceId: ledger.id,
+      metadata: { reference: event.reference, providerUuid: event.uuid, type: ledger.type, amount: event.amount },
+    });
+  }
   res.json({ received: true, settled });
 });
 
