@@ -47,20 +47,20 @@ model User {
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
 
-  savingsAccount         SavingsAccount?
-  wallet                 Wallet?
-  sentMessages           Message[]                 @relation("sender")
-  receivedMessages       Message[]                 @relation("receiver")
-  loanApplications       LoanApplication[]
-  repayments             Repayment[]
-  transactions           Transaction[]
-  savingsGoals           SavingsGoal[]
-  notifications          Notification[]
-  authSessions           AuthSession[]
-  creditEvidence         CreditEvidence[]
-  kycSubmissions         KycSubmission[]
+  savingsAccount          SavingsAccount?
+  wallet                  Wallet?
+  sentMessages            Message[]                 @relation("sender")
+  receivedMessages        Message[]                 @relation("receiver")
+  loanApplications        LoanApplication[]
+  repayments              Repayment[]
+  transactions            Transaction[]
+  savingsGoals            SavingsGoal[]
+  notifications           Notification[]
+  authSessions            AuthSession[]
+  creditEvidence          CreditEvidence[]
+  kycSubmissions          KycSubmission[]
   underwritingAssessments UnderwritingAssessment[]
-  agreementAcceptances   LoanAgreementAcceptance[]
+  agreementAcceptances    LoanAgreementAcceptance[]
 
   @@map("users")
 }
@@ -296,6 +296,7 @@ model Transaction {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal Journal?
   @@index([userId, createdAt(sort: Desc)])
   @@index([loanId])
   @@index([transactionId])
@@ -303,6 +304,35 @@ model Transaction {
   @@index([status, createdAt])
   @@index([reconciliationStatus, createdAt])
   @@map("transactions")
+}
+
+model Journal {
+  id            String   @id @default(uuid()) @db.Uuid
+  transactionId String   @unique @map("transaction_id") @db.Uuid
+  reference     String   @unique
+  description   String
+  postedAt      DateTime @default(now()) @map("posted_at")
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  entries JournalEntry[]
+  @@index([postedAt])
+  @@map("journals")
+}
+
+model JournalEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  journalId   String   @map("journal_id") @db.Uuid
+  accountCode String   @map("account_code")
+  direction   String
+  amount      BigInt
+  userId      String?  @map("user_id") @db.Uuid
+  loanId      String?  @map("loan_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  @@index([journalId])
+  @@index([accountCode, createdAt])
+  @@index([userId, createdAt])
+  @@index([loanId])
+  @@map("journal_entries")
 }
 
 model SavingsGoal {
