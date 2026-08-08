@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { parseMarzPayWebhook, secureTokenEquals } from "../lib/marzpay.js";
 import { writeAuditEvent } from "../lib/audit.js";
+import { postSettlementJournal } from "../lib/ledger.js";
 
 const router = Router();
 
@@ -51,7 +52,10 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     res.status(409).json({ error: "Provider transaction identifier mismatch" });
     return;
   }
-  if (event.isFinal && event.isSuccess) {
+  // Validate provider amount only while the transaction is still pending. An
+  // exact duplicate final callback after settlement must remain harmless even
+  // if the provider omits amount fields on the retry.
+  if (ledger.status === "pending" && event.isFinal && event.isSuccess) {
     if (event.amount === null || event.amount !== Number(ledger.amount)) {
       await prisma.transaction.update({
         where: { id: ledger.id },
@@ -97,6 +101,13 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
       },
     });
     if (claim.count !== 1) return false;
+
+    // The accounting journal is posted inside this exact database transaction.
+    // If the journal is unbalanced or cannot be created, the settlement status
+    // and all loan/repayment mutations roll back together.
+    if (event.isSuccess) {
+      await postSettlementJournal(tx, ledger);
+    }
 
     if (ledger.type === "loan_disbursement") {
       if (!ledger.loanId) throw new Error("Disbursement ledger is missing loanId");
