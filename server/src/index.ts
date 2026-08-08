@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { errorHandler } from "./middleware/error-handler.js";
+import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
 import paymentRoutes from "./routes/payments.js";
@@ -13,10 +14,20 @@ import transactionRoutes from "./routes/transactions.js";
 import goalRoutes from "./routes/goals.js";
 import notificationRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
+import adminKycRoutes from "./routes/admin-kyc.js";
+import adminCreditDataRoutes from "./routes/admin-credit-data.js";
+import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
 import kycRoutes from "./routes/kyc.js";
 import { COMPLIANCE } from "./lib/compliance.js";
+import { authenticateToken } from "./middleware/auth.js";
+import { computeCreditScore } from "./lib/credit-score.js";
+import { effectiveCreditEvidence } from "./lib/credit-evidence.js";
+import { recognizedSavingsBalance } from "./lib/savings-policy.js";
+import { startReconciliationSweeper } from "./lib/reconciliation.js";
+import prisma from "./lib/prisma.js";
 
 const isProduction = process.env.NODE_ENV === "production";
+const realMoneyEnabled = process.env.NODE_ENV === "test" || process.env.REAL_MONEY_ENABLED === "true";
 const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
 if (isProduction) {
   requiredEnvVars.push(
@@ -24,8 +35,19 @@ if (isProduction) {
     "SMS_PROVIDER",
     "AFRICASTALKING_USERNAME",
     "AFRICASTALKING_API_KEY",
-    "CORS_ORIGINS"
+    "CORS_ORIGINS",
+    "KYC_STORAGE_PROVIDER",
+    "KYC_S3_BUCKET",
+    "KYC_S3_REGION"
   );
+  if (realMoneyEnabled) {
+    requiredEnvVars.push(
+      "MARZPAY_API_KEY",
+      "MARZPAY_API_SECRET",
+      "MARZPAY_WEBHOOK_SECRET",
+      "PUBLIC_API_URL"
+    );
+  }
 }
 const missing = requiredEnvVars.filter((key) => !process.env[key]?.trim());
 if (missing.length > 0) {
@@ -40,6 +62,25 @@ if (isProduction && process.env.TEST_OTP_CODE) {
   console.error("TEST_OTP_CODE must never be configured in production");
   process.exit(1);
 }
+if (isProduction && process.env.KYC_STORAGE_PROVIDER?.trim().toLowerCase() !== "s3") {
+  console.error("KYC_STORAGE_PROVIDER must be s3 in production");
+  process.exit(1);
+}
+if (isProduction && process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN === "true") {
+  console.error("MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN must be false in production");
+  process.exit(1);
+}
+if (isProduction && realMoneyEnabled) {
+  try {
+    const publicUrl = new URL(process.env.PUBLIC_API_URL!);
+    if (publicUrl.protocol !== "https:" || ["localhost", "127.0.0.1", "0.0.0.0"].includes(publicUrl.hostname)) {
+      throw new Error("PUBLIC_API_URL must be a public HTTPS URL when real money is enabled");
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : "PUBLIC_API_URL is invalid");
+    process.exit(1);
+  }
+}
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -48,6 +89,8 @@ const corsOrigins = (process.env.CORS_ORIGINS || "")
   .map((value) => value.trim())
   .filter(Boolean);
 
+app.disable("x-powered-by");
+app.use(requestContext);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({
   origin(origin, callback) {
@@ -55,12 +98,18 @@ app.use(cors({
     if (corsOrigins.includes(origin)) return callback(null, true);
     callback(new Error("Origin is not allowed"));
   },
-  credentials: true,
+  credentials: false,
 }));
 
 app.use("/api/auth", rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+app.use("/api/payments/marzpay/webhook", rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
 }));
@@ -75,7 +124,13 @@ app.use("/api/kyc", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString(), version: "2.4.1-local" });
+  res.json({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    version: process.env.APP_VERSION || "2.4.1",
+    realMoneyEnabled,
+    savingsEnabled: false,
+  });
 });
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
@@ -87,27 +142,26 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin/kyc", adminKycRoutes);
+app.use("/api/admin/credit-data", adminCreditDataRoutes);
+app.use("/api/admin/reconciliation", adminReconciliationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/kyc", kycRoutes);
 
-import { authenticateToken } from "./middleware/auth.js";
-import { computeCreditScore } from "./lib/credit-score.js";
-import { recognizedSavingsBalance } from "./lib/savings-policy.js";
 app.get("/api/credit/score", authenticateToken, async (req, res) => {
-  const prisma = (await import("./lib/prisma.js")).default;
   const user = await prisma.user.findUnique({
     where: { id: req.user!.userId },
     include: { savingsAccount: true },
   });
   if (!user || user.deletedAt) {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: "User not found", requestId: req.requestId ?? null });
     return;
   }
-
+  const evidence = await effectiveCreditEvidence(user.id);
   res.json(computeCreditScore({
-    momoMonths: user.momoMonths ?? 0,
-    momoTxnCount: user.momoTxnCount ?? 0,
-    crbStatus: user.crbStatus ?? "thin",
+    momoMonths: evidence.momoMonths,
+    momoTxnCount: evidence.momoTxnCount,
+    crbStatus: evidence.crbStatus,
     savingsBalance: recognizedSavingsBalance(user.savingsAccount?.balance),
     kycVerified: user.kycVerified ?? false,
     loansRepaid: user.loansRepaid ?? 0,
@@ -116,38 +170,50 @@ app.get("/api/credit/score", authenticateToken, async (req, res) => {
 });
 
 app.post("/api/wallet/topup", (_req, res) => {
-  res.status(400).json({
-    error: "Wallet top-ups are made from your mobile money when a payment is collected.",
+  res.status(503).json({
+    error: "Wallet top-ups are unavailable. Kuula does not maintain a customer cash wallet.",
+    code: "WALLET_TOPUP_DISABLED",
   });
 });
 
 app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
-  const prisma = (await import("./lib/prisma.js")).default;
-  await prisma.user.update({
-    where: { id: req.user!.userId },
-    data: {
-      deletedAt: new Date(),
-      authVersion: { increment: 1 },
-      otpHash: null,
-      otpPurpose: null,
-      otpExpiresAt: null,
-      otpAttempts: 0,
-      otpLockedUntil: null,
-    },
-  });
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: req.user!.userId },
+      data: {
+        deletedAt: now,
+        authVersion: { increment: 1 },
+        otpHash: null,
+        otpPurpose: null,
+        otpExpiresAt: null,
+        otpAttempts: 0,
+        otpLockedUntil: null,
+      },
+    }),
+    prisma.authSession.updateMany({
+      where: { userId: req.user!.userId, revokedAt: null },
+      data: { revokedAt: now },
+    }),
+  ]);
   res.json({ ok: true });
 });
 
 app.use(errorHandler);
 
+const stopReconciliationSweeper = startReconciliationSweeper();
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✓ Kuula server running on http://0.0.0.0:${PORT}`);
-  console.log(`  Health: http://localhost:${PORT}/api/health`);
+  console.log(JSON.stringify({ event: "server.started", port: PORT, realMoneyEnabled, savingsEnabled: false }));
 });
 
-process.on("SIGTERM", () => {
-  server.close(() => process.exit(0));
-});
-process.on("SIGINT", () => {
-  server.close(() => process.exit(0));
-});
+async function shutdown(signal: string) {
+  stopReconciliationSweeper();
+  server.close(async () => {
+    await prisma.$disconnect().catch(() => {});
+    console.log(JSON.stringify({ event: "server.stopped", signal }));
+    process.exit(0);
+  });
+}
+
+process.on("SIGTERM", () => { void shutdown("SIGTERM"); });
+process.on("SIGINT", () => { void shutdown("SIGINT"); });
