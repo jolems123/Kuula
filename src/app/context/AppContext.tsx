@@ -1,14 +1,13 @@
 /**
- * Global app context — session, user profile, credit data, and messages.
+ * Global app context — authenticated session display state and customer/operator data.
+ * Node/Express + PostgreSQL is the only runtime backend.
  */
 import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
-import { supabase } from "../lib/supabase";
 import { clearSelectionState } from "../lib/selection";
 import { clearServiceCache } from "../api/types-compat";
+import { clearSessionTokens } from "../lib/session-vault";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type Role = "user" | "admin";
+export type Role = "user" | "customer" | "admin" | "manager" | "officer";
 
 export interface Message {
   id: string;
@@ -40,7 +39,7 @@ export interface CreditProfile {
   maxScore: number;
   tier: "Poor" | "Fair" | "Good" | "Very Good" | "Excellent";
   percentile: number;
-  improvementSinceStart: number;
+  improvementSinceStart?: number;
 }
 
 export interface LoanProfile {
@@ -78,10 +77,9 @@ export interface AppState {
   messages: Message[];
 }
 
-// ── Actions ───────────────────────────────────────────────────────────────────
-
 type Action =
-  | { type: "LOGIN"; payload: { token: string; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; savingsBalance: number; role: Role; messages?: Message[]; unreadNotifications?: number } }
+  | { type: "LOGIN"; payload: { token: string; expiresAt?: number; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; savingsBalance: number; role: Role; messages?: Message[]; unreadNotifications?: number } }
+  | { type: "UPDATE_TOKEN"; payload: { token: string; expiresAt: number } }
   | { type: "LOGOUT" }
   | { type: "UPDATE_PROFILE"; payload: Partial<UserProfile> }
   | { type: "UPDATE_CREDIT"; payload: Partial<CreditProfile> }
@@ -92,8 +90,6 @@ type Action =
   | { type: "SEND_MESSAGE"; payload: Message }
   | { type: "MARK_MESSAGE_READ"; payload: string }
   | { type: "MARK_ALL_READ_FOR_USER"; payload: string };
-
-// ── Initial state (unauthenticated) ──────────────────────────────────────────
 
 const INITIAL_STATE: AppState = {
   session: { isAuthenticated: false, token: null, expiresAt: null },
@@ -106,8 +102,6 @@ const INITIAL_STATE: AppState = {
   messages: [],
 };
 
-// ── Reducer ───────────────────────────────────────────────────────────────────
-
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "LOGIN":
@@ -116,73 +110,36 @@ function reducer(state: AppState, action: Action): AppState {
         session: {
           isAuthenticated: true,
           token: action.payload.token,
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+          expiresAt: action.payload.expiresAt ?? Date.now() + 15 * 60 * 1000,
         },
         role: action.payload.role,
         user: action.payload.user,
         credit: action.payload.credit,
         loan: action.payload.loan,
         savingsBalance: action.payload.savingsBalance,
-        messages: action.payload.messages ?? state.messages,
-        unreadNotifications: action.payload.unreadNotifications ?? state.unreadNotifications,
+        messages: action.payload.messages ?? [],
+        unreadNotifications: action.payload.unreadNotifications ?? 0,
       };
-
-    case "LOGOUT":
-      return { ...INITIAL_STATE };
-
-    case "UPDATE_PROFILE":
-      return state.user
-        ? { ...state, user: { ...state.user, ...action.payload } }
-        : state;
-
-    case "UPDATE_CREDIT":
-      return state.credit
-        ? { ...state, credit: { ...state.credit, ...action.payload } }
-        : state;
-
-    case "UPDATE_LOAN":
-      return state.loan
-        ? { ...state, loan: { ...state.loan, ...action.payload } }
-        : state;
-
-    case "SET_SAVINGS":
-      return { ...state, savingsBalance: action.payload };
-
-    case "SET_UNREAD":
-      return { ...state, unreadNotifications: action.payload };
-
-    case "MARK_NOTIFICATIONS_READ":
-      return { ...state, unreadNotifications: 0 };
-
-    case "SEND_MESSAGE":
-      return { ...state, messages: [...state.messages, action.payload] };
-
-    case "MARK_MESSAGE_READ":
-      return {
-        ...state,
-        messages: state.messages.map((m) =>
-          m.id === action.payload ? { ...m, isRead: true } : m
-        ),
-      };
-
-    case "MARK_ALL_READ_FOR_USER":
-      return {
-        ...state,
-        messages: state.messages.map((m) =>
-          m.receiverId === action.payload ? { ...m, isRead: true } : m
-        ),
-      };
-
-    default:
-      return state;
+    case "UPDATE_TOKEN":
+      return { ...state, session: { ...state.session, token: action.payload.token, expiresAt: action.payload.expiresAt } };
+    case "LOGOUT": return { ...INITIAL_STATE };
+    case "UPDATE_PROFILE": return state.user ? { ...state, user: { ...state.user, ...action.payload } } : state;
+    case "UPDATE_CREDIT": return state.credit ? { ...state, credit: { ...state.credit, ...action.payload } } : state;
+    case "UPDATE_LOAN": return state.loan ? { ...state, loan: { ...state.loan, ...action.payload } } : state;
+    case "SET_SAVINGS": return { ...state, savingsBalance: action.payload };
+    case "SET_UNREAD": return { ...state, unreadNotifications: action.payload };
+    case "MARK_NOTIFICATIONS_READ": return { ...state, unreadNotifications: 0 };
+    case "SEND_MESSAGE": return { ...state, messages: [...state.messages, action.payload] };
+    case "MARK_MESSAGE_READ": return { ...state, messages: state.messages.map((m) => m.id === action.payload ? { ...m, isRead: true } : m) };
+    case "MARK_ALL_READ_FOR_USER": return { ...state, messages: state.messages.map((m) => m.receiverId === action.payload ? { ...m, isRead: true } : m) };
+    default: return state;
   }
 }
 
-// ── Context ───────────────────────────────────────────────────────────────────
-
 interface AppContextValue {
   state: AppState;
-  login: (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number) => void;
+  login: (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => void;
+  updateToken: (token: string, expiresAt: number) => void;
   logout: () => void;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateCredit: (patch: Partial<CreditProfile>) => void;
@@ -193,103 +150,51 @@ interface AppContextValue {
   sendMessage: (msg: Message) => void;
   markMessageRead: (id: string) => void;
   markAllReadForUser: (userId: string) => void;
-  /** Phone (E.164) captured at sign-up, awaiting SMS OTP confirmation. */
   pendingPhone: string;
   setPendingPhone: (phone: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-// ── Provider ──────────────────────────────────────────────────────────────────
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Sessions always start unauthenticated; LOGIN is dispatched by the auth flow.
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [pendingPhone, setPendingPhone] = useState("");
 
-  const login = useCallback(
-    (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number) =>
-      dispatch({ type: "LOGIN", payload: { token, user, credit, loan, savingsBalance, role, messages, unreadNotifications } }),
-    []
-  );
-
+  const login = useCallback((token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => {
+    dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, savingsBalance, role, messages, unreadNotifications } });
+  }, []);
+  const updateToken = useCallback((token: string, expiresAt: number) => dispatch({ type: "UPDATE_TOKEN", payload: { token, expiresAt } }), []);
   const logout = useCallback(() => {
-    // End the Supabase session too (clears the persisted token) — otherwise the
-    // user stays authenticated to Supabase after "logging out".
-    if (supabase) supabase.auth.signOut().catch(() => {});
-    // Clear module-level caches so stale data never leaks into the next session.
+    clearSessionTokens();
     clearSelectionState();
     clearServiceCache();
     dispatch({ type: "LOGOUT" });
   }, []);
-
-  const updateProfile = useCallback(
-    (patch: Partial<UserProfile>) => dispatch({ type: "UPDATE_PROFILE", payload: patch }),
-    []
-  );
-
-  const updateCredit = useCallback(
-    (patch: Partial<CreditProfile>) => dispatch({ type: "UPDATE_CREDIT", payload: patch }),
-    []
-  );
-
-  const updateLoan = useCallback(
-    (patch: Partial<LoanProfile>) => dispatch({ type: "UPDATE_LOAN", payload: patch }),
-    []
-  );
-
-  const setUnread = useCallback(
-    (count: number) => dispatch({ type: "SET_UNREAD", payload: count }),
-    []
-  );
-
-  const setSavingsBalance = useCallback(
-    (balance: number) => dispatch({ type: "SET_SAVINGS", payload: balance }),
-    []
-  );
-
-  const markNotificationsRead = useCallback(
-    () => dispatch({ type: "MARK_NOTIFICATIONS_READ" }),
-    []
-  );
-
-  const sendMessage = useCallback(
-    (msg: Message) => dispatch({ type: "SEND_MESSAGE", payload: msg }),
-    []
-  );
-
-  const markMessageRead = useCallback(
-    (id: string) => dispatch({ type: "MARK_MESSAGE_READ", payload: id }),
-    []
-  );
-
-  const markAllReadForUser = useCallback(
-    (userId: string) => dispatch({ type: "MARK_ALL_READ_FOR_USER", payload: userId }),
-    []
-  );
+  const updateProfile = useCallback((patch: Partial<UserProfile>) => dispatch({ type: "UPDATE_PROFILE", payload: patch }), []);
+  const updateCredit = useCallback((patch: Partial<CreditProfile>) => dispatch({ type: "UPDATE_CREDIT", payload: patch }), []);
+  const updateLoan = useCallback((patch: Partial<LoanProfile>) => dispatch({ type: "UPDATE_LOAN", payload: patch }), []);
+  const setUnread = useCallback((count: number) => dispatch({ type: "SET_UNREAD", payload: count }), []);
+  const setSavingsBalance = useCallback((balance: number) => dispatch({ type: "SET_SAVINGS", payload: balance }), []);
+  const markNotificationsRead = useCallback(() => dispatch({ type: "MARK_NOTIFICATIONS_READ" }), []);
+  const sendMessage = useCallback((msg: Message) => dispatch({ type: "SEND_MESSAGE", payload: msg }), []);
+  const markMessageRead = useCallback((id: string) => dispatch({ type: "MARK_MESSAGE_READ", payload: id }), []);
+  const markAllReadForUser = useCallback((userId: string) => dispatch({ type: "MARK_ALL_READ_FOR_USER", payload: userId }), []);
 
   return (
-    <AppContext.Provider
-      value={{ state, login, logout, updateProfile, updateCredit, updateLoan, setUnread, setSavingsBalance, markNotificationsRead, sendMessage, markMessageRead, markAllReadForUser, pendingPhone, setPendingPhone }}
-    >
+    <AppContext.Provider value={{ state, login, updateToken, logout, updateProfile, updateCredit, updateLoan, setUnread, setSavingsBalance, markNotificationsRead, sendMessage, markMessageRead, markAllReadForUser, pendingPhone, setPendingPhone }}>
       {children}
     </AppContext.Provider>
   );
 }
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useAppContext(): AppContextValue {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useAppContext must be used inside <AppProvider>");
   return ctx;
 }
-
-/** Convenience selectors */
 export const useUser = () => useAppContext().state.user;
 export const useSession = () => useAppContext().state.session;
 export const useCredit = () => useAppContext().state.credit;
 export const useLoan = () => useAppContext().state.loan;
 export const useRole = () => useAppContext().state.role;
 export const useMessages = () => useAppContext().state.messages;
-
