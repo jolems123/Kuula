@@ -13,7 +13,8 @@ model User {
   fullName       String   @default("") @map("full_name")
   phone          String?  @unique
   email          String?  @unique
-  nationalId     String?  @map("national_id")
+  nationalId     String?  @unique @map("national_id")
+  dateOfBirth    DateTime? @map("date_of_birth")
   district       String?  @default("")
   occupation     String?  @default("")
   verified       Boolean  @default(false)
@@ -46,17 +47,113 @@ model User {
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
 
-  savingsAccount   SavingsAccount?
-  wallet           Wallet?
-  sentMessages     Message[]        @relation("sender")
-  receivedMessages Message[]        @relation("receiver")
-  loanApplications LoanApplication[]
-  repayments       Repayment[]
-  transactions     Transaction[]
-  savingsGoals     SavingsGoal[]
-  notifications    Notification[]
+  savingsAccount         SavingsAccount?
+  wallet                 Wallet?
+  sentMessages           Message[]                 @relation("sender")
+  receivedMessages       Message[]                 @relation("receiver")
+  loanApplications       LoanApplication[]
+  repayments             Repayment[]
+  transactions           Transaction[]
+  savingsGoals           SavingsGoal[]
+  notifications          Notification[]
+  authSessions           AuthSession[]
+  creditEvidence         CreditEvidence[]
+  kycSubmissions         KycSubmission[]
+  underwritingAssessments UnderwritingAssessment[]
+  agreementAcceptances   LoanAgreementAcceptance[]
 
   @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  lastUsedAt       DateTime  @default(now()) @map("last_used_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model CreditEvidence {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  sourceType        String    @map("source_type")
+  provider          String
+  externalReference String    @map("external_reference")
+  momoMonths        Int?      @map("momo_months")
+  momoTxnCount      Int?      @map("momo_txn_count")
+  crbStatus         String?   @map("crb_status")
+  payload           Json?
+  observedAt        DateTime  @map("observed_at")
+  expiresAt         DateTime  @map("expires_at")
+  status            String    @default("verified")
+  verifiedBy        String?   @map("verified_by") @db.Uuid
+  revokedAt         DateTime? @map("revoked_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, externalReference])
+  @@index([userId, sourceType, status, expiresAt])
+  @@map("credit_evidence")
+}
+
+model KycSubmission {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  version           Int
+  status            String    @default("pending")
+  fullName          String    @map("full_name")
+  nationalId        String    @map("national_id")
+  dateOfBirth       DateTime  @map("date_of_birth")
+  frontRef          String    @map("front_ref")
+  backRef           String    @map("back_ref")
+  frontMime         String    @map("front_mime")
+  backMime          String    @map("back_mime")
+  provider          String?
+  providerReference String?   @map("provider_reference")
+  providerStatus    String?   @map("provider_status")
+  providerDetail    String?   @map("provider_detail")
+  submittedAt       DateTime  @default(now()) @map("submitted_at")
+  reviewedAt        DateTime? @map("reviewed_at")
+  reviewedBy        String?   @map("reviewed_by") @db.Uuid
+  decisionReason    String?   @map("decision_reason")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, version])
+  @@index([status, submittedAt])
+  @@index([nationalId])
+  @@map("kyc_submissions")
+}
+
+model KycAuditEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  submissionId String   @map("submission_id") @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  action       String
+  details      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  @@index([submissionId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("kyc_audit_events")
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  actorId       String?  @map("actor_id") @db.Uuid
+  subjectUserId String?  @map("subject_user_id") @db.Uuid
+  action        String
+  resourceType  String   @map("resource_type")
+  resourceId    String?  @map("resource_id")
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+  @@index([actorId, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_events")
 }
 
 model SavingsAccount {
@@ -102,20 +199,62 @@ model LoanApplication {
   serviceFeeRate      Decimal   @default(0.10) @map("service_fee_rate") @db.Decimal(5, 4)
   serviceFee          BigInt    @default(0) @map("service_fee")
   disbursementMethod  String    @default("mtn_momo") @map("disbursement_method")
-  approvedBy          String?   @map("approved_by")
+  approvedBy          String?   @map("approved_by") @db.Uuid
   dueDate             DateTime? @map("due_date")
   status              String    @default("pending")
   disbursementRef     String?   @map("disbursement_ref")
   loanId              String?   @map("loan_id")
   decisionNotes       String?   @map("decision_notes")
   acceptedAt          DateTime? @map("accepted_at")
+  offerExpiresAt      DateTime? @map("offer_expires_at")
   createdAt           DateTime  @default(now()) @map("created_at")
   decidedAt           DateTime? @map("decided_at")
   applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  underwriting UnderwritingAssessment?
+  agreementAcceptance LoanAgreementAcceptance?
   @@index([applicantId, createdAt(sort: Desc)])
   @@index([status])
   @@index([loanId])
+  @@index([offerExpiresAt])
   @@map("loan_applications")
+}
+
+model UnderwritingAssessment {
+  id                      String   @id @default(uuid()) @db.Uuid
+  applicationId           String   @unique @map("application_id") @db.Uuid
+  userId                  String   @map("user_id") @db.Uuid
+  declaredMonthlyIncome   BigInt   @map("declared_monthly_income")
+  declaredMonthlyExpenses BigInt   @map("declared_monthly_expenses")
+  existingDebtPayment     BigInt   @default(0) @map("existing_debt_payment")
+  verifiedMonthlyIncome   BigInt?  @map("verified_monthly_income")
+  disposableIncome        BigInt   @map("disposable_income")
+  maxAffordablePayment    BigInt   @map("max_affordable_payment")
+  creditScore             Int      @map("credit_score")
+  approvedLimit           BigInt   @map("approved_limit")
+  status                  String
+  flags                   Json     @default("[]")
+  assessedAt              DateTime @default(now()) @map("assessed_at")
+  assessedBy              String?  @map("assessed_by") @db.Uuid
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, assessedAt])
+  @@index([status])
+  @@map("underwriting_assessments")
+}
+
+model LoanAgreementAcceptance {
+  id               String   @id @default(uuid()) @db.Uuid
+  applicationId    String   @unique @map("application_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  agreementVersion String   @map("agreement_version")
+  agreementHash    String   @map("agreement_hash")
+  termsSnapshot    Json     @map("terms_snapshot")
+  clientContext    Json?    @map("client_context")
+  acceptedAt       DateTime @default(now()) @map("accepted_at")
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, acceptedAt])
+  @@map("loan_agreement_acceptances")
 }
 
 model Repayment {
@@ -134,28 +273,35 @@ model Repayment {
   @@index([userId])
   @@index([loanId])
   @@index([status])
+  @@index([userId, status, dueDate])
   @@map("repayments")
 }
 
 model Transaction {
-  id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  loanId          String?  @map("loan_id")
-  type            String
-  amount          BigInt
-  status          String   @default("pending")
-  reference       String?  @unique
-  provider        String?
-  providerStatus  String?  @map("provider_status")
-  providerPayload Json?    @map("provider_payload")
-  transactionId   String?  @map("transaction_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                   String    @id @default(uuid()) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  loanId               String?   @map("loan_id")
+  type                  String
+  amount                BigInt
+  status                String    @default("pending")
+  reference             String?   @unique
+  provider              String?
+  providerStatus        String?   @map("provider_status")
+  providerPayload       Json?     @map("provider_payload")
+  providerAmount        BigInt?   @map("provider_amount")
+  providerCurrency      String?   @map("provider_currency")
+  transactionId         String?   @map("transaction_id")
+  reconciliationStatus  String    @default("unreconciled") @map("reconciliation_status")
+  reconciledAt          DateTime? @map("reconciled_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt(sort: Desc)])
   @@index([loanId])
   @@index([transactionId])
   @@index([status])
+  @@index([status, createdAt])
+  @@index([reconciliationStatus, createdAt])
   @@map("transactions")
 }
 
