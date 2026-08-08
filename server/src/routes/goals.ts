@@ -16,89 +16,70 @@ function mapGoal(goal: {
   createdAt: Date;
   updatedAt: Date;
 }) {
-  return {
-    ...goal,
-    target: Number(goal.target),
-    saved: Number(goal.saved),
-  };
+  return { ...goal, target: Number(goal.target), saved: 0 };
 }
 
-// GET /api/goals
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
   const goals = await prisma.savingsGoal.findMany({
     where: { userId: req.user!.userId },
     orderBy: { createdAt: "asc" },
   });
-
-  res.json({ goals: goals.map(mapGoal) });
+  res.json({ goals: goals.map(mapGoal), operationsEnabled: false });
 });
 
-// POST /api/goals
 router.post("/", authenticateToken, async (req: Request, res: Response) => {
   const { name, emoji, target, color } = req.body;
   const userId = req.user!.userId;
-
   const parsedTarget = Number(target);
-  if (!name?.trim() || !Number.isFinite(parsedTarget) || parsedTarget <= 0) {
+  if (typeof name !== "string" || !name.trim() || !Number.isFinite(parsedTarget) || parsedTarget <= 0) {
     throw new AppError("Name and target are required", 400);
   }
-
   const goal = await prisma.savingsGoal.create({
-    data: { userId, name: name.trim(), emoji: emoji || "🎯", target: BigInt(Math.round(parsedTarget)), color: color || "#F4612B" },
+    data: {
+      userId,
+      name: name.trim().slice(0, 100),
+      emoji: typeof emoji === "string" ? emoji.slice(0, 8) : "🎯",
+      target: BigInt(Math.round(parsedTarget)),
+      saved: BigInt(0),
+      color: typeof color === "string" ? color.slice(0, 20) : "#0B5E3A",
+    },
   });
-
-  res.json({ goal: mapGoal(goal) });
+  res.status(201).json({ goal: mapGoal(goal), operationsEnabled: false });
 });
 
-// PATCH /api/goals/:id
 router.patch("/:id", authenticateToken, async (req: Request, res: Response) => {
-  const id = req.params.id as string;
+  const id = String(req.params.id);
   const userId = req.user!.userId;
-
-  const existing = await prisma.savingsGoal.findFirst({
-    where: { id, userId },
-  });
+  const existing = await prisma.savingsGoal.findFirst({ where: { id, userId } });
   if (!existing) throw new AppError("Goal not found", 404);
-
-  const data: any = { ...req.body, updatedAt: new Date() };
-
-  if (typeof data.name === "string") data.name = data.name.trim();
-  if (data.target !== undefined) {
-    const parsedTarget = Number(data.target);
-    if (!Number.isFinite(parsedTarget) || parsedTarget <= 0) {
-      throw new AppError("Target must be a positive number", 400);
-    }
-    data.target = BigInt(Math.round(parsedTarget));
-  }
-  if (data.saved !== undefined) {
-    const parsedSaved = Number(data.saved);
-    if (!Number.isFinite(parsedSaved) || parsedSaved < 0) {
-      throw new AppError("Saved must be a non-negative number", 400);
-    }
-    data.saved = BigInt(Math.round(parsedSaved));
+  if (req.body?.saved !== undefined) {
+    throw new AppError("Goal progress cannot be edited while savings money operations are disabled", 409);
   }
 
-  const goal = await prisma.savingsGoal.update({
-    where: { id },
-    data,
-  });
+  const data: { name?: string; emoji?: string; target?: bigint; color?: string; updatedAt: Date } = { updatedAt: new Date() };
+  if (typeof req.body?.name === "string") {
+    const name = req.body.name.trim();
+    if (!name) throw new AppError("Goal name cannot be empty", 400);
+    data.name = name.slice(0, 100);
+  }
+  if (typeof req.body?.emoji === "string") data.emoji = req.body.emoji.slice(0, 8);
+  if (typeof req.body?.color === "string") data.color = req.body.color.slice(0, 20);
+  if (req.body?.target !== undefined) {
+    const target = Math.round(Number(req.body.target));
+    if (!Number.isFinite(target) || target <= 0) throw new AppError("Target must be a positive number", 400);
+    data.target = BigInt(target);
+  }
 
-  res.json({ goal: mapGoal(goal) });
+  const goal = await prisma.savingsGoal.update({ where: { id }, data });
+  res.json({ goal: mapGoal(goal), operationsEnabled: false });
 });
 
-// DELETE /api/goals/:id
 router.delete("/:id", authenticateToken, async (req: Request, res: Response) => {
-  const id = req.params.id as string;
+  const id = String(req.params.id);
   const userId = req.user!.userId;
-
-  const existing = await prisma.savingsGoal.findFirst({
-    where: { id, userId },
-  });
+  const existing = await prisma.savingsGoal.findFirst({ where: { id, userId } });
   if (!existing) throw new AppError("Goal not found", 404);
-
-  await prisma.savingsGoal.delete({
-    where: { id },
-  });
+  await prisma.savingsGoal.delete({ where: { id } });
   res.json({ ok: true });
 });
 
