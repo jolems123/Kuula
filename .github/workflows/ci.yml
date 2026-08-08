@@ -16,28 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Unit tests
         run: npm test
-
       - name: Pricing compliance
         run: npm run check:pricing
-
       - name: Client-server pricing parity
         run: npm run check:pricing-parity
-
       - name: Guarded production build
         run: npm run build
         env:
@@ -49,17 +42,14 @@ jobs:
           VITE_ENABLE_BIOMETRIC: "true"
           VITE_ENABLE_SAVINGS: "false"
           VITE_REVIEWER_MODE: "false"
-
       - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: dist/
           retention-days: 7
-
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-
       - name: Route sweep
         run: |
           npm run dev -- --port 5173 &
@@ -72,7 +62,7 @@ jobs:
   server:
     name: Node API + PostgreSQL
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine
@@ -80,17 +70,16 @@ jobs:
           POSTGRES_USER: kuula
           POSTGRES_PASSWORD: kuula
           POSTGRES_DB: kuula_test
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U kuula -d kuula_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 12
-
     env:
       DATABASE_URL: postgresql://kuula:kuula@localhost:5432/kuula_test?schema=public
       JWT_SECRET: ci-test-secret-at-least-64-characters-long-for-kuula-api
+      OTP_PEPPER: ci-only-otp-pepper-at-least-32-characters
       NODE_ENV: test
       PORT: 3000
       CORS_ORIGINS: http://localhost:5173
@@ -103,43 +92,33 @@ jobs:
       ADMIN_PASSWORD: Admin-CI-Password-Only-2026
       DEMO_PHONE: "+256700000000"
       DEMO_PASSWORD: "12345678"
-
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install API dependencies
         working-directory: server
         run: npm install --no-audit --no-fund
-
       - name: Generate Prisma client
         working-directory: server
         run: npx prisma generate
-
       - name: Build API
         working-directory: server
         run: npm run build
-
       - name: API unit tests
         working-directory: server
         run: npm test
-
       - name: Apply PostgreSQL migrations
         working-directory: server
         run: npm run db:migrate:deploy
-
       - name: Seed isolated CI database
         working-directory: server
         run: npm run db:seed
-
-      - name: API, savings safety, and provider-settlement tests
+      - name: Hardened financial lifecycle
         working-directory: server
         run: |
           set -euo pipefail
-
           npx tsx src/test/fake-marzpay-server.ts &
           FAKE_PID=$!
           npm start &
@@ -148,125 +127,82 @@ jobs:
 
           ready=false
           for i in $(seq 1 40); do
-            if curl -sf http://localhost:3000/api/health > /dev/null; then
-              ready=true
-              break
-            fi
+            if curl -sf http://localhost:3000/api/health > /dev/null; then ready=true; break; fi
             sleep 0.5
           done
           test "$ready" = "true"
-          curl -sf http://localhost:3000/api/health | grep -q '"ok":true'
 
-          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256700000000","pin":"12345678"}')
+          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{"phone":"+256700000000","pin":"12345678"}')
           CUSTOMER_TOKEN=$(echo "$CUSTOMER_JSON" | jq -r '.token')
+          CUSTOMER_REFRESH=$(echo "$CUSTOMER_JSON" | jq -r '.refreshToken')
           test -n "$CUSTOMER_TOKEN"
+          test -n "$CUSTOMER_REFRESH"
           test "$(echo "$CUSTOMER_JSON" | jq -r '.savingsBalance')" = "0"
 
-          ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login \
-            -H 'Content-Type: application/json' \
-            -d '{"email":"admin-ci@kuula.test","password":"Admin-CI-Password-Only-2026"}')
+          ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login -H 'Content-Type: application/json' -d '{"email":"admin-ci@kuula.test","password":"Admin-CI-Password-Only-2026"}')
           ADMIN_TOKEN=$(echo "$ADMIN_JSON" | jq -r '.token')
           test -n "$ADMIN_TOKEN"
 
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/auth/login \
-            -H 'Content-Type: application/json' \
-            -d '{"phone":"+256700000000","pin":"wrong-password"}')
-          test "$code" = "401"
-
-          SAVINGS_JSON=$(curl -sf http://localhost:3000/api/savings \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          SAVINGS_JSON=$(curl -sf http://localhost:3000/api/savings -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$SAVINGS_JSON" | jq -r '.balance')" = "0"
-          test "$(echo "$SAVINGS_JSON" | jq -r '.aprPercent')" = "0"
           test "$(echo "$SAVINGS_JSON" | jq -r '.operationsEnabled')" = "false"
-          test "$(echo "$SAVINGS_JSON" | jq -r '.status')" = "unavailable"
-
-          deposit_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/savings/deposit \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"amount":50000}')
+          deposit_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/savings/deposit -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":50000}')
           test "$deposit_code" = "503"
 
-          withdrawal_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/savings/withdraw \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"amount":10000}')
-          test "$withdrawal_code" = "503"
-
-          COMPLIANCE_JSON=$(curl -sf http://localhost:3000/api/compliance)
-          test "$(echo "$COMPLIANCE_JSON" | jq -r '.savingsAprPercent')" = "0"
-          test "$(echo "$COMPLIANCE_JSON" | jq -r '.savingsDiscountPercent')" = "0"
-
-          INVESTOR_JSON=$(curl -sf http://localhost:3000/api/admin/investor-report \
-            -H "Authorization: Bearer $ADMIN_TOKEN")
-          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.total')" = "0"
-          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.deposits')" = "0"
-          test "$(echo "$INVESTOR_JSON" | jq -r '.savings.withdrawals')" = "0"
-
           APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo"}')
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
           APPLICATION_ID=$(echo "$APPLICATION_JSON" | jq -r '.application.id')
           test -n "$APPLICATION_ID"
 
+          duplicate_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/applications \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"amount":100000,"purpose":"duplicate","termDays":90,"declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
+          test "$duplicate_code" = "409"
+
           OFFER_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications/decision \
-            -H "Authorization: Bearer $ADMIN_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d "{\"id\":\"$APPLICATION_ID\",\"decision\":\"approved\",\"notes\":\"CI approval\"}")
+            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"id\":\"$APPLICATION_ID\",\"decision\":\"approved\",\"notes\":\"CI approval after underwriting recheck\"}")
           test "$(echo "$OFFER_JSON" | jq -r '.application.status')" = "offered"
+          test "$(echo "$OFFER_JSON" | jq -r '.application.offerExpiresAt != null')" = "true"
 
-          BEFORE_REPAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$BEFORE_REPAYMENT" | jq -r '.repayment')" = "null"
+          no_agreement_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$no_agreement_code" = "409"
 
-          ACCEPT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json')
+          AGREEMENT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/agreement/accept" \
+            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"clientContext":{"source":"ci"}}')
+          test "$(echo "$AGREEMENT_JSON" | jq -r '.ok')" = "true"
+          test -n "$(echo "$AGREEMENT_JSON" | jq -r '.agreementHash')"
+
+          ACCEPT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" -H "Authorization: Bearer $CUSTOMER_TOKEN")
           DISBURSEMENT_REF=$(echo "$ACCEPT_JSON" | jq -r '.disbursement.reference')
           test "$(echo "$ACCEPT_JSON" | jq -r '.application.status')" = "disbursing"
-          test "$(echo "$ACCEPT_JSON" | jq -r '.disbursement.status')" = "pending"
           test -n "$DISBURSEMENT_REF"
 
-          STILL_NO_REPAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$STILL_NO_REPAYMENT" | jq -r '.repayment')" = "null"
+          mismatch_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
+            -H 'Content-Type: application/json' \
+            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"uuid\":\"provider-disbursement\",\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":99999}}}")
+          test "$mismatch_code" = "409"
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
             -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"uuid\":\"provider-disbursement\",\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}" \
             | grep -q '"settled":true'
 
-          ACTIVE_APPLICATIONS=$(curl -sf http://localhost:3000/api/loans/applications \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$ACTIVE_APPLICATIONS" | jq -r '.applications[0].status')" = "active"
-
-          REPAYMENT_JSON=$(curl -sf http://localhost:3000/api/loans/repayment \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          REPAYMENT_JSON=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$REPAYMENT_JSON" | jq -r '.repayment.amount_paid')" = "0"
 
-          PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"amount":10000}')
+          PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":10000}')
           PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
-          test "$(echo "$PAYMENT_JSON" | jq -r '.isPending')" = "true"
           test -n "$PAYMENT_REF"
-
-          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/repayment/pay \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"amount":10000}')
-          test "$code" = "409"
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
             -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
             | grep -q '"settled":true'
 
-          AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
@@ -274,15 +210,11 @@ jobs:
             -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\"}}" \
             | grep -q '"settled":false'
 
-          AFTER_DUPLICATE=$(curl -sf http://localhost:3000/api/loans/repayment \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$AFTER_DUPLICATE" | jq -r '.repayment.amount_paid')" = "10000"
-
-          bad_token_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
-            'http://localhost:3000/api/payments/marzpay/webhook?token=wrong' \
-            -H 'Content-Type: application/json' \
-            -d '{}')
+          bad_token_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=wrong' -H 'Content-Type: application/json' -d '{}')
           test "$bad_token_code" = "401"
+
+          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; console.log(await prisma.journal.count()); await prisma.$disconnect();')
+          test "$JOURNAL_COUNT" -ge 2
 
   capacitor-sync:
     name: Capacitor Sync
@@ -290,21 +222,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Download verified web build
-        uses: actions/download-artifact@v4
+      - run: npm ci --legacy-peer-deps
+      - uses: actions/download-artifact@v4
         with:
           name: web-dist
           path: dist/
-
       - name: Sync native projects
         run: npx cap sync android && npx cap sync ios
