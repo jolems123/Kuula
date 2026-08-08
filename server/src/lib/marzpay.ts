@@ -51,7 +51,14 @@ function credentials(): { key: string; secret: string } | null {
   const secret = process.env.MARZPAY_API_SECRET?.trim() || "";
   return key && secret ? { key, secret } : null;
 }
-export function marzPayConfigured(): boolean { return credentials() !== null; }
+
+export function realMoneyEnabled(): boolean {
+  return process.env.NODE_ENV === "test" || process.env.REAL_MONEY_ENABLED === "true";
+}
+
+export function marzPayConfigured(): boolean {
+  return realMoneyEnabled() && credentials() !== null;
+}
 
 export function normalizeUgandaMobileMoneyPhone(input: string): string {
   let digits = String(input ?? "").replace(/\D/g, "");
@@ -73,14 +80,12 @@ export function normalizeMarzPayAmount(value: number): number {
 export function createPaymentReference(): string { return crypto.randomUUID(); }
 
 export function buildMarzPayWebhookUrl(): string {
+  if (!realMoneyEnabled()) throw new Error("Real-money movement is disabled");
   const publicApiUrl = process.env.PUBLIC_API_URL?.trim().replace(/\/+$/, "") || "";
   if (!publicApiUrl) throw new Error("PUBLIC_API_URL is required for MarZPay callbacks");
   let parsed: URL;
   try { parsed = new URL(publicApiUrl); } catch { throw new Error("PUBLIC_API_URL must be a valid absolute URL"); }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") throw new Error("PUBLIC_API_URL must use HTTPS in production");
-  // The webhook secret is intentionally not embedded in the URL. Configure the
-  // provider/gateway to send it in X-Webhook-Token (or use provider-native signed
-  // callbacks when available) so reverse proxies do not log the credential.
   return `${publicApiUrl}/api/payments/marzpay/webhook`;
 }
 
@@ -89,6 +94,7 @@ function basicAuthorization(key: string, secret: string): string {
 }
 
 async function postMoney(path: "/send-money" | "/collect-money", input: MarzPayMoneyInput): Promise<MarzPayResult> {
+  if (!realMoneyEnabled()) throw new Error("Real-money movement is disabled");
   const auth = credentials();
   if (!auth) throw new Error("MarZPay is not configured");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.reference)) {
@@ -129,7 +135,7 @@ async function postMoney(path: "/send-money" | "/collect-money", input: MarzPayM
     uuid: asString(transaction.uuid || data.uuid || payload.uuid),
     reference: asString(transaction.reference || payload.reference || input.reference),
     providerReference: asString(transaction.provider_reference || transaction.providerReference),
-    message: asString(payload.message) || (accepted ? "Request accepted" : `MarZPay returned HTTP ${response.status}`),
+    message: asString(payload.message) || (accepted ? "Request accepted" : `MarzPay returned HTTP ${response.status}`),
     raw: payload,
   };
 }
