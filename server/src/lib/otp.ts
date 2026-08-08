@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export type OtpPurpose = "phone_verify" | "password_reset";
+export type OtpPurpose = "phone_verify" | "password_reset" | "admin_login";
 
 export const OTP_POLICY = {
   expiresMinutes: 10,
