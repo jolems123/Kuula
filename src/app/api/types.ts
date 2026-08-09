@@ -1,11 +1,10 @@
-/**
- * Shared backend API types.
- */
+/** Shared Node API response types. */
 import type { UserProfile, CreditProfile, LoanProfile, Message, Role } from "../context/AppContext";
 
 export interface SessionPayload {
   token: string;
   refreshToken: string;
+  accessExpiresInSeconds?: number;
   role: Role;
   user: UserProfile;
   credit: CreditProfile | null;
@@ -13,6 +12,12 @@ export interface SessionPayload {
   savingsBalance: number;
   messages: Message[];
   unreadNotifications: number;
+}
+
+export interface AdminMfaPayload {
+  requiresMfa: true;
+  challengeToken: string;
+  destination: string;
 }
 
 export interface LoanApplication {
@@ -23,11 +28,15 @@ export interface LoanApplication {
   purpose: string;
   termDays: number;
   channel: string;
-  status: "pending" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
+  status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
+  apr?: number;
+  interest?: number;
   createdAt: string;
   decidedAt: string | null;
   decisionNotes: string | null;
+  offerExpiresAt?: string | null;
+  underwritingStatus?: string | null;
 }
 
 export interface LoanQuote {

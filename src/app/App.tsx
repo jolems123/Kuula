@@ -13,20 +13,7 @@ import { env } from "./config/env";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
-
-const STORAGE_KEY = "kuula_session_token";
-
-function persistToken(token: string): void {
-  try { localStorage.setItem(STORAGE_KEY, token); } catch { /* noop */ }
-}
-
-function clearPersistedToken(): void {
-  try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
-}
-
-function readPersistedToken(): string | null {
-  try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
-}
+import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib/session-vault";
 
 function useSessionBootstrap(): boolean {
   const { state, login } = useAppContext();
@@ -35,22 +22,43 @@ function useSessionBootstrap(): boolean {
   useEffect(() => {
     let active = true;
     (async () => {
-      const token = readPersistedToken();
-      if (token && !state.session.isAuthenticated) {
+      const stored = readSessionTokens();
+      if (stored && !state.session.isAuthenticated) {
+        let accessToken = stored.accessToken;
+        let refreshToken = stored.refreshToken;
+        let expiresAt = stored.accessExpiresAt;
         try {
-          const s = await api.me(token);
+          if (expiresAt <= Date.now() + 30_000 && refreshToken) {
+            const refreshed = await api.refresh(refreshToken);
+            accessToken = refreshed.token;
+            refreshToken = refreshed.refreshToken;
+            expiresAt = Date.now() + refreshed.accessExpiresInSeconds * 1000;
+            storeSessionTokens({ accessToken, refreshToken, accessExpiresAt: expiresAt });
+          }
+          const s = await api.me(accessToken);
           if (active) {
-            login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
-            persistToken(s.token);
+            login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications, expiresAt);
           }
         } catch {
-          clearPersistedToken();
+          // One refresh attempt is allowed when the access token was rejected.
+          try {
+            if (!refreshToken) throw new Error("No refresh session");
+            const refreshed = await api.refresh(refreshToken);
+            accessToken = refreshed.token;
+            refreshToken = refreshed.refreshToken;
+            expiresAt = Date.now() + refreshed.accessExpiresInSeconds * 1000;
+            const s = await api.me(accessToken);
+            storeSessionTokens({ accessToken, refreshToken, accessExpiresAt: expiresAt });
+            if (active) login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications, expiresAt);
+          } catch {
+            clearSessionTokens();
+          }
         }
       }
       if (active) setChecking(false);
     })();
-
     return () => { active = false; };
+    // Session bootstrap intentionally runs only once at app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,14 +78,12 @@ function ScreenLoader() {
 function Guard({ access, children }: { access: ScreenAccess; children: React.ReactNode }) {
   const { state } = useAppContext();
   const location = useLocation();
+  const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
 
   if (access === "public") return <>{children}</>;
-  if (!state.session.isAuthenticated) {
-    return <Navigate to="/welcome" replace state={{ from: location }} />;
-  }
-  if (access === "admin" && state.role !== "admin") {
-    return <Navigate to="/home" replace />;
-  }
+  if (!state.session.isAuthenticated) return <Navigate to="/welcome" replace state={{ from: location }} />;
+  if (access === "admin" && !isStaff) return <Navigate to="/home" replace />;
+  if (access === "customer" && isStaff) return <Navigate to="/admin-dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -96,7 +102,8 @@ function RootRedirect() {
     if (!env.REVIEWER_MODE && !hasOnboarded()) return <Navigate to="/onboarding" replace />;
     return <Navigate to="/welcome" replace />;
   }
-  return <Navigate to={state.role === "admin" ? "/admin-dashboard" : "/home"} replace />;
+  const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
+  return <Navigate to={isStaff ? "/admin-dashboard" : "/home"} replace />;
 }
 
 function Shell() {
@@ -112,26 +119,14 @@ function Shell() {
   if (restoringSession) return <ScreenLoader />;
 
   return (
-    <div
-      className={`kuula-app-shell ${isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell"}`}
-      data-screen={screenId}
-      data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}
-    >
+    <div className={`kuula-app-shell ${isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell"}`} data-screen={screenId} data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}>
       <div className="kuula-device-frame">
         <main className="kuula-route-viewport">
           <Suspense fallback={<ScreenLoader />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
               {REGISTERED_SCREENS.map(({ id, access, Component }) => (
-                <Route
-                  key={id}
-                  path={`/${id}`}
-                  element={
-                    <Guard access={access}>
-                      <ScreenRoute Component={Component} />
-                    </Guard>
-                  }
-                />
+                <Route key={id} path={`/${id}`} element={<Guard access={access}><ScreenRoute Component={Component} /></Guard>} />
               ))}
               <Route path="*" element={<RootRedirect />} />
             </Routes>
@@ -143,9 +138,5 @@ function Shell() {
 }
 
 export default function App() {
-  return (
-    <HashRouter>
-      <Shell />
-    </HashRouter>
-  );
+  return <HashRouter><Shell /></HashRouter>;
 }

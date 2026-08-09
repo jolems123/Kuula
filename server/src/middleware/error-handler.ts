@@ -1,32 +1,29 @@
 import { Request, Response, NextFunction } from "express";
 
 export class AppError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number = 400
-  ) {
+  constructor(message: string, public statusCode: number = 400) {
     super(message);
     this.name = "AppError";
   }
 }
 
-export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
+export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: err.message });
+    res.status(err.statusCode).json({ error: err.message, requestId: req.requestId ?? null });
     return;
   }
 
-  // Prisma errors
   if (err.name === "PrismaClientKnownRequestError") {
-    res.status(400).json({ error: "Database operation failed" });
+    res.status(400).json({ error: "Database operation failed", requestId: req.requestId ?? null });
     return;
   }
 
-  // Unexpected errors
-  console.error("Unhandled error:", {
+  console.error(JSON.stringify({
+    event: "http.unhandled_error",
+    requestId: req.requestId ?? null,
     name: err?.name,
     message: err?.message,
-    stack: err?.stack,
-  });
-  res.status(500).json({ error: "Internal server error", detail: err?.message || "unknown" });
+    stack: process.env.NODE_ENV === "production" ? undefined : err?.stack,
+  }));
+  res.status(500).json({ error: "Internal server error", requestId: req.requestId ?? null });
 }
