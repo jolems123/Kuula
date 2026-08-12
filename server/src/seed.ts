@@ -11,6 +11,142 @@ function required(name: string): string {
   return value;
 }
 
+async function seedCreditNetworkCatalog() {
+  await prisma.market.upsert({
+    where: { code: "UG" },
+    update: {
+      countryName: "Uganda",
+      currency: "UGX",
+      dialingCode: "+256",
+      defaultLocale: "en",
+      status: "active",
+    },
+    create: {
+      code: "UG",
+      countryName: "Uganda",
+      currency: "UGX",
+      dialingCode: "+256",
+      defaultLocale: "en",
+      status: "active",
+      config: { languages: ["en", "lg", "sw"], moneyRails: ["mtn_momo", "airtel_money"] },
+    },
+  });
+
+  for (const product of [
+    {
+      code: "UG_BUSINESS_GROWTH",
+      name: "Kuula Business",
+      category: "business",
+      purposeType: "working_capital",
+      description: "Working capital for stock, equipment and productive business needs.",
+      minAmount: 50_000,
+      maxAmount: 2_000_000,
+      minTermDays: 90,
+      maxTermDays: 365,
+      disbursementMode: "customer_or_verified_supplier",
+      partnerRequired: false,
+      metadata: { icon: "store", label: "Grow my business" },
+    },
+    {
+      code: "UG_HEALTH_TIBAPAY",
+      name: "TibaPay Health Finance",
+      category: "health",
+      purposeType: "medical_bill",
+      description: "Restricted-purpose healthcare financing paid to an approved provider.",
+      minAmount: 20_000,
+      maxAmount: 2_000_000,
+      minTermDays: 90,
+      maxTermDays: 365,
+      disbursementMode: "direct_payee",
+      partnerRequired: true,
+      metadata: { icon: "heart-pulse", label: "Pay for healthcare", partnerBrand: "TibaPay" },
+    },
+    {
+      code: "UG_AGRI_SILIFI",
+      name: "SiliFi Farm Finance",
+      category: "agriculture",
+      purposeType: "farm_inputs",
+      description: "Restricted-purpose input finance paid directly to an approved agro-dealer.",
+      minAmount: 20_000,
+      maxAmount: 5_000_000,
+      minTermDays: 90,
+      maxTermDays: 365,
+      disbursementMode: "direct_payee",
+      partnerRequired: true,
+      metadata: { icon: "sprout", label: "Finance farm inputs", partnerBrand: "SiliFi" },
+    },
+    {
+      code: "UG_EDUCATION",
+      name: "Kuula Education",
+      category: "education",
+      purposeType: "school_fees",
+      description: "Education financing designed to settle approved school obligations.",
+      minAmount: 50_000,
+      maxAmount: 2_000_000,
+      minTermDays: 90,
+      maxTermDays: 365,
+      disbursementMode: "direct_payee",
+      partnerRequired: true,
+      metadata: { icon: "graduation-cap", label: "Pay school fees" },
+    },
+    {
+      code: "UG_ESSENTIALS",
+      name: "Kuula Essentials",
+      category: "essentials",
+      purposeType: "essential_purchase",
+      description: "Purpose-linked finance for essential household and productive purchases.",
+      minAmount: 20_000,
+      maxAmount: 1_000_000,
+      minTermDays: 90,
+      maxTermDays: 365,
+      disbursementMode: "direct_payee",
+      partnerRequired: true,
+      metadata: { icon: "home", label: "Finance an essential need" },
+    },
+  ]) {
+    await prisma.creditProduct.upsert({
+      where: { code: product.code },
+      update: {
+        ...product,
+        minAmount: BigInt(product.minAmount),
+        maxAmount: BigInt(product.maxAmount),
+        marketCode: "UG",
+        status: "active",
+      },
+      create: {
+        ...product,
+        minAmount: BigInt(product.minAmount),
+        maxAmount: BigInt(product.maxAmount),
+        marketCode: "UG",
+        status: "active",
+      },
+    });
+  }
+
+  for (const partner of [
+    {
+      code: "TIBAPAY_UG",
+      name: "TibaPay",
+      partnerType: "health_network",
+      settlementMode: "direct_payee",
+      metadata: { productCodes: ["UG_HEALTH_TIBAPAY"], statusLabel: "Healthcare network onboarding" },
+    },
+    {
+      code: "SILIFI_UG",
+      name: "SiliFi",
+      partnerType: "agriculture_network",
+      settlementMode: "direct_payee",
+      metadata: { productCodes: ["UG_AGRI_SILIFI"], statusLabel: "Agro-dealer network onboarding" },
+    },
+  ]) {
+    await prisma.partner.upsert({
+      where: { code: partner.code },
+      update: { ...partner, marketCode: "UG", status: "active" },
+      create: { ...partner, marketCode: "UG", status: "active" },
+    });
+  }
+}
+
 async function main() {
   console.log("Seeding database...");
 
@@ -27,6 +163,8 @@ async function main() {
   if (isProduction) {
     throw new Error("The development/CI seed must not be run in production. Provision staff and customers through controlled production onboarding.");
   }
+
+  await seedCreditNetworkCatalog();
 
   let admin = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (!admin) {
@@ -114,6 +252,29 @@ async function main() {
       observedAt: now,
       expiresAt,
       verifiedBy: admin.id,
+    },
+  });
+
+  await prisma.growthLine.upsert({
+    where: { userId: demo.id },
+    update: {
+      marketCode: "UG",
+      totalLimit: BigInt(2_000_000),
+      availableLimit: BigInt(2_000_000),
+      status: "available",
+      reviewedAt: now,
+      expiresAt,
+      rationale: { source: "isolated-seed", note: "Development-only Growth Line" },
+    },
+    create: {
+      userId: demo.id,
+      marketCode: "UG",
+      totalLimit: BigInt(2_000_000),
+      availableLimit: BigInt(2_000_000),
+      status: "available",
+      reviewedAt: now,
+      expiresAt,
+      rationale: { source: "isolated-seed", note: "Development-only Growth Line" },
     },
   });
 
