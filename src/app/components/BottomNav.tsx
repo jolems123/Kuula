@@ -8,9 +8,9 @@ interface BottomNavProps {
 export function BottomNav({ active, onNavigate }: BottomNavProps) {
   const tabs = [
     { id: "home", icon: Home, label: "Home", screen: "home" },
-    { id: "credit", icon: ShieldCheck, label: "Credit Pass", screen: "credit-pass" },
-    { id: "action", icon: Sparkles, label: "", screen: "use-credit" },
-    { id: "network", icon: Store, label: "Network", screen: "partner-network" },
+    { id: "credit", icon: ShieldCheck, label: "Credit Pass", screen: "credit-dashboard" },
+    { id: "action", icon: Sparkles, label: "", screen: "quick-actions" },
+    { id: "network", icon: Store, label: "Network", screen: "wallet" },
     { id: "settings", icon: Menu, label: "More", screen: "settings" },
   ];
 
