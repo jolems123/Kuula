@@ -47,14 +47,12 @@ model User {
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
 
-  savingsAccount           SavingsAccount?
   wallet                   Wallet?
   sentMessages             Message[]                    @relation("sender")
   receivedMessages         Message[]                    @relation("receiver")
   loanApplications         LoanApplication[]
   repayments               Repayment[]
   transactions             Transaction[]
-  savingsGoals             SavingsGoal[]
   notifications            Notification[]
   authSessions             AuthSession[]
   creditEvidence           CreditEvidence[]
@@ -157,14 +155,6 @@ model AuditEvent {
   @@index([subjectUserId, createdAt])
   @@index([resourceType, resourceId])
   @@map("audit_events")
-}
-
-model SavingsAccount {
-  userId    String   @id @map("user_id") @db.Uuid
-  balance   BigInt   @default(0)
-  updatedAt DateTime @default(now()) @map("updated_at")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  @@map("savings_accounts")
 }
 
 model Wallet {
@@ -339,21 +329,6 @@ model JournalEntry {
   @@map("journal_entries")
 }
 
-model SavingsGoal {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  name      String
-  emoji     String   @default("🎯")
-  target    BigInt
-  saved     BigInt   @default(0)
-  color     String   @default("#2563EB")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @map("updated_at")
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  @@index([userId, createdAt])
-  @@map("savings_goals")
-}
-
 model Notification {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
@@ -369,39 +344,39 @@ model Notification {
 }
 
 model Market {
-  code          String   @id
-  countryName   String   @map("country_name")
-  currency      String
-  dialingCode   String   @map("dialing_code")
-  defaultLocale String   @default("en") @map("default_locale")
-  status        String   @default("planned")
-  config        Json     @default("{}")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  products      CreditProduct[]
-  partners      Partner[]
-  growthLines   GrowthLine[]
-  creditPasses  CreditPassSnapshot[]
+  code              String   @id
+  countryName       String   @map("country_name")
+  currency          String
+  dialingCode       String   @map("dialing_code")
+  defaultLocale     String   @default("en") @map("default_locale")
+  status            String   @default("planned")
+  config            Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  products          CreditProduct[]
+  partners          Partner[]
+  growthLines       GrowthLine[]
+  creditPasses      CreditPassSnapshot[]
   financingRequests PartnerFinancingRequest[]
   @@map("markets")
 }
 
 model CreditProduct {
-  id                String  @id @default(uuid()) @db.Uuid
-  code              String  @unique
-  marketCode        String  @map("market_code")
-  name              String
-  category          String
-  purposeType       String  @map("purpose_type")
-  description       String
-  minAmount         BigInt  @map("min_amount")
-  maxAmount         BigInt  @map("max_amount")
-  minTermDays       Int     @map("min_term_days")
-  maxTermDays       Int     @map("max_term_days")
-  disbursementMode  String  @map("disbursement_mode")
-  partnerRequired   Boolean @default(false) @map("partner_required")
-  status            String  @default("active")
-  metadata          Json    @default("{}")
+  id               String  @id @default(uuid()) @db.Uuid
+  code             String  @unique
+  marketCode       String  @map("market_code")
+  name             String
+  category         String
+  purposeType      String  @map("purpose_type")
+  description      String
+  minAmount        BigInt  @map("min_amount")
+  maxAmount        BigInt  @map("max_amount")
+  minTermDays      Int     @map("min_term_days")
+  maxTermDays      Int     @map("max_term_days")
+  disbursementMode String  @map("disbursement_mode")
+  partnerRequired  Boolean @default(false) @map("partner_required")
+  status           String  @default("active")
+  metadata         Json    @default("{}")
   market Market @relation(fields: [marketCode], references: [code], onDelete: Restrict)
   financingRequests PartnerFinancingRequest[]
   @@index([marketCode, status])
