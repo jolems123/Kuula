@@ -18,6 +18,7 @@ import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
 import kycRoutes from "./routes/kyc.js";
+import networkRoutes from "./routes/network.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
@@ -135,6 +136,7 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/network", networkRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/savings", savingsRoutes);
