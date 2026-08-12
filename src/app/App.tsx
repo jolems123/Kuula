@@ -36,11 +36,8 @@ function useSessionBootstrap(): boolean {
             storeSessionTokens({ accessToken, refreshToken, accessExpiresAt: expiresAt });
           }
           const s = await api.me(accessToken);
-          if (active) {
-            login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications, expiresAt);
-          }
+          if (active) login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
         } catch {
-          // One refresh attempt is allowed when the access token was rejected.
           try {
             if (!refreshToken) throw new Error("No refresh session");
             const refreshed = await api.refresh(refreshToken);
@@ -49,7 +46,7 @@ function useSessionBootstrap(): boolean {
             expiresAt = Date.now() + refreshed.accessExpiresInSeconds * 1000;
             const s = await api.me(accessToken);
             storeSessionTokens({ accessToken, refreshToken, accessExpiresAt: expiresAt });
-            if (active) login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications, expiresAt);
+            if (active) login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
           } catch {
             clearSessionTokens();
           }
@@ -58,7 +55,6 @@ function useSessionBootstrap(): boolean {
       if (active) setChecking(false);
     })();
     return () => { active = false; };
-    // Session bootstrap intentionally runs only once at app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
