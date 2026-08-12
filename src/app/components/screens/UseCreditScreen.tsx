@@ -66,7 +66,7 @@ export function UseCreditScreen({ onNavigate }: Props) {
       partnerRequired: product.partnerRequired,
       disbursementMode: product.disbursementMode,
     });
-    onNavigate(product.partnerRequired ? "partner-network" : "loan-apply");
+    onNavigate(product.partnerRequired ? "wallet" : "loan-apply");
   };
 
   return (
