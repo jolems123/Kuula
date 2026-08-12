@@ -1,8 +1,6 @@
 /**
  * Authoritative server-side loan pricing.
- *
- * This must remain exactly aligned with src/app/lib/pricing.ts. CI executes a
- * parity check across representative amount, term, and balance combinations.
+ * This must remain exactly aligned with src/app/lib/pricing.ts.
  *
  * Interest is simple:
  *   interest = principal × APR × termDays / 365
@@ -13,9 +11,6 @@ export const PRICING = {
   MAX_APR: COMPLIANCE.maxAprPercent / 100,
   MIN_TERM_DAYS: COMPLIANCE.minTermDays,
   MAX_TERM_DAYS: 365,
-  // Savings is not a pricing input until real deposits are provider-settled.
-  SAVINGS_DISCOUNT: 0,
-  SAVINGS_THRESHOLD: Number.POSITIVE_INFINITY,
 } as const;
 
 export interface LoanQuote {
@@ -27,29 +22,20 @@ export interface LoanQuote {
   interest: number;
   fee: number;
   total: number;
-  savingsDiscountApplied: boolean;
   compound: false;
 }
 
 function normalizePrincipal(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new RangeError("Loan amount must be a positive number");
-  }
+  if (!Number.isFinite(value) || value <= 0) throw new RangeError("Loan amount must be a positive number");
   return Math.round(value);
 }
 
 function normalizeTerm(value: number): number {
-  const requested = Number.isFinite(value) && value > 0
-    ? Math.round(value)
-    : PRICING.MIN_TERM_DAYS;
+  const requested = Number.isFinite(value) && value > 0 ? Math.round(value) : PRICING.MIN_TERM_DAYS;
   return Math.min(PRICING.MAX_TERM_DAYS, Math.max(PRICING.MIN_TERM_DAYS, requested));
 }
 
-export function localQuote(
-  principalInput: number,
-  termDaysInput: number,
-  _savingsBalance = 0
-): LoanQuote {
+export function localQuote(principalInput: number, termDaysInput: number): LoanQuote {
   const principal = normalizePrincipal(principalInput);
   const termDays = normalizeTerm(termDaysInput);
   const apr = PRICING.MAX_APR;
@@ -64,7 +50,6 @@ export function localQuote(
     interest,
     fee: 0,
     total: principal + interest,
-    savingsDiscountApplied: false,
     compound: false,
   };
 }
