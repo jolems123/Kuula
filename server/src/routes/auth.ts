@@ -13,7 +13,6 @@ import { AppError } from "../middleware/error-handler.js";
 import { computeCreditScore } from "../lib/credit-score.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { isValidUgandaNin, normalizeNin } from "../lib/nin.js";
-import { recognizedSavingsBalance } from "../lib/savings-policy.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import {
   createAuthSession,
@@ -160,13 +159,11 @@ const clearOtp = {
 async function buildSession(user: any) {
   const role = normalizeRole(user.role);
   const isStaff = STAFF_ROLES.has(role);
-  const savingsBalance = recognizedSavingsBalance(user.savingsAccount?.balance);
   const evidence = isStaff ? null : await effectiveCreditEvidence(user.id);
   const credit = isStaff ? null : computeCreditScore({
     momoMonths: evidence?.momoMonths ?? 0,
     momoTxnCount: evidence?.momoTxnCount ?? 0,
     crbStatus: evidence?.crbStatus ?? "thin",
-    savingsBalance,
     kycVerified: user.kycVerified ?? false,
     loansRepaid: user.loansRepaid ?? 0,
     loansTotal: user.loansTotal ?? 0,
@@ -226,7 +223,6 @@ async function buildSession(user: any) {
         daysLeft: Math.max(0, Math.ceil((new Date(nextRep.dueDate).getTime() - Date.now()) / 86_400_000)),
       } : null,
     },
-    savingsBalance: isStaff ? 0 : savingsBalance,
     messages: messages.map((message) => ({
       id: message.id,
       senderId: message.senderId,
@@ -276,7 +272,6 @@ router.post("/signup", async (req: Request, res: Response) => {
       phoneVerified: false,
       termsAcceptedAt: new Date(),
       termsVersion: typeof termsVersion === "string" ? termsVersion : null,
-      savingsAccount: { create: { balance: 0 } },
       wallet: { create: { balance: 0 } },
     },
   });
@@ -288,7 +283,7 @@ router.post("/signup", async (req: Request, res: Response) => {
 router.post("/login", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
   const pin = typeof req.body.pin === "string" ? req.body.pin : "";
-  const user = await prisma.user.findUnique({ where: { phone }, include: { savingsAccount: true, wallet: true } });
+  const user = await prisma.user.findUnique({ where: { phone } });
   if (!user || !user.passwordHash || user.deletedAt) throw new AppError("Invalid phone number or PIN", 401);
   if (!user.phoneVerified) throw new AppError("Verify your phone before signing in", 403);
   if (!await bcrypt.compare(pin, user.passwordHash)) throw new AppError("Invalid phone number or PIN", 401);
@@ -302,12 +297,10 @@ router.post("/admin-login", async (req: Request, res: Response) => {
   const supplied = typeof req.body.password === "string" ? req.body.password : "";
   if (!email || !supplied) throw new AppError("Email and password are required", 400);
 
-  const user = await prisma.user.findUnique({ where: { email }, include: { savingsAccount: true, wallet: true } });
+  const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.passwordHash || !STAFF_ROLES.has(user.role) || user.deletedAt) throw new AppError("Invalid credentials", 401);
   if (!await bcrypt.compare(supplied, user.passwordHash)) throw new AppError("Invalid credentials", 401);
 
-  // CI exercises authorization with isolated test users. Production and normal
-  // development must complete a second factor before a privileged token exists.
   if (process.env.NODE_ENV === "test") {
     res.json(await sessionResponse(user, req));
     return;
@@ -327,12 +320,12 @@ router.post("/admin-login", async (req: Request, res: Response) => {
 router.post("/admin-login/verify", async (req: Request, res: Response) => {
   const challengeToken = typeof req.body.challengeToken === "string" ? req.body.challengeToken : "";
   const challenge = verifyAdminChallenge(challengeToken);
-  const user = await prisma.user.findUnique({ where: { id: challenge.userId }, include: { savingsAccount: true, wallet: true } });
+  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
   if (!user || user.deletedAt || !STAFF_ROLES.has(user.role) || user.authVersion !== challenge.authVersion) {
     throw new AppError("Admin verification challenge is no longer valid", 401);
   }
   await assertOtp(user, "admin_login", req.body.code);
-  const updated = await prisma.user.update({ where: { id: user.id }, data: { ...clearOtp }, include: { savingsAccount: true, wallet: true } });
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { ...clearOtp } });
   await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.admin_mfa_verified", resourceType: "user", resourceId: user.id });
   res.json(await sessionResponse(updated, req));
 });
@@ -358,7 +351,6 @@ router.post("/verify-phone", async (req: Request, res: Response) => {
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { phoneVerified: true, ...clearOtp },
-    include: { savingsAccount: true, wallet: true },
   });
   res.json(await sessionResponse(updated, req));
 });
@@ -419,7 +411,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
 });
 
 router.get("/me", authenticateToken, async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, include: { savingsAccount: true, wallet: true } });
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
   res.json({ token: req.headers.authorization?.slice(7) || "", refreshToken: "", accessExpiresInSeconds: 15 * 60, ...await buildSession(user) });
 });

@@ -11,12 +11,14 @@ const BASE = {
   loansTotal: 1,
 };
 
-test("legacy savings balances do not change the credit score", () => {
-  const zero = computeCreditScore({ ...BASE, savingsBalance: 0 });
-  const legacy = computeCreditScore({ ...BASE, savingsBalance: 50_000_000 });
+test("credit score uses only verified credit and repayment factors", () => {
+  const score = computeCreditScore(BASE);
+  assert.deepEqual(score.factors.map((factor) => factor.key), ["momo", "crb", "kyc", "repayment"]);
+  assert.equal(score.factors.reduce((sum, factor) => sum + factor.weightPercent, 0), 100);
+});
 
-  assert.deepEqual(legacy, zero);
-  const savings = zero.factors.find((factor) => factor.key === "savings");
-  assert.equal(savings?.ratingPercent, 50);
-  assert.match(savings?.detail ?? "", /neutral/i);
+test("stronger repayment and credit evidence improves the score", () => {
+  const thin = computeCreditScore({ ...BASE, momoMonths: 1, momoTxnCount: 5, crbStatus: "thin", loansRepaid: 0, loansTotal: 1 });
+  const strong = computeCreditScore({ ...BASE, momoMonths: 12, momoTxnCount: 150, crbStatus: "clean", loansRepaid: 4, loansTotal: 4 });
+  assert.ok(strong.score > thin.score);
 });

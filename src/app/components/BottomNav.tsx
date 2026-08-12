@@ -1,54 +1,50 @@
-import { useTranslation } from "react-i18next";
-import { Home, Landmark, PiggyBank, Menu, Plus } from "lucide-react";
+import { Home, ShieldCheck, Store, Menu, Sparkles } from "lucide-react";
 
 interface BottomNavProps {
-  active: "home" | "loans" | "wallet" | "goals" | "settings";
+  active: "home" | "credit" | "network" | "settings" | "loans" | "wallet" | "goals";
   onNavigate: (screen: string) => void;
 }
 
 export function BottomNav({ active, onNavigate }: BottomNavProps) {
-  const { t } = useTranslation();
-
   const tabs = [
-    { id: "home", icon: Home, label: t("nav.home"), screen: "home" },
-    { id: "loans", icon: Landmark, label: t("nav.loans"), screen: "loan-history" },
-    { id: "action", icon: Plus, label: "", screen: "quick-actions" },
-    { id: "goals", icon: PiggyBank, label: t("nav.goals"), screen: "goals" },
-    { id: "settings", icon: Menu, label: t("nav.settings"), screen: "settings" },
+    { id: "home", icon: Home, label: "Home", screen: "home" },
+    { id: "credit", icon: ShieldCheck, label: "Credit Pass", screen: "credit-dashboard" },
+    { id: "action", icon: Sparkles, label: "", screen: "quick-actions" },
+    { id: "network", icon: Store, label: "Network", screen: "wallet" },
+    { id: "settings", icon: Menu, label: "More", screen: "settings" },
   ];
+
+  const legacyActive = active === "loans" ? "credit" : active === "goals" || active === "wallet" ? "network" : active;
 
   return (
     <nav className="kuula-bottom-nav absolute bottom-0 left-0 right-0" aria-label="Main navigation">
       <div className="flex items-end justify-around" style={{ minHeight: 72, padding: "8px 8px 20px" }}>
         {tabs.map(({ id, icon: Icon, label, screen }) => {
           const isAction = id === "action";
-          const isActive = active === id || (active === "wallet" && id === "action");
+          const isActive = legacyActive === id;
           return (
             <button
               key={id}
               type="button"
+              aria-label={isAction ? "Use Kuula credit" : label}
               aria-current={isActive && !isAction ? "page" : undefined}
               onClick={() => onNavigate(screen)}
               className="flex flex-col items-center justify-center"
               style={{
-                width: isAction ? 58 : 64,
-                height: isAction ? 58 : 50,
-                marginTop: isAction ? -22 : 0,
+                width: isAction ? 60 : 68,
+                height: isAction ? 60 : 50,
+                marginTop: isAction ? -24 : 0,
                 border: isAction ? "6px solid white" : "none",
                 borderRadius: isAction ? 999 : 12,
-                background: isAction ? "linear-gradient(145deg, #0F7045, #04351F)" : "transparent",
-                color: isAction ? "white" : isActive ? "#0B5E3A" : "#7B8781",
-                boxShadow: isAction ? "0 10px 26px rgba(4,53,31,.28)" : "none",
+                background: isAction ? "linear-gradient(145deg,#F2C94C,#DDAE29)" : "transparent",
+                color: isAction ? "#173323" : isActive ? "#0B5E3A" : "#7B8781",
+                boxShadow: isAction ? "0 10px 26px rgba(104,80,14,.24)" : "none",
                 cursor: "pointer",
                 gap: 3,
               }}
             >
-              <Icon size={isAction ? 28 : 21} strokeWidth={isActive || isAction ? 2.35 : 1.9} />
-              {!isAction && (
-                <span style={{ fontSize: 9.5, fontWeight: isActive ? 700 : 500, lineHeight: 1 }}>
-                  {label}
-                </span>
-              )}
+              <Icon size={isAction ? 26 : 21} strokeWidth={isActive || isAction ? 2.35 : 1.9} />
+              {!isAction && <span style={{ fontSize: 9, fontWeight: isActive ? 800 : 600, lineHeight: 1 }}>{label}</span>}
             </button>
           );
         })}

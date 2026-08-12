@@ -8,21 +8,19 @@ import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
 import paymentRoutes from "./routes/payments.js";
-import savingsRoutes from "./routes/savings.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
-import goalRoutes from "./routes/goals.js";
 import notificationRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
 import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
 import kycRoutes from "./routes/kyc.js";
+import networkRoutes from "./routes/network.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
 import { effectiveCreditEvidence } from "./lib/credit-evidence.js";
-import { recognizedSavingsBalance } from "./lib/savings-policy.js";
 import { startReconciliationSweeper } from "./lib/reconciliation.js";
 import prisma from "./lib/prisma.js";
 
@@ -129,18 +127,16 @@ app.get("/api/health", (_req, res) => {
     timestamp: new Date().toISOString(),
     version: process.env.APP_VERSION || "2.4.1",
     realMoneyEnabled,
-    savingsEnabled: false,
   });
 });
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/network", networkRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/api/savings", savingsRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
-app.use("/api/goals", goalRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin/kyc", adminKycRoutes);
 app.use("/api/admin/credit-data", adminCreditDataRoutes);
@@ -149,10 +145,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/kyc", kycRoutes);
 
 app.get("/api/credit/score", authenticateToken, async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.userId },
-    include: { savingsAccount: true },
-  });
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
   if (!user || user.deletedAt) {
     res.status(404).json({ error: "User not found", requestId: req.requestId ?? null });
     return;
@@ -162,7 +155,6 @@ app.get("/api/credit/score", authenticateToken, async (req, res) => {
     momoMonths: evidence.momoMonths,
     momoTxnCount: evidence.momoTxnCount,
     crbStatus: evidence.crbStatus,
-    savingsBalance: recognizedSavingsBalance(user.savingsAccount?.balance),
     kycVerified: user.kycVerified ?? false,
     loansRepaid: user.loansRepaid ?? 0,
     loansTotal: user.loansTotal ?? 0,
@@ -203,7 +195,7 @@ app.use(errorHandler);
 
 const stopReconciliationSweeper = startReconciliationSweeper();
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(JSON.stringify({ event: "server.started", port: PORT, realMoneyEnabled, savingsEnabled: false }));
+  console.log(JSON.stringify({ event: "server.started", port: PORT, realMoneyEnabled }));
 });
 
 async function shutdown(signal: string) {

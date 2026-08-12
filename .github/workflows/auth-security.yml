@@ -44,7 +44,7 @@ jobs:
       DEMO_PASSWORD: "12345678"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:
@@ -85,17 +85,15 @@ jobs:
           SIGNUP_CODE=$(curl -s -o /tmp/signup.json -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/signup \
             -H 'Content-Type: application/json' \
-            -d '{"name":"Auth Test User","phone":"+256770111222","email":"auth-user@kuula.test","password":"Secure2026","nationalId":"CM8602410E8EWE","acceptedTerms":true,"termsVersion":"2026-08-01"}')
+            -d '{"name":"Auth Test User","phone":"+256770111222","email":"auth-user@kuula.test","password":"Secure2026","nationalId":"CF8602410E8EWG","acceptedTerms":true,"termsVersion":"2026-08-01"}')
           test "$SIGNUP_CODE" = "201"
           grep -q '"needsConfirmation":true' /tmp/signup.json
 
-          # The six-digit code must never be stored in plaintext.
           OTP_HASH=$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -Atc \
             "SELECT otp_hash FROM users WHERE phone = '+256770111222';")
           test "$OTP_HASH" != "246810"
           test "${#OTP_HASH}" = "64"
 
-          # Unverified accounts cannot sign in, and immediate resend is throttled.
           LOGIN_UNVERIFIED=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
@@ -123,7 +121,6 @@ jobs:
           curl -sf http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $ORIGINAL_TOKEN" | grep -q '"fullName":"Auth Test User"'
 
-          # Clear the cross-purpose resend timestamp so the test does not sleep.
           PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -c \
             "UPDATE users SET otp_last_sent_at = NULL WHERE phone = '+256770111222';"
 
@@ -149,7 +146,6 @@ jobs:
             -d '{"identifier":"auth-user@kuula.test","code":"246810","newPassword":"NewSecure2027"}' \
             | grep -q '"ok":true'
 
-          # Password reset revokes every token issued before it.
           OLD_TOKEN_AFTER_RESET=$(curl -s -o /dev/null -w '%{http_code}' \
             http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $ORIGINAL_TOKEN")
@@ -193,7 +189,6 @@ jobs:
             -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
           test "$DELETED_LOGIN" = "401"
 
-          # Five incorrect verification attempts lock a second account.
           curl -sf -X POST http://localhost:3000/api/auth/signup \
             -H 'Content-Type: application/json' \
             -d '{"name":"Locked User","phone":"+256770111333","email":"locked-user@kuula.test","password":"Secure2026","nationalId":"CM8602410E8EWF","acceptedTerms":true,"termsVersion":"2026-08-01"}' >/dev/null
@@ -217,5 +212,4 @@ jobs:
             -d '{"phone":"+256770111333","code":"246810"}')
           test "$LOCKED_CORRECT" = "429"
 
-          # Ensure no OTP value was printed to application logs.
           ! grep -q '246810' /tmp/kuula-auth-api.log

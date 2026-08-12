@@ -40,6 +40,34 @@ let _loanDraft: LoanDraft | null = null;
 export function setLoanDraft(value: LoanDraft | null): void { _loanDraft = value; }
 export function getLoanDraft(): LoanDraft | null { return _loanDraft; }
 
+export interface CreditUseSelection {
+  productCode: string;
+  productName: string;
+  category: string;
+  description: string;
+  minAmount: number;
+  maxAmount: number;
+  customerLimit: number;
+  minTermDays: number;
+  maxTermDays: number;
+  partnerRequired: boolean;
+  disbursementMode: string;
+}
+let _creditUseSelection: CreditUseSelection | null = null;
+export function setCreditUseSelection(value: CreditUseSelection | null): void { _creditUseSelection = value; }
+export function getCreditUseSelection(): CreditUseSelection | null { return _creditUseSelection; }
+
+export interface PartnerSelection {
+  partnerCode: string;
+  partnerName: string;
+  partnerType: string;
+  locationId?: string | null;
+  locationName?: string | null;
+}
+let _partnerSelection: PartnerSelection | null = null;
+export function setPartnerSelection(value: PartnerSelection | null): void { _partnerSelection = value; }
+export function getPartnerSelection(): PartnerSelection | null { return _partnerSelection; }
+
 export interface AdminMfaChallenge {
   challengeToken: string;
   destination: string;
@@ -52,5 +80,7 @@ export function clearSelectionState(): void {
   _selectedTransaction = null;
   _lastPayment = null;
   _loanDraft = null;
+  _creditUseSelection = null;
+  _partnerSelection = null;
   _adminMfaChallenge = null;
 }

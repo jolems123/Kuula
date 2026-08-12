@@ -1,0 +1,113 @@
+name: Credit Network Validation
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: network-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kuula
+          POSTGRES_PASSWORD: kuula
+          POSTGRES_DB: kuula_network_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kuula -d kuula_network_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://kuula:kuula@localhost:5432/kuula_network_test?schema=public
+      JWT_SECRET: network-validation-secret-at-least-64-characters-long-for-kuula
+      OTP_PEPPER: network-validation-otp-pepper-at-least-64-characters-long
+      SMS_PROVIDER: test
+      TEST_OTP_CODE: "246810"
+      NODE_ENV: test
+      PORT: 3000
+      CORS_ORIGINS: http://localhost:5173
+      PUBLIC_API_URL: http://localhost:3000
+      MARZPAY_API_KEY: ci-key
+      MARZPAY_API_SECRET: ci-secret
+      MARZPAY_BASE_URL: http://127.0.0.1:3999/api/v1
+      MARZPAY_WEBHOOK_SECRET: ci-webhook-secret
+      ADMIN_EMAIL: network-admin@kuula.test
+      ADMIN_PASSWORD: Network-Admin-CI-Password-2026
+      DEMO_PHONE: "+256700000000"
+      DEMO_PASSWORD: "12345678"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Capture frontend validation
+        id: frontend
+        shell: bash
+        run: |
+          set +e
+          mkdir -p diagnostics
+          npm run typecheck > diagnostics/frontend-typecheck.log 2>&1
+          TYPECHECK=$?
+          npm test > diagnostics/frontend-tests.log 2>&1
+          TESTS=$?
+          printf 'typecheck=%s\ntests=%s\n' "$TYPECHECK" "$TESTS" > diagnostics/frontend-status.txt
+          if [ "$TYPECHECK" -ne 0 ] || [ "$TESTS" -ne 0 ]; then exit 1; fi
+
+      - name: Install API dependencies
+        if: always()
+        working-directory: server
+        run: npm install --no-audit --no-fund
+
+      - name: Capture Prisma and server validation
+        if: always()
+        id: server
+        shell: bash
+        run: |
+          set +e
+          mkdir -p diagnostics
+          cd server
+          npx prisma validate > ../diagnostics/prisma-validate.log 2>&1
+          PRISMA_VALIDATE=$?
+          npx prisma generate > ../diagnostics/prisma-generate.log 2>&1
+          PRISMA_GENERATE=$?
+          npm run build > ../diagnostics/server-build.log 2>&1
+          SERVER_BUILD=$?
+          npm test > ../diagnostics/server-tests.log 2>&1
+          SERVER_TESTS=$?
+          npm run db:migrate:deploy > ../diagnostics/migrations.log 2>&1
+          MIGRATIONS=$?
+          if [ "$MIGRATIONS" -eq 0 ]; then npm run db:seed > ../diagnostics/seed.log 2>&1; SEED=$?; else echo 'seed skipped because migrations failed' > ../diagnostics/seed.log; SEED=99; fi
+          printf 'prisma_validate=%s\nprisma_generate=%s\nserver_build=%s\nserver_tests=%s\nmigrations=%s\nseed=%s\n' "$PRISMA_VALIDATE" "$PRISMA_GENERATE" "$SERVER_BUILD" "$SERVER_TESTS" "$MIGRATIONS" "$SEED" > ../diagnostics/server-status.txt
+          if [ "$PRISMA_VALIDATE" -ne 0 ] || [ "$PRISMA_GENERATE" -ne 0 ] || [ "$SERVER_BUILD" -ne 0 ] || [ "$SERVER_TESTS" -ne 0 ] || [ "$MIGRATIONS" -ne 0 ] || [ "$SEED" -ne 0 ]; then exit 1; fi
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: credit-network-diagnostics
+          path: diagnostics/
+          retention-days: 7
+
+      - name: Assert customer network catalog
+        if: steps.server.outcome == 'success'
+        shell: bash
+        run: |
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM markets WHERE code = '\''UG'\'' AND status = '\''active'\'';')" = "1"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM credit_products WHERE market_code = '\''UG'\'' AND status = '\''active'\'';')" -ge "5"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM partners WHERE market_code = '\''UG'\'' AND status = '\''active'\'';')" -ge "2"

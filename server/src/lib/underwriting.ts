@@ -67,7 +67,6 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
     momoMonths: input.evidence.momoMonths,
     momoTxnCount: input.evidence.momoTxnCount,
     crbStatus: input.evidence.crbStatus,
-    savingsBalance: 0,
     kycVerified: input.kycVerified,
     loansRepaid: input.loansRepaid,
     loansTotal: input.loansTotal,

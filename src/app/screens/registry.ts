@@ -1,9 +1,6 @@
 /**
  * Screen registry — maps every screen id to a lazily-loaded component and an
  * access level used by the router guards.
- *
- * Generated from the original prototype switch in App.tsx; keep ids stable —
- * screens navigate to each other via these ids.
  */
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
@@ -42,12 +39,6 @@ const SCREENS: Record<string, ScreenEntry> = {
   "make-payment": { access: "customer", load: () => import("../components/screens/MakePaymentScreen").then((m) => ({ default: m.MakePaymentScreen })) },
   "payment-confirm": { access: "customer", load: () => import("../components/screens/ConfirmScreen").then((m) => ({ default: m.ConfirmScreen })) },
   "loan-agreement": { access: "customer", load: () => import("../components/screens/LoanAgreementScreen").then((m) => ({ default: m.LoanAgreementScreen })) },
-  "goals": { access: "customer", load: () => import("../components/screens/GoalsScreen").then((m) => ({ default: m.GoalsScreen })) },
-  "create-goal": { access: "customer", load: () => import("../components/screens/CreateGoalScreen").then((m) => ({ default: m.CreateGoalScreen })) },
-  "goal-detail": { access: "customer", load: () => import("../components/screens/GoalDetailScreen").then((m) => ({ default: m.GoalDetailScreen })) },
-  "add-money": { access: "customer", load: () => import("../components/screens/AddMoneyScreen").then((m) => ({ default: m.AddMoneyScreen })) },
-  "withdraw-savings": { access: "customer", load: () => import("../components/screens/WithdrawSavingsScreen").then((m) => ({ default: m.WithdrawSavingsScreen })) },
-  "autosave-settings": { access: "customer", load: () => import("../components/screens/AutoSaveSettingsScreen").then((m) => ({ default: m.AutoSaveSettingsScreen })) },
   "wallet": { access: "customer", load: () => import("../components/screens/WalletOverviewScreen").then((m) => ({ default: m.WalletOverviewScreen })) },
   "add-payment-method": { access: "customer", load: () => import("../components/screens/AddPaymentMethodScreen").then((m) => ({ default: m.AddPaymentMethodScreen })) },
   "payment-methods-list": { access: "customer", load: () => import("../components/screens/PaymentMethodsListScreen").then((m) => ({ default: m.PaymentMethodsListScreen })) },
@@ -120,10 +111,6 @@ const SCREENS: Record<string, ScreenEntry> = {
   "admin-customer-kyc": { access: "admin", load: () => import("../components/screens/AdminCustomerScreens").then((m) => ({ default: m.AdminCustomerKYCScreen })) },
   "admin-customer-risk": { access: "admin", load: () => import("../components/screens/AdminCustomerScreens").then((m) => ({ default: m.AdminCustomerRiskScreen })) },
   "admin-block-customer": { access: "admin", load: () => import("../components/screens/AdminCustomerScreens").then((m) => ({ default: m.AdminBlockCustomerScreen })) },
-  "admin-all-savings": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminAllSavingsScreen })) },
-  "admin-savings-detail": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminSavingsDetailScreen })) },
-  "admin-savings-transactions": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminSavingsTransactionsScreen })) },
-  "admin-interest-rate": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminInterestRateScreen })) },
   "admin-credit-scores": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminCreditScoresListScreen })) },
   "admin-credit-detail": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminCreditScoreDetailScreen })) },
   "admin-credit-model": { access: "admin", load: () => import("../components/screens/AdminSavingsCreditPaymentScreens").then((m) => ({ default: m.AdminCreditModelScreen })) },

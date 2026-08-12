@@ -1,16 +1,9 @@
-/**
- * Kuula credit scoring engine.
- *
- * Savings is temporarily unavailable. Its historical weight is held at a
- * neutral value for every customer so legacy simulated balances neither reward
- * nor penalize an applicant and the overall score scale remains stable.
- */
+/** Kuula credit scoring engine. Savings is not a Kuula product or score input. */
 
 interface ScoreInput {
   momoMonths: number;
   momoTxnCount: number;
   crbStatus: string;
-  savingsBalance: number;
   kycVerified: boolean;
   loansRepaid: number;
   loansTotal: number;
@@ -22,29 +15,24 @@ const round = (n: number) => Math.round(n);
 export function computeCreditScore(d: ScoreInput) {
   const factors = [
     {
-      key: "momo", label: "Mobile Money History", weight: 0.25,
+      key: "momo", label: "Mobile Money History", weight: 0.30,
       value: (clamp((d.momoMonths ?? 0) / 12, 0, 1) + clamp((d.momoTxnCount ?? 0) / 100, 0, 1)) / 2,
       detail: `${d.momoMonths ?? 0} months · ${d.momoTxnCount ?? 0} transactions`,
     },
     {
-      key: "crb", label: "Credit Reference Bureau", weight: 0.15,
+      key: "crb", label: "Credit Reference Bureau", weight: 0.20,
       value: d.crbStatus === "clean" ? 1 : d.crbStatus === "thin" ? 0.6 : 0.25,
-      detail: `CRB Uganda: ${d.crbStatus ?? "unknown"}`,
+      detail: `CRB: ${d.crbStatus ?? "unknown"}`,
     },
     {
-      key: "savings", label: "Savings Behavior", weight: 0.15,
-      value: 0.5,
-      detail: "Savings product unavailable — neutral factor applied",
-    },
-    {
-      key: "kyc", label: "KYC Verification", weight: 0.15,
+      key: "kyc", label: "Identity Verification", weight: 0.15,
       value: d.kycVerified ? 1 : 0,
       detail: d.kycVerified ? "Fully verified" : "Unverified",
     },
     {
-      key: "repayment", label: "Repayment History", weight: 0.30,
+      key: "repayment", label: "Repayment History", weight: 0.35,
       value: (d.loansTotal ?? 0) > 0 ? clamp((d.loansRepaid ?? 0) / d.loansTotal, 0, 1) : 0.5,
-      detail: `${d.loansRepaid ?? 0}/${d.loansTotal ?? 0} loans repaid on time`,
+      detail: `${d.loansRepaid ?? 0}/${d.loansTotal ?? 0} facilities repaid on time`,
     },
   ];
 

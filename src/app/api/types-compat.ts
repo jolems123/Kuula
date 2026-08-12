@@ -1,15 +1,3 @@
-export type SavingsGoal = {
-  id: string;
-  user_id: string;
-  name: string;
-  emoji: string;
-  target: number;
-  saved: number;
-  color: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export type AppNotification = {
   id: string;
   user_id: string;
@@ -73,12 +61,6 @@ export type InvestorReport = {
     totalCollected: number;
     realizedInterest: number;
     expectedInterest: number;
-  };
-  savings: {
-    total: number;
-    accounts: number;
-    deposits: number;
-    withdrawals: number;
   };
   ratios: {
     defaultRatePct: number;
