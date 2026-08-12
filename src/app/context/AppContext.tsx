@@ -1,7 +1,4 @@
-/**
- * Global app context — authenticated session display state and customer/operator data.
- * Node/Express + PostgreSQL is the only runtime backend.
- */
+/** Global app context — Node/Express + PostgreSQL is the only runtime backend. */
 import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
 import { clearSelectionState } from "../lib/selection";
 import { clearServiceCache } from "../api/types-compat";
@@ -72,19 +69,17 @@ export interface AppState {
   user: UserProfile | null;
   credit: CreditProfile | null;
   loan: LoanProfile | null;
-  savingsBalance: number;
   unreadNotifications: number;
   messages: Message[];
 }
 
 type Action =
-  | { type: "LOGIN"; payload: { token: string; expiresAt?: number; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; savingsBalance: number; role: Role; messages?: Message[]; unreadNotifications?: number } }
+  | { type: "LOGIN"; payload: { token: string; expiresAt?: number; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; role: Role; messages?: Message[]; unreadNotifications?: number } }
   | { type: "UPDATE_TOKEN"; payload: { token: string; expiresAt: number } }
   | { type: "LOGOUT" }
   | { type: "UPDATE_PROFILE"; payload: Partial<UserProfile> }
   | { type: "UPDATE_CREDIT"; payload: Partial<CreditProfile> }
   | { type: "UPDATE_LOAN"; payload: Partial<LoanProfile> }
-  | { type: "SET_SAVINGS"; payload: number }
   | { type: "SET_UNREAD"; payload: number }
   | { type: "MARK_NOTIFICATIONS_READ" }
   | { type: "SEND_MESSAGE"; payload: Message }
@@ -97,7 +92,6 @@ const INITIAL_STATE: AppState = {
   user: null,
   credit: null,
   loan: null,
-  savingsBalance: 0,
   unreadNotifications: 0,
   messages: [],
 };
@@ -116,17 +110,14 @@ function reducer(state: AppState, action: Action): AppState {
         user: action.payload.user,
         credit: action.payload.credit,
         loan: action.payload.loan,
-        savingsBalance: action.payload.savingsBalance,
         messages: action.payload.messages ?? [],
         unreadNotifications: action.payload.unreadNotifications ?? 0,
       };
-    case "UPDATE_TOKEN":
-      return { ...state, session: { ...state.session, token: action.payload.token, expiresAt: action.payload.expiresAt } };
+    case "UPDATE_TOKEN": return { ...state, session: { ...state.session, token: action.payload.token, expiresAt: action.payload.expiresAt } };
     case "LOGOUT": return { ...INITIAL_STATE };
     case "UPDATE_PROFILE": return state.user ? { ...state, user: { ...state.user, ...action.payload } } : state;
     case "UPDATE_CREDIT": return state.credit ? { ...state, credit: { ...state.credit, ...action.payload } } : state;
     case "UPDATE_LOAN": return state.loan ? { ...state, loan: { ...state.loan, ...action.payload } } : state;
-    case "SET_SAVINGS": return { ...state, savingsBalance: action.payload };
     case "SET_UNREAD": return { ...state, unreadNotifications: action.payload };
     case "MARK_NOTIFICATIONS_READ": return { ...state, unreadNotifications: 0 };
     case "SEND_MESSAGE": return { ...state, messages: [...state.messages, action.payload] };
@@ -138,14 +129,13 @@ function reducer(state: AppState, action: Action): AppState {
 
 interface AppContextValue {
   state: AppState;
-  login: (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => void;
+  login: (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => void;
   updateToken: (token: string, expiresAt: number) => void;
   logout: () => void;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateCredit: (patch: Partial<CreditProfile>) => void;
   updateLoan: (patch: Partial<LoanProfile>) => void;
   setUnread: (count: number) => void;
-  setSavingsBalance: (balance: number) => void;
   markNotificationsRead: () => void;
   sendMessage: (msg: Message) => void;
   markMessageRead: (id: string) => void;
@@ -160,8 +150,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [pendingPhone, setPendingPhone] = useState("");
 
-  const login = useCallback((token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => {
-    dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, savingsBalance, role, messages, unreadNotifications } });
+  const login = useCallback((token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => {
+    dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, role, messages, unreadNotifications } });
   }, []);
   const updateToken = useCallback((token: string, expiresAt: number) => dispatch({ type: "UPDATE_TOKEN", payload: { token, expiresAt } }), []);
   const logout = useCallback(() => {
@@ -174,14 +164,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateCredit = useCallback((patch: Partial<CreditProfile>) => dispatch({ type: "UPDATE_CREDIT", payload: patch }), []);
   const updateLoan = useCallback((patch: Partial<LoanProfile>) => dispatch({ type: "UPDATE_LOAN", payload: patch }), []);
   const setUnread = useCallback((count: number) => dispatch({ type: "SET_UNREAD", payload: count }), []);
-  const setSavingsBalance = useCallback((balance: number) => dispatch({ type: "SET_SAVINGS", payload: balance }), []);
   const markNotificationsRead = useCallback(() => dispatch({ type: "MARK_NOTIFICATIONS_READ" }), []);
   const sendMessage = useCallback((msg: Message) => dispatch({ type: "SEND_MESSAGE", payload: msg }), []);
   const markMessageRead = useCallback((id: string) => dispatch({ type: "MARK_MESSAGE_READ", payload: id }), []);
   const markAllReadForUser = useCallback((userId: string) => dispatch({ type: "MARK_ALL_READ_FOR_USER", payload: userId }), []);
 
   return (
-    <AppContext.Provider value={{ state, login, updateToken, logout, updateProfile, updateCredit, updateLoan, setUnread, setSavingsBalance, markNotificationsRead, sendMessage, markMessageRead, markAllReadForUser, pendingPhone, setPendingPhone }}>
+    <AppContext.Provider value={{ state, login, updateToken, logout, updateProfile, updateCredit, updateLoan, setUnread, markNotificationsRead, sendMessage, markMessageRead, markAllReadForUser, pendingPhone, setPendingPhone }}>
       {children}
     </AppContext.Provider>
   );
