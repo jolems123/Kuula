@@ -82,21 +82,6 @@ router.get("/customers", authenticateToken, requirePermissions("customer.view"),
   });
 });
 
-router.get("/savings-overview", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
-  const accounts = await prisma.savingsAccount.findMany({
-    include: { user: { select: { fullName: true } } },
-    orderBy: { updatedAt: "desc" },
-    take: 50,
-  });
-  // Legacy stored balances are intentionally not reported as customer money
-  // while the savings product has no regulated custody/settlement integration.
-  res.json({
-    accounts: accounts.map((account) => ({ user_id: account.userId, full_name: account.user.fullName, balance: 0 })),
-    total: 0,
-    operationsEnabled: false,
-  });
-});
-
 async function buildInvestorReportPayload() {
   const [transactions, applications, repayments, profiles] = await Promise.all([
     prisma.transaction.findMany({ select: { type: true, amount: true, status: true, createdAt: true } }),
@@ -178,7 +163,6 @@ async function buildInvestorReportPayload() {
     customers: { total: profiles.length, verified: profiles.filter((profile) => profile.verified).length, newThisMonth: profiles.filter((profile) => new Date(profile.createdAt).getTime() >= new Date(now.getFullYear(), now.getMonth(), 1).getTime()).length },
     loans: { total: applications.length, pending, offered, disbursing, active, paid, overdue, rejected, disbursedPrincipal, outstanding },
     revenue: { totalDisbursed, totalCollected, realizedInterest, expectedInterest },
-    savings: { total: 0, accounts: 0, deposits: 0, withdrawals: 0, operationsEnabled: false },
     ratios: { defaultRatePct: percent(overdue, concludedOrLive), repaymentRatePct: percent(paid, concludedOrLive), parPct: percent(parOutstanding, outstanding) },
     monthly: months.map((month) => ({ month: month.monthLabel, disbursed: month.disbursed, collected: month.collected, newCustomers: month.newCustomers })),
     today: {
