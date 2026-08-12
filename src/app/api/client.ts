@@ -9,11 +9,32 @@ import {
   type LoanQuote,
   type CreditScore,
   type Compliance,
+  type NetworkOverview,
+  type CreditProduct,
+  type KuulaPartner,
+  type CreditPass,
+  type GrowthLine,
+  type KuulaMarket,
+  type PartnerFinancingRequestInput,
 } from "./types";
 import type { AdminStats, InvestorReport, CustomerRow, SavingsGoal, AppNotification } from "./types-compat";
 
 export { ApiError };
-export type { SessionPayload, AdminMfaPayload, LoanApplication, LoanQuote, CreditScore, Compliance };
+export type {
+  SessionPayload,
+  AdminMfaPayload,
+  LoanApplication,
+  LoanQuote,
+  CreditScore,
+  Compliance,
+  NetworkOverview,
+  CreditProduct,
+  KuulaPartner,
+  CreditPass,
+  GrowthLine,
+  KuulaMarket,
+  PartnerFinancingRequestInput,
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
@@ -35,6 +56,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
+const query = (values: Record<string, string | undefined>) => {
+  const params = new URLSearchParams();
+  Object.entries(values).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const value = params.toString();
+  return value ? `?${value}` : "";
+};
 
 const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean; savingsEnabled?: boolean }>("/api/health"),
@@ -53,6 +80,15 @@ const nodeApi = {
   verifyPhone: (phone: string, code: string) => request<SessionPayload>("/api/auth/verify-phone", { method: "POST", body: JSON.stringify({ phone, code }) }),
   resendOtp: (phone: string) => request<{ ok: boolean }>("/api/auth/resend-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   me: (token: string) => request<SessionPayload>("/api/auth/me", { headers: auth(token) }),
+
+  markets: () => request<{ markets: KuulaMarket[] }>("/api/network/markets"),
+  networkOverview: (token: string, market = "UG") => request<NetworkOverview>(`/api/network/overview${query({ market })}`, { headers: auth(token) }),
+  growthLine: (token: string, market = "UG") => request<{ growthLine: GrowthLine }>(`/api/network/growth-line${query({ market })}`, { headers: auth(token) }),
+  creditPass: (token: string, market = "UG") => request<{ creditPass: CreditPass }>(`/api/network/credit-pass${query({ market })}`, { headers: auth(token) }),
+  creditProducts: (token: string, market = "UG") => request<{ products: CreditProduct[] }>(`/api/network/products${query({ market })}`, { headers: auth(token) }),
+  partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
+  partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
+  submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
 
   submitKyc: (token: string, body: { nationalId: string; fullName: string; dob: string; documentType?: string; documentFront: string; documentBack: string }) =>
     request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
