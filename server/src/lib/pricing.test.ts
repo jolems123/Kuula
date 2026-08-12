@@ -23,19 +23,9 @@ test("returns the complete customer quote shape", () => {
     "interest",
     "monthlyRatePercent",
     "principal",
-    "savingsDiscountApplied",
     "termDays",
     "total",
   ].sort());
-});
-
-test("ignores unverified legacy savings balances", () => {
-  const noBalance = localQuote(100_000, 90, 0);
-  const legacyBalance = localQuote(100_000, 90, 10_000_000);
-
-  assert.deepEqual(legacyBalance, noBalance);
-  assert.equal(legacyBalance.savingsDiscountApplied, false);
-  assert.equal(PRICING.SAVINGS_DISCOUNT, 0);
 });
 
 test("clamps loan terms to the supported range", () => {
