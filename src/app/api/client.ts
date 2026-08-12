@@ -17,7 +17,7 @@ import {
   type KuulaMarket,
   type PartnerFinancingRequestInput,
 } from "./types";
-import type { AdminStats, InvestorReport, CustomerRow, SavingsGoal, AppNotification } from "./types-compat";
+import type { AdminStats, InvestorReport, CustomerRow, AppNotification } from "./types-compat";
 
 export { ApiError };
 export type {
@@ -64,7 +64,7 @@ const query = (values: Record<string, string | undefined>) => {
 };
 
 const nodeApi = {
-  health: () => request<{ ok: boolean; realMoneyEnabled?: boolean; savingsEnabled?: boolean }>("/api/health"),
+  health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   adminLogin: (email: string, password: string) => request<SessionPayload | AdminMfaPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ email, password }) }),
   verifyAdminMfa: (challengeToken: string, code: string) => request<SessionPayload>("/api/auth/admin-login/verify", { method: "POST", body: JSON.stringify({ challengeToken, code }) }),
@@ -114,19 +114,11 @@ const nodeApi = {
   creditScore: (token: string) => request<CreditScore>("/api/credit/score", { headers: auth(token) }),
   quoteLoan: (token: string, amount: number, termDays: number) => request<LoanQuote>("/api/loans/quote", { method: "POST", headers: auth(token), body: JSON.stringify({ amount, termDays }) }),
 
-  getSavings: (token: string) => request<{ balance: number; accruedInterest: number; aprPercent: number; operationsEnabled?: boolean }>("/api/savings", { headers: auth(token) }),
-  depositSavings: (token: string, amount: number) => request<{ balance: number }>("/api/savings/deposit", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
-  withdrawSavings: (token: string, amount: number) => request<{ balance: number }>("/api/savings/withdraw", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
   topupWallet: (token: string, amount: number) => request<{ balance: number }>("/api/wallet/topup", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
   getTransactions: (token: string) => request<{ transactions: Array<Record<string, unknown>> }>("/api/transactions", { headers: auth(token) }),
   getRepayment: (token: string) => request<{ repayment: null | (Record<string, unknown> & { collection: { stage: string; label: string; daysToDue: number } }) }>("/api/loans/repayment", { headers: auth(token) }),
   payRepayment: (token: string, amount?: number) => request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean; amount?: number; reference?: string; uuid?: string }>("/api/loans/repayment/pay", { method: "POST", headers: auth(token), body: amount !== undefined ? JSON.stringify({ amount }) : undefined }),
   requestTopUp: (token: string, body: { amount: number; term_days: number; purpose: string; disbursement_method: string }) => request<{ success?: boolean; reason?: string; code?: string }>("/api/loans/top-up", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
-
-  getGoals: (token: string) => request<{ goals: SavingsGoal[] }>("/api/goals", { headers: auth(token) }),
-  createGoal: (token: string, body: { name: string; emoji: string; target: number; color?: string }) => request<{ goal: SavingsGoal }>("/api/goals", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
-  updateGoal: (token: string, id: string, patch: Record<string, unknown>) => request<{ goal: SavingsGoal }>(`/api/goals/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(patch) }),
-  deleteGoal: (token: string, id: string) => request<{ ok: boolean }>(`/api/goals/${id}`, { method: "DELETE", headers: auth(token) }),
 
   getNotifications: (token: string) => request<{ notifications: AppNotification[] }>("/api/notifications", { headers: auth(token) }),
   markNotificationRead: (token: string, id: string) => request<{ ok: true }>(`/api/notifications/${id}/read`, { method: "POST", headers: auth(token) }),
@@ -134,7 +126,6 @@ const nodeApi = {
 
   getAdminStats: (token: string) => request<AdminStats>("/api/admin/stats", { headers: auth(token) }),
   getCustomers: (token: string) => request<{ customers: CustomerRow[] }>("/api/admin/customers", { headers: auth(token) }),
-  getSavingsOverview: (token: string) => request<{ accounts: { user_id: string; full_name: string; balance: number }[]; total: number }>("/api/admin/savings-overview", { headers: auth(token) }),
   getInvestorReport: (token: string) => request<InvestorReport>("/api/admin/investor-report", { headers: auth(token) }),
 };
 
