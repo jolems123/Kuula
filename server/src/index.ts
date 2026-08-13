@@ -17,6 +17,7 @@ import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
 import kycRoutes from "./routes/kyc.js";
 import networkRoutes from "./routes/network.js";
+import creditOperationsRoutes from "./routes/credit-operations.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
@@ -119,6 +120,7 @@ app.use("/api", rateLimit({
 }));
 
 app.use("/api/kyc", express.json({ limit: "15mb" }));
+app.use("/api/operations", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
@@ -138,6 +140,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/operations", creditOperationsRoutes);
 app.use("/api/admin/kyc", adminKycRoutes);
 app.use("/api/admin/credit-data", adminCreditDataRoutes);
 app.use("/api/admin/reconciliation", adminReconciliationRoutes);
