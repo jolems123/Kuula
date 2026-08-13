@@ -1,7 +1,7 @@
 import { Home, ShieldCheck, Store, Menu, Sparkles } from "lucide-react";
 
 interface BottomNavProps {
-  active: "home" | "credit" | "network" | "settings" | "loans" | "wallet" | "goals";
+  active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet" | "goals";
   onNavigate: (screen: string) => void;
 }
 
@@ -14,14 +14,17 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
     { id: "settings", icon: Menu, label: "More", screen: "settings" },
   ];
 
-  const legacyActive = active === "loans" ? "credit" : active === "goals" || active === "wallet" ? "network" : active;
+  let normalizedActive: string = active;
+  if (active === "loans") normalizedActive = "credit";
+  if (active === "goals" || active === "wallet") normalizedActive = "network";
+  if (active === "more") normalizedActive = "settings";
 
   return (
     <nav className="kuula-bottom-nav absolute bottom-0 left-0 right-0" aria-label="Main navigation">
       <div className="flex items-end justify-around" style={{ minHeight: 72, padding: "8px 8px 20px" }}>
         {tabs.map(({ id, icon: Icon, label, screen }) => {
           const isAction = id === "action";
-          const isActive = legacyActive === id;
+          const isActive = normalizedActive === id;
           return (
             <button
               key={id}
