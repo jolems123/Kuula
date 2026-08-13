@@ -76,6 +76,19 @@ let _adminMfaChallenge: AdminMfaChallenge | null = null;
 export function setAdminMfaChallenge(value: AdminMfaChallenge | null): void { _adminMfaChallenge = value; }
 export function getAdminMfaChallenge(): AdminMfaChallenge | null { return _adminMfaChallenge; }
 
+export interface CreditOperationsSelection {
+  applicationId: string;
+  applicantName?: string;
+  customerId?: string;
+}
+let _creditOperationsSelection: CreditOperationsSelection | null = null;
+export function setCreditOperationsSelection(value: CreditOperationsSelection | null): void { _creditOperationsSelection = value; }
+export function getCreditOperationsSelection(): CreditOperationsSelection | null { return _creditOperationsSelection; }
+
+let _customer360Id: string | null = null;
+export function setCustomer360Id(value: string | null): void { _customer360Id = value; }
+export function getCustomer360Id(): string | null { return _customer360Id; }
+
 export function clearSelectionState(): void {
   _selectedTransaction = null;
   _lastPayment = null;
@@ -83,4 +96,6 @@ export function clearSelectionState(): void {
   _creditUseSelection = null;
   _partnerSelection = null;
   _adminMfaChallenge = null;
+  _creditOperationsSelection = null;
+  _customer360Id = null;
 }
