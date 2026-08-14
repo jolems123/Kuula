@@ -102,6 +102,13 @@ function RootRedirect() {
   return <Navigate to={isStaff ? "/admin-dashboard" : "/home"} replace />;
 }
 
+function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
+  // KYC contains private identity documents and is never a public route, even
+  // if a stale registry entry accidentally labels it public.
+  if (id === "kyc") return "customer";
+  return registered;
+}
+
 function Shell() {
   const location = useLocation();
   const restoringSession = useSessionBootstrap();
@@ -122,7 +129,7 @@ function Shell() {
             <Routes>
               <Route path="/" element={<RootRedirect />} />
               {REGISTERED_SCREENS.map(({ id, access, Component }) => (
-                <Route key={id} path={`/${id}`} element={<Guard access={access}><ScreenRoute Component={Component} /></Guard>} />
+                <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)}><ScreenRoute Component={Component} /></Guard>} />
               ))}
               <Route path="*" element={<RootRedirect />} />
             </Routes>
