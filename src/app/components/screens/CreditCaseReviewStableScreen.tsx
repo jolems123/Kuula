@@ -3,11 +3,12 @@ import { ArrowLeft, FileText, MessageSquare, RefreshCw, ShieldCheck } from "luci
 import { AdminLayout, AdminCard, AdminPageHeader, StatusBadge } from "../AdminLayout";
 import { api } from "../../api/client";
 import { creditOperationsApi, type OperationsStaff } from "../../api/credit-operations";
-import { useAppContext } from "../../context/AppContext";
+import { useAppContext, type Role } from "../../context/AppContext";
 import { getCreditOperationsSelection } from "../../lib/selection";
 import { AdminApprovalHistoryScreen as FieldOfficerCaseScreen } from "./CreditOperationsScreens";
 
 interface Props { onNavigate: (screen: string) => void; }
+interface ReviewerProps extends Props { token: string; role: Role; }
 const GREEN = "#0B5E3A";
 const BORDER = "#E2E8F0";
 const button = { border: `1px solid ${BORDER}`, background: "white", borderRadius: 9, padding: "9px 12px", fontWeight: 700, cursor: "pointer" } as const;
@@ -45,13 +46,9 @@ function ReadOnlyEvidence({ token, evidence }: { token: string; evidence: Array<
   </AdminCard>;
 }
 
-function SeniorFinalReviewScreen({ onNavigate }: Props) {
-  const { state } = useAppContext();
-  const token = state.session.token;
-  const role = state.role;
+function SeniorFinalReviewScreen({ onNavigate, token, role }: ReviewerProps) {
   const selected = getCreditOperationsSelection();
   const applicationId = selected?.applicationId ?? "";
-
   const [detail, setDetail] = useState<Record<string, any> | null>(null);
   const [previousStaff, setPreviousStaff] = useState<OperationsStaff[]>([]);
   const [nextStaff, setNextStaff] = useState<OperationsStaff[]>([]);
@@ -64,7 +61,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    if (!token || !applicationId) return;
+    if (!applicationId) return;
     setError(null);
     try {
       const data = await creditOperationsApi.caseDetail(token, applicationId);
@@ -104,7 +101,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   };
 
   const returnCase = async () => {
-    if (!token || !requireNarrative()) return;
+    if (!requireNarrative()) return;
     if (!returnAssignee) { setError(`Select the ${level === 2 ? "field officer" : "senior reviewer"} who should receive the returned case.`); return; }
     setBusy(true); setError(null);
     try {
@@ -115,7 +112,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   };
 
   const reject = async () => {
-    if (!token || !requireNarrative()) return;
+    if (!requireNarrative()) return;
     setBusy(true); setError(null);
     try {
       await creditOperationsApi.decide(token, applicationId, { action: "reject", narrative: narrative.trim() });
@@ -125,7 +122,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   };
 
   const escalate = async () => {
-    if (!token || !requireNarrative()) return;
+    if (!requireNarrative()) return;
     if (level !== 2 || !nextAssignee) { setError("Select the final approver before submitting Level 2 review."); return; }
     setBusy(true); setError(null);
     try {
@@ -140,7 +137,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   };
 
   const approve = async () => {
-    if (!token || !requireNarrative()) return;
+    if (!requireNarrative()) return;
     if (level !== 3) { setError("Only Level 3 may create the final customer offer."); return; }
     setBusy(true); setError(null);
     try {
@@ -157,7 +154,7 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
   };
 
   const postMessage = async () => {
-    if (!token || !message.trim()) return;
+    if (!message.trim()) return;
     try {
       await creditOperationsApi.postMessage(token, applicationId, message.trim(), undefined, channel);
       setMessage("");
@@ -200,6 +197,8 @@ function SeniorFinalReviewScreen({ onNavigate }: Props) {
 }
 
 export function AdminApprovalHistoryStableScreen(props: Props) {
-  const role = useAppContext().state.role;
-  return role === "officer" ? <FieldOfficerCaseScreen {...props}/> : <SeniorFinalReviewScreen {...props}/>;
+  const { state } = useAppContext();
+  if (state.role === "officer") return <FieldOfficerCaseScreen {...props}/>;
+  if (!state.session.token || !state.role) return <AdminLayout activeScreen="admin-approval-history" onNavigate={props.onNavigate} title="Credit Case"><AdminCard>Your staff session is no longer active. Sign in again.</AdminCard></AdminLayout>;
+  return <SeniorFinalReviewScreen {...props} token={state.session.token} role={state.role}/>;
 }
