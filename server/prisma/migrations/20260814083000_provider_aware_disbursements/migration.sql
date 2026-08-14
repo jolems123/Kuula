@@ -13,6 +13,7 @@ CREATE TABLE payment_provider_limits (
   source_note text,
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (network IN ('mtn','airtel')),
   CHECK (beneficiary_type IN ('customer','partner')),
   CHECK (min_amount > 0),
   CHECK (max_single_amount >= min_amount),
@@ -25,6 +26,36 @@ WHERE enabled = true AND effective_to IS NULL;
 
 CREATE INDEX payment_provider_limits_lookup_idx
 ON payment_provider_limits (market_code, provider, network, beneficiary_type, enabled, effective_from);
+
+CREATE TABLE payment_destination_profiles (
+  id uuid PRIMARY KEY,
+  market_code text NOT NULL,
+  provider text NOT NULL,
+  network text NOT NULL,
+  beneficiary_type text NOT NULL,
+  beneficiary_reference text NOT NULL,
+  account_tier text,
+  max_single_amount bigint NOT NULL,
+  max_daily_amount bigint,
+  status text NOT NULL DEFAULT 'verified',
+  verified_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at timestamptz,
+  source_note text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (network IN ('mtn','airtel')),
+  CHECK (beneficiary_type IN ('customer','partner')),
+  CHECK (max_single_amount > 0),
+  CHECK (max_daily_amount IS NULL OR max_daily_amount >= max_single_amount),
+  CHECK (status IN ('verified','expired','revoked'))
+);
+
+CREATE UNIQUE INDEX payment_destination_profiles_verified_unique
+ON payment_destination_profiles (market_code, provider, network, beneficiary_type, beneficiary_reference)
+WHERE status = 'verified';
+
+CREATE INDEX payment_destination_profiles_lookup_idx
+ON payment_destination_profiles (market_code, provider, network, beneficiary_type, beneficiary_reference, status, expires_at);
 
 CREATE TABLE disbursement_batches (
   id uuid PRIMARY KEY,
@@ -45,6 +76,7 @@ CREATE TABLE disbursement_batches (
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   completed_at timestamptz,
+  CHECK (network IN ('mtn','airtel')),
   CHECK (beneficiary_type IN ('customer','partner')),
   CHECK (approved_amount > 0),
   CHECK (total_planned = approved_amount),
@@ -56,6 +88,8 @@ CREATE INDEX disbursement_batches_status_idx
 ON disbursement_batches (status, updated_at);
 CREATE INDEX disbursement_batches_user_idx
 ON disbursement_batches (user_id, created_at DESC);
+CREATE INDEX disbursement_batches_destination_idx
+ON disbursement_batches (market_code, provider, network, beneficiary_reference, created_at DESC);
 
 CREATE TABLE disbursement_legs (
   id uuid PRIMARY KEY,
