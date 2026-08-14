@@ -12,6 +12,7 @@ import disbursementRoutes from "./routes/disbursement-routes.js";
 import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconciliation-guard.js";
 import disbursementWebhookRoutes from "./routes/disbursement-webhooks.js";
 import paymentProviderLimitRoutes from "./routes/payment-provider-limits.js";
+import partnerFinancingRoutes from "./routes/partner-financing-routes.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
@@ -128,21 +129,20 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authRoutes);
+// Release partner intake shadows the earlier request-only endpoint and creates
+// the canonical underwritten loan application atomically.
+app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
-// Provider-aware disbursement owns acceptance/status before the legacy loan router.
 app.use("/api/loans", disbursementRoutes);
 app.use("/api/loans", loanRoutes);
-// A reconciliation hard-stop is checked before the multi-leg callback handler.
 app.use("/api/payments", disbursementReconciliationGuardRoutes);
-// Multi-leg disbursement callbacks are intercepted before legacy single-transaction settlement.
 app.use("/api/payments", disbursementWebhookRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/customer", customerCreditMessagesRoutes);
-// Release guards shadow unsafe legacy operations behavior before the main routers.
 app.use("/api/operations", creditOperationsGuardRoutes);
 app.use("/api/operations", creditOperationsDirectoryRoutes);
 app.use("/api/operations", creditOperationsRoutes);
