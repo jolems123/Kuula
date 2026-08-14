@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
 import paymentRoutes from "./routes/payments.js";
 import disbursementRoutes from "./routes/disbursement-routes.js";
+import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconciliation-guard.js";
 import disbursementWebhookRoutes from "./routes/disbursement-webhooks.js";
 import paymentProviderLimitRoutes from "./routes/payment-provider-limits.js";
 import messageRoutes from "./routes/messages.js";
@@ -132,6 +133,8 @@ app.use("/api/loans", creditReviewPrerequisiteRoutes);
 // Provider-aware disbursement owns acceptance/status before the legacy loan router.
 app.use("/api/loans", disbursementRoutes);
 app.use("/api/loans", loanRoutes);
+// A reconciliation hard-stop is checked before the multi-leg callback handler.
+app.use("/api/payments", disbursementReconciliationGuardRoutes);
 // Multi-leg disbursement callbacks are intercepted before legacy single-transaction settlement.
 app.use("/api/payments", disbursementWebhookRoutes);
 app.use("/api/payments", paymentRoutes);
