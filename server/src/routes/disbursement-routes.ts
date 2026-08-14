@@ -51,6 +51,14 @@ async function recheck(application: any) {
   if (!result.approved) throw new AppError(`Loan is no longer eligible: ${result.flags.join(", ")}`, 422);
 }
 
+function compatibleBatch(batch: Awaited<ReturnType<typeof disbursementBatchForApplication>>) {
+  if (!batch) return null;
+  const reference = batch.legs.find((leg) => leg.status === "pending" || leg.status === "dispatching")?.reference
+    ?? batch.legs.find((leg) => leg.reference)?.reference
+    ?? "";
+  return { ...batch, reference };
+}
+
 router.post("/:id/accept", authenticateToken, async (req: Request, res: Response) => {
   const applicationId = String(req.params.id || "");
   const userId = req.user!.userId;
@@ -67,7 +75,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   if (existingBatch) {
     res.json({
       application: { id: application.id, status: application.status },
-      disbursement: existingBatch,
+      disbursement: compatibleBatch(existingBatch),
       message: existingBatch.status === "settled" ? "Disbursement is complete." : "Disbursement is already being processed.",
     });
     return;
@@ -126,7 +134,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   const batch = await disbursementBatchForApplication(application.id);
   res.json({
     application: { id: application.id, status: "disbursing" },
-    disbursement: batch,
+    disbursement: compatibleBatch(batch),
     message: first.dispatched
       ? `Disbursement started in ${plan.legs.length} provider-safe transaction${plan.legs.length === 1 ? "" : "s"}.`
       : `Disbursement requires attention: ${first.reason || "provider request was not accepted"}`,
@@ -142,13 +150,16 @@ router.get("/:id/disbursement", authenticateToken, async (req: Request, res: Res
   const isStaff = ["admin", "manager", "officer"].includes(req.user!.role);
   if (!isStaff && application.applicantId !== req.user!.userId) throw new AppError("Loan application not found", 404);
   const batch = await disbursementBatchForApplication(application.id);
-  res.json({ applicationStatus: application.status, disbursement: batch });
+  res.json({ applicationStatus: application.status, disbursement: compatibleBatch(batch) });
 });
 
 router.post("/:id/disbursement/retry", authenticateToken, requirePermissions("reconciliation.manage"), async (req: Request, res: Response) => {
   const applicationId = String(req.params.id || "");
   const batch = await disbursementBatchForApplication(applicationId);
   if (!batch) throw new AppError("Disbursement batch not found", 404);
+  if (batch.legs.some((leg) => leg.status === "attention_required")) {
+    throw new AppError("This disbursement has a reconciliation mismatch and cannot be retried until the mismatch is resolved", 409);
+  }
   await resetFailedLegForRetry(batch.id);
   const result = await dispatchNextDisbursementLeg(batch.id);
   await writeAuditEvent({
@@ -158,7 +169,8 @@ router.post("/:id/disbursement/retry", authenticateToken, requirePermissions("re
     resourceId: applicationId,
     metadata: { batchId: batch.id, reference: result.reference ?? null, reason: result.reason ?? null },
   });
-  res.json({ ok: result.dispatched, result, disbursement: await disbursementBatchForApplication(applicationId) });
+  const refreshed = await disbursementBatchForApplication(applicationId);
+  res.json({ ok: result.dispatched, result, disbursement: compatibleBatch(refreshed) });
 });
 
 export default router;
