@@ -13,6 +13,7 @@ import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconci
 import disbursementWebhookRoutes from "./routes/disbursement-webhooks.js";
 import paymentProviderLimitRoutes from "./routes/payment-provider-limits.js";
 import partnerFinancingRoutes from "./routes/partner-financing-routes.js";
+import partnerOfferGuardRoutes from "./routes/partner-offer-guard.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
@@ -20,6 +21,7 @@ import adminRoutes from "./routes/admin.js";
 import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
+import adminPartnerFinancingRoutes from "./routes/admin-partner-financing.js";
 import kycRoutes from "./routes/kyc.js";
 import networkRoutes from "./routes/network.js";
 import creditOperationsGuardRoutes from "./routes/credit-operations-guards.js";
@@ -129,10 +131,10 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authRoutes);
-// Release partner intake shadows the earlier request-only endpoint and creates
-// the canonical underwritten loan application atomically.
 app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
+// Partner verification is an additional prerequisite before canonical approval.
+app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
 app.use("/api/loans", disbursementRoutes);
 app.use("/api/loans", loanRoutes);
@@ -147,6 +149,7 @@ app.use("/api/operations", creditOperationsGuardRoutes);
 app.use("/api/operations", creditOperationsDirectoryRoutes);
 app.use("/api/operations", creditOperationsRoutes);
 app.use("/api/admin/payment-provider-limits", paymentProviderLimitRoutes);
+app.use("/api/admin/partner-financing", adminPartnerFinancingRoutes);
 app.use("/api/admin/kyc", adminKycRoutes);
 app.use("/api/admin/credit-data", adminCreditDataRoutes);
 app.use("/api/admin/reconciliation", adminReconciliationRoutes);
