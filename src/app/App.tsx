@@ -15,6 +15,15 @@ import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib/session-vault";
 
+const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  // These old screens contain static prototype values and must never represent
+  // real customer financial state. Keep their URLs compatible by redirecting
+  // into the live server-backed flows.
+  "customer-disbursement-status": "loan-agreement",
+  "customer-credit-limit-increase": "credit-dashboard",
+  "customer-loan-refinance": "loan-detail",
+};
+
 function useSessionBootstrap(): boolean {
   const { state, login } = useAppContext();
   const [checking, setChecking] = useState(true);
@@ -128,7 +137,10 @@ function Shell() {
           <Suspense fallback={<ScreenLoader />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
-              {REGISTERED_SCREENS.map(({ id, access, Component }) => (
+              {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
+                <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer"><Navigate to={`/${to}`} replace /></Guard>} />
+              ))}
+              {REGISTERED_SCREENS.filter(({ id }) => !LEGACY_ROUTE_REDIRECTS[id]).map(({ id, access, Component }) => (
                 <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)}><ScreenRoute Component={Component} /></Guard>} />
               ))}
               <Route path="*" element={<RootRedirect />} />
