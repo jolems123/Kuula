@@ -38,7 +38,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
           const status = await getDisbursementStatus(token, candidate.id);
           setDisbursement(status.disbursement);
         } catch {
-          // The normal screen error path below handles subsequent refresh failures.
+          // A subsequent polling attempt will surface any persistent error.
         }
       }
     }).catch((e) => setError(e instanceof Error ? e.message : "Could not load your loan offer."));
@@ -152,7 +152,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
             <div style={{ display: "grid", gap: 8 }}>
               {disbursement.legs.map((leg) => (
                 <div key={leg.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, background: "#F7FAF8" }}>
-                  <div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}>Transaction {leg.sequence}</div><div style={{ fontSize: 10, color: "#809087", marginTop: 2 }}>{leg.status.replaceAll("_", " ")}</div></div>
+                  <div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}>Transaction {leg.sequence}</div><div style={{ fontSize: 10, color: "#809087", marginTop: 2 }}>{leg.status.replace(/_/g, " ")}</div></div>
                   <strong style={{ fontSize: 12, color: leg.status === "settled" ? "#0B5E3A" : "#4B5C53" }}>{formatUGX(leg.amount)}</strong>
                 </div>
               ))}
