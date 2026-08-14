@@ -59,6 +59,16 @@ Assert-Status "Credit operations dashboard" {
   if (-not $ops.role) { throw "Operations dashboard did not return staff role" }
 }
 
+Assert-Status "Level 1 field officer seeded" {
+  $staff = Invoke-RestMethod -Uri "http://localhost:3000/api/operations/staff?role=officer" -Headers @{ Authorization = "Bearer $($admin.token)" }
+  if ($staff.staff.Count -lt 1) { throw "No field officer is available for assignment" }
+}
+
+Assert-Status "Level 2 senior reviewer seeded" {
+  $staff = Invoke-RestMethod -Uri "http://localhost:3000/api/operations/staff?role=manager" -Headers @{ Authorization = "Bearer $($admin.token)" }
+  if ($staff.staff.Count -lt 1) { throw "No senior reviewer is available for Level 2" }
+}
+
 Assert-Status "Partner verification queue" {
   $queue = Invoke-RestMethod -Uri "http://localhost:3000/api/admin/partner-financing" -Headers @{ Authorization = "Bearer $($admin.token)" }
   if ($null -eq $queue.requests) { throw "Partner verification queue shape is invalid" }
