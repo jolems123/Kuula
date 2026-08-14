@@ -166,18 +166,36 @@ jobs:
           test "$(echo "$AGREEMENT_JSON" | jq -r '.ok')" = "true"
 
           ACCEPT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          DISBURSEMENT_REF=$(echo "$ACCEPT_JSON" | jq -r '.disbursement.reference')
+          DISBURSEMENT_REF=$(echo "$ACCEPT_JSON" | jq -r '.disbursement.legs[0].reference')
           test -n "$DISBURSEMENT_REF"
+          test "$DISBURSEMENT_REF" != "null"
 
           mismatch_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"uuid\":\"provider-disbursement\",\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":99999}}}")
+            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":99999}}}")
           test "$mismatch_code" = "409"
+
+          blocked_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
+            -H 'Content-Type: application/json' \
+            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}")
+          test "$blocked_code" = "409"
+
+          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; const tx=await prisma.transaction.findUnique({where:{reference:ref}}); console.log(tx?.id||""); await prisma.$disconnect();' "$DISBURSEMENT_REF")
+          test -n "$RECON_ID"
+
+          curl -sf -X POST "http://localhost:3000/api/admin/reconciliation/$RECON_ID/review" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"note":"CI verified provider amount/reference before accepting replay"}' \
+            | grep -q '"status":"reviewed"'
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"uuid\":\"provider-disbursement\",\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}" \
+            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}" \
             | grep -q '"settled":true'
+
+          STATUS_JSON=$(curl -sf "http://localhost:3000/api/loans/$APPLICATION_ID/disbursement" -H "Authorization: Bearer $CUSTOMER_TOKEN")
+          test "$(echo "$STATUS_JSON" | jq -r '.disbursement.status')" = "settled"
+          test "$(echo "$STATUS_JSON" | jq -r '.disbursement.totalSettled')" = "100000"
 
           PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":10000}')
           PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
