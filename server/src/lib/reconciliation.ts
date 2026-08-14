@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "./prisma.js";
 
 const DEFAULT_STALE_MINUTES = 30;
@@ -14,6 +15,34 @@ export async function flagStalePaymentTransactions(now = new Date()): Promise<nu
     },
     data: { reconciliationStatus: "reconciliation_required" },
   });
+
+  // A stale provider callback on a split disbursement must surface at the batch
+  // level as well. We do not retry or change financial settlement here.
+  await prisma.$transaction([
+    prisma.$executeRaw(Prisma.sql`
+      UPDATE disbursement_legs l
+      SET status='attention_required', failure_reason='Provider callback is stale and requires reconciliation', updated_at=CURRENT_TIMESTAMP
+      FROM transactions t
+      WHERE l.transaction_id=t.id
+        AND t.type='loan_disbursement_leg'
+        AND t.status='pending'
+        AND t.reconciliation_status='reconciliation_required'
+        AND l.status IN ('dispatching','pending')
+    `),
+    prisma.$executeRaw(Prisma.sql`
+      UPDATE disbursement_batches b
+      SET status='attention_required', failure_reason='A disbursement transaction is awaiting reconciliation', updated_at=CURRENT_TIMESTAMP
+      WHERE EXISTS (
+        SELECT 1 FROM disbursement_legs l
+        JOIN transactions t ON t.id=l.transaction_id
+        WHERE l.batch_id=b.id
+          AND t.type='loan_disbursement_leg'
+          AND t.status='pending'
+          AND t.reconciliation_status='reconciliation_required'
+      )
+        AND b.status <> 'settled'
+    `),
+  ]);
   return result.count;
 }
 
