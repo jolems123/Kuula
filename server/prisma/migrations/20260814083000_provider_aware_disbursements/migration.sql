@@ -88,8 +88,12 @@ RETURNS trigger AS $$
 DECLARE
   planned_sum bigint;
 BEGIN
-  SELECT COALESCE(SUM(amount),0) INTO planned_sum FROM disbursement_legs WHERE batch_id = NEW.batch_id;
-  IF TG_OP = 'INSERT' THEN planned_sum := planned_sum + NEW.amount; END IF;
+  SELECT COALESCE(SUM(amount),0)
+    INTO planned_sum
+    FROM disbursement_legs
+   WHERE batch_id = NEW.batch_id
+     AND (TG_OP = 'INSERT' OR id <> NEW.id);
+  planned_sum := planned_sum + NEW.amount;
   IF planned_sum > (SELECT approved_amount FROM disbursement_batches WHERE id = NEW.batch_id) THEN
     RAISE EXCEPTION 'DISBURSEMENT_LEGS_EXCEED_APPROVED_AMOUNT' USING ERRCODE = 'check_violation';
   END IF;
