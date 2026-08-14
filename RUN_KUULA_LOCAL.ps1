@@ -8,6 +8,7 @@ Set-StrictMode -Version Latest
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Server = Join-Path $Root "server"
 $ComposeFile = Join-Path $Root "deploy\docker-compose.local.yml"
+$SmokeTest = Join-Path $Root "TEST_KUULA_LOCAL.ps1"
 
 function Require-Command([string]$Name, [string]$Help) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
@@ -40,7 +41,7 @@ try {
   docker info *> $null
   if ($LASTEXITCODE -ne 0) { throw "Docker Desktop is installed but is not running." }
 
-  Write-Host "[1/7] Starting local PostgreSQL 16..." -ForegroundColor Cyan
+  Write-Host "[1/9] Starting local PostgreSQL 16..." -ForegroundColor Cyan
   docker compose -f $ComposeFile up -d postgres
   if ($LASTEXITCODE -ne 0) { throw "Could not start the Kuula PostgreSQL container." }
 
@@ -78,7 +79,7 @@ try {
   $env:VITE_REVIEWER_MODE = "false"
 
   if (-not $SkipInstall) {
-    Write-Host "[2/7] Installing frontend dependencies..." -ForegroundColor Cyan
+    Write-Host "[2/9] Installing frontend dependencies..." -ForegroundColor Cyan
     if (Test-Path (Join-Path $Root "package-lock.json")) {
       npm ci --legacy-peer-deps
     } else {
@@ -86,18 +87,18 @@ try {
     }
     if ($LASTEXITCODE -ne 0) { throw "Frontend dependency installation failed." }
 
-    Write-Host "[3/7] Installing API dependencies..." -ForegroundColor Cyan
+    Write-Host "[3/9] Installing API dependencies..." -ForegroundColor Cyan
     Push-Location $Server
     try {
-      # server/package-lock.json is being regenerated separately; package.json is the current source of truth.
+      # server/package-lock.json predates the isolated API dependency set, so package.json is the current source of truth.
       npm install --no-audit --no-fund
       if ($LASTEXITCODE -ne 0) { throw "API dependency installation failed." }
     } finally { Pop-Location }
   } else {
-    Write-Host "[2-3/7] Dependency installation skipped." -ForegroundColor DarkGray
+    Write-Host "[2-3/9] Dependency installation skipped." -ForegroundColor DarkGray
   }
 
-  Write-Host "[4/7] Generating Prisma client, applying migrations and seeding local data..." -ForegroundColor Cyan
+  Write-Host "[4/9] Generating Prisma client, applying migrations and seeding local data..." -ForegroundColor Cyan
   Push-Location $Server
   try {
     npx prisma generate
@@ -107,24 +108,26 @@ try {
     npm run db:seed
     if ($LASTEXITCODE -ne 0) { throw "Database seed failed." }
 
-    Write-Host "[5/7] Compiling API..." -ForegroundColor Cyan
+    Write-Host "[5/9] Compiling API..." -ForegroundColor Cyan
     npm run build
     if ($LASTEXITCODE -ne 0) { throw "API TypeScript build failed." }
   } finally { Pop-Location }
 
-  Write-Host "[6/7] Typechecking frontend..." -ForegroundColor Cyan
+  Write-Host "[6/9] Validating and building frontend..." -ForegroundColor Cyan
   npm run typecheck
   if ($LASTEXITCODE -ne 0) { throw "Frontend TypeScript validation failed." }
+  npm run build
+  if ($LASTEXITCODE -ne 0) { throw "Frontend build failed." }
 
   # Prevent duplicate local servers from masking a broken new launch.
   foreach ($port in 3000, 5173) {
     $listeners = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($listeners) {
-      throw "Port $port is already in use. Stop the existing process and run RUN_KUULA_LOCAL.ps1 again."
+      throw "Port $port is already in use. Run STOP_KUULA_LOCAL.ps1 or stop the existing process, then launch Kuula again."
     }
   }
 
-  Write-Host "[7/7] Launching Kuula API and app..." -ForegroundColor Cyan
+  Write-Host "[7/9] Launching Kuula API..." -ForegroundColor Cyan
   $backendCommand = @"
 `$env:NODE_ENV='development';
 `$env:REAL_MONEY_ENABLED='false';
@@ -144,6 +147,7 @@ npm run dev
     throw "The API did not become healthy at http://localhost:3000/api/health. Check the Kuula API PowerShell window for the exact error."
   }
 
+  Write-Host "[8/9] Launching Kuula frontend..." -ForegroundColor Cyan
   $frontendCommand = @"
 `$env:VITE_BACKEND='node';
 `$env:VITE_USE_API='true';
@@ -158,8 +162,12 @@ npm run dev -- --host 127.0.0.1 --port 5173
     throw "The frontend did not become reachable at http://127.0.0.1:5173. Check the Kuula frontend PowerShell window for the exact error."
   }
 
+  Write-Host "[9/9] Running authenticated local smoke test..." -ForegroundColor Cyan
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SmokeTest
+  if ($LASTEXITCODE -ne 0) { throw "Kuula started but the authenticated local smoke test failed." }
+
   Write-Host ""
-  Write-Host "KUULA IS RUNNING LOCALLY" -ForegroundColor Green
+  Write-Host "KUULA IS RUNNING LOCALLY — SMOKE TEST PASSED" -ForegroundColor Green
   Write-Host "App:      http://127.0.0.1:5173" -ForegroundColor White
   Write-Host "API:      http://localhost:3000/api/health" -ForegroundColor White
   Write-Host "Database: localhost:5433 / kuula_local" -ForegroundColor White
