@@ -20,6 +20,7 @@ import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
 import kycRoutes from "./routes/kyc.js";
 import networkRoutes from "./routes/network.js";
+import creditOperationsGuardRoutes from "./routes/credit-operations-guards.js";
 import creditOperationsRoutes from "./routes/credit-operations.js";
 import creditOperationsDirectoryRoutes from "./routes/credit-operations-directory.js";
 import customerCreditMessagesRoutes from "./routes/customer-credit-messages.js";
@@ -108,7 +109,13 @@ app.use(cors({
 
 app.use("/api/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
 app.use("/api/payments/marzpay/webhook", rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
-app.use("/api", rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false }));
+app.use("/api", rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === "/payments/marzpay/webhook",
+}));
 
 app.use("/api/kyc", express.json({ limit: "15mb" }));
 app.use("/api/operations", express.json({ limit: "15mb" }));
@@ -132,6 +139,8 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/customer", customerCreditMessagesRoutes);
+// Release guards shadow unsafe legacy operations behavior before the main routers.
+app.use("/api/operations", creditOperationsGuardRoutes);
 app.use("/api/operations", creditOperationsDirectoryRoutes);
 app.use("/api/operations", creditOperationsRoutes);
 app.use("/api/admin/payment-provider-limits", paymentProviderLimitRoutes);
