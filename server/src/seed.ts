@@ -57,7 +57,7 @@ async function main() {
 
   const adminEmail = required("ADMIN_EMAIL").toLowerCase();
   const adminPassword = required("ADMIN_PASSWORD");
-  const adminPhone = normalizeUgandaMobileMoneyPhone(required("ADMIN_PHONE"));
+  const adminPhone = normalizeUgandaMobileMoneyPhone(process.env.ADMIN_PHONE?.trim() || "+256700000001");
   const demoPhone = normalizeUgandaMobileMoneyPhone(required("DEMO_PHONE"));
   const demoPassword = required("DEMO_PASSWORD");
   const isProduction = process.env.NODE_ENV === "production";
