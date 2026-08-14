@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
+import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
 import disbursementRoutes from "./routes/disbursement-routes.js";
 import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconciliation-guard.js";
@@ -133,6 +134,8 @@ app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 app.use("/api/auth", authRoutes);
 app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
+// Enriched read route runs before the legacy application list route.
+app.use("/api/loans", loanApplicationReadRoutes);
 // Partner verification is an additional prerequisite before canonical approval.
 app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
