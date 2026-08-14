@@ -7,7 +7,7 @@ interface JournalLine {
 }
 
 function linesFor(transaction: Pick<Transaction, "type" | "amount">): JournalLine[] {
-  if (transaction.type === "loan_disbursement") {
+  if (transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg") {
     return [
       { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "debit", amount: transaction.amount },
       { accountCode: "MOBILE_MONEY_CLEARING", direction: "credit", amount: transaction.amount },
@@ -37,11 +37,12 @@ export async function postSettlementJournal(
   const existing = await tx.journal.findUnique({ where: { transactionId: transaction.id }, select: { id: true } });
   if (existing) return;
 
+  const isDisbursement = transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg";
   await tx.journal.create({
     data: {
       transactionId: transaction.id,
       reference: transaction.reference,
-      description: transaction.type === "loan_disbursement" ? "Provider-confirmed loan disbursement" : "Provider-confirmed loan repayment collection",
+      description: isDisbursement ? "Provider-confirmed loan disbursement" : "Provider-confirmed loan repayment collection",
       entries: {
         create: lines.map((line) => ({
           accountCode: line.accountCode,
