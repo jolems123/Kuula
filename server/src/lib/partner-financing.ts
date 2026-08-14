@@ -41,22 +41,30 @@ export async function createPartnerFinancingApplication(input: PartnerApplicatio
   if (input.termDays < input.product.minTermDays || input.termDays > input.product.maxTermDays) {
     throw new AppError(`Term must be between ${input.product.minTermDays} and ${input.product.maxTermDays} days`, 400);
   }
+  const requestedAmount = money(input.amount, "Financing amount");
   const declaredMonthlyIncome = money(input.declaredMonthlyIncome, "Monthly income");
   const declaredMonthlyExpenses = money(input.declaredMonthlyExpenses, "Monthly expenses", true);
   const existingDebtPayment = money(input.existingDebtPayment, "Existing debt payment", true);
 
-  const [open, evidence] = await Promise.all([
+  const [open, evidence, growthLine] = await Promise.all([
     prisma.loanApplication.findFirst({
       where: { applicantId: input.userId, status: { in: OPEN_STATUSES } },
       select: { id: true, status: true },
     }),
     effectiveCreditEvidence(input.userId),
+    prisma.growthLine.findUnique({ where: { userId: input.userId } }),
   ]);
   if (open) throw new AppError(`You already have an open credit facility or application (${open.status})`, 409);
+  if (!growthLine || growthLine.marketCode !== input.marketCode || growthLine.status !== "available" || growthLine.expiresAt <= new Date()) {
+    throw new AppError("Your Kuula Growth Line is not currently available for a new financing request", 409);
+  }
+  if (requestedAmount > Number(growthLine.availableLimit)) {
+    throw new AppError("Requested amount exceeds your available Kuula Growth Line", 422);
+  }
 
   let quote;
   try {
-    quote = localQuote(input.amount, input.termDays, 0);
+    quote = localQuote(requestedAmount, input.termDays, 0);
   } catch (error) {
     throw new AppError(error instanceof Error ? error.message : "Could not price this financing request", 400);
   }
@@ -77,6 +85,9 @@ export async function createPartnerFinancingApplication(input: PartnerApplicatio
   });
   if (!underwriting.approved) {
     throw new AppError(`Request does not meet current lending criteria: ${underwriting.flags.join(", ")}`, 422);
+  }
+  if (quote.principal > underwriting.approvedLimit) {
+    throw new AppError("Requested amount exceeds the current underwritten credit limit", 422);
   }
 
   try {
@@ -133,6 +144,7 @@ export async function createPartnerFinancingApplication(input: PartnerApplicatio
             invoiceVerified: false,
             payeeVerified: false,
             requestedTermDays: quote.termDays,
+            growthLineLimitAtApplication: Number(growthLine.availableLimit),
           },
         },
       });
