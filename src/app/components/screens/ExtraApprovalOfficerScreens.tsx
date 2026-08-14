@@ -18,4 +18,4 @@ export {
   CustomerLoanTimelineScreen,
 } from "./CreditOperationsScreens";
 
-export { AdminApprovalHistoryReleaseScreen as AdminApprovalHistoryScreen } from "./CreditCaseReviewReleaseScreen";
+export { AdminApprovalHistoryStableScreen as AdminApprovalHistoryScreen } from "./CreditCaseReviewStableScreen";
