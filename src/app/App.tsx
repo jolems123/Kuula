@@ -20,6 +20,7 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   // real customer financial state. Keep their URLs compatible by redirecting
   // into the live server-backed flows.
   "customer-disbursement-status": "loan-agreement",
+  "customer-loan-rejection": "loan-history",
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
 };
