@@ -57,6 +57,7 @@ async function main() {
 
   const adminEmail = required("ADMIN_EMAIL").toLowerCase();
   const adminPassword = required("ADMIN_PASSWORD");
+  const adminPhone = normalizeUgandaMobileMoneyPhone(required("ADMIN_PHONE"));
   const demoPhone = normalizeUgandaMobileMoneyPhone(required("DEMO_PHONE"));
   const demoPassword = required("DEMO_PASSWORD");
   const isProduction = process.env.NODE_ENV === "production";
@@ -69,9 +70,12 @@ async function main() {
 
   let admin = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (!admin) {
-    admin = await prisma.user.create({ data: { fullName: "Kuula Admin", email: adminEmail, passwordHash: await bcrypt.hash(adminPassword, 12), role: "admin", phoneVerified: true, verified: true } });
+    admin = await prisma.user.create({ data: { fullName: "Kuula Admin", email: adminEmail, phone: adminPhone, passwordHash: await bcrypt.hash(adminPassword, 12), role: "admin", phoneVerified: true, verified: true } });
     console.log(`Created isolated admin user: ${adminEmail}`);
-  } else console.log(`Admin user already exists: ${adminEmail}`);
+  } else {
+    admin = await prisma.user.update({ where: { id: admin.id }, data: { phone: admin.phone || adminPhone, phoneVerified: true } });
+    console.log(`Admin user already exists: ${adminEmail}`);
+  }
 
   let demo = await prisma.user.findUnique({ where: { phone: demoPhone } });
   if (!demo) {
