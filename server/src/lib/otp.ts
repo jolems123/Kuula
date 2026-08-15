@@ -21,6 +21,13 @@ function otpPepper(): string {
   return pepper;
 }
 
+function localDevOtp(): string {
+  if (process.env.NODE_ENV === "production" || process.env.ALLOW_LOCAL_DEV_OTP !== "true") return "";
+  const code = process.env.LOCAL_DEV_OTP_CODE?.trim() || "";
+  if (code && !/^\d{6}$/.test(code)) throw new Error("LOCAL_DEV_OTP_CODE must contain six digits");
+  return code;
+}
+
 export function generateOtpCode(): string {
   const fixed = process.env.TEST_OTP_CODE?.trim() || "";
   if (fixed) {
@@ -29,6 +36,8 @@ export function generateOtpCode(): string {
     }
     return fixed;
   }
+  const local = localDevOtp();
+  if (local) return local;
   return crypto.randomInt(100000, 1000000).toString();
 }
 

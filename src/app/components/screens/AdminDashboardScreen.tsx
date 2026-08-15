@@ -1,4 +1,4 @@
-import { FileText, Users, DollarSign, AlertTriangle, TrendingUp, ArrowUpRight } from "lucide-react";
+import { FileText, Users, DollarSign, AlertTriangle, TrendingUp, ArrowUpRight, Building2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AdminLayout, StatCard, AdminTable, StatusBadge, AdminPageHeader } from "../AdminLayout";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -59,9 +59,12 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         title="Good morning, Admin 👋"
         subtitle="Here's what's happening with Kuula today."
         action={
-          <button onClick={generateReport} disabled={generating} style={{ padding: "8px 16px", borderRadius: 8, background: "#F4612B", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: generating ? "default" : "pointer", opacity: generating ? 0.7 : 1 }}>
-            {generating ? "Generating…" : "Generate Report"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => onNavigate("admin-partner-financing")} style={{ padding: "8px 14px", borderRadius: 8, background: "#0B5E3A", color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Building2 size={14}/> Partner Verification</button>
+            <button onClick={generateReport} disabled={generating} style={{ padding: "8px 16px", borderRadius: 8, background: "#F4612B", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: generating ? "default" : "pointer", opacity: generating ? 0.7 : 1 }}>
+              {generating ? "Generating…" : "Generate Report"}
+            </button>
+          </div>
         }
       />
 

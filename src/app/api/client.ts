@@ -127,6 +127,19 @@ const nodeApi = {
   getAdminStats: (token: string) => request<AdminStats>("/api/admin/stats", { headers: auth(token) }),
   getCustomers: (token: string) => request<{ customers: CustomerRow[] }>("/api/admin/customers", { headers: auth(token) }),
   getInvestorReport: (token: string) => request<InvestorReport>("/api/admin/investor-report", { headers: auth(token) }),
+
+  getCreditOperationsDashboard: (token: string) => request<{ level: number; role: string; counts: Record<string, number>; queue: Array<Record<string, unknown>> }>("/api/operations/dashboard", { headers: auth(token) }),
+  assignCreditApplication: (token: string, applicationId: string, assigneeId: string, level: number) => request<{ ok: boolean; level: number; assignee: Record<string, unknown> }>(`/api/operations/applications/${applicationId}/assign`, { method: "POST", headers: auth(token), body: JSON.stringify({ assigneeId, level }) }),
+  getCreditCase: (token: string, applicationId: string) => request<Record<string, unknown>>(`/api/operations/applications/${applicationId}`, { headers: auth(token) }),
+  saveFieldEvaluation: (token: string, applicationId: string, body: Record<string, unknown>) => request<{ ok: boolean; evaluationId: string; version: number }>(`/api/operations/applications/${applicationId}/evaluation`, { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  uploadFieldEvidence: (token: string, applicationId: string, body: { evidenceType: string; dataUrl: string; gpsLatitude?: number | null; gpsLongitude?: number | null; capturedAt?: string | null }) => request<{ evidence: Record<string, unknown> }>(`/api/operations/applications/${applicationId}/evidence`, { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  submitCreditReview: (token: string, applicationId: string, body: { narrative: string; nextAssigneeId: string; recommendedAmount?: number; recommendedTermDays?: number }) => request<{ ok: boolean; fromLevel: number; toLevel: number; assignee: Record<string, unknown> }>(`/api/operations/applications/${applicationId}/submit`, { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  decideCreditReview: (token: string, applicationId: string, body: { action: "return" | "reject" | "approve"; narrative: string; returnToLevel?: number; assigneeId?: string; recommendedAmount?: number; recommendedTermDays?: number }) => request<{ ok: boolean; status: string; canonicalDecisionRequired?: boolean; canonicalEndpoint?: string }>(`/api/operations/applications/${applicationId}/decision`, { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  getApplicationThread: (token: string, applicationId: string) => request<{ messages: Array<Record<string, unknown>> }>(`/api/operations/applications/${applicationId}/messages`, { headers: auth(token) }),
+  postApplicationMessage: (token: string, applicationId: string, content: string, recipientId?: string, messageType: "internal" | "customer" = "internal") => request<{ message: Record<string, unknown> }>(`/api/operations/applications/${applicationId}/messages`, { method: "POST", headers: auth(token), body: JSON.stringify({ content, recipientId, messageType }) }),
+  searchCreditOperations: (token: string, q: string) => request<{ customers: Array<Record<string, unknown>>; applications: Array<Record<string, unknown>>; businesses: Array<Record<string, unknown>> }>(`/api/operations/search${query({ q })}`, { headers: auth(token) }),
+  getCustomer360: (token: string, customerId: string) => request<Record<string, unknown>>(`/api/operations/customers/${customerId}/360`, { headers: auth(token) }),
+  getFieldEvidenceAccess: (token: string, evidenceId: string) => request<{ url?: string; expiresInSeconds?: number }>(`/api/operations/evidence/${evidenceId}/access`, { headers: auth(token) }),
 };
 
 export const api = nodeApi;

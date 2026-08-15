@@ -13,9 +13,16 @@ function provider(): string {
   return (process.env.SMS_PROVIDER?.trim() || "").toLowerCase();
 }
 
+function localDevEnabled(): boolean {
+  return process.env.NODE_ENV !== "production"
+    && process.env.ALLOW_LOCAL_DEV_OTP === "true"
+    && /^\d{6}$/.test(process.env.LOCAL_DEV_OTP_CODE?.trim() || "");
+}
+
 export function smsConfigured(): boolean {
   const selected = provider();
   if (selected === "test") return process.env.NODE_ENV === "test";
+  if (selected === "local") return localDevEnabled();
   if (selected !== "africastalking") return false;
   return Boolean(
     process.env.AFRICASTALKING_USERNAME?.trim()
@@ -26,7 +33,9 @@ export function smsConfigured(): boolean {
 function messageFor(code: string, purpose: OtpPurpose): string {
   const action = purpose === "password_reset"
     ? "reset your Kuula password"
-    : "verify your Kuula phone number";
+    : purpose === "admin_login"
+      ? "complete Kuula staff sign in"
+      : "verify your Kuula phone number";
   return `Your Kuula code is ${code}. Use it to ${action}. It expires in 10 minutes. Do not share this code.`;
 }
 
@@ -39,12 +48,17 @@ export async function sendOtpSms(
   const selected = provider();
 
   if (selected === "test" && process.env.NODE_ENV === "test") {
-    // CI knows TEST_OTP_CODE independently. Never print the code to logs.
     return { accepted: true, provider: "test", messageId: `test-${Date.now()}` };
   }
 
+  if (selected === "local" && localDevEnabled()) {
+    // Local development intentionally suppresses external SMS. The fixed code is
+    // supplied by the developer through LOCAL_DEV_OTP_CODE and is never logged.
+    return { accepted: true, provider: "local", messageId: `local-${Date.now()}` };
+  }
+
   if (selected !== "africastalking") {
-    throw new Error("SMS_PROVIDER must be africastalking in production");
+    throw new Error("SMS_PROVIDER must be africastalking outside approved test/local development modes");
   }
 
   const username = process.env.AFRICASTALKING_USERNAME?.trim() || "";

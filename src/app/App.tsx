@@ -9,11 +9,19 @@ import {
 } from "react-router";
 import { useAppContext } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
+import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
 import { env } from "./config/env";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib/session-vault";
+
+const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  "customer-disbursement-status": "loan-agreement",
+  "customer-loan-rejection": "loan-history",
+  "customer-credit-limit-increase": "credit-dashboard",
+  "customer-loan-refinance": "loan-detail",
+};
 
 function useSessionBootstrap(): boolean {
   const { state, login } = useAppContext();
@@ -102,6 +110,11 @@ function RootRedirect() {
   return <Navigate to={isStaff ? "/admin-dashboard" : "/home"} replace />;
 }
 
+function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
+  if (id === "kyc") return "customer";
+  return registered;
+}
+
 function Shell() {
   const location = useLocation();
   const restoringSession = useSessionBootstrap();
@@ -121,8 +134,12 @@ function Shell() {
           <Suspense fallback={<ScreenLoader />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
-              {REGISTERED_SCREENS.map(({ id, access, Component }) => (
-                <Route key={id} path={`/${id}`} element={<Guard access={access}><ScreenRoute Component={Component} /></Guard>} />
+              <Route path="/admin-partner-financing" element={<Guard access="admin"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
+              {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
+                <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer"><Navigate to={`/${to}`} replace /></Guard>} />
+              ))}
+              {REGISTERED_SCREENS.filter(({ id }) => !LEGACY_ROUTE_REDIRECTS[id] && id !== "admin-partner-financing").map(({ id, access, Component }) => (
+                <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)}><ScreenRoute Component={Component} /></Guard>} />
               ))}
               <Route path="*" element={<RootRedirect />} />
             </Routes>

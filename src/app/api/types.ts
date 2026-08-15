@@ -27,6 +27,7 @@ export interface LoanApplication {
   purpose: string;
   termDays: number;
   channel: string;
+  disbursementMethod?: string;
   status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
   apr?: number;
@@ -36,6 +37,11 @@ export interface LoanApplication {
   decisionNotes: string | null;
   offerExpiresAt?: string | null;
   underwritingStatus?: string | null;
+  partnerFinancingRequestId?: string | null;
+  partnerName?: string | null;
+  partnerLocationName?: string | null;
+  payeeName?: string | null;
+  invoiceReference?: string | null;
 }
 
 export interface LoanQuote {
@@ -190,6 +196,10 @@ export interface PartnerFinancingRequestInput {
   invoiceReference: string;
   purpose: string;
   amount: number;
+  termDays: number;
+  declaredMonthlyIncome: number;
+  declaredMonthlyExpenses: number;
+  existingDebtPayment: number;
   externalReference?: string | null;
 }
 

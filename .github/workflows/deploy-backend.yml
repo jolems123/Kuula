@@ -136,17 +136,20 @@ jobs:
             deploy/docker-compose.prod.yml \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/kuula/docker-compose.yml"
 
-      - name: Deploy image
+      - name: Pull, migrate, and deploy image
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-            "cd /opt/kuula && \
-             export KUULA_IMAGE='${REGISTRY}/${IMAGE_NAME}' && \
-             export KUULA_IMAGE_TAG='${IMAGE_TAG}' && \
-             docker compose --env-file .env pull api && \
-             docker compose --env-file .env up -d --remove-orphans api && \
+            "set -e; \
+             cd /opt/kuula; \
+             export KUULA_IMAGE='${REGISTRY}/${IMAGE_NAME}'; \
+             export KUULA_IMAGE_TAG='${IMAGE_TAG}'; \
+             docker compose --env-file .env pull api; \
+             echo 'Applying Prisma migrations before API rollout'; \
+             docker compose --env-file .env run --rm --no-deps api npx prisma migrate deploy; \
+             docker compose --env-file .env up -d --remove-orphans api; \
              for i in \$(seq 1 30); do \
                if curl -sf http://127.0.0.1:3000/api/health | grep -q '\"ok\":true'; then exit 0; fi; \
                sleep 2; \

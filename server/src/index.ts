@@ -7,7 +7,14 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
+import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
+import disbursementRoutes from "./routes/disbursement-routes.js";
+import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconciliation-guard.js";
+import disbursementWebhookRoutes from "./routes/disbursement-webhooks.js";
+import paymentProviderLimitRoutes from "./routes/payment-provider-limits.js";
+import partnerFinancingRoutes from "./routes/partner-financing-routes.js";
+import partnerOfferGuardRoutes from "./routes/partner-offer-guard.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
@@ -15,8 +22,14 @@ import adminRoutes from "./routes/admin.js";
 import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
+import adminPartnerFinancingRoutes from "./routes/admin-partner-financing.js";
 import kycRoutes from "./routes/kyc.js";
 import networkRoutes from "./routes/network.js";
+import creditOperationsGuardRoutes from "./routes/credit-operations-guards.js";
+import creditOperationsRoutes from "./routes/credit-operations.js";
+import creditOperationsDirectoryRoutes from "./routes/credit-operations-directory.js";
+import customerCreditMessagesRoutes from "./routes/customer-credit-messages.js";
+import creditReviewPrerequisiteRoutes from "./routes/credit-review-prerequisite.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
@@ -99,45 +112,47 @@ app.use(cors({
   credentials: false,
 }));
 
-app.use("/api/auth", rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
-app.use("/api/payments/marzpay/webhook", rateLimit({
-  windowMs: 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
+app.use("/api/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false }));
+app.use("/api/payments/marzpay/webhook", rateLimit({ windowMs: 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
 app.use("/api", rateLimit({
   windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === "/payments/marzpay/webhook",
 }));
 
 app.use("/api/kyc", express.json({ limit: "15mb" }));
+app.use("/api/operations", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({
-    ok: true,
-    timestamp: new Date().toISOString(),
-    version: process.env.APP_VERSION || "2.4.1",
-    realMoneyEnabled,
-  });
+  res.json({ ok: true, timestamp: new Date().toISOString(), version: process.env.APP_VERSION || "2.4.1", realMoneyEnabled });
 });
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
+// Enriched read route runs before the legacy application list route.
+app.use("/api/loans", loanApplicationReadRoutes);
+// Partner verification is an additional prerequisite before canonical approval.
+app.use("/api/loans", partnerOfferGuardRoutes);
+app.use("/api/loans", creditReviewPrerequisiteRoutes);
+app.use("/api/loans", disbursementRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/payments", disbursementReconciliationGuardRoutes);
+app.use("/api/payments", disbursementWebhookRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/customer", customerCreditMessagesRoutes);
+app.use("/api/operations", creditOperationsGuardRoutes);
+app.use("/api/operations", creditOperationsDirectoryRoutes);
+app.use("/api/operations", creditOperationsRoutes);
+app.use("/api/admin/payment-provider-limits", paymentProviderLimitRoutes);
+app.use("/api/admin/partner-financing", adminPartnerFinancingRoutes);
 app.use("/api/admin/kyc", adminKycRoutes);
 app.use("/api/admin/credit-data", adminCreditDataRoutes);
 app.use("/api/admin/reconciliation", adminReconciliationRoutes);
@@ -162,10 +177,7 @@ app.get("/api/credit/score", authenticateToken, async (req, res) => {
 });
 
 app.post("/api/wallet/topup", (_req, res) => {
-  res.status(503).json({
-    error: "Wallet top-ups are unavailable. Kuula does not maintain a customer cash wallet.",
-    code: "WALLET_TOPUP_DISABLED",
-  });
+  res.status(503).json({ error: "Wallet top-ups are unavailable. Kuula does not maintain a customer cash wallet.", code: "WALLET_TOPUP_DISABLED" });
 });
 
 app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
@@ -183,10 +195,7 @@ app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
         otpLockedUntil: null,
       },
     }),
-    prisma.authSession.updateMany({
-      where: { userId: req.user!.userId, revokedAt: null },
-      data: { revokedAt: now },
-    }),
+    prisma.authSession.updateMany({ where: { userId: req.user!.userId, revokedAt: null }, data: { revokedAt: now } }),
   ]);
   res.json({ ok: true });
 });
