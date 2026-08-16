@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import type { User } from "@prisma/client";
+import { Prisma, type User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import prisma from "../lib/prisma.js";
 import {
@@ -35,6 +35,8 @@ import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 const STAFF_ROLES = new Set(["admin", "manager", "officer"]);
+const OTP_SEND_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_OTP_SENDS_PER_WINDOW = 10;
 
 function normalizedPhone(value: unknown): string {
   try {
@@ -91,17 +93,41 @@ async function issueOtp(user: User, purpose: OtpPurpose): Promise<void> {
 
   const code = generateOtpCode();
   const otpHash = hashOtp(user.id, purpose, code);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpHash,
-      otpPurpose: purpose,
-      otpExpiresAt: otpExpiry(now),
-      otpAttempts: 0,
-      otpLastSentAt: now,
-      otpLockedUntil: null,
-    },
-  });
+  const windowCutoff = new Date(now.getTime() - OTP_SEND_WINDOW_MS);
+  const cooldownCutoff = new Date(now.getTime() - OTP_POLICY.resendCooldownSeconds * 1000);
+
+  // Claim both the resend cooldown and the 24-hour per-account SMS quota in one
+  // atomic UPDATE. This remains effective across Railway replicas and prevents
+  // two concurrent requests from both passing an application-level check.
+  const claimed = await prisma.$executeRaw(Prisma.sql`
+    UPDATE users
+    SET otp_hash=${otpHash},
+        otp_purpose=${purpose},
+        otp_expires_at=${otpExpiry(now)},
+        otp_attempts=0,
+        otp_last_sent_at=${now},
+        otp_locked_until=NULL,
+        otp_window_started_at=CASE
+          WHEN otp_window_started_at IS NULL OR otp_window_started_at <= ${windowCutoff}
+          THEN ${now}
+          ELSE otp_window_started_at
+        END,
+        otp_sent_count=CASE
+          WHEN otp_window_started_at IS NULL OR otp_window_started_at <= ${windowCutoff}
+          THEN 1
+          ELSE otp_sent_count + 1
+        END
+    WHERE id=${user.id}::uuid
+      AND (otp_last_sent_at IS NULL OR otp_last_sent_at <= ${cooldownCutoff})
+      AND (
+        otp_window_started_at IS NULL
+        OR otp_window_started_at <= ${windowCutoff}
+        OR otp_sent_count < ${MAX_OTP_SENDS_PER_WINDOW}
+      )
+  `);
+  if (claimed !== 1) {
+    throw new AppError("Too many verification-code requests. Try again later.", 429);
+  }
 
   try {
     const result = await sendOtpSms(user.phone, code, purpose);
@@ -259,7 +285,12 @@ router.post("/signup", async (req: Request, res: Response) => {
   const existing = await prisma.user.findFirst({
     where: { OR: [{ phone }, ...(email ? [{ email }] : []), ...(normalizedNin ? [{ nationalId: normalizedNin }] : [])] },
   });
-  if (existing) throw new AppError("Phone, email, or NIN already registered", 409);
+  if (existing) {
+    // Do not reveal which identity field already belongs to a Kuula account.
+    // Existing unverified customers can use the generic resend-code flow.
+    res.status(201).json({ ok: true, needsConfirmation: true });
+    return;
+  }
 
   const user = await prisma.user.create({
     data: {
@@ -285,8 +316,8 @@ router.post("/login", async (req: Request, res: Response) => {
   const pin = typeof req.body.pin === "string" ? req.body.pin : "";
   const user = await prisma.user.findUnique({ where: { phone } });
   if (!user || !user.passwordHash || user.deletedAt) throw new AppError("Invalid phone number or PIN", 401);
-  if (!user.phoneVerified) throw new AppError("Verify your phone before signing in", 403);
   if (!await bcrypt.compare(pin, user.passwordHash)) throw new AppError("Invalid phone number or PIN", 401);
+  if (!user.phoneVerified) throw new AppError("Verify your phone before signing in", 403);
 
   await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.login", resourceType: "auth_session" });
   res.json(await sessionResponse(user, req));
@@ -344,8 +375,7 @@ router.post("/admin-login/resend", async (req: Request, res: Response) => {
 router.post("/verify-phone", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
   const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user || user.deletedAt) throw new AppError("Invalid or expired code", 401);
-  if (user.phoneVerified) throw new AppError("Phone number is already verified", 409);
+  if (!user || user.deletedAt || user.phoneVerified) throw new AppError("Invalid or expired code", 401);
 
   await assertOtp(user, "phone_verify", req.body.code);
   const updated = await prisma.user.update({
