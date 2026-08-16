@@ -6,6 +6,8 @@ import rateLimit from "express-rate-limit";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
+import authPrivacyGuardRoutes from "./routes/auth-privacy-guard.js";
+import httpsEnforcementRoutes from "./routes/https-enforcement.js";
 import loanRoutes from "./routes/loans.js";
 import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
@@ -142,6 +144,7 @@ app.use("/api/kyc", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
 
+app.use("/api", httpsEnforcementRoutes);
 app.use("/api", productionSecurityGuardRoutes);
 
 app.get("/api/health", (_req, res) => {
@@ -149,6 +152,7 @@ app.get("/api/health", (_req, res) => {
 });
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
+app.use("/api/auth", authPrivacyGuardRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
