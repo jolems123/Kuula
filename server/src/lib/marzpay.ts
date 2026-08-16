@@ -93,6 +93,18 @@ function basicAuthorization(key: string, secret: string): string {
   return `Basic ${Buffer.from(`${key}:${secret}`, "utf8").toString("base64")}`;
 }
 
+async function fetchJson(url: string, init: RequestInit): Promise<{ response: Response; payload: Record<string, unknown> }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const payload = asObject(await response.json().catch(() => ({})));
+    return { response, payload };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function postMoney(path: "/send-money" | "/collect-money", input: MarzPayMoneyInput): Promise<MarzPayResult> {
   if (!realMoneyEnabled()) throw new Error("Real-money movement is disabled");
   const auth = credentials();
@@ -109,22 +121,19 @@ async function postMoney(path: "/send-money" | "/collect-money", input: MarzPayM
   form.set("description", input.description.slice(0, 255));
   form.set("callback_url", input.callbackUrl.slice(0, 255));
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
+  let payload: Record<string, unknown>;
   try {
-    response = await fetch(`${baseUrl()}${path}`, {
+    ({ response, payload } = await fetchJson(`${baseUrl()}${path}`, {
       method: "POST",
       headers: { Accept: "application/json", Authorization: basicAuthorization(auth.key, auth.secret) },
       body: form,
-      signal: controller.signal,
-    });
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : "MarZPay request failed";
     return { accepted: false, status: "failed", uuid: "", reference: input.reference, providerReference: "", message: `MarZPay unreachable: ${message}`, raw: {} };
-  } finally { clearTimeout(timeout); }
+  }
 
-  const payload = asObject(await response.json().catch(() => ({})));
   const data = asObject(payload.data);
   const transaction = asObject(data.transaction);
   const status = asString(transaction.status || payload.status || (response.ok ? "processing" : "failed"));
@@ -157,6 +166,51 @@ export function parseMarzPayWebhook(payloadInput: unknown): MarzPayWebhookEvent 
   const failure = /failed|cancelled|canceled/.test(eventType) || /^(failed|cancelled|canceled)$/.test(status);
   const amount = readAmount(transaction.amount) ?? readAmount(collection.amount) ?? readAmount(disbursement.amount) ?? readAmount(payload.amount);
   return { reference, uuid, status: status || (success ? "completed" : failure ? "failed" : "pending"), eventType, amount, isSuccess: success, isFailure: failure, isFinal: success || failure, payload };
+}
+
+// MarZPay's documented transaction-details endpoint is authenticated using the
+// business API credentials and returns the same transaction structure as the
+// webhook. Kuula uses it as the source of truth before any final callback is
+// allowed to mutate money/accounting state.
+export async function getMarzPayTransaction(uuid: string): Promise<MarzPayWebhookEvent> {
+  if (!realMoneyEnabled()) throw new Error("Real-money movement is disabled");
+  const auth = credentials();
+  if (!auth) throw new Error("MarZPay is not configured");
+  if (!/^[0-9a-f-]{36}$/i.test(uuid)) throw new RangeError("MarZPay transaction UUID is invalid");
+
+  const { response, payload } = await fetchJson(`${baseUrl()}/transactions/${encodeURIComponent(uuid)}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: basicAuthorization(auth.key, auth.secret),
+    },
+  });
+  if (!response.ok) throw new Error(`MarZPay transaction verification returned HTTP ${response.status}`);
+  const event = parseMarzPayWebhook(payload);
+  if (!event.uuid) throw new Error("MarZPay transaction verification did not return a transaction UUID");
+  return event;
+}
+
+export async function verifyMarzPayFinalEvent(input: {
+  callback: MarzPayWebhookEvent;
+  expectedUuid: string;
+  expectedReference: string;
+  expectedAmount: number;
+}): Promise<MarzPayWebhookEvent> {
+  if (!input.callback.isFinal) return input.callback;
+  if (!input.callback.uuid || input.callback.uuid !== input.expectedUuid) {
+    throw new Error("Webhook transaction UUID does not match the initiated provider transaction");
+  }
+
+  const trusted = await getMarzPayTransaction(input.expectedUuid);
+  if (trusted.uuid !== input.expectedUuid) throw new Error("Provider verification UUID mismatch");
+  if (trusted.reference !== input.expectedReference) throw new Error("Provider verification reference mismatch");
+  if (trusted.amount === null || trusted.amount !== Math.round(input.expectedAmount)) throw new Error("Provider verification amount mismatch");
+  if (!trusted.isFinal) throw new Error("Provider transaction is not final yet");
+  if (trusted.isSuccess !== input.callback.isSuccess || trusted.isFailure !== input.callback.isFailure) {
+    throw new Error("Webhook final state does not match the authenticated provider transaction state");
+  }
+  return trusted;
 }
 
 export function secureTokenEquals(actual: string, expected: string): boolean {
