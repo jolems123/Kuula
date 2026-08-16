@@ -29,6 +29,7 @@ DECLARE
   v_term_days integer;
   v_obligation bigint;
   v_due_at timestamptz;
+  v_existing_due_at timestamptz;
   v_repayment_id uuid;
   v_amount_paid bigint;
 BEGIN
@@ -58,7 +59,7 @@ BEGIN
   v_due_at := CURRENT_TIMESTAMP + make_interval(days => v_term_days);
 
   SELECT id, amount_paid, due_date
-    INTO v_repayment_id, v_amount_paid, v_due_at
+    INTO v_repayment_id, v_amount_paid, v_existing_due_at
   FROM repayments
   WHERE user_id = v_user_id AND loan_id = v_loan_id
   ORDER BY created_at ASC
@@ -71,7 +72,12 @@ BEGIN
   ELSE
     UPDATE repayments
        SET total = GREATEST(v_obligation, COALESCE(v_amount_paid, 0)),
-           status = CASE WHEN COALESCE(v_amount_paid, 0) >= v_obligation THEN 'paid' ELSE status END
+           due_date = COALESCE(v_existing_due_at, due_date, v_due_at),
+           status = CASE
+             WHEN COALESCE(v_amount_paid, 0) >= v_obligation THEN 'paid'
+             WHEN status = 'paid' THEN 'scheduled'
+             ELSE status
+           END
      WHERE id = v_repayment_id;
   END IF;
 
