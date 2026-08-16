@@ -1,0 +1,45 @@
+import { Router, Request, Response, NextFunction } from "express";
+
+const router = Router();
+
+function maskNin(value: unknown): string {
+  const raw = typeof value === "string" ? value : "";
+  if (!raw) return "";
+  if (raw.length <= 4) return "••••";
+  return `${raw.slice(0, 2)}••••••••${raw.slice(-2)}`;
+}
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body: any) => {
+    if (body?.user && Object.prototype.hasOwnProperty.call(body.user, "nationalId")) {
+      body = { ...body, user: { ...body.user, nationalId: maskNin(body.user.nationalId) } };
+    }
+
+    // Do not reveal whether a phone is registered-but-unverified versus unknown.
+    if (req.method === "POST" && req.path === "/login" && [401, 403].includes(res.statusCode)) {
+      res.status(401);
+      body = { error: "Unable to sign in with those credentials", requestId: req.requestId ?? null };
+    }
+
+    // Signup uses one outward response for both newly-created and already-known
+    // identities. This prevents phone/email/NIN registration enumeration.
+    if (req.method === "POST" && req.path === "/signup") {
+      const duplicate = res.statusCode === 409 && /already registered/i.test(String(body?.error || ""));
+      const created = res.statusCode >= 200 && res.statusCode < 300;
+      if (duplicate || created) {
+        res.status(202);
+        body = {
+          ok: true,
+          needsConfirmation: true,
+          message: "If this registration can proceed, continue with phone verification.",
+        };
+      }
+    }
+
+    return originalJson(body);
+  }) as Response["json"];
+  next();
+});
+
+export default router;
