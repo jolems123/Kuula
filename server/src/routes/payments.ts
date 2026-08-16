@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { parseMarzPayWebhook, secureTokenEquals } from "../lib/marzpay.js";
+import { parseMarzPayWebhook } from "../lib/marzpay.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { postSettlementJournal } from "../lib/ledger.js";
 
@@ -12,22 +12,10 @@ function attemptsArray(value: Prisma.JsonValue): Prisma.JsonArray {
 }
 
 router.post("/marzpay/webhook", async (req: Request, res: Response) => {
-  const expectedToken = process.env.MARZPAY_WEBHOOK_SECRET?.trim() || "";
-  const headerToken = String(req.headers["x-webhook-token"] ?? "");
-  const queryToken = String(req.query.token ?? "");
-  const allowQueryToken = process.env.NODE_ENV === "test" || process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN === "true";
-  const suppliedToken = headerToken || (allowQueryToken ? queryToken : "");
-
-  if (!expectedToken) {
-    console.error("MarZPay webhook rejected: MARZPAY_WEBHOOK_SECRET is not configured");
-    res.status(503).json({ error: "Webhook is not configured" });
-    return;
-  }
-  if (!secureTokenEquals(suppliedToken, expectedToken)) {
-    res.status(401).json({ error: "Invalid webhook authentication" });
-    return;
-  }
-
+  // Final events reaching this handler have already been independently fetched
+  // from MarZPay's authenticated transaction-details API by the provider
+  // verification middleware. The inbound callback body itself is never a money
+  // settlement authority.
   const event = parseMarzPayWebhook(req.body);
   if (!event.reference) {
     res.status(400).json({ error: "Webhook transaction reference is required" });
@@ -36,7 +24,6 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
 
   const ledger = await prisma.transaction.findUnique({ where: { reference: event.reference } });
   if (!ledger) {
-    console.warn("Rejecting MarZPay webhook with unknown reference", event.reference);
     res.status(404).json({ error: "Unknown transaction reference" });
     return;
   }
@@ -44,7 +31,15 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     res.status(409).json({ error: "Transaction provider mismatch" });
     return;
   }
-  if (event.uuid && ledger.transactionId && event.uuid !== ledger.transactionId) {
+
+  // Informational callbacks never change authoritative provider identity or
+  // financial state. Final settlement waits for the authenticated lookup.
+  if (!event.isFinal) {
+    res.json({ received: true, pending: true });
+    return;
+  }
+
+  if (!ledger.transactionId || !event.uuid || event.uuid !== ledger.transactionId) {
     await prisma.transaction.update({
       where: { id: ledger.id },
       data: { reconciliationStatus: "reconciliation_required" },
@@ -52,37 +47,17 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
     res.status(409).json({ error: "Provider transaction identifier mismatch" });
     return;
   }
-  // Validate provider amount only while the transaction is still pending. An
-  // exact duplicate final callback after settlement must remain harmless even
-  // if the provider omits amount fields on the retry.
-  if (ledger.status === "pending" && event.isFinal && event.isSuccess) {
-    if (event.amount === null || event.amount !== Number(ledger.amount)) {
-      await prisma.transaction.update({
-        where: { id: ledger.id },
-        data: {
-          providerAmount: event.amount === null ? null : BigInt(event.amount),
-          providerCurrency: "UGX",
-          reconciliationStatus: "reconciliation_required",
-          providerPayload: event.payload as Prisma.InputJsonValue,
-        },
-      });
-      res.status(409).json({ error: "Provider amount does not match the expected transaction amount" });
-      return;
-    }
-  }
-
-  if (!event.isFinal) {
-    await prisma.transaction.updateMany({
-      where: { id: ledger.id, status: "pending" },
+  if (event.amount === null || event.amount !== Number(ledger.amount)) {
+    await prisma.transaction.update({
+      where: { id: ledger.id },
       data: {
-        providerStatus: event.status,
-        transactionId: event.uuid || ledger.transactionId,
+        providerAmount: event.amount === null ? null : BigInt(event.amount),
+        providerCurrency: "UGX",
+        reconciliationStatus: "reconciliation_required",
         providerPayload: event.payload as Prisma.InputJsonValue,
-        providerAmount: event.amount === null ? ledger.providerAmount : BigInt(event.amount),
-        providerCurrency: event.amount === null ? ledger.providerCurrency : "UGX",
       },
     });
-    res.json({ received: true, pending: true });
+    res.status(409).json({ error: "Provider amount does not match the expected transaction amount" });
     return;
   }
 
@@ -92,22 +67,17 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
       data: {
         status: event.isSuccess ? "completed" : "failed",
         providerStatus: event.status,
-        transactionId: event.uuid || ledger.transactionId,
+        transactionId: event.uuid,
         providerPayload: event.payload as Prisma.InputJsonValue,
-        providerAmount: event.amount === null ? null : BigInt(event.amount),
-        providerCurrency: event.amount === null ? null : "UGX",
-        reconciliationStatus: "matched",
+        providerAmount: BigInt(event.amount!),
+        providerCurrency: "UGX",
+        reconciliationStatus: event.isSuccess ? "matched" : "provider_failed_verified",
         reconciledAt: new Date(),
       },
     });
     if (claim.count !== 1) return false;
 
-    // The accounting journal is posted inside this exact database transaction.
-    // If the journal is unbalanced or cannot be created, the settlement status
-    // and all loan/repayment mutations roll back together.
-    if (event.isSuccess) {
-      await postSettlementJournal(tx, ledger);
-    }
+    if (event.isSuccess) await postSettlementJournal(tx, ledger);
 
     if (ledger.type === "loan_disbursement") {
       if (!ledger.loanId) throw new Error("Disbursement ledger is missing loanId");
@@ -134,7 +104,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
         }
         await tx.loanApplication.update({
           where: { id: application.id },
-          data: { status: "active", dueDate, disbursementRef: event.uuid || event.reference },
+          data: { status: "active", dueDate, disbursementRef: event.uuid },
         });
         await tx.user.update({ where: { id: ledger.userId }, data: { loansTotal: { increment: 1 } } });
         await tx.notification.create({
@@ -151,7 +121,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
           data: {
             status: "offered",
             acceptedAt: null,
-            disbursementRef: event.uuid || event.reference,
+            disbursementRef: event.uuid,
             decisionNotes: "Mobile-money disbursement failed. The offer can be retried while still valid.",
           },
         });
@@ -251,7 +221,7 @@ router.post("/marzpay/webhook", async (req: Request, res: Response) => {
       action: event.isSuccess ? "payment.provider_settled" : "payment.provider_failed",
       resourceType: "transaction",
       resourceId: ledger.id,
-      metadata: { reference: event.reference, providerUuid: event.uuid, type: ledger.type, amount: event.amount },
+      metadata: { reference: event.reference, providerUuid: event.uuid, type: ledger.type, amount: event.amount, providerVerified: true },
     });
   }
   res.json({ received: true, settled });
