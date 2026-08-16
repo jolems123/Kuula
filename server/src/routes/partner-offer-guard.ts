@@ -36,6 +36,19 @@ router.post("/applications/decision", authenticateToken, async (req: Request, _r
     LIMIT 1
   `);
   if (!destination[0]) throw new AppError("Partner settlement destination verification has expired or been revoked", 409);
+
+  const destinationOnboardedBy = typeof metadata.destinationOnboardedBy === "string" ? metadata.destinationOnboardedBy : "";
+  const payeeVerifiedBy = typeof metadata.verifiedBy === "string" ? metadata.verifiedBy : "";
+  if (!destinationOnboardedBy || !payeeVerifiedBy) {
+    throw new AppError("Partner settlement separation-of-duties evidence is incomplete", 409);
+  }
+  if (destinationOnboardedBy === payeeVerifiedBy) {
+    throw new AppError("Partner destination onboarding and payee verification must be performed by different staff", 409);
+  }
+  if (req.user!.userId === destinationOnboardedBy || req.user!.userId === payeeVerifiedBy) {
+    throw new AppError("Final offer approval must be performed by a third staff member independent of destination onboarding and payee verification", 403);
+  }
+
   next();
 });
 
