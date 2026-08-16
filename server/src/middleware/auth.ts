@@ -23,6 +23,14 @@ export type Permission =
   | "reconciliation.manage"
   | "admin.manage";
 
+// Least-privilege production roles:
+// - officers work only assigned Level-1 credit cases and customer support; they
+//   cannot browse or decide the global KYC queue.
+// - managers can review credit/KYC and stage manual credit evidence, but cannot
+//   create payment destinations or perform reconciliation actions.
+// - admins retain treasury/reconciliation controls; partner-money workflows add
+//   explicit separation-of-duties checks so the same admin cannot onboard a
+//   destination and then approve the facility that pays it.
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   admin: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
@@ -30,9 +38,9 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
   manager: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
-    "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage",
+    "customer.view", "support.manage", "credit_evidence.manage",
   ],
-  officer: ["loan.review", "kyc.review", "kyc.document.view", "customer.view", "support.manage"],
+  officer: ["loan.review", "customer.view", "support.manage"],
   customer: [],
   user: [],
 };
