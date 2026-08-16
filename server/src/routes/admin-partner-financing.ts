@@ -101,6 +101,24 @@ router.post("/:id/verify-payee", async (req: Request, res: Response) => {
     throw new AppError("This partner settlement destination has not been independently verified in Payment Provider Limits", 409);
   }
 
+  // Four-eyes control: the person who onboarded/verified the payment destination
+  // may not be the same person who verifies the invoice/payee for this facility.
+  const destinationAudit = await prisma.auditEvent.findFirst({
+    where: {
+      resourceType: "payment_destination_profile",
+      resourceId: destination.id,
+      action: "payment.destination_limit_verified",
+    },
+    orderBy: { createdAt: "asc" },
+    select: { actorId: true },
+  });
+  if (!destinationAudit?.actorId) {
+    throw new AppError("Payment destination onboarding audit trail is missing", 409);
+  }
+  if (destinationAudit.actorId === req.user!.userId) {
+    throw new AppError("A different authorized staff member must verify the partner invoice/payee from the person who onboarded the settlement destination", 403);
+  }
+
   const metadata = {
     ...jsonObject(request.metadata),
     invoiceVerified: true,
@@ -109,6 +127,7 @@ router.post("/:id/verify-payee", async (req: Request, res: Response) => {
     settlementNetwork: network,
     settlementReference,
     destinationProfileId: destination.id,
+    destinationOnboardedBy: destinationAudit.actorId,
     verifiedAt: new Date().toISOString(),
     verifiedBy: req.user!.userId,
     verificationNote: note,
@@ -143,6 +162,7 @@ router.post("/:id/verify-payee", async (req: Request, res: Response) => {
       network,
       settlementMasked: `${settlementReference.slice(0, 7)}****${settlementReference.slice(-2)}`,
       destinationProfileId: destination.id,
+      destinationOnboardedBy: destinationAudit.actorId,
       note,
     },
   });
