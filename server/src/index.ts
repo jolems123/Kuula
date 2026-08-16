@@ -30,6 +30,7 @@ import creditOperationsRoutes from "./routes/credit-operations.js";
 import creditOperationsDirectoryRoutes from "./routes/credit-operations-directory.js";
 import customerCreditMessagesRoutes from "./routes/customer-credit-messages.js";
 import creditReviewPrerequisiteRoutes from "./routes/credit-review-prerequisite.js";
+import productionSecurityGuardRoutes from "./routes/production-security-guards.js";
 import { COMPLIANCE } from "./lib/compliance.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
@@ -49,13 +50,15 @@ if (isProduction) {
     "CORS_ORIGINS",
     "KYC_STORAGE_PROVIDER",
     "KYC_S3_BUCKET",
-    "KYC_S3_REGION"
+    "KYC_S3_REGION",
+    "TRUST_PROXY_HOPS"
   );
   if (realMoneyEnabled) {
     requiredEnvVars.push(
       "MARZPAY_API_KEY",
       "MARZPAY_API_SECRET",
       "MARZPAY_WEBHOOK_SECRET",
+      "MARZPAY_WEBHOOK_SIGNATURE_SECRET",
       "PUBLIC_API_URL"
     );
   }
@@ -69,8 +72,8 @@ if (isProduction && process.env.SMS_PROVIDER?.trim().toLowerCase() !== "africast
   console.error("SMS_PROVIDER must be africastalking in production");
   process.exit(1);
 }
-if (isProduction && process.env.TEST_OTP_CODE) {
-  console.error("TEST_OTP_CODE must never be configured in production");
+if (isProduction && (process.env.TEST_OTP_CODE || process.env.ALLOW_LOCAL_DEV_OTP === "true")) {
+  console.error("Local/test OTP configuration must never be enabled in production");
   process.exit(1);
 }
 if (isProduction && process.env.KYC_STORAGE_PROVIDER?.trim().toLowerCase() !== "s3") {
@@ -93,6 +96,12 @@ if (isProduction && realMoneyEnabled) {
   }
 }
 
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || (isProduction ? NaN : 1));
+if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 5) {
+  console.error("TRUST_PROXY_HOPS must be an integer from 0 to 5 matching the exact production proxy topology");
+  process.exit(1);
+}
+
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const corsOrigins = (process.env.CORS_ORIGINS || "")
@@ -101,6 +110,7 @@ const corsOrigins = (process.env.CORS_ORIGINS || "")
   .filter(Boolean);
 
 app.disable("x-powered-by");
+app.set("trust proxy", trustProxyHops);
 app.use(requestContext);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({
@@ -122,9 +132,19 @@ app.use("/api", rateLimit({
   skip: (req) => req.path === "/payments/marzpay/webhook",
 }));
 
-app.use("/api/kyc", express.json({ limit: "15mb" }));
-app.use("/api/operations", express.json({ limit: "15mb" }));
-app.use(express.json({ limit: "1mb" }));
+const jsonVerify = (req: express.Request, _res: express.Response, buffer: Buffer): void => {
+  if (req.originalUrl.startsWith("/api/payments/marzpay/webhook")) {
+    (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  }
+};
+app.use("/api/kyc", express.json({ limit: "15mb", verify: jsonVerify }));
+app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
+app.use(express.json({ limit: "1mb", verify: jsonVerify }));
+
+// This gate runs before all domain routers. It owns production webhook
+// signature/replay verification, object-level staff scoping, safe transaction
+// DTOs, support-recipient validation and debt-aware account closure.
+app.use("/api", productionSecurityGuardRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString(), version: process.env.APP_VERSION || "2.4.1", realMoneyEnabled });
@@ -134,9 +154,7 @@ app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 app.use("/api/auth", authRoutes);
 app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkRoutes);
-// Enriched read route runs before the legacy application list route.
 app.use("/api/loans", loanApplicationReadRoutes);
-// Partner verification is an additional prerequisite before canonical approval.
 app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
 app.use("/api/loans", disbursementRoutes);
