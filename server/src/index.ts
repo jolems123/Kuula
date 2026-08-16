@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import loanRoutes from "./routes/loans.js";
 import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
+import paymentFailureGuardRoutes from "./routes/payment-failure-guard.js";
 import disbursementRoutes from "./routes/disbursement-routes.js";
 import disbursementReconciliationGuardRoutes from "./routes/disbursement-reconciliation-guard.js";
 import disbursementWebhookRoutes from "./routes/disbursement-webhooks.js";
@@ -141,9 +142,6 @@ app.use("/api/kyc", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
 
-// This gate runs before all domain routers. It owns production webhook
-// signature/replay verification, object-level staff scoping, safe transaction
-// DTOs, support-recipient validation and debt-aware account closure.
 app.use("/api", productionSecurityGuardRoutes);
 
 app.get("/api/health", (_req, res) => {
@@ -159,6 +157,7 @@ app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
 app.use("/api/loans", disbursementRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/payments", paymentFailureGuardRoutes);
 app.use("/api/payments", disbursementReconciliationGuardRoutes);
 app.use("/api/payments", disbursementWebhookRoutes);
 app.use("/api/payments", paymentRoutes);
