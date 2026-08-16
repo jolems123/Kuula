@@ -33,19 +33,26 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
 
 // POST /api/messages
 router.post("/", authenticateToken, async (req: Request, res: Response) => {
-  const { content, receiverId } = req.body;
+  const content = typeof req.body?.content === "string" ? req.body.content.trim().slice(0, 3000) : "";
+  const receiverId = typeof req.body?.receiverId === "string" ? req.body.receiverId.trim() : "";
   const userId = req.user!.userId;
 
-  if (!content?.trim()) throw new AppError("Message content is required", 400);
+  if (!content) throw new AppError("Message content is required", 400);
 
-  // Customers can only message admins
+  // Non-admin users never control the destination of the generic support
+  // channel. This prevents customer-to-customer IDOR/phishing by supplying an
+  // arbitrary receiverId. Application-specific communication uses its own
+  // ownership-scoped route.
   if (req.user!.role !== "admin") {
-    const admin = await prisma.user.findFirst({ where: { role: "admin" } });
-    const targetId = receiverId || admin?.id;
-    if (!targetId) throw new AppError("No admin available", 400);
+    const admin = await prisma.user.findFirst({
+      where: { role: "admin", deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    if (!admin) throw new AppError("No support administrator is available", 503);
 
     const message = await prisma.message.create({
-      data: { senderId: userId, receiverId: targetId, content: content.trim() },
+      data: { senderId: userId, receiverId: admin.id, content },
     });
 
     res.json({
@@ -61,11 +68,12 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
     return;
   }
 
-  // Admin can message anyone
   if (!receiverId) throw new AppError("Receiver ID is required", 400);
+  const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { id: true, deletedAt: true } });
+  if (!receiver || receiver.deletedAt) throw new AppError("Receiver not found", 404);
 
   const message = await prisma.message.create({
-    data: { senderId: userId, receiverId, content: content.trim() },
+    data: { senderId: userId, receiverId: receiver.id, content },
   });
 
   res.json({
