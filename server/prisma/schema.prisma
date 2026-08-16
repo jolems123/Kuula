@@ -37,12 +37,14 @@ model User {
   phoneVerified  Boolean  @default(false) @map("phone_verified")
   authVersion    Int      @default(0) @map("auth_version")
 
-  otpHash        String?   @map("otp_hash")
-  otpPurpose     String?   @map("otp_purpose")
-  otpExpiresAt   DateTime? @map("otp_expires_at")
-  otpAttempts    Int       @default(0) @map("otp_attempts")
-  otpLastSentAt  DateTime? @map("otp_last_sent_at")
-  otpLockedUntil DateTime? @map("otp_locked_until")
+  otpHash            String?   @map("otp_hash")
+  otpPurpose         String?   @map("otp_purpose")
+  otpExpiresAt       DateTime? @map("otp_expires_at")
+  otpAttempts        Int       @default(0) @map("otp_attempts")
+  otpLastSentAt      DateTime? @map("otp_last_sent_at")
+  otpLockedUntil     DateTime? @map("otp_locked_until")
+  otpWindowStartedAt DateTime? @map("otp_window_started_at")
+  otpSentCount       Int       @default(0) @map("otp_sent_count")
 
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
@@ -339,44 +341,45 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt(sort: Desc)])
-  @@index([userId, isRead])
   @@map("notifications")
 }
 
 model Market {
-  code              String   @id
-  countryName       String   @map("country_name")
-  currency          String
-  dialingCode       String   @map("dialing_code")
-  defaultLocale     String   @default("en") @map("default_locale")
-  status            String   @default("planned")
-  config            Json     @default("{}")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  products          CreditProduct[]
-  partners          Partner[]
-  growthLines       GrowthLine[]
-  creditPasses      CreditPassSnapshot[]
-  financingRequests PartnerFinancingRequest[]
+  code          String   @id @db.VarChar(8)
+  countryName   String   @map("country_name")
+  currency      String   @db.VarChar(8)
+  dialingCode   String   @map("dialing_code") @db.VarChar(8)
+  defaultLocale String   @default("en") @map("default_locale") @db.VarChar(16)
+  status        String   @default("planned")
+  config        Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  products      CreditProduct[]
+  growthLines   GrowthLine[]
+  creditPasses  CreditPassSnapshot[]
+  partners      Partner[]
+  partnerFinancingRequests PartnerFinancingRequest[]
   @@map("markets")
 }
 
 model CreditProduct {
-  id               String  @id @default(uuid()) @db.Uuid
-  code             String  @unique
-  marketCode       String  @map("market_code")
+  id               String   @id @default(uuid()) @db.Uuid
+  marketCode       String   @map("market_code") @db.VarChar(8)
+  code             String   @unique @db.VarChar(80)
   name             String
-  category         String
-  purposeType      String  @map("purpose_type")
-  description      String
-  minAmount        BigInt  @map("min_amount")
-  maxAmount        BigInt  @map("max_amount")
-  minTermDays      Int     @map("min_term_days")
-  maxTermDays      Int     @map("max_term_days")
-  disbursementMode String  @map("disbursement_mode")
-  partnerRequired  Boolean @default(false) @map("partner_required")
-  status           String  @default("active")
-  metadata         Json    @default("{}")
+  category         String   @db.VarChar(80)
+  purposeType      String   @map("purpose_type") @db.VarChar(80)
+  description      String?
+  minAmount        BigInt   @map("min_amount")
+  maxAmount        BigInt   @map("max_amount")
+  minTermDays      Int      @map("min_term_days")
+  maxTermDays      Int      @map("max_term_days")
+  disbursementMode String   @default("direct_payee") @map("disbursement_mode") @db.VarChar(80)
+  partnerRequired  Boolean  @default(true) @map("partner_required")
+  status           String   @default("active")
+  metadata         Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
   market Market @relation(fields: [marketCode], references: [code], onDelete: Restrict)
   financingRequests PartnerFinancingRequest[]
   @@index([marketCode, status])
@@ -387,7 +390,7 @@ model CreditProduct {
 model GrowthLine {
   id                 String   @id @default(uuid()) @db.Uuid
   userId             String   @unique @map("user_id") @db.Uuid
-  marketCode         String   @map("market_code")
+  marketCode         String   @map("market_code") @db.VarChar(8)
   totalLimit         BigInt   @default(0) @map("total_limit")
   availableLimit     BigInt   @default(0) @map("available_limit")
   status             String   @default("building")
@@ -395,6 +398,8 @@ model GrowthLine {
   reviewedAt         DateTime @default(now()) @map("reviewed_at")
   expiresAt          DateTime @map("expires_at")
   rationale          Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   market Market @relation(fields: [marketCode], references: [code], onDelete: Restrict)
   @@index([marketCode, status])
@@ -405,10 +410,10 @@ model GrowthLine {
 model CreditPassSnapshot {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @map("user_id") @db.Uuid
-  marketCode     String   @map("market_code")
+  marketCode     String   @map("market_code") @db.VarChar(8)
   score          Int
-  tier           String
-  kycLevel       String   @map("kyc_level")
+  tier           String   @db.VarChar(40)
+  kycLevel       String   @map("kyc_level") @db.VarChar(40)
   repaymentRate  Decimal  @default(0) @map("repayment_rate") @db.Decimal(5, 2)
   availableLimit BigInt   @default(0) @map("available_limit")
   signals        Json     @default("{}")
@@ -416,18 +421,18 @@ model CreditPassSnapshot {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   market Market @relation(fields: [marketCode], references: [code], onDelete: Restrict)
   @@index([userId, createdAt(sort: Desc)])
-  @@index([marketCode, createdAt(sort: Desc)])
+  @@index([marketCode, tier])
   @@map("credit_pass_snapshots")
 }
 
 model Partner {
   id             String   @id @default(uuid()) @db.Uuid
-  code           String   @unique
-  marketCode     String   @map("market_code")
+  marketCode     String   @map("market_code") @db.VarChar(8)
+  code           String   @unique @db.VarChar(80)
   name           String
-  partnerType    String   @map("partner_type")
+  partnerType    String   @map("partner_type") @db.VarChar(80)
+  settlementMode String   @default("direct_payee") @map("settlement_mode") @db.VarChar(80)
   status         String   @default("active")
-  settlementMode String   @default("direct_payee") @map("settlement_mode")
   metadata       Json     @default("{}")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -443,45 +448,47 @@ model PartnerLocation {
   partnerId         String   @map("partner_id") @db.Uuid
   name              String
   district          String?
-  country           String
+  country           String   @default("Uganda")
   phone             String?
   externalReference String?  @map("external_reference")
   active            Boolean  @default(true)
   metadata          Json     @default("{}")
   createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
   partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   financingRequests PartnerFinancingRequest[]
+  @@unique([partnerId, externalReference])
   @@index([partnerId, active])
   @@index([district, active])
   @@map("partner_locations")
 }
 
 model PartnerFinancingRequest {
-  id                String   @id @default(uuid()) @db.Uuid
-  userId            String   @map("user_id") @db.Uuid
-  marketCode        String   @map("market_code")
-  partnerId         String   @map("partner_id") @db.Uuid
-  partnerLocationId String?  @map("partner_location_id") @db.Uuid
-  productId         String   @map("product_id") @db.Uuid
-  externalReference String?  @unique @map("external_reference")
-  invoiceReference  String?  @map("invoice_reference")
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  marketCode        String    @map("market_code") @db.VarChar(8)
+  partnerId         String    @map("partner_id") @db.Uuid
+  partnerLocationId String?   @map("partner_location_id") @db.Uuid
+  productId         String    @map("product_id") @db.Uuid
+  externalReference String    @unique @map("external_reference") @db.VarChar(120)
+  invoiceReference  String    @map("invoice_reference") @db.VarChar(120)
   purpose           String
   amount            BigInt
-  status            String   @default("submitted")
-  payeeName         String   @map("payee_name")
-  payeeReference    String?  @map("payee_reference")
-  loanApplicationId String?  @unique @map("loan_application_id") @db.Uuid
-  metadata          Json     @default("{}")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  status            String    @default("pending_review")
+  payeeName         String    @map("payee_name")
+  payeeReference    String?   @map("payee_reference") @db.VarChar(180)
+  loanApplicationId String?   @unique @map("loan_application_id") @db.Uuid
+  metadata          Json      @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
   market Market @relation(fields: [marketCode], references: [code], onDelete: Restrict)
   partner Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
   partnerLocation PartnerLocation? @relation(fields: [partnerLocationId], references: [id], onDelete: Restrict)
   product CreditProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
   loanApplication LoanApplication? @relation(fields: [loanApplicationId], references: [id], onDelete: Restrict)
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([partnerId, status, createdAt])
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@index([partnerId, status])
   @@index([marketCode, status])
   @@map("partner_financing_requests")
 }
