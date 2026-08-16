@@ -28,6 +28,10 @@ export interface UnderwritingResult {
 
 const MAX_DEBT_SERVICE_RATIO = 0.35;
 const MIN_MONTHLY_INCOME_UGX = 100_000;
+// Self-declared income is useful as an application signal, but it is not
+// trusted at face value for affordability. Until a verified-income provider is
+// available Kuula uses only 60% of the declaration for debt-capacity math.
+const UNVERIFIED_INCOME_HAIRCUT = 0.60;
 
 function integerMoney(value: number, label: string, allowZero = false): number {
   const normalized = Math.round(Number(value));
@@ -56,7 +60,7 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
     : integerMoney(input.verifiedMonthlyIncome, "Verified monthly income");
 
   const incomeForAffordability = verifiedMonthlyIncome == null
-    ? declaredMonthlyIncome
+    ? Math.floor(declaredMonthlyIncome * UNVERIFIED_INCOME_HAIRCUT)
     : Math.min(declaredMonthlyIncome, verifiedMonthlyIncome);
   const disposableIncome = Math.max(0, incomeForAffordability - declaredMonthlyExpenses - existingDebtPayment);
   const termMonths = Math.max(1, input.termDays / 30);
@@ -102,5 +106,6 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
 export const UNDERWRITING_POLICY = {
   maxDebtServiceRatio: MAX_DEBT_SERVICE_RATIO,
   minMonthlyIncomeUgx: MIN_MONTHLY_INCOME_UGX,
+  unverifiedIncomeHaircut: UNVERIFIED_INCOME_HAIRCUT,
   offerValidityHours: 48,
 } as const;
