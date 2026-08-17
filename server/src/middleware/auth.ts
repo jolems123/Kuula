@@ -10,6 +10,8 @@ if (process.env.NODE_ENV === "production" && jwtSecret.length < 48) {
 }
 const JWT_SECRET: string = jwtSecret;
 
+// `user` is retained only as a legacy persisted/token value. All runtime
+// authentication normalizes it to the canonical borrower role `customer`.
 export type UserRole = "admin" | "manager" | "officer" | "customer" | "user";
 export type Permission =
   | "loan.review"
@@ -202,7 +204,8 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 
 export function normalizeRole(role: string | null | undefined): UserRole {
   const value = (role || "").toLowerCase().trim();
-  if (["admin", "manager", "officer", "customer", "user"].includes(value)) {
+  if (value === "user") return "customer";
+  if (["admin", "manager", "officer", "customer"].includes(value)) {
     return value as UserRole;
   }
   throw new AppError("Invalid user role", 403);
