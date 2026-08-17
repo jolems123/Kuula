@@ -15,6 +15,7 @@ COPY package.json ./
 RUN npm install --no-audit --no-fund
 
 COPY prisma ./prisma
+COPY scripts ./scripts
 RUN npx prisma generate
 
 COPY tsconfig.json ./
@@ -35,6 +36,7 @@ RUN apt-get update \
 COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/prisma ./prisma
+COPY --from=build --chown=node:node /app/scripts ./scripts
 COPY --from=build --chown=node:node /app/dist ./dist
 
 USER node
