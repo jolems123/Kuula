@@ -9,9 +9,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && npm install --global npm@11.12.1
 
-# The current server lockfile predates the isolated API dependencies. The
-# existing server CI installs from package.json, so the image mirrors that
-# verified path until the lockfile is regenerated in a dependency-only change.
+# Install from the server manifest. The lockfile is currently stale and is
+# intentionally not used until it is regenerated to match package.json.
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
@@ -25,8 +24,7 @@ RUN npm run build \
 
 FROM node:22-bookworm-slim AS runtime
 
-ENV NODE_ENV=production \
-    PORT=3000
+ENV NODE_ENV=production
 
 WORKDIR /app
 
@@ -44,6 +42,6 @@ USER node
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '3000') + '/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
 
 CMD ["node", "dist/index.js"]
