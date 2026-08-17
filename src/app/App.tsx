@@ -21,11 +21,27 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-loan-rejection": "loan-history",
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
-  // Kuula is not a stored-value wallet. Keep old deep links safe while the
-  // historical screens are removed from navigation.
+
+  // Kuula is a credit/loan platform, not a stored-value wallet. Historical
+  // wallet and payment-method screens remain in source only for archive/design
+  // reference and are not part of the production customer journey.
   "wallet": "home",
   "add-payment-method": "home",
   "payment-methods-list": "home",
+
+  // These concepts do not yet have an approved production policy/backend flow.
+  // Redirect old bookmarks and stale navigation rather than exposing mock or
+  // partially implemented financial functionality to customers.
+  "customer-available-promotions": "home",
+  "customer-claim-promotion": "home",
+  "customer-autopay-setup": "make-payment",
+  "customer-autopay-settings": "make-payment",
+  "customer-autopay-history": "loan-history",
+  "customer-autopay-failure": "make-payment",
+  "customer-autopay-link": "make-payment",
+  "customer-autopay-notification": "make-payment",
+  "customer-repayment-offer": "make-payment",
+  "customer-accept-plan": "make-payment",
 };
 
 const OFFICER_SCREEN_ALLOWLIST = new Set([
