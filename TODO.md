@@ -24,6 +24,7 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 - [x] Legacy borrower role `user` is normalized to the canonical runtime role `customer`, while database compatibility is preserved during the transition.
 - [x] Customer reporting accepts both `user` and `customer` persisted roles so no borrower disappears during a future controlled role migration.
 - [x] Wallet/payment-method, refinance/credit-limit, promotion and unapproved autopay/repayment-plan deep links are removed from the live production journey through canonical redirects.
+- [x] The remaining Supabase compatibility shim is dependency-free at runtime and cannot pull the Supabase client into the application bundle.
 
 ## Required before enabling real money
 
@@ -41,7 +42,7 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 
 ## Controlled cleanup after CI/install tooling is available
 
-- [ ] Regenerate the root `package-lock.json`, then remove the dormant `@supabase/supabase-js` compatibility package/module after confirming there are no remaining imports.
+- [ ] Regenerate the root `package-lock.json`, then remove the dormant `@supabase/supabase-js` package and compatibility module after confirming there are no remaining imports.
 - [ ] During that same verified dependency pass, remove root-level backend-only dependencies that are no longer used by frontend scripts/tests.
 - [ ] Decide whether to migrate persisted borrower roles from legacy `user` to `customer`. Runtime already normalizes both, so this is not required for launch and must be a tested data migration rather than an ad-hoc update.
 - [ ] Remove the dormant Wallet model/table only after a migration proves no historical/reporting code needs it. Customer wallet functionality is already disabled in production.
