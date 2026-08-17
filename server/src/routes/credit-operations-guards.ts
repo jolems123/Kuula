@@ -35,6 +35,23 @@ async function activeAssignment(applicationId: string, userId: string, level: nu
   return Boolean(rows[0]);
 }
 
+async function assertCurrentAssignment(applicationId: string, userId: string): Promise<void> {
+  const rows = await prisma.$queryRaw<Array<{ current_level: number; current_assignee_id: string | null }>>(Prisma.sql`
+    SELECT current_level, current_assignee_id
+    FROM credit_cases
+    WHERE application_id = ${applicationId}::uuid
+    LIMIT 1
+  `);
+  const creditCase = rows[0];
+  if (!creditCase) throw new AppError("Credit case not found", 404);
+  if (
+    creditCase.current_assignee_id !== userId
+    || !(await activeAssignment(applicationId, userId, Number(creditCase.current_level)))
+  ) {
+    throw new AppError("This application is not assigned to you at the current review level", 403);
+  }
+}
+
 // Every staff role sees only work explicitly assigned to that staff account.
 // This endpoint intentionally shadows the older dashboard implementation.
 router.get("/dashboard", async (req: Request, res: Response) => {
@@ -76,6 +93,20 @@ router.get("/dashboard", async (req: Request, res: Response) => {
   });
 });
 
+// Case details and case messages contain sensitive customer, underwriting and
+// field-evidence metadata. Enforce assignment here as well as in the downstream
+// route implementation so security does not depend on mount order alone.
+router.get("/applications/:id", async (req: Request, _res: Response, next: NextFunction) => {
+  const applicationId = uuid(req.params.id, "Application ID");
+  await assertCurrentAssignment(applicationId, req.user!.userId);
+  next();
+});
+router.get("/applications/:id/messages", async (req: Request, _res: Response, next: NextFunction) => {
+  const applicationId = uuid(req.params.id, "Application ID");
+  await assertCurrentAssignment(applicationId, req.user!.userId);
+  next();
+});
+
 // The generic assignment endpoint may create the first Level-1 assignment or
 // reassign the *current* level. It cannot be used to advance/skip review levels.
 router.post("/applications/:id/assign", requirePermissions("loan.approve"), async (req: Request, _res: Response, next: NextFunction) => {
@@ -105,17 +136,7 @@ router.post("/applications/:id/assign", requirePermissions("loan.approve"), asyn
 // credit authority. This closes the legacy Level-3 admin bypass.
 router.post("/applications/:id/decision", async (req: Request, _res: Response, next: NextFunction) => {
   const applicationId = uuid(req.params.id, "Application ID");
-  const cases = await prisma.$queryRaw<Array<{ current_level: number; current_assignee_id: string | null; status: string }>>(Prisma.sql`
-    SELECT current_level, current_assignee_id, status
-    FROM credit_cases
-    WHERE application_id=${applicationId}::uuid
-    LIMIT 1
-  `);
-  const creditCase = cases[0];
-  if (!creditCase) throw new AppError("Credit case not found", 404);
-  if (creditCase.current_assignee_id !== req.user!.userId || !(await activeAssignment(applicationId, req.user!.userId, Number(creditCase.current_level)))) {
-    throw new AppError("This application is not assigned to you at the current review level", 403);
-  }
+  await assertCurrentAssignment(applicationId, req.user!.userId);
   next();
 });
 
