@@ -152,6 +152,20 @@ app.use("/api", operationsAuditGuardRoutes);
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString(), version: process.env.APP_VERSION || "2.4.1", realMoneyEnabled });
 });
+
+app.get("/api/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, database: "ready", timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "readiness.failed",
+      error: error instanceof Error ? error.message : "Database readiness check failed",
+    }));
+    res.status(503).json({ ok: false, database: "unavailable", timestamp: new Date().toISOString() });
+  }
+});
+
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
 
 app.use("/api/auth", authPrivacyGuardRoutes);
