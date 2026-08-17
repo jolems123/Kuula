@@ -13,14 +13,38 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
 
   const transactions = await prisma.transaction.findMany({
     where,
+    select: {
+      id: true,
+      userId: true,
+      loanId: true,
+      type: true,
+      amount: true,
+      status: true,
+      reference: true,
+      provider: true,
+      providerStatus: true,
+      reconciliationStatus: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
   res.json({
-    transactions: transactions.map((t) => ({
-      ...t,
-      amount: Number(t.amount),
+    transactions: transactions.map((transaction) => ({
+      id: transaction.id,
+      ...(isAdmin ? { userId: transaction.userId } : {}),
+      loanId: transaction.loanId,
+      type: transaction.type,
+      amount: Number(transaction.amount),
+      status: transaction.status,
+      reference: transaction.reference,
+      provider: transaction.provider,
+      providerStatus: transaction.providerStatus,
+      reconciliationStatus: transaction.reconciliationStatus,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
     })),
   });
 });
