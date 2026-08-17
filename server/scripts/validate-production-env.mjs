@@ -10,6 +10,7 @@ const required = [
   "KYC_STORAGE_PROVIDER",
   "KYC_S3_BUCKET",
   "KYC_S3_REGION",
+  "TRUST_PROXY_HOPS",
 ];
 
 for (const name of required) {
@@ -28,6 +29,12 @@ if (jwt.length < 64) problems.push("JWT_SECRET must be at least 64 characters");
 if (otp.length < 64) problems.push("OTP_PEPPER must be at least 64 characters");
 if (jwt && otp && jwt === otp) problems.push("OTP_PEPPER must be different from JWT_SECRET");
 
+const trustProxyRaw = String(process.env.TRUST_PROXY_HOPS ?? "").trim();
+const trustProxyHops = Number(trustProxyRaw);
+if (!/^\d+$/.test(trustProxyRaw) || !Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 5) {
+  problems.push("TRUST_PROXY_HOPS must be an integer from 0 to 5 matching the exact production proxy topology");
+}
+
 if (String(process.env.SMS_PROVIDER ?? "").trim().toLowerCase() !== "africastalking") {
   problems.push("SMS_PROVIDER must be africastalking in production");
 }
@@ -35,12 +42,21 @@ if (String(process.env.KYC_STORAGE_PROVIDER ?? "").trim().toLowerCase() !== "s3"
   problems.push("KYC_STORAGE_PROVIDER must be s3 in production");
 }
 if (process.env.TEST_OTP_CODE) problems.push("TEST_OTP_CODE must not be configured in production");
+if (String(process.env.ALLOW_LOCAL_DEV_OTP ?? "").toLowerCase() === "true") {
+  problems.push("ALLOW_LOCAL_DEV_OTP must not be enabled in production");
+}
 if (String(process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN ?? "").toLowerCase() === "true") {
   problems.push("MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN must be false in production");
 }
 
 if (String(process.env.REAL_MONEY_ENABLED ?? "").toLowerCase() === "true") {
-  for (const name of ["MARZPAY_API_KEY", "MARZPAY_API_SECRET", "MARZPAY_WEBHOOK_SECRET", "PUBLIC_API_URL"]) {
+  for (const name of [
+    "MARZPAY_API_KEY",
+    "MARZPAY_API_SECRET",
+    "MARZPAY_WEBHOOK_SECRET",
+    "MARZPAY_WEBHOOK_SIGNATURE_SECRET",
+    "PUBLIC_API_URL",
+  ]) {
     if (!String(process.env[name] ?? "").trim()) problems.push(`${name} is required when REAL_MONEY_ENABLED=true`);
   }
   try {
