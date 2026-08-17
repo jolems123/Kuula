@@ -23,6 +23,11 @@ export type Permission =
   | "reconciliation.manage"
   | "admin.manage";
 
+// Least privilege is deliberate here:
+// - field officers never receive global KYC-review/document permissions;
+// - managers may review credit/KYC and approve loans, but cannot manufacture
+//   verified credit evidence or configure/reconcile payment destinations;
+// - treasury/evidence administration remains an admin-only control plane.
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   admin: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
@@ -30,9 +35,9 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
   manager: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
-    "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage",
+    "customer.view", "support.manage",
   ],
-  officer: ["loan.review", "kyc.review", "kyc.document.view", "customer.view", "support.manage"],
+  officer: ["loan.review", "customer.view", "support.manage"],
   customer: [],
   user: [],
 };

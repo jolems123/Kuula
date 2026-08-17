@@ -13,6 +13,17 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     return;
   }
 
+  // PostgreSQL is the race-safe final authority for per-account OTP delivery
+  // quotas. Map its deliberate trigger exception to a normal rate-limit result
+  // rather than leaking a database error or returning HTTP 500.
+  if (/OTP delivery quota exceeded/i.test(err?.message || "")) {
+    res.status(429).json({
+      error: "Too many verification messages have been requested. Try again later.",
+      requestId: req.requestId ?? null,
+    });
+    return;
+  }
+
   if (err.name === "PrismaClientKnownRequestError") {
     res.status(400).json({ error: "Database operation failed", requestId: req.requestId ?? null });
     return;
