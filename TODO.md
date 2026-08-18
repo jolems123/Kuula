@@ -19,6 +19,12 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 - [x] Transaction API responses explicitly whitelist customer-safe fields.
 - [x] Railway is the single production deployment authority; GitHub Actions no longer SSH-deploys a second production copy.
 - [x] Android removes contacts, SMS, call-log and location permissions and blocks general cleartext traffic.
+- [x] Officer/manager customer and credit-case reads are assignment-scoped; admin retains the global control plane.
+- [x] Frontend staff navigation is role-aware so officers cannot browse treasury/system screens and managers cannot browse admin-only control-plane screens.
+- [x] Legacy borrower role `user` is normalized to the canonical runtime role `customer`, while database compatibility is preserved during the transition.
+- [x] Customer reporting accepts both `user` and `customer` persisted roles so no borrower disappears during a future controlled role migration.
+- [x] Wallet/payment-method, refinance/credit-limit, promotion and unapproved autopay/repayment-plan deep links are removed from the live production journey through canonical redirects.
+- [x] The remaining Supabase compatibility shim is dependency-free at runtime and cannot pull the Supabase client into the application bundle.
 
 ## Required before enabling real money
 
@@ -34,8 +40,14 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 - [ ] Enable branch protection/ruleset on `main`: pull request required, required status checks, no force pushes, and at least one approval for production changes.
 - [ ] Keep `REAL_MONEY_ENABLED=false` until all items above are complete.
 
+## Controlled cleanup after CI/install tooling is available
+
+- [ ] Regenerate the root `package-lock.json`, then remove the dormant `@supabase/supabase-js` package and compatibility module after confirming there are no remaining imports.
+- [ ] During that same verified dependency pass, remove root-level backend-only dependencies that are no longer used by frontend scripts/tests.
+- [ ] Decide whether to migrate persisted borrower roles from legacy `user` to `customer`. Runtime already normalizes both, so this is not required for launch and must be a tested data migration rather than an ad-hoc update.
+- [ ] Remove the dormant Wallet model/table only after a migration proves no historical/reporting code needs it. Customer wallet functionality is already disabled in production.
+
 ## Product polish that is not a launch blocker
 
 - [ ] Add audited Keychain/Android Keystore-backed refresh-token persistence if persistent native login is desired; current native behavior intentionally requires login after a cold restart.
-- [ ] Remove the dormant Supabase compatibility package/module after the frontend dependency lockfile is intentionally regenerated and verified.
 - [ ] Consider asynchronous Smile ID callbacks and persisted provider job history if KYC throughput grows enough to require it.

@@ -21,7 +21,70 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-loan-rejection": "loan-history",
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
+
+  // Kuula is a credit/loan platform, not a stored-value wallet. Historical
+  // wallet and payment-method screens remain in source only for archive/design
+  // reference and are not part of the production customer journey.
+  "wallet": "home",
+  "add-payment-method": "home",
+  "payment-methods-list": "home",
+
+  // These concepts do not yet have an approved production policy/backend flow.
+  // Redirect old bookmarks and stale navigation rather than exposing mock or
+  // partially implemented financial functionality to customers.
+  "customer-available-promotions": "home",
+  "customer-claim-promotion": "home",
+  "customer-autopay-setup": "make-payment",
+  "customer-autopay-settings": "make-payment",
+  "customer-autopay-history": "loan-history",
+  "customer-autopay-failure": "make-payment",
+  "customer-autopay-link": "make-payment",
+  "customer-autopay-notification": "make-payment",
+  "customer-repayment-offer": "make-payment",
+  "customer-accept-plan": "make-payment",
 };
+
+const OFFICER_SCREEN_ALLOWLIST = new Set([
+  "admin-officer-dashboard",
+  "admin-loan-apps",
+  "admin-loan-app-detail",
+  "admin-customer-list",
+  "admin-customer-detail",
+  "admin-support-inbox",
+  "admin-tickets",
+  "admin-ticket-detail",
+  "admin-ticket-reply",
+  "admin-support-staff-dashboard",
+]);
+
+const ADMIN_ONLY_SCREENS = new Set([
+  "admin-partner-financing",
+  "admin-all-transactions",
+  "admin-transaction-detail",
+  "admin-payment-processing",
+  "admin-failed-transactions",
+  "admin-settings",
+  "admin-loan-products",
+  "admin-interest-settings",
+  "admin-service-fee",
+  "admin-mtn-api",
+  "admin-airtel-api",
+  "admin-notif-templates",
+  "admin-staff",
+  "admin-staff-permissions",
+  "admin-auto-approve-settings",
+]);
+
+function staffHome(role: string): string {
+  return role === "officer" ? "/admin-officer-dashboard" : "/admin-dashboard";
+}
+
+function staffCanOpenScreen(screenId: string, role: string): boolean {
+  if (role === "admin") return true;
+  if (role === "officer") return OFFICER_SCREEN_ALLOWLIST.has(screenId);
+  if (role === "manager") return !ADMIN_ONLY_SCREENS.has(screenId);
+  return false;
+}
 
 function useSessionBootstrap(): boolean {
   const { state, login } = useAppContext();
@@ -79,15 +142,18 @@ function ScreenLoader() {
   );
 }
 
-function Guard({ access, children }: { access: ScreenAccess; children: React.ReactNode }) {
+function Guard({ access, screenId, children }: { access: ScreenAccess; screenId: string; children: React.ReactNode }) {
   const { state } = useAppContext();
   const location = useLocation();
   const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
 
   if (access === "public") return <>{children}</>;
   if (!state.session.isAuthenticated) return <Navigate to="/welcome" replace state={{ from: location }} />;
-  if (access === "admin" && !isStaff) return <Navigate to="/home" replace />;
-  if (access === "customer" && isStaff) return <Navigate to="/admin-dashboard" replace />;
+  if (access === "admin") {
+    if (!isStaff) return <Navigate to="/home" replace />;
+    if (!staffCanOpenScreen(screenId, state.role)) return <Navigate to={staffHome(state.role)} replace />;
+  }
+  if (access === "customer" && isStaff) return <Navigate to={staffHome(state.role)} replace />;
   return <>{children}</>;
 }
 
@@ -107,7 +173,7 @@ function RootRedirect() {
     return <Navigate to="/welcome" replace />;
   }
   const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
-  return <Navigate to={isStaff ? "/admin-dashboard" : "/home"} replace />;
+  return <Navigate to={isStaff ? staffHome(state.role) : "/home"} replace />;
 }
 
 function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
@@ -134,12 +200,12 @@ function Shell() {
           <Suspense fallback={<ScreenLoader />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
-              <Route path="/admin-partner-financing" element={<Guard access="admin"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
+              <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
               {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
-                <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer"><Navigate to={`/${to}`} replace /></Guard>} />
+                <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer" screenId={from}><Navigate to={`/${to}`} replace /></Guard>} />
               ))}
               {REGISTERED_SCREENS.filter(({ id }) => !LEGACY_ROUTE_REDIRECTS[id] && id !== "admin-partner-financing").map(({ id, access, Component }) => (
-                <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)}><ScreenRoute Component={Component} /></Guard>} />
+                <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)} screenId={id}><ScreenRoute Component={Component} /></Guard>} />
               ))}
               <Route path="*" element={<RootRedirect />} />
             </Routes>

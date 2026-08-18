@@ -3,10 +3,32 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = Router();
-const STAFF_ROLES = new Set(["admin", "manager", "officer"]);
+
+async function applicationScope(req: Request) {
+  const role = req.user!.role;
+  const userId = req.user!.userId;
+
+  if (role === "admin") return {};
+  if (role === "officer" || role === "manager") {
+    const rows = await prisma.$queryRaw<Array<{ application_id: string }>>`
+      SELECT DISTINCT c.application_id
+      FROM credit_cases c
+      JOIN approval_assignments aa
+        ON aa.application_id = c.application_id
+       AND aa.level = c.current_level
+       AND aa.status = 'active'
+      WHERE c.current_assignee_id = ${userId}::uuid
+        AND aa.assignee_id = ${userId}::uuid
+        AND c.status NOT IN ('completed', 'rejected')
+    `;
+    return { id: { in: rows.map((row) => row.application_id) } };
+  }
+
+  return { applicantId: userId };
+}
 
 router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
-  const where = STAFF_ROLES.has(req.user!.role) ? {} : { applicantId: req.user!.userId };
+  const where = await applicationScope(req);
   const applications = await prisma.loanApplication.findMany({
     where,
     include: {

@@ -3,6 +3,7 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 
 const router = Router();
+const CUSTOMER_ROLES = ["user", "customer"];
 
 function mapApplication(a: any) {
   return {
@@ -24,7 +25,7 @@ function mapApplication(a: any) {
 
 router.get("/stats", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
   const [customerCount, pendingCount, overdueCount, recentApps, allRecent] = await Promise.all([
-    prisma.user.count({ where: { role: "user", deletedAt: null } }),
+    prisma.user.count({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null } }),
     prisma.loanApplication.count({ where: { status: "pending" } }),
     prisma.loanApplication.count({ where: { status: "overdue" } }),
     prisma.loanApplication.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
@@ -54,7 +55,7 @@ router.get("/stats", authenticateToken, requirePermissions("report.view"), async
 router.get("/customers", authenticateToken, requirePermissions("customer.view"), async (req: Request, res: Response) => {
   const take = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
   const customers = await prisma.user.findMany({
-    where: { role: "user", deletedAt: null },
+    where: { role: { in: CUSTOMER_ROLES }, deletedAt: null },
     select: {
       id: true,
       fullName: true,
@@ -87,7 +88,7 @@ async function buildInvestorReportPayload() {
     prisma.transaction.findMany({ select: { type: true, amount: true, status: true, createdAt: true } }),
     prisma.loanApplication.findMany({ select: { amount: true, interest: true, status: true, createdAt: true } }),
     prisma.repayment.findMany({ select: { total: true, amountPaid: true, status: true } }),
-    prisma.user.findMany({ where: { role: "user", deletedAt: null }, select: { verified: true, createdAt: true } }),
+    prisma.user.findMany({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null }, select: { verified: true, createdAt: true } }),
   ]);
 
   const number = (value: any) => Number(value) || 0;
