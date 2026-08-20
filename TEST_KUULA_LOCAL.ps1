@@ -41,6 +41,34 @@ Assert-Status "Credit network catalog" {
   if ($overview.partners.Count -lt 2) { throw "Expected TibaPay and SiliFi partner records" }
 }
 
+Assert-Status "Support recipient is server-controlled" {
+  $headers = @{ Authorization = "Bearer $($customer.token)" }
+  $me = Invoke-RestMethod -Uri "http://localhost:3000/api/auth/me" -Headers $headers
+  $body = @{ content = "Local smoke support routing check"; receiverId = $me.user.id } | ConvertTo-Json -Compress
+  $sent = Invoke-RestMethod -Uri "http://localhost:3000/api/messages" -Method Post -Headers $headers -ContentType "application/json" -Body $body
+  if ($sent.message.receiverId -eq $me.user.id) { throw "Customer-controlled receiverId was honored" }
+  if ($sent.message.senderId -ne $me.user.id) { throw "Support message sender mismatch" }
+  $thread = Invoke-RestMethod -Uri "http://localhost:3000/api/messages" -Headers $headers
+  if (-not ($thread.messages | Where-Object { $_.id -eq $sent.message.id })) { throw "Persisted support message missing from customer thread" }
+}
+
+Assert-Status "Notification preferences persist" {
+  $headers = @{ Authorization = "Bearer $($customer.token)" }
+  $initial = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Headers $headers
+  if ($null -eq $initial.preferences) { throw "Notification preferences missing" }
+
+  $body = @{ repaymentReminders = $false; overdueAlerts = $true } | ConvertTo-Json -Compress
+  $updated = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Method Put -Headers $headers -ContentType "application/json" -Body $body
+  if ($updated.preferences.repaymentReminders -ne $false) { throw "Repayment preference was not saved" }
+  if ($updated.preferences.securityAlerts -ne $true) { throw "Security alerts must stay enabled" }
+
+  $reloaded = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Headers $headers
+  if ($reloaded.preferences.repaymentReminders -ne $false) { throw "Notification preference did not persist" }
+
+  $restore = @{ repaymentReminders = $true } | ConvertTo-Json -Compress
+  Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Method Put -Headers $headers -ContentType "application/json" -Body $restore | Out-Null
+}
+
 $challenge = $null
 Assert-Status "Admin password challenge" {
   $challenge = Invoke-RestMethod -Uri "http://localhost:3000/api/auth/admin-login" -Method Post -ContentType "application/json" -Body '{"email":"admin-local@kuula.test","password":"LocalAdminPassword2026!"}'

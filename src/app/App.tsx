@@ -22,12 +22,31 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
 
+  // The current application flow collects purpose, affordability and the
+  // supported MTN/Airtel rail in one server-compatible form. Older separate
+  // purpose/disbursement screens contained unsaved selections and fake account data.
+  "loan-purpose": "loan-apply",
+  "loan-disbursement": "loan-apply",
+
+  // The active backend currently stores one facility repayment obligation and
+  // allows partial payments. The old six-installment schedule was illustrative,
+  // not a contractual server schedule, so route it to authoritative credit detail.
+  "loan-schedule": "loan-detail",
+
   // Kuula is a credit/loan platform, not a stored-value wallet. Historical
   // wallet and payment-method screens remain in source only for archive/design
   // reference and are not part of the production customer journey.
   "wallet": "home",
   "add-payment-method": "home",
   "payment-methods-list": "home",
+
+  // Prototype ticket/history screens contained fabricated agents and ticket data.
+  // Keep one real support surface backed by /api/messages.
+  "customer-support-chat": "user-support-chat",
+  "customer-chat-history": "user-support-chat",
+  "customer-create-ticket": "user-support-chat",
+  "customer-ticket-status": "user-support-chat",
+  "customer-ticket-details": "user-support-chat",
 
   // These concepts do not yet have an approved production policy/backend flow.
   // Redirect old bookmarks and stale navigation rather than exposing mock or

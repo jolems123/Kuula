@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
-import { useTranslation } from "react-i18next";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -23,7 +22,6 @@ function fmtDateTime(iso: string | null) {
 
 export function LoanApprovalScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
-  const { t } = useTranslation();
   const token = state.session.token;
   const useServer = env.USE_API && !!token;
   const [app, setApp] = useState<LoanApplication | null>(null);
@@ -34,14 +32,14 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       const { applications } = await api.getApplications(token);
       if (applications.length) setApp(applications[0]);
     } catch {
-      // Preserve the last provider state during a temporary network failure.
+      // Preserve the last known server state during a temporary network failure.
     }
   }, [useServer, token]);
 
   useEffect(() => {
     if (!useServer) return;
-    refresh();
-    const timer = setInterval(refresh, 4000);
+    void refresh();
+    const timer = setInterval(() => { void refresh(); }, 4000);
     return () => clearInterval(timer);
   }, [useServer, refresh]);
 
@@ -55,51 +53,57 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
   const status: Status = useServer ? toDisplayStatus(app?.status) : "approved";
   const phone = state.user?.phone ?? "";
+  const isDirectPayee = Boolean(app?.partnerFinancingRequestId || app?.payeeName || app?.partnerName);
+  const settlementTarget = app?.payeeName || app?.partnerName || "the verified partner";
 
   const config = {
     pending: {
       Icon: Clock,
-      color: "#F59E0B",
-      bg: "#FFF7ED",
-      border: "#FED7AA",
+      color: "#B7791F",
+      bg: "#FFF9E8",
+      border: "#F6E4A5",
       title: "Application Under Review",
-      sub: "Your application is being verified. This usually takes 2–5 minutes.",
-      badge: { text: "Pending Review", color: "#92400E", bg: "#FEF3C7" },
+      sub: "Kuula is reviewing your identity, affordability and supporting information. We will update you here when the review changes.",
+      badge: { text: "Pending Review", color: "#7C5B14", bg: "#FFF1B8" },
     },
     offered: {
       Icon: FileText,
-      color: "#8B5CF6",
-      bg: "#F5F3FF",
-      border: "#DDD6FE",
-      title: "Loan Approved — Action Required",
-      sub: "Review and accept your loan agreement to receive your funds.",
-      badge: { text: "Awaiting Your Acceptance", color: "#5B21B6", bg: "#EDE9FE" },
+      color: "#0B5E3A",
+      bg: "#EEF7F2",
+      border: "#C9E2D4",
+      title: "Credit Approved — Action Required",
+      sub: "Review and accept your credit agreement. The agreement shows the approved amount, repayment terms and settlement destination.",
+      badge: { text: "Awaiting Your Acceptance", color: "#064A2E", bg: "#DDEFE5" },
     },
     disbursing: {
       Icon: Send,
       color: "#2563EB",
       bg: "#EFF6FF",
       border: "#BFDBFE",
-      title: "Sending Your Funds",
-      sub: "Your mobile-money disbursement is processing. We will confirm here after the provider completes it.",
-      badge: { text: "Disbursement Pending", color: "#1E40AF", bg: "#DBEAFE" },
+      title: isDirectPayee ? "Paying the Verified Partner" : "Sending Your Funds",
+      sub: isDirectPayee
+        ? `Kuula is processing payment to ${settlementTarget}. We will confirm here only after the payment provider settles it.`
+        : "Your Mobile Money disbursement is processing. We will confirm here only after the payment provider settles it.",
+      badge: { text: "Settlement Pending", color: "#1E40AF", bg: "#DBEAFE" },
     },
     approved: {
       Icon: CheckCircle,
-      color: "#12B984",
-      bg: "#F0FDF4",
-      border: "#A7F3D0",
-      title: "Loan Disbursed! 🎉",
-      sub: "The mobile-money provider has confirmed that your loan was sent successfully.",
-      badge: { text: "Disbursed", color: "#065F46", bg: "#DCFCE7" },
+      color: "#0B5E3A",
+      bg: "#EEF7F2",
+      border: "#BFE1CD",
+      title: isDirectPayee ? "Partner Payment Confirmed" : "Disbursement Confirmed",
+      sub: isDirectPayee
+        ? `The payment provider has confirmed settlement to ${settlementTarget}.`
+        : "The payment provider has confirmed that your Mobile Money disbursement settled successfully.",
+      badge: { text: "Settled", color: "#064A2E", bg: "#DDEFE5" },
     },
     rejected: {
       Icon: XCircle,
-      color: "#EF4444",
-      bg: "#FEF2F2",
+      color: "#B42318",
+      bg: "#FEF3F2",
       border: "#FECACA",
       title: "Application Not Approved",
-      sub: "We're unable to approve this application at this time. You can reapply after 30 days.",
+      sub: "Kuula cannot approve this application at this time. Review your Credit Pass and eligibility information before applying again.",
       badge: { text: "Not Approved", color: "#991B1B", bg: "#FEE2E2" },
     },
   }[status];
@@ -107,14 +111,14 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
   const { Icon } = config;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0, alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9", paddingTop: 0, alignItems: "center" }}>
       <div style={{ width: "100%", background: config.bg, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, borderBottom: `1px solid ${config.border}` }}>
-        <div style={{ width: 88, height: 88, borderRadius: 44, background: "white", boxShadow: `0 8px 24px ${config.color}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 88, height: 88, borderRadius: 44, background: "white", boxShadow: `0 8px 24px ${config.color}24`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon size={52} color={config.color} strokeWidth={1.5} />
         </div>
         <div style={{ textAlign: "center" }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1F2937", margin: 0 }}>{config.title}</h1>
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 8, lineHeight: 1.6 }}>{config.sub}</p>
+          <p style={{ fontSize: 13, color: "#5F6F66", marginTop: 8, lineHeight: 1.6 }}>{config.sub}</p>
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: config.badge.color, background: config.badge.bg, padding: "4px 16px", borderRadius: 20 }}>
           ● {config.badge.text}
@@ -123,18 +127,24 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
       <div style={{ width: "100%", flex: 1, overflowY: "auto", padding: "20px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
         {status === "approved" && (
-          <div style={{ background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
-            <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Amount Disbursed</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#D9531F", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
-            <p style={{ fontSize: 12, color: "#6B7280", margin: "4px 0 0" }}>{phone ? `Provider-confirmed payment to ${phone}` : "Provider-confirmed mobile-money payment"}</p>
+          <div style={{ background: "#EEF7F2", borderRadius: 16, padding: "16px", border: "1px solid #C9E2D4" }}>
+            <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Amount Settled</p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
+            <p style={{ fontSize: 12, color: "#5F6F66", margin: "4px 0 0" }}>
+              {isDirectPayee ? `Provider-confirmed payment to ${settlementTarget}` : phone ? `Provider-confirmed payment to ${phone}` : "Provider-confirmed Mobile Money payment"}
+            </p>
           </div>
         )}
 
         {status === "offered" && (
-          <div style={{ background: "linear-gradient(135deg, #F5F3FF, #EDE9FE)", borderRadius: 16, padding: "16px", border: "1px solid #DDD6FE" }}>
-            <p style={{ fontSize: 12, color: "#5B21B6", fontWeight: 600, margin: "0 0 4px" }}>Approved Amount</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#4C1D95", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
-            <p style={{ fontSize: 12, color: "#6D28D9", margin: "4px 0 0" }}>Accept your agreement to request payment to mobile money{phone ? ` (${phone})` : ""}.</p>
+          <div style={{ background: "#EEF7F2", borderRadius: 16, padding: "16px", border: "1px solid #C9E2D4" }}>
+            <p style={{ fontSize: 12, color: "#064A2E", fontWeight: 600, margin: "0 0 4px" }}>Approved Amount</p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
+            <p style={{ fontSize: 12, color: "#37644F", margin: "4px 0 0" }}>
+              {isDirectPayee
+                ? `Accept the agreement to request settlement to ${settlementTarget}.`
+                : `Accept the agreement to request Mobile Money disbursement${phone ? ` to ${phone}` : ""}.`}
+            </p>
           </div>
         )}
 
@@ -142,7 +152,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
           <div style={{ background: "#EFF6FF", borderRadius: 16, padding: "16px", border: "1px solid #BFDBFE" }}>
             <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: "0 0 4px" }}>Processing Amount</p>
             <p style={{ fontSize: 32, fontWeight: 900, color: "#1D4ED8", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
-            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}>Do not submit the offer again. This screen refreshes automatically when the provider responds.</p>
+            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}>Do not submit the offer again. This screen refreshes automatically when the payment provider responds.</p>
           </div>
         )}
 
@@ -162,31 +172,31 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
         {status === "rejected" && (
           <div style={{ background: "#FEF2F2", borderRadius: 12, padding: "14px", border: "1px solid #FECACA" }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", margin: "0 0 6px" }}>Why was my application declined?</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", margin: "0 0 6px" }}>What can I do next?</p>
             <p style={{ fontSize: 12, color: "#B91C1C", margin: 0, lineHeight: 1.6 }}>
-              Common reasons include insufficient credit history, unverified identity, or exceeding your current credit limit.
+              Check your Credit Pass for identity, credit-data and repayment signals. A future application is always reassessed using your current eligibility and affordability.
             </p>
           </div>
         )}
       </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6", display: "flex", gap: 10 }}>
-        <button onClick={() => onNavigate("home")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F4F6", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #E8EEEA", display: "flex", gap: 10 }}>
+        <button onClick={() => onNavigate("home")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <Home size={16} /> Home
         </button>
         {status === "offered" && (
-          <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #7C3AED, #5B21B6)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <FileText size={16} /> Review &amp; Accept Terms
           </button>
         )}
         {status === "approved" && (
-          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <FileText size={16} /> View Loan
+          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <FileText size={16} /> View Credit
           </button>
         )}
         {status === "rejected" && (
-          <button onClick={() => onNavigate("loan-apply")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
-            Try Again
+          <button onClick={() => onNavigate("credit-dashboard")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+            View Credit Pass
           </button>
         )}
       </div>

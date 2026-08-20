@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { localQuote } from "../../lib/pricing";
@@ -7,6 +7,9 @@ import { setLoanDraft } from "../../lib/selection";
 
 interface Props { onNavigate: (screen: string) => void; }
 function formatUGX(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG"); }
+
+const MIN_AMOUNT = 50_000;
+const PRODUCT_MAX_AMOUNT = 2_000_000;
 
 const METHODS = [
   { id: "MTN MoMo", label: "MTN MoMo", icon: "📱" },
@@ -25,26 +28,39 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     { key: "Home Repair", label: t("loanPurpose.homeRepair") },
     { key: "Other", label: t("loanPurpose.other") },
   ];
-  const [amount, setAmount] = useState(500000);
+  const [amount, setAmount] = useState(MIN_AMOUNT);
   const [term, setTerm] = useState(90);
   const [purpose, setPurpose] = useState("Business");
   const [method, setMethod] = useState("MTN MoMo");
-  const [income, setIncome] = useState(1_000_000);
-  const [expenses, setExpenses] = useState(300_000);
+  const [income, setIncome] = useState(0);
+  const [expenses, setExpenses] = useState(0);
   const [existingDebt, setExistingDebt] = useState(0);
   const [error, setError] = useState("");
 
-  const MIN = 50000;
-  const MAX = Math.max(MIN, Math.min(2_000_000, state.loan?.availableCredit || 2_000_000));
+  const availableCredit = Math.max(0, state.loan?.availableCredit ?? 0);
+  const maxEligibleAmount = Math.min(PRODUCT_MAX_AMOUNT, availableCredit);
+  const canApply = maxEligibleAmount >= MIN_AMOUNT;
+  const rangeMax = Math.max(MIN_AMOUNT, maxEligibleAmount);
+
+  useEffect(() => {
+    if (!canApply) {
+      setAmount(MIN_AMOUNT);
+      return;
+    }
+    setAmount((current) => Math.min(Math.max(current, MIN_AMOUNT), maxEligibleAmount));
+  }, [canApply, maxEligibleAmount]);
+
   const quote = localQuote(amount, term, 0);
 
   const continueToReview = () => {
     setError("");
+    if (!canApply) { setError("No Growth Line is currently available. Complete the required Credit Pass steps and try again when Kuula shows available credit."); return; }
+    if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within your current Growth Line."); return; }
     if (!Number.isFinite(income) || income <= 0) { setError("Enter your average monthly income."); return; }
     if (!Number.isFinite(expenses) || expenses < 0) { setError("Monthly expenses cannot be negative."); return; }
     if (!Number.isFinite(existingDebt) || existingDebt < 0) { setError("Existing monthly debt payments cannot be negative."); return; }
     if (expenses + existingDebt >= income) {
-      setError("Your expenses and existing debt leave no disposable monthly income for a new loan.");
+      setError("Your expenses and existing debt leave no disposable monthly income for new credit.");
       return;
     }
     setLoanDraft({
@@ -78,11 +94,18 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ paddingBottom: 120 }}>
-        <div className="p-5 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+        {!canApply && (
+          <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}>
+            <p style={{ fontSize: 13, fontWeight: 800, color: "#6B5414", margin: "0 0 4px" }}>No Growth Line available yet</p>
+            <p style={{ fontSize: 11.5, color: "#776628", margin: 0, lineHeight: 1.5 }}>Kuula will not accept a new application until your Credit Pass shows at least {formatUGX(MIN_AMOUNT)} available. Check identity verification, credit evidence and any existing facility.</p>
+          </div>
+        )}
+
+        <div className="p-5 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", opacity: canApply ? 1 : 0.6 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.loanAmount").toUpperCase()}</label>
-          <div className="flex items-baseline gap-2 mt-2"><span style={{ fontSize: 15, fontWeight: 700, color: "#5D6C64" }}>UGX</span><input type="number" value={amount} onChange={(e) => { const v = Number(e.target.value); if (v >= MIN && v <= MAX) setAmount(v); }} style={{ fontSize: 34, fontWeight: 800, color: "#0B5E3A", border: "none", outline: "none", background: "transparent", width: "100%" }} /></div>
-          <input type="range" min={MIN} max={MAX} step={50000} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: "100%", accentColor: "#0B5E3A", marginTop: 12 }} />
-          <div className="flex justify-between"><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(MIN)}</span><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(MAX)}</span></div>
+          <div className="flex items-baseline gap-2 mt-2"><span style={{ fontSize: 15, fontWeight: 700, color: "#5D6C64" }}>UGX</span><input disabled={!canApply} type="number" value={amount} onChange={(e) => { const v = Number(e.target.value); if (canApply && v >= MIN_AMOUNT && v <= maxEligibleAmount) setAmount(v); }} style={{ fontSize: 34, fontWeight: 800, color: "#0B5E3A", border: "none", outline: "none", background: "transparent", width: "100%" }} /></div>
+          <input disabled={!canApply} type="range" min={MIN_AMOUNT} max={rangeMax} step={50000} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: "100%", accentColor: "#0B5E3A", marginTop: 12 }} />
+          <div className="flex justify-between"><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(MIN_AMOUNT)}</span><span style={{ fontSize: 11, color: "#9CA3AF" }}>{canApply ? formatUGX(maxEligibleAmount) : "Not available"}</span></div>
         </div>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
@@ -97,16 +120,17 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <p style={{ fontSize: 13, fontWeight: 800, color: "#13251C", margin: "0 0 4px" }}>Affordability information</p>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>Kuula uses these figures together with verified credit evidence. Final eligibility is recalculated by the server before approval and before disbursement.</p>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>Enter your actual current figures. Kuula uses them together with verified credit evidence, and the server recalculates eligibility before approval and again before disbursement.</p>
           <div style={{ display: "grid", gap: 14 }}>
-            {moneyInput("Average monthly income", income, setIncome, "Your typical monthly income before this new loan.")}
-            {moneyInput("Monthly living & business expenses", expenses, setExpenses, "Regular monthly expenses excluding loan repayments.")}
-            {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Set to zero only if you have no existing monthly debt payments.")}
+            {moneyInput("Average monthly income", income, setIncome, "Enter your typical monthly income before this new credit.")}
+            {moneyInput("Monthly living & business expenses", expenses, setExpenses, "Enter your regular monthly expenses excluding loan repayments.")}
+            {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Use zero only if you have no existing monthly debt repayments.")}
           </div>
         </div>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.disbursementMethod").toUpperCase()}</label>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>For customer cash credit, Kuula sends only to your verified account phone. Restricted-purpose credit is paid directly to the verified partner shown in your agreement.</p>
           <div className="flex flex-col gap-2 mt-3">{METHODS.map((m) => <button key={m.id} onClick={() => setMethod(m.id)} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: method === m.id ? "#EDF8F2" : "#F9FAFB", border: method === m.id ? "1.5px solid #B7DEC9" : "1.5px solid transparent", textAlign: "left" }}><span style={{ fontSize: 20 }}>{m.icon}</span><span style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", flex: 1 }}>{m.label}</span><span style={{ width: 20, height: 20, borderRadius: 10, border: method === m.id ? "6px solid #0B5E3A" : "2px solid #D1D5DB" }} /></button>)}</div>
         </div>
 
@@ -119,7 +143,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3" style={{ background: "white", borderTop: "1px solid #E8EEEA" }}>
         {error && <p style={{ fontSize: 11.5, color: "#B91C1C", textAlign: "center", marginBottom: 8 }}>{error}</p>}
-        <button onClick={continueToReview} className="kuula-primary" style={{ width: "100%", height: 52 }}>Review Application</button>
+        <button disabled={!canApply} onClick={continueToReview} className="kuula-primary" style={{ width: "100%", height: 52, opacity: canApply ? 1 : 0.55, cursor: canApply ? "pointer" : "not-allowed" }}>Review Application</button>
       </div>
     </div>
   );

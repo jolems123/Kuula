@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import prisma from "./prisma.js";
+import { startRepaymentReminderSweeper } from "./repayment-reminders.js";
 
 const DEFAULT_STALE_MINUTES = 30;
 
@@ -48,6 +49,7 @@ export async function flagStalePaymentTransactions(now = new Date()): Promise<nu
 
 export function startReconciliationSweeper(): () => void {
   const intervalMs = 5 * 60_000;
+  const stopRepaymentReminderSweeper = startRepaymentReminderSweeper();
   const timer = setInterval(() => {
     flagStalePaymentTransactions().then((count) => {
       if (count > 0) console.warn(JSON.stringify({ event: "reconciliation.stale_flagged", count }));
@@ -56,5 +58,8 @@ export function startReconciliationSweeper(): () => void {
     });
   }, intervalMs);
   timer.unref();
-  return () => clearInterval(timer);
+  return () => {
+    clearInterval(timer);
+    stopRepaymentReminderSweeper();
+  };
 }
