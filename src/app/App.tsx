@@ -29,6 +29,14 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "add-payment-method": "home",
   "payment-methods-list": "home",
 
+  // Prototype ticket/history screens contained fabricated agents and ticket data.
+  // Keep one real support surface backed by /api/messages.
+  "customer-support-chat": "user-support-chat",
+  "customer-chat-history": "user-support-chat",
+  "customer-create-ticket": "user-support-chat",
+  "customer-ticket-status": "user-support-chat",
+  "customer-ticket-details": "user-support-chat",
+
   // These concepts do not yet have an approved production policy/backend flow.
   // Redirect old bookmarks and stale navigation rather than exposing mock or
   // partially implemented financial functionality to customers.
