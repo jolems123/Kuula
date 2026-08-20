@@ -1,78 +1,124 @@
-import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useSession } from "../../context/AppContext";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  type NotificationPreferences,
+} from "../../api/notification-preferences";
 
 interface Props { onNavigate: (s: string) => void; }
 
-const GROUPS = [
-  {
-    title: "Loan Notifications",
-    items: [
-      { key: "loan_approved", label: "Loan Approved/Rejected", sub: "When your application gets a decision" },
-      { key: "loan_due", label: "Payment Due Reminders", sub: "3 days before due date" },
-      { key: "loan_overdue", label: "Overdue Alerts", sub: "When a payment is past due" },
-      { key: "loan_disbursed", label: "Loan Disbursement", sub: "When loan is sent to MoMo" },
-    ],
-  },
-  {
-    title: "Savings Notifications",
-    items: [
-      { key: "savings_deposit", label: "Deposit Confirmations", sub: "When money is added to savings" },
-      { key: "savings_interest", label: "Interest Credited", sub: "Monthly interest notifications" },
-      { key: "savings_goal", label: "Goal Milestones", sub: "When you reach 25%, 50%, 75%, 100%" },
-    ],
-  },
-  {
-    title: "Security Alerts",
-    items: [
-      { key: "login_alert", label: "New Login Alert", sub: "When account is accessed from new device" },
-      { key: "password_change", label: "Password Changed", sub: "Confirm account changes" },
-    ],
-  },
-  {
-    title: "Channels",
-    items: [
-      { key: "sms", label: "SMS Notifications", sub: "To +256 770 123 456" },
-      { key: "push", label: "Push Notifications", sub: "In-app alerts" },
-      { key: "email", label: "Email Notifications", sub: "To amara.nakato@gmail.com" },
-    ],
-  },
+type EditablePreference = "loanDecision" | "repaymentReminders" | "overdueAlerts" | "disbursementUpdates";
+
+const ITEMS: Array<{ key: EditablePreference; label: string; sub: string }> = [
+  { key: "loanDecision", label: "Credit decision updates", sub: "When your application is approved, returned, or rejected" },
+  { key: "repaymentReminders", label: "Repayment reminders", sub: "Before an upcoming repayment due date" },
+  { key: "overdueAlerts", label: "Overdue alerts", sub: "Daily while a repayment remains overdue" },
+  { key: "disbursementUpdates", label: "Disbursement updates", sub: "When Kuula sends or settles approved credit" },
 ];
 
-export function NotificationSettingsScreen({ onNavigate }: Props) {
-  const [settings, setSettings] = useState<Record<string, boolean>>(
-    Object.fromEntries(GROUPS.flatMap((g) => g.items.map((i) => [i.key, true])))
-  );
+const DEFAULTS: NotificationPreferences = {
+  loanDecision: true,
+  repaymentReminders: true,
+  overdueAlerts: true,
+  disbursementUpdates: true,
+  securityAlerts: true,
+};
 
-  const toggle = (k: string) => setSettings((s) => ({ ...s, [k]: !s[k] }));
+export function NotificationSettingsScreen({ onNavigate }: Props) {
+  const session = useSession();
+  const [settings, setSettings] = useState<NotificationPreferences>(DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<EditablePreference | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!session.token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const preferences = await getNotificationPreferences(session.token);
+        if (active) setSettings(preferences);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Could not load notification settings");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [session.token]);
+
+  const toggle = async (key: EditablePreference) => {
+    if (!session.token || saving) return;
+    const previous = settings;
+    const nextValue = !settings[key];
+    setSettings({ ...settings, [key]: nextValue });
+    setSaving(key);
+    setError("");
+    try {
+      const persisted = await updateNotificationPreferences(session.token, { [key]: nextValue });
+      setSettings(persisted);
+    } catch (err) {
+      setSettings(previous);
+      setError(err instanceof Error ? err.message : "Could not save notification settings");
+    } finally {
+      setSaving(null);
+    }
+  };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
-        <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "#0B5E3A" }}>
+        <button aria-label="Back to settings" onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
         <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>Notification Settings</span>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 30px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {GROUPS.map((group) => (
-          <div key={group.title} style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
-            <div style={{ padding: "12px 16px", background: "#F8FAFC", borderBottom: "1px solid #F3F4F6" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5 }}>{group.title}</span>
-            </div>
-            {group.items.map((item, i) => (
-              <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: i < group.items.length - 1 ? "1px solid #F9FAFB" : "none" }}>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>{item.label}</p>
-                  <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>{item.sub}</p>
-                </div>
-                <button onClick={() => toggle(item.key)} style={{ width: 46, height: 26, borderRadius: 13, background: settings[item.key] ? "#F4612B" : "#D1D5DB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: settings[item.key] ? "flex-end" : "flex-start", padding: 3, transition: "all 0.2s", flexShrink: 0 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 10, background: "white" }} />
-                </button>
-              </div>
-            ))}
+        {error && (
+          <div role="alert" style={{ padding: "11px 13px", borderRadius: 12, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>
+            {error}
           </div>
-        ))}
+        )}
+
+        <div style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
+          <div style={{ padding: "12px 16px", background: "#F3F7F5", borderBottom: "1px solid #E7EFEA" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#52645B", textTransform: "uppercase", letterSpacing: 0.5 }}>Credit notifications</span>
+          </div>
+          {ITEMS.map((item, i) => (
+            <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: i < ITEMS.length - 1 ? "1px solid #F3F5F4" : "none" }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>{item.label}</p>
+                <p style={{ fontSize: 11, color: "#7A8B82", margin: "2px 0 0" }}>{item.sub}</p>
+              </div>
+              <button
+                aria-label={`${settings[item.key] ? "Disable" : "Enable"} ${item.label}`}
+                aria-pressed={settings[item.key]}
+                disabled={loading || saving !== null}
+                onClick={() => { void toggle(item.key); }}
+                style={{ width: 46, height: 26, borderRadius: 13, background: settings[item.key] ? "#0B5E3A" : "#CBD5D0", border: "none", cursor: loading || saving ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: settings[item.key] ? "flex-end" : "flex-start", padding: 3, transition: "all 0.2s", flexShrink: 0, opacity: loading ? 0.6 : 1 }}
+              >
+                <div style={{ width: 20, height: 20, borderRadius: 10, background: "white" }} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: "white", borderRadius: 16, padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "#EEF7F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <LockKeyhole size={17} color="#0B5E3A" />
+          </div>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}>Security alerts stay on</p>
+            <p style={{ fontSize: 11, lineHeight: 1.5, color: "#6B7D73", margin: "3px 0 0" }}>Kuula may send mandatory account-security messages for sign-in, password, identity, and fraud-protection events. These cannot be disabled.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
