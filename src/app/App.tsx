@@ -28,6 +28,11 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
 
+  // The active backend currently stores one facility repayment obligation and
+  // allows partial payments. The old six-installment schedule was illustrative,
+  // not a contractual server schedule, so route it to authoritative credit detail.
+  "loan-schedule": "loan-detail",
+
   // Kuula is a credit/loan platform, not a stored-value wallet. Historical
   // wallet and payment-method screens remain in source only for archive/design
   // reference and are not part of the production customer journey.
