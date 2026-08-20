@@ -8,6 +8,7 @@ import { parseMarzPayWebhook, secureTokenEquals } from "../lib/marzpay.js";
 
 const router = Router();
 const OPEN_FINANCIAL_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
+const CUSTOMER_ROLES = new Set(["user", "customer"]);
 
 function isProductionMoney(): boolean {
   return process.env.NODE_ENV === "production" && process.env.REAL_MONEY_ENABLED === "true";
@@ -146,17 +147,13 @@ router.use("/admin/kyc", authenticateToken, (req: Request, res: Response, next: 
   next();
 });
 
-router.post("/messages", authenticateToken, async (req: Request, _res: Response, next: NextFunction) => {
+router.post("/messages", authenticateToken, (req: Request, _res: Response, next: NextFunction) => {
   const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
-  if (!content || content.length > 3000) throw new AppError("Message content must be between 1 and 3000 characters", 400);
-  if (req.user!.role !== "admin" && req.body?.receiverId) {
-    const target = await prisma.user.findUnique({
-      where: { id: String(req.body.receiverId) },
-      select: { role: true, deletedAt: true },
-    });
-    if (!target || target.deletedAt || target.role !== "admin") {
-      throw new AppError("Customers may only message Kuula support", 403);
-    }
+  if (!content || content.length > 2_000) throw new AppError("Message content must be between 1 and 2,000 characters", 400);
+  if (CUSTOMER_ROLES.has(req.user!.role) && req.body && typeof req.body === "object") {
+    // Defense in depth: customer support routing is chosen by the server route.
+    // Strip any injected recipient before downstream persistence.
+    delete req.body.receiverId;
   }
   next();
 });
