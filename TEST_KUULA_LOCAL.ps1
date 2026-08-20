@@ -41,6 +41,17 @@ Assert-Status "Credit network catalog" {
   if ($overview.partners.Count -lt 2) { throw "Expected TibaPay and SiliFi partner records" }
 }
 
+Assert-Status "Support recipient is server-controlled" {
+  $headers = @{ Authorization = "Bearer $($customer.token)" }
+  $me = Invoke-RestMethod -Uri "http://localhost:3000/api/auth/me" -Headers $headers
+  $body = @{ content = "Local smoke support routing check"; receiverId = $me.user.id } | ConvertTo-Json -Compress
+  $sent = Invoke-RestMethod -Uri "http://localhost:3000/api/messages" -Method Post -Headers $headers -ContentType "application/json" -Body $body
+  if ($sent.message.receiverId -eq $me.user.id) { throw "Customer-controlled receiverId was honored" }
+  if ($sent.message.senderId -ne $me.user.id) { throw "Support message sender mismatch" }
+  $thread = Invoke-RestMethod -Uri "http://localhost:3000/api/messages" -Headers $headers
+  if (-not ($thread.messages | Where-Object { $_.id -eq $sent.message.id })) { throw "Persisted support message missing from customer thread" }
+}
+
 Assert-Status "Notification preferences persist" {
   $headers = @{ Authorization = "Bearer $($customer.token)" }
   $initial = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Headers $headers
