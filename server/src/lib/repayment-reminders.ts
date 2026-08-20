@@ -65,7 +65,11 @@ export async function runRepaymentReminderSweep(now = new Date()): Promise<{ sca
       if (!kind) continue;
 
       if (kind === "overdue" && repayment.status !== "overdue") {
-        await tx.repayment.update({ where: { id: repayment.id }, data: { status: "overdue" } });
+        const result = await tx.repayment.updateMany({
+          where: { id: repayment.id, status: { not: "paid" } },
+          data: { status: "overdue" },
+        });
+        if (result.count === 0) continue;
         overdueUpdated += 1;
       }
 
