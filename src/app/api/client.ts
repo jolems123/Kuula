@@ -71,7 +71,7 @@ const nodeApi = {
   resendAdminMfa: (challengeToken: string) => request<{ ok: boolean }>("/api/auth/admin-login/resend", { method: "POST", body: JSON.stringify({ challengeToken }) }),
   refresh: (refreshToken: string) => request<{ token: string; refreshToken: string; accessExpiresInSeconds: number }>("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) }),
 
-  signUp: (input: { name: string; phone: string; email: string; password: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) =>
+  signUp: (input: { name: string; phone: string; email?: string; password: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) =>
     request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", { method: "POST", body: JSON.stringify(input) }),
   signOut: (token: string) => request<{ ok: boolean }>("/api/auth/signout", { method: "POST", headers: auth(token) }),
   signOutAll: (token: string) => request<{ ok: boolean }>("/api/auth/signout-all", { method: "POST", headers: auth(token) }),
@@ -117,7 +117,7 @@ const nodeApi = {
   topupWallet: (token: string, amount: number) => request<{ balance: number }>("/api/wallet/topup", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
   getTransactions: (token: string) => request<{ transactions: Array<Record<string, unknown>> }>("/api/transactions", { headers: auth(token) }),
   getRepayment: (token: string) => request<{ repayment: null | (Record<string, unknown> & { collection: { stage: string; label: string; daysToDue: number } }) }>("/api/loans/repayment", { headers: auth(token) }),
-  payRepayment: (token: string, amount?: number) => request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean; amount?: number; reference?: string; uuid?: string }>("/api/loans/repayment/pay", { method: "POST", headers: auth(token), body: amount !== undefined ? JSON.stringify({ amount }) : undefined }),
+  payRepayment: (token: string, amount?: number) => request<{ repayment: Record<string, unknown>; attempt: { success: boolean; reason: string }; isPartial?: boolean; isPending?: boolean; amount?: number; reference?: string; uuid?: string }>("/api/loans/repayment/pay", { method: "POST", headers: auth(token), body: amount !== undefined ? JSON.stringify({ amount }) : undefined }),
   requestTopUp: (token: string, body: { amount: number; term_days: number; purpose: string; disbursement_method: string }) => request<{ success?: boolean; reason?: string; code?: string }>("/api/loans/top-up", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
 
   getNotifications: (token: string) => request<{ notifications: AppNotification[] }>("/api/notifications", { headers: auth(token) }),
