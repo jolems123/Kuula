@@ -4,6 +4,8 @@ import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 
 const router = Router();
+const CUSTOMER_ROLES = new Set(["user", "customer"]);
+const MAX_MESSAGE_LENGTH = 2_000;
 
 // GET /api/messages
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
@@ -33,19 +35,25 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
 
 // POST /api/messages
 router.post("/", authenticateToken, async (req: Request, res: Response) => {
-  const { content, receiverId } = req.body;
+  const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+  const receiverId = typeof req.body.receiverId === "string" ? req.body.receiverId : undefined;
   const userId = req.user!.userId;
 
-  if (!content?.trim()) throw new AppError("Message content is required", 400);
+  if (!content) throw new AppError("Message content is required", 400);
+  if (content.length > MAX_MESSAGE_LENGTH) throw new AppError(`Message content must be ${MAX_MESSAGE_LENGTH} characters or fewer`, 400);
 
-  // Customers can only message admins
-  if (req.user!.role !== "admin") {
-    const admin = await prisma.user.findFirst({ where: { role: "admin" } });
-    const targetId = receiverId || admin?.id;
-    if (!targetId) throw new AppError("No admin available", 400);
+  if (CUSTOMER_ROLES.has(req.user!.role)) {
+    // Customer support messages are always routed server-side to an active admin.
+    // Never trust a caller-supplied receiverId: that would allow customer-to-customer messaging.
+    const admin = await prisma.user.findFirst({
+      where: { role: "admin", deletedAt: null },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!admin) throw new AppError("Kuula support is temporarily unavailable", 503);
 
     const message = await prisma.message.create({
-      data: { senderId: userId, receiverId: targetId, content: content.trim() },
+      data: { senderId: userId, receiverId: admin.id, content },
     });
 
     res.json({
@@ -61,11 +69,16 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
     return;
   }
 
-  // Admin can message anyone
+  if (req.user!.role !== "admin") {
+    throw new AppError("Use the assigned credit-case communication channel for staff messages", 403);
+  }
+
   if (!receiverId) throw new AppError("Receiver ID is required", 400);
+  const receiver = await prisma.user.findFirst({ where: { id: receiverId, deletedAt: null }, select: { id: true } });
+  if (!receiver) throw new AppError("Receiver not found", 404);
 
   const message = await prisma.message.create({
-    data: { senderId: userId, receiverId, content: content.trim() },
+    data: { senderId: userId, receiverId: receiver.id, content },
   });
 
   res.json({
