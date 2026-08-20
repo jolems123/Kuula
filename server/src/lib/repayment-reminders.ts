@@ -69,6 +69,15 @@ export async function runRepaymentReminderSweep(now = new Date()): Promise<{ sca
         overdueUpdated += 1;
       }
 
+      const prefs = await tx.$queryRaw<Array<{ repayment_reminders: boolean; overdue_alerts: boolean }>>`
+        SELECT repayment_reminders, overdue_alerts
+        FROM notification_preferences
+        WHERE user_id = ${repayment.userId}::uuid
+      `;
+      const enabled = prefs.length === 0
+        || (kind === "overdue" ? prefs[0].overdue_alerts : prefs[0].repayment_reminders);
+      if (!enabled) continue;
+
       const type = reminderType(repayment.id, kind, now);
       const alreadySent = await tx.notification.findFirst({
         where: { userId: repayment.userId, type },
