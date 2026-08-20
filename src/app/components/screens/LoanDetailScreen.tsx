@@ -1,8 +1,7 @@
 import { ArrowLeft, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
-import { api } from "../../api/client";
+import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
 
 interface Props {
@@ -10,231 +9,162 @@ interface Props {
 }
 
 function formatUGX(n: number) {
-  return "UGX " + n.toLocaleString("en-UG");
+  return "UGX " + Math.round(n).toLocaleString("en-UG");
+}
+function fmtDate(value: unknown) {
+  if (!value) return "—";
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-UG", { day: "numeric", month: "short", year: "numeric" });
 }
 
-type PayStatus = "paid" | "pending" | "upcoming" | "failed";
-interface PayRow { date: string; amount: number; status: PayStatus; }
-
-// Offline demo build only — illustrative schedule, never shown in server mode.
-const DEMO_HISTORY: PayRow[] = [
-  { date: "May 25, 2026", amount: 285000, status: "paid" },
-  { date: "Apr 25, 2026", amount: 285000, status: "paid" },
-  { date: "Mar 25, 2026", amount: 285000, status: "paid" },
-  { date: "Jun 25, 2026", amount: 285000, status: "pending" },
-  { date: "Jul 25, 2026", amount: 285000, status: "upcoming" },
-  { date: "Aug 25, 2026", amount: 285000, status: "upcoming" },
-];
+type PayStatus = "paid" | "pending" | "failed";
+interface PayRow { id: string; date: string; amount: number; status: PayStatus; }
 
 export function LoanDetailScreen({ onNavigate }: Props) {
-  const { t } = useTranslation();
   const { state } = useAppContext();
   const token = state.session.token;
   const useServer = env.USE_API && !!token;
 
-  const activeLoan = state.loan?.activeLoan ?? null;
-  const nextPayment = state.loan?.nextPayment ?? null;
-
+  const [facility, setFacility] = useState<LoanApplication | null>(null);
+  const [repaymentTotal, setRepaymentTotal] = useState<number | null>(null);
+  const [amountPaid, setAmountPaid] = useState(0);
   const [outstanding, setOutstanding] = useState<number | null>(null);
+  const [dueDate, setDueDate] = useState<string | null>(null);
+  const [daysToDue, setDaysToDue] = useState<number | null>(null);
+  const [collectionLabel, setCollectionLabel] = useState<string | null>(null);
   const [payments, setPayments] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(useServer);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!useServer || !token) return;
     let active = true;
     setLoading(true);
-    setError(false);
-    Promise.all([api.getRepayment(token), api.getTransactions(token)])
-      .then(([rep, txns]) => {
+    setError("");
+    Promise.all([api.getApplications(token), api.getRepayment(token), api.getTransactions(token)])
+      .then(([apps, rep, txns]) => {
         if (!active) return;
+        const candidate = apps.applications.find((item) => ["active", "overdue", "disbursing"].includes(item.status))
+          ?? apps.applications.find((item) => item.status === "paid")
+          ?? null;
+        setFacility(candidate);
+
         const r = rep.repayment;
         if (r) {
           const total = Number(r.total ?? 0);
-          const paid = Number(r.amountPaid ?? 0);
+          const paid = Number(r.amountPaid ?? r.amount_paid ?? 0);
+          setRepaymentTotal(total);
+          setAmountPaid(paid);
           setOutstanding(Math.max(0, total - paid));
+          setDueDate(String(r.due_date ?? ""));
+          setDaysToDue(Number(r.collection?.daysToDue ?? 0));
+          setCollectionLabel(r.collection?.label ?? null);
         } else {
+          setRepaymentTotal(null);
+          setAmountPaid(0);
           setOutstanding(null);
+          setDueDate(null);
+          setDaysToDue(null);
+          setCollectionLabel(null);
         }
+
         const rows: PayRow[] = (txns.transactions ?? [])
           .filter((tx: Record<string, unknown>) => String(tx.type ?? "") === "loan_payment")
           .map((tx: Record<string, unknown>) => {
-            const s = String(tx.status ?? "");
-            const status: PayStatus = s === "completed" ? "paid" : s === "pending" ? "pending" : "failed";
+            const raw = String(tx.status ?? "").toLowerCase();
+            const status: PayStatus = ["completed", "settled", "paid", "success", "successful"].includes(raw)
+              ? "paid"
+              : raw === "pending"
+                ? "pending"
+                : "failed";
             return {
-              date: tx.created_at
-                ? new Date(String(tx.created_at)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : "—",
+              id: String(tx.id ?? tx.reference ?? Math.random()),
+              date: fmtDate(tx.createdAt),
               amount: Math.abs(Number(tx.amount ?? 0)),
               status,
             };
           });
         setPayments(rows);
       })
-      .catch(() => { if (active) setError(true); })
+      .catch((err) => { if (active) setError(err instanceof Error ? err.message : "Could not load your credit details."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [useServer, token]);
 
+  if (!useServer) {
+    return (
+      <div style={{ height: "100%", display: "grid", placeItems: "center", background: "#F8FAF9", padding: 24 }}>
+        <div style={{ maxWidth: 340, textAlign: "center" }}><h2 style={{ color: "#13251C" }}>Credit details require the Kuula API</h2><p style={{ color: "#68766F" }}>Connect the development API to review server-backed facility, repayment and payment history data.</p></div>
+      </div>
+    );
+  }
+
   const header = (
-    <div
-      className="flex items-center justify-between px-4 pt-4 pb-4"
-      style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)" }}
-    >
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => onNavigate("home")}
-          style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
-          <ArrowLeft size={18} color="white" />
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>{t("loanDetail.title")}</span>
-      </div>
-      {activeLoan && (
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#12B984", background: "#F0FDF4", padding: "4px 12px", borderRadius: 20 }}>
-          {t("loanDetail.activeStatus")}
-        </span>
-      )}
+    <div style={{ display: "flex", alignItems: "center", padding: "16px", background: "#0B5E3A" }}>
+      <button aria-label="Back home" onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
+      <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>Credit Details</span>
     </div>
   );
 
-  const centered = (msg: string, color: string) => (
-    <div className="flex flex-col h-full bg-gray-50" style={{ paddingTop: 0 }}>
-      {header}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <p style={{ fontSize: 14, color, textAlign: "center", fontWeight: 600 }}>{msg}</p>
-      </div>
-    </div>
-  );
+  if (loading) return <div style={{ height: "100%", background: "#F8FAF9" }}>{header}<div style={{ padding: 28, textAlign: "center", color: "#68766F" }}>Loading current credit details…</div></div>;
+  if (error) return <div style={{ height: "100%", background: "#F8FAF9" }}>{header}<div role="alert" style={{ padding: 28, textAlign: "center", color: "#B42318" }}>{error}</div></div>;
+  if (!facility) return <div style={{ height: "100%", background: "#F8FAF9" }}>{header}<div style={{ padding: 28, textAlign: "center", color: "#68766F" }}>No active or recently completed credit facility was found.</div></div>;
 
-  // ── Server mode: loading / error / no-loan states ─────────────────────────
-  if (useServer && loading) return centered(`${t("common.loading")}…`, "#9CA3AF");
-  if (useServer && error) return centered(t("loanDetail.loadError"), "#EF4444");
-  if (useServer && !activeLoan) return centered(t("loanDetail.noActiveLoan"), "#6B7280");
-
-  // ── Resolve display values from real data (server) or demo constants ──────
-  const demo = !useServer;
-  const totalBorrowed = demo ? 500000 : Number(activeLoan?.amount ?? 0);
-  const balanceRemaining = demo ? 290000 : outstanding;
-  const pct = demo ? 50 : Number(activeLoan?.repaidPercent ?? 0);
-  const history: PayRow[] = demo ? DEMO_HISTORY : payments;
+  const pct = repaymentTotal && repaymentTotal > 0 ? Math.min(100, Math.max(0, Math.round((amountPaid / repaymentTotal) * 100))) : facility.status === "paid" ? 100 : 0;
+  const canRepay = outstanding != null && outstanding > 0 && ["active", "overdue"].includes(facility.status);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50" style={{ paddingTop: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9" }}>
       {header}
 
-      {/* Hero card */}
-      <div className="mx-4 mt-4 p-5 rounded-2xl" style={{ background: "white", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
-        <p style={{ fontSize: 12, color: "#6B7280" }}>{t("loanDetail.totalBorrowed")}</p>
-        <p style={{ fontSize: 32, fontWeight: 800, color: "#1F2937", letterSpacing: -1 }}>
-          {formatUGX(totalBorrowed)}
-        </p>
-        {balanceRemaining != null && (
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>
-            {t("loanDetail.balanceRemaining")}{" "}
-            <span style={{ color: "#EF4444", fontWeight: 700 }}>{formatUGX(balanceRemaining)}</span>
-          </p>
-        )}
-
-        <div className="mt-4">
-          <div className="flex justify-between mb-1.5">
-            <span style={{ fontSize: 12, color: "#6B7280" }}>{t("loanDetail.repaymentProgress")}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#12B984" }}>{t("loanDetail.percentPaid", { pct })}</span>
-          </div>
-          <div style={{ height: 10, background: "#F3F4F6", borderRadius: 5, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #12B984, #059669)", borderRadius: 5, transition: "width 0.4s ease" }} />
-          </div>
-        </div>
-
-        {/* Info row — real, available fields only */}
-        <div className="flex gap-3 mt-4">
-          {[
-            { label: t("loanDetail.status"), value: demo ? t("loanDetail.activeStatus") : String(activeLoan?.status ?? "—") },
-            { label: t("loanDetail.disbursed"), value: demo ? "Jun 1, 2026" : String(activeLoan?.disbursedDate ?? "—") },
-            { label: t("loanDetail.nextPayment"), value: (demo ? "Jun 25, 2026" : (nextPayment?.dueDate ?? "—")) },
-          ].map((item) => (
-            <div key={item.label} className="flex-1 text-center p-2 rounded-xl" style={{ background: "#F9FAFB" }}>
-              <p style={{ fontSize: 11, color: "#9CA3AF" }}>{item.label}</p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#1F2937", marginTop: 2 }}>{item.value}</p>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ background: "white", padding: 18, borderRadius: 16, boxShadow: "0 3px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+            <div>
+              <p style={{ fontSize: 11, color: "#75847C", margin: 0 }}>Approved Principal</p>
+              <p style={{ fontSize: 30, fontWeight: 900, color: "#13251C", margin: "3px 0 0" }}>{formatUGX(facility.amount)}</p>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Next payment */}
-      {(demo || nextPayment) && (
-        <div className="mx-4 mt-3 p-4 rounded-2xl flex items-center justify-between" style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}>
-          <div>
-            <p style={{ fontSize: 12, color: "#92400E", fontWeight: 500 }}>{t("loanDetail.nextPaymentDue")}</p>
-            <p style={{ fontSize: 20, fontWeight: 800, color: "#D97706" }}>{formatUGX(demo ? 285000 : Number(nextPayment?.amount ?? 0))}</p>
+            <span style={{ fontSize: 11, fontWeight: 800, color: facility.status === "overdue" ? "#991B1B" : "#0B5E3A", background: facility.status === "overdue" ? "#FEF2F2" : "#EEF7F2", padding: "5px 10px", borderRadius: 20 }}>{facility.status.replace(/_/g, " ")}</span>
           </div>
-          <div className="text-right">
-            <p style={{ fontSize: 12, color: "#B45309" }}>{demo ? "Jun 25, 2026" : (nextPayment?.dueDate ?? "—")}</p>
-            <p style={{ fontSize: 11, color: "#F59E0B", fontWeight: 600, marginTop: 2 }}>{t("loanDetail.daysLeft", { count: demo ? 14 : (nextPayment?.daysLeft ?? 0) })}</p>
-          </div>
-        </div>
-      )}
 
-      {/* Payment history */}
-      <div className="mx-4 mt-3 p-4 rounded-2xl flex-1" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", maxHeight: 220, overflow: "hidden" }}>
-        <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 8 }}>{t("loanDetail.paymentHistory")}</p>
-        <div className="overflow-y-auto" style={{ maxHeight: 160 }}>
-          {history.length === 0 && (
-            <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "16px 0" }}>{t("home.noRecentTxns")}</p>
+          {repaymentTotal != null && (
+            <div style={{ marginTop: 15 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span style={{ color: "#68766F" }}>Repayment progress</span><strong style={{ color: "#0B5E3A" }}>{pct}%</strong></div>
+              <div style={{ height: 9, background: "#E8EFEB", borderRadius: 6, overflow: "hidden", marginTop: 6 }}><div style={{ width: `${pct}%`, height: "100%", background: "#0B5E3A" }} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                <div style={{ background: "#F8FAF9", padding: 10, borderRadius: 10 }}><div style={{ fontSize: 10, color: "#7A8B82" }}>Paid</div><strong style={{ fontSize: 13, color: "#263A30" }}>{formatUGX(amountPaid)}</strong></div>
+                <div style={{ background: "#F8FAF9", padding: 10, borderRadius: 10 }}><div style={{ fontSize: 10, color: "#7A8B82" }}>Outstanding</div><strong style={{ fontSize: 13, color: outstanding && outstanding > 0 ? "#B45309" : "#0B5E3A" }}>{formatUGX(outstanding ?? 0)}</strong></div>
+              </div>
+            </div>
           )}
-          {history.map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between py-2.5"
-              style={{ borderBottom: i < history.length - 1 ? "1px solid #F3F4F6" : "none" }}
-            >
-              <div className="flex items-center gap-3">
-                {item.status === "paid" ? (
-                  <CheckCircle size={18} color="#12B984" />
-                ) : item.status === "pending" ? (
-                  <Clock size={18} color="#F59E0B" />
-                ) : item.status === "failed" ? (
-                  <XCircle size={18} color="#EF4444" />
-                ) : (
-                  <div style={{ width: 18, height: 18, borderRadius: 9, border: "2px solid #D1D5DB" }} />
-                )}
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937" }}>{item.date}</p>
-                  <p style={{ fontSize: 11, color: "#9CA3AF" }}>
-                    {item.status === "paid" ? t("loanDetail.paid") : item.status === "pending" ? t("loanDetail.dueSoon") : item.status === "failed" ? t("makePayment.paymentFailed") : t("loanDetail.upcoming")}
-                  </p>
-                </div>
+
+          <div style={{ borderTop: "1px solid #EEF2EF", marginTop: 14, paddingTop: 12, display: "grid", gap: 7 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}><span style={{ color: "#75847C" }}>Purpose</span><strong style={{ color: "#263A30", textAlign: "right" }}>{facility.purpose}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}><span style={{ color: "#75847C" }}>Term</span><strong style={{ color: "#263A30" }}>{facility.termDays} days</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}><span style={{ color: "#75847C" }}>Application</span><strong style={{ color: "#263A30", wordBreak: "break-all", textAlign: "right" }}>{facility.id}</strong></div>
+            {dueDate && <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}><span style={{ color: "#75847C" }}>Due date</span><strong style={{ color: daysToDue != null && daysToDue < 0 ? "#991B1B" : "#263A30" }}>{fmtDate(dueDate)}</strong></div>}
+            {collectionLabel && <div style={{ fontSize: 11, color: "#68766F", marginTop: 2 }}>{collectionLabel}</div>}
+          </div>
+        </div>
+
+        <div style={{ background: "white", padding: 16, borderRadius: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "0 0 8px" }}>Repayment Transactions</p>
+          {payments.length === 0 && <p style={{ fontSize: 12, color: "#87968E", textAlign: "center", padding: "12px 0", margin: 0 }}>No repayment transactions yet.</p>}
+          {payments.map((item, i) => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 0", borderBottom: i < payments.length - 1 ? "1px solid #F0F3F1" : "none" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                {item.status === "paid" ? <CheckCircle size={18} color="#0B5E3A" /> : item.status === "pending" ? <Clock size={18} color="#9A6A00" /> : <XCircle size={18} color="#B42318" />}
+                <div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}>{item.date}</div><div style={{ fontSize: 10, color: "#87968E" }}>{item.status === "paid" ? "Provider confirmed" : item.status === "pending" ? "Awaiting provider" : "Not settled"}</div></div>
               </div>
-              <div className="text-right">
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>{formatUGX(item.amount)}</p>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: item.status === "paid" ? "#12B984" : item.status === "pending" ? "#F59E0B" : item.status === "failed" ? "#EF4444" : "#9CA3AF",
-                  }}
-                >
-                  {item.status === "paid" ? t("loanDetail.paid") : item.status === "pending" ? t("loanDetail.due") : item.status === "failed" ? t("loanDetail.due") : t("loanDetail.scheduled")}
-                </span>
-              </div>
+              <strong style={{ fontSize: 12, color: "#263A30" }}>{formatUGX(item.amount)}</strong>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Bottom buttons */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 flex gap-3" style={{ background: "white", borderTop: "1px solid #F3F4F6" }}>
-        <button
-          onClick={() => onNavigate("confirm")}
-          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(255,107,53,0.3)" }}
-        >
-          {t("loanDetail.makePayment")}
-        </button>
-        <button
-          style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F4F6", color: "#374151", fontSize: 15, fontWeight: 600, border: "none" }}
-        >
-          {t("loanDetail.viewAgreement")}
-        </button>
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 34px", background: "white", borderTop: "1px solid #E8EEEA", display: "flex", gap: 10 }}>
+        <button disabled={!canRepay} onClick={() => onNavigate("make-payment")} style={{ flex: 1, height: 50, borderRadius: 14, background: canRepay ? "#0B5E3A" : "#D7E1DB", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: canRepay ? "pointer" : "not-allowed" }}>Make Repayment</button>
+        <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>View Agreement</button>
       </div>
     </div>
   );
