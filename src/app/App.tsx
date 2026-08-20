@@ -22,6 +22,12 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
 
+  // The current application flow collects purpose, affordability and the
+  // supported MTN/Airtel rail in one server-compatible form. Older separate
+  // purpose/disbursement screens contained unsaved selections and fake account data.
+  "loan-purpose": "loan-apply",
+  "loan-disbursement": "loan-apply",
+
   // Kuula is a credit/loan platform, not a stored-value wallet. Historical
   // wallet and payment-method screens remain in source only for archive/design
   // reference and are not part of the production customer journey.
