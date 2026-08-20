@@ -41,6 +41,23 @@ Assert-Status "Credit network catalog" {
   if ($overview.partners.Count -lt 2) { throw "Expected TibaPay and SiliFi partner records" }
 }
 
+Assert-Status "Notification preferences persist" {
+  $headers = @{ Authorization = "Bearer $($customer.token)" }
+  $initial = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Headers $headers
+  if ($null -eq $initial.preferences) { throw "Notification preferences missing" }
+
+  $body = @{ repaymentReminders = $false; overdueAlerts = $true } | ConvertTo-Json -Compress
+  $updated = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Method Put -Headers $headers -ContentType "application/json" -Body $body
+  if ($updated.preferences.repaymentReminders -ne $false) { throw "Repayment preference was not saved" }
+  if ($updated.preferences.securityAlerts -ne $true) { throw "Security alerts must stay enabled" }
+
+  $reloaded = Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Headers $headers
+  if ($reloaded.preferences.repaymentReminders -ne $false) { throw "Notification preference did not persist" }
+
+  $restore = @{ repaymentReminders = $true } | ConvertTo-Json -Compress
+  Invoke-RestMethod -Uri "http://localhost:3000/api/notifications/preferences" -Method Put -Headers $headers -ContentType "application/json" -Body $restore | Out-Null
+}
+
 $challenge = $null
 Assert-Status "Admin password challenge" {
   $challenge = Invoke-RestMethod -Uri "http://localhost:3000/api/auth/admin-login" -Method Post -ContentType "application/json" -Body '{"email":"admin-local@kuula.test","password":"LocalAdminPassword2026!"}'
