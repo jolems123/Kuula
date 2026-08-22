@@ -54,6 +54,11 @@ cd ..
 The frontend and API intentionally have separate dependency manifests. This
 prevents the API deployment from depending on frontend-only packages.
 
+> The current server lockfile must be regenerated and verified before production
+> deployment can switch the API install step from `npm install` to deterministic
+> `npm ci`. Do not treat the present backend install command as a completed
+> production release gate.
+
 ---
 
 ## 3. Create the PostgreSQL database
@@ -142,17 +147,27 @@ npm run build
 npm start
 ```
 
-The health endpoint is:
+The liveness endpoint is:
 
 ```text
 GET https://api.kuula.ug/api/health
 ```
 
+The production readiness endpoint is:
+
+```text
+GET https://api.kuula.ug/api/ready
+```
+
+`/api/ready` verifies PostgreSQL connectivity and should be used as the Railway
+or container deployment readiness/health target. `/api/health` only proves the
+HTTP process is alive.
+
 Run the API behind an HTTPS reverse proxy or a managed host that terminates TLS.
 The public application must never connect directly to PostgreSQL.
 
 Production process managers must restart the API after crashes and preserve API
-logs. Set the deployment health check to `/api/health`.
+logs.
 
 ---
 
@@ -168,7 +183,7 @@ VITE_API_TIMEOUT_MS=10000
 VITE_APP_ENV=development
 VITE_APP_VERSION=2.4.1
 VITE_ENABLE_BIOMETRIC=true
-VITE_ENABLE_SAVINGS=true
+VITE_ENABLE_SAVINGS=false
 VITE_REVIEWER_MODE=false
 ```
 
@@ -181,9 +196,12 @@ VITE_API_BASE_URL=https://api.kuula.ug
 VITE_APP_ENV=production
 VITE_APP_VERSION=2.4.1
 VITE_ENABLE_BIOMETRIC=true
-VITE_ENABLE_SAVINGS=true
+VITE_ENABLE_SAVINGS=false
 VITE_REVIEWER_MODE=false
 ```
+
+Savings remains disabled until provider-settled custody, deposits, withdrawals,
+interest and statements are implemented and independently verified.
 
 `npm run build` executes an environment guard before Vite. A production build
 fails when the backend is not `node`, the API URL is missing, the URL is local,
@@ -204,13 +222,13 @@ In **Repository settings → Secrets and variables → Actions**, add:
 | `ANDROID_STORE_PASSWORD` | Android keystore password |
 | `APPLE_TEAM_ID` | Apple developer team ID |
 | `APPLE_CERT_BASE64` | Distribution certificate |
-| `APPLE_CERT_PASSWORD` | Certificate password |
+| `APPLE_CERT_PASSWORD` | Distribution certificate password |
 | `APPLE_PROVISION_BASE64` | Provisioning profile |
 
 Do not add database or server secrets to GitHub variables prefixed with `VITE_`.
 Database credentials belong in the API hosting environment, not the mobile build.
 
-The CI workflow now verifies:
+The CI workflow is designed to verify:
 
 1. Frontend dependency installation
 2. Server dependency installation
@@ -220,6 +238,11 @@ The CI workflow now verifies:
 6. Pricing compliance tests
 7. Server TypeScript build
 8. The guarded production web build
+9. Isolated PostgreSQL migrations and seeded API tests
+10. Provider-settlement/reconciliation lifecycle checks
+11. Capacitor Android/iOS sync
+
+A launch commit is not verified until these workflows actually execute and pass.
 
 ---
 
@@ -265,22 +288,33 @@ Archive and sign the application in Xcode.
 
 Deploy in this order:
 
-1. Back up the PostgreSQL database.
+1. Back up the PostgreSQL database and prove restore on a non-production copy.
 2. Apply reviewed Prisma migrations.
-3. Deploy and health-check the Node API.
+3. Deploy and verify `/api/ready` on the Node API.
 4. Test authentication and required API routes against staging.
-5. Build the frontend with the production API URL.
-6. Test the Android/iOS build on real devices.
-7. Release through controlled internal testing before production rollout.
+5. Complete Africa's Talking, KYC storage/Smile ID and MarZPay provider tests.
+6. Build the frontend with the production API URL.
+7. Test Android/iOS builds on real devices.
+8. Require passing CI/security checks on the exact launch SHA.
+9. Release through controlled internal testing before production rollout.
 
-Do not release a mobile build until the API health check and end-to-end staging
-tests pass.
+Do not release a mobile build until API readiness, end-to-end staging tests,
+provider verification and database recovery testing pass.
 
 ---
 
 ## 11. Current financial-operation restriction
 
-The present Node routes still require separate remediation for real mobile-money
-disbursement, repayment, and savings settlement. Until those controls are fixed
-and tested, use this deployment only for development and sandbox operation—not
-for live customer funds.
+Provider-settled disbursement, repayment, reconciliation and journal controls are
+implemented in code, but **real money must remain disabled** until executable CI,
+Railway production validation, provider sandbox/production verification,
+backup/restore testing and branch-protection gates pass.
+
+Keep:
+
+```env
+REAL_MONEY_ENABLED=false
+```
+
+until every production-closeout item in `TODO.md` is complete. Savings is not a
+live production product and must remain disabled.
