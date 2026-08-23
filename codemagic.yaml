@@ -64,7 +64,7 @@ workflows:
         script: npx cap sync android
       - name: Configure Android SDK
         script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-      - name: Build signed Android APK and AAB
+      - name: Build Android debug APK and signed release APK/AAB
         script: |
           test -n "$CM_KEYSTORE_PATH"
           test -n "$CM_KEYSTORE_PASSWORD"
@@ -72,10 +72,11 @@ workflows:
           test -n "$CM_KEY_PASSWORD"
           cd android
           chmod +x gradlew
-          ./gradlew --no-daemon clean assembleRelease bundleRelease
+          ./gradlew --no-daemon clean assembleDebug assembleRelease bundleRelease
     artifacts:
-      - android/app/build/outputs/**/*.apk
-      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
       - android/app/build/outputs/**/mapping.txt
       - pact/pacts/*.json
 
@@ -150,6 +151,17 @@ workflows:
         script: |
           cd ios/App
           pod install
+      - name: Build iOS simulator app
+        script: |
+          xcodebuild \
+            -workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$CM_BUILD_DIR/build/ios-simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
       - name: Set iOS build number
         script: |
           BUILD_NUMBER=$((24100 + CM_BUILD_NUMBER))
@@ -160,9 +172,9 @@ workflows:
         script: |
           xcode-project build-ipa --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
     artifacts:
+      - build/ios-simulator/Build/Products/Debug-iphonesimulator/*.app
       - build/ios/ipa/*.ipa
       - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
       - pact/pacts/*.json
