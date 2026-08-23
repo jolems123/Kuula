@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, CheckCircle, AlertTriangle, Info, DollarSign } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle, AlertTriangle, Info } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
@@ -45,7 +45,7 @@ export function NotificationsListScreen({ onNavigate }: Props) {
     try {
       const { notifications: notifs } = await api.getNotifications(token);
       setNotifications(notifs);
-      const unreadCount = notifs.filter((n) => !n.is_read).length;
+      const unreadCount = notifs.filter((n) => !n.isRead).length;
       setUnread(unreadCount);
     } catch { /* graceful — show empty state */ }
     finally { setLoading(false); }
@@ -55,19 +55,19 @@ export function NotificationsListScreen({ onNavigate }: Props) {
 
   const handleMarkRead = async (id: string) => {
     if (!token) return;
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    setUnread(Math.max(0, notifications.filter((n) => !n.is_read).length - 1));
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    setUnread(Math.max(0, notifications.filter((n) => !n.isRead).length - 1));
     await api.markNotificationRead(token, id).catch(() => {});
   };
 
   const handleMarkAllRead = async () => {
     if (!token) return;
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnread(0);
     await api.markAllNotificationsRead(token).catch(() => {});
   };
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
@@ -101,16 +101,16 @@ export function NotificationsListScreen({ onNavigate }: Props) {
             <button
               key={n.id}
               onClick={() => handleMarkRead(n.id)}
-              style={{ background: !n.is_read ? "white" : "#F9FAFB", borderRadius: 16, padding: "14px 16px", border: !n.is_read ? "1px solid #FFDCC8" : "1px solid #F3F4F6", boxShadow: !n.is_read ? "0 2px 8px rgba(255,107,53,0.08)" : "none", cursor: "pointer", textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", width: "100%", position: "relative" }}
+              style={{ background: !n.isRead ? "white" : "#F9FAFB", borderRadius: 16, padding: "14px 16px", border: !n.isRead ? "1px solid #FFDCC8" : "1px solid #F3F4F6", boxShadow: !n.isRead ? "0 2px 8px rgba(255,107,53,0.08)" : "none", cursor: "pointer", textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start", width: "100%", position: "relative" }}
             >
-              {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#F4612B", position: "absolute", top: 12, right: 12 }} />}
+              {!n.isRead && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#F4612B", position: "absolute", top: 12, right: 12 }} />}
               <div style={{ width: 44, height: 44, borderRadius: 14, background: style.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Icon size={22} color={style.color} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: !n.is_read ? 700 : 600, color: "#1F2937", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</p>
+                <p style={{ fontSize: 13, fontWeight: !n.isRead ? 700 : 600, color: "#1F2937", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</p>
                 <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 5px", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.body}</p>
-                <span style={{ fontSize: 10, color: "#9CA3AF" }}>{timeAgo(n.created_at)}</span>
+                <span style={{ fontSize: 10, color: "#9CA3AF" }}>{timeAgo(n.createdAt)}</span>
               </div>
             </button>
           );
@@ -128,4 +128,3 @@ export function NotificationsListScreen({ onNavigate }: Props) {
     </div>
   );
 }
-
