@@ -19,6 +19,26 @@ function mapPreferences(row: PreferenceRow) {
   };
 }
 
+function mapNotification(notification: {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+  isRead: boolean;
+  createdAt: Date;
+}) {
+  return {
+    id: notification.id,
+    user_id: notification.userId,
+    title: notification.title,
+    body: notification.body,
+    type: notification.type,
+    is_read: notification.isRead,
+    created_at: notification.createdAt,
+  };
+}
+
 async function preferencesFor(userId: string): Promise<PreferenceRow> {
   const rows = await prisma.$queryRaw<PreferenceRow[]>`
     INSERT INTO notification_preferences (user_id, loan_decision, disbursement_updates)
@@ -60,7 +80,7 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
     where: { userId: req.user!.userId },
     orderBy: { createdAt: "desc" },
   });
-  res.json({ notifications });
+  res.json({ notifications: notifications.map(mapNotification) });
 });
 
 router.post("/:id/read", authenticateToken, async (req: Request, res: Response) => {
