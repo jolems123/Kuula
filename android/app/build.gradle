@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.kuula.ap"
+    namespace "com.kuula.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.kuula.ap"
+        applicationId "com.kuula.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode System.getenv('CM_BUILD_NUMBER') ? 24100 + Integer.parseInt(System.getenv('CM_BUILD_NUMBER')) : 24100
