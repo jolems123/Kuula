@@ -56,6 +56,9 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
   const identityReady = user.phoneVerified && user.kycVerified;
   const evidenceReady = evidence.momoVerified && evidence.crbVerified;
   const baseLimit = identityReady && evidenceReady ? scoreLimit(credit.score) : 0;
+  // Until Kuula supports multiple simultaneous facilities, an open facility uses
+  // the customer's Growth Line. The total line remains visible while available
+  // capacity is zero, making the policy explicit rather than implying cash is available.
   const availableLimit = openApplication ? 0 : baseLimit;
   const status = !identityReady
     ? "identity_required"
@@ -78,7 +81,13 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
       status,
       reviewedAt: now,
       expiresAt,
-      rationale: { identityReady, evidenceReady, score: credit.score, openFacility: !!openApplication, policy: "single-open-facility" },
+      rationale: {
+        identityReady,
+        evidenceReady,
+        score: credit.score,
+        openFacility: !!openApplication,
+        policy: "single-open-facility",
+      },
     },
     create: {
       userId,
@@ -88,11 +97,19 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
       status,
       reviewedAt: now,
       expiresAt,
-      rationale: { identityReady, evidenceReady, score: credit.score, openFacility: !!openApplication, policy: "single-open-facility" },
+      rationale: {
+        identityReady,
+        evidenceReady,
+        score: credit.score,
+        openFacility: !!openApplication,
+        policy: "single-open-facility",
+      },
     },
   });
 
-  const repaymentRate = user.loansTotal > 0 ? Math.round((user.loansRepaid / user.loansTotal) * 10_000) / 100 : 0;
+  const repaymentRate = user.loansTotal > 0
+    ? Math.round((user.loansRepaid / user.loansTotal) * 10_000) / 100
+    : 0;
   const signals = {
     identityVerified: identityReady,
     phoneVerified: user.phoneVerified,
@@ -106,7 +123,10 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
     loansTotal: user.loansTotal,
   };
 
-  const latestPass = await prisma.creditPassSnapshot.findFirst({ where: { userId, marketCode }, orderBy: { createdAt: "desc" } });
+  const latestPass = await prisma.creditPassSnapshot.findFirst({
+    where: { userId, marketCode },
+    orderBy: { createdAt: "desc" },
+  });
   const shouldSnapshot = !latestPass
     || latestPass.score !== credit.score
     || number(latestPass.availableLimit) !== availableLimit
@@ -128,7 +148,16 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
       })
     : latestPass;
 
-  return { market, user, credit, evidence, growthLine, creditPass: pass!, openApplication, activeRepayment };
+  return {
+    market,
+    user,
+    credit,
+    evidence,
+    growthLine,
+    creditPass: pass!,
+    openApplication,
+    activeRepayment,
+  };
 }
 
 function mapProduct(product: any, growthLineLimit?: number) {
@@ -174,14 +203,29 @@ function mapPartner(partner: any) {
 }
 
 router.get("/markets", async (_req: Request, res: Response) => {
-  const markets = await prisma.market.findMany({ where: { status: { in: ["active", "planned"] } }, orderBy: [{ status: "asc" }, { countryName: "asc" }] });
-  res.json({ markets: markets.map((market) => ({ code: market.code, countryName: market.countryName, currency: market.currency, dialingCode: market.dialingCode, defaultLocale: market.defaultLocale, status: market.status })) });
+  const markets = await prisma.market.findMany({
+    where: { status: { in: ["active", "planned"] } },
+    orderBy: [{ status: "asc" }, { countryName: "asc" }],
+  });
+  res.json({
+    markets: markets.map((market) => ({
+      code: market.code,
+      countryName: market.countryName,
+      currency: market.currency,
+      dialingCode: market.dialingCode,
+      defaultLocale: market.defaultLocale,
+      status: market.status,
+    })),
+  });
 });
 
 router.get("/products", authenticateToken, async (req: Request, res: Response) => {
   const marketCode = String(req.query.market ?? "UG").toUpperCase();
   const profile = await refreshNetworkProfile(req.user!.userId, marketCode);
-  const products = await prisma.creditProduct.findMany({ where: { marketCode, status: "active" }, orderBy: [{ category: "asc" }, { name: "asc" }] });
+  const products = await prisma.creditProduct.findMany({
+    where: { marketCode, status: "active" },
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+  });
   res.json({ products: products.map((product) => mapProduct(product, number(profile.growthLine.availableLimit))) });
 });
 
@@ -200,7 +244,15 @@ router.get("/partners", authenticateToken, async (req: Request, res: Response) =
 router.get("/growth-line", authenticateToken, async (req: Request, res: Response) => {
   const marketCode = String(req.query.market ?? "UG").toUpperCase();
   const profile = await refreshNetworkProfile(req.user!.userId, marketCode);
-  res.json({ growthLine: { totalLimit: number(profile.growthLine.totalLimit), availableLimit: number(profile.growthLine.availableLimit), status: profile.growthLine.status, reviewedAt: profile.growthLine.reviewedAt, expiresAt: profile.growthLine.expiresAt } });
+  res.json({
+    growthLine: {
+      totalLimit: number(profile.growthLine.totalLimit),
+      availableLimit: number(profile.growthLine.availableLimit),
+      status: profile.growthLine.status,
+      reviewedAt: profile.growthLine.reviewedAt,
+      expiresAt: profile.growthLine.expiresAt,
+    },
+  });
 });
 
 router.get("/credit-pass", authenticateToken, async (req: Request, res: Response) => {
@@ -229,21 +281,75 @@ router.get("/overview", authenticateToken, async (req: Request, res: Response) =
     prisma.partner.findMany({ where: { marketCode, status: "active" }, include: { locations: { where: { active: true }, take: 3 } }, orderBy: { name: "asc" } }),
     prisma.partnerFinancingRequest.findMany({ where: { userId: req.user!.userId }, orderBy: { createdAt: "desc" }, take: 5 }),
   ]);
+
   res.json({
-    market: { code: profile.market.code, countryName: profile.market.countryName, currency: profile.market.currency, dialingCode: profile.market.dialingCode },
-    growthLine: { totalLimit: number(profile.growthLine.totalLimit), availableLimit: number(profile.growthLine.availableLimit), status: profile.growthLine.status, reviewedAt: profile.growthLine.reviewedAt, expiresAt: profile.growthLine.expiresAt },
-    creditPass: { score: profile.credit.score, maxScore: profile.credit.maxScore, tier: profile.credit.tier, percentile: profile.credit.percentile, kycLevel: profile.creditPass.kycLevel, repaymentRate: Number(profile.creditPass.repaymentRate), signals: profile.creditPass.signals, updatedAt: profile.creditPass.createdAt },
+    market: {
+      code: profile.market.code,
+      countryName: profile.market.countryName,
+      currency: profile.market.currency,
+      dialingCode: profile.market.dialingCode,
+    },
+    growthLine: {
+      totalLimit: number(profile.growthLine.totalLimit),
+      availableLimit: number(profile.growthLine.availableLimit),
+      status: profile.growthLine.status,
+      reviewedAt: profile.growthLine.reviewedAt,
+      expiresAt: profile.growthLine.expiresAt,
+    },
+    creditPass: {
+      score: profile.credit.score,
+      maxScore: profile.credit.maxScore,
+      tier: profile.credit.tier,
+      percentile: profile.credit.percentile,
+      kycLevel: profile.creditPass.kycLevel,
+      repaymentRate: Number(profile.creditPass.repaymentRate),
+      signals: profile.creditPass.signals,
+      updatedAt: profile.creditPass.createdAt,
+    },
     products: products.map((product) => mapProduct(product, number(profile.growthLine.availableLimit))),
     partners: partners.map(mapPartner),
-    activeFinancing: profile.openApplication ? { id: profile.openApplication.id, purpose: profile.openApplication.purpose, amount: number(profile.openApplication.amount), total: number(profile.openApplication.total), status: profile.openApplication.status, dueDate: profile.openApplication.dueDate } : null,
-    nextPayment: profile.activeRepayment ? { amount: Math.max(0, number(profile.activeRepayment.total) - number(profile.activeRepayment.amountPaid)), dueDate: profile.activeRepayment.dueDate, status: profile.activeRepayment.status } : null,
-    recentPartnerRequests: requests.map((request) => ({ id: request.id, purpose: request.purpose, amount: number(request.amount), status: request.status, createdAt: request.createdAt })),
+    activeFinancing: profile.openApplication ? {
+      id: profile.openApplication.id,
+      purpose: profile.openApplication.purpose,
+      amount: number(profile.openApplication.amount),
+      total: number(profile.openApplication.total),
+      status: profile.openApplication.status,
+      dueDate: profile.openApplication.dueDate,
+    } : null,
+    nextPayment: profile.activeRepayment ? {
+      amount: Math.max(0, number(profile.activeRepayment.total) - number(profile.activeRepayment.amountPaid)),
+      dueDate: profile.activeRepayment.dueDate,
+      status: profile.activeRepayment.status,
+    } : null,
+    recentPartnerRequests: requests.map((request) => ({
+      id: request.id,
+      purpose: request.purpose,
+      amount: number(request.amount),
+      status: request.status,
+      createdAt: request.createdAt,
+    })),
   });
 });
 
 router.get("/partner-financing", authenticateToken, async (req: Request, res: Response) => {
-  const requests = await prisma.partnerFinancingRequest.findMany({ where: { userId: req.user!.userId }, include: { partner: true, product: true, partnerLocation: true }, orderBy: { createdAt: "desc" } });
-  res.json({ requests: requests.map((request) => ({ id: request.id, partner: request.partner.name, partnerLocation: request.partnerLocation?.name ?? null, product: request.product.name, purpose: request.purpose, amount: number(request.amount), status: request.status, invoiceReference: request.invoiceReference, createdAt: request.createdAt })) });
+  const requests = await prisma.partnerFinancingRequest.findMany({
+    where: { userId: req.user!.userId },
+    include: { partner: true, product: true, partnerLocation: true },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json({
+    requests: requests.map((request) => ({
+      id: request.id,
+      partner: request.partner.name,
+      partnerLocation: request.partnerLocation?.name ?? null,
+      product: request.product.name,
+      purpose: request.purpose,
+      amount: number(request.amount),
+      status: request.status,
+      invoiceReference: request.invoiceReference,
+      createdAt: request.createdAt,
+    })),
+  });
 });
 
 router.post("/partner-financing", authenticateToken, async (req: Request, res: Response) => {
@@ -257,11 +363,15 @@ router.post("/partner-financing", authenticateToken, async (req: Request, res: R
   const amount = Math.round(Number(req.body?.amount));
   const externalReference = req.body?.externalReference ? String(req.body.externalReference).trim() : null;
 
-  if (!productCode || !partnerCode || !purpose || !invoiceReference) throw new AppError("Product, partner, purpose and invoice/order reference are required", 400);
+  if (!productCode || !partnerCode || !purpose || !invoiceReference) {
+    throw new AppError("Product, partner, purpose and invoice/order reference are required", 400);
+  }
   if (!Number.isFinite(amount) || amount <= 0) throw new AppError("A valid financing amount is required", 400);
 
   const profile = await refreshNetworkProfile(userId, marketCode);
-  if (profile.growthLine.status !== "available" || number(profile.growthLine.availableLimit) <= 0) throw new AppError("Your Kuula Growth Line is not currently available for a new financing request", 409);
+  if (profile.growthLine.status !== "available" || number(profile.growthLine.availableLimit) <= 0) {
+    throw new AppError("Your Kuula Growth Line is not currently available for a new financing request", 409);
+  }
 
   const [product, partner] = await Promise.all([
     prisma.creditProduct.findUnique({ where: { code: productCode } }),
@@ -269,9 +379,15 @@ router.post("/partner-financing", authenticateToken, async (req: Request, res: R
   ]);
   if (!product || product.status !== "active" || product.marketCode !== marketCode) throw new AppError("Credit product is unavailable", 404);
   if (!partner || partner.status !== "active" || partner.marketCode !== marketCode) throw new AppError("Partner is unavailable", 404);
-  if (!product.partnerRequired || product.disbursementMode !== "direct_payee") throw new AppError("This endpoint is only for restricted-purpose direct-payee financing", 400);
-  if (amount < number(product.minAmount) || amount > number(product.maxAmount)) throw new AppError(`Amount must be between ${number(product.minAmount)} and ${number(product.maxAmount)}`, 400);
-  if (amount > number(profile.growthLine.availableLimit)) throw new AppError("Requested amount exceeds your available Kuula Growth Line", 400);
+  if (!product.partnerRequired || product.disbursementMode !== "direct_payee") {
+    throw new AppError("This endpoint is only for restricted-purpose direct-payee financing", 400);
+  }
+  if (amount < number(product.minAmount) || amount > number(product.maxAmount)) {
+    throw new AppError(`Amount must be between ${number(product.minAmount)} and ${number(product.maxAmount)}`, 400);
+  }
+  if (amount > number(profile.growthLine.availableLimit)) {
+    throw new AppError("Requested amount exceeds your available Kuula Growth Line", 400);
+  }
 
   let location = null;
   if (partnerLocationId) {
@@ -294,11 +410,31 @@ router.post("/partner-financing", authenticateToken, async (req: Request, res: R
         status: "pending_review",
         payeeName: location?.name ?? partner.name,
         payeeReference: location?.externalReference ?? partner.code,
-        metadata: { directPayeeRequired: true, disbursementMode: product.disbursementMode, source: "kuula-app" },
+        metadata: {
+          directPayeeRequired: true,
+          disbursementMode: product.disbursementMode,
+          source: "kuula-app",
+        },
       },
     });
-    await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "partner_financing.submitted", resourceType: "partner_financing_request", resourceId: request.id, metadata: { productCode, partnerCode, amount, invoiceReference } });
-    res.status(201).json({ request: { id: request.id, status: request.status, amount, partner: partner.name, product: product.name, message: "Request received. Kuula will verify the invoice/order and approved payee before any money can move." } });
+    await writeAuditEvent({
+      actorId: userId,
+      subjectUserId: userId,
+      action: "partner_financing.submitted",
+      resourceType: "partner_financing_request",
+      resourceId: request.id,
+      metadata: { productCode, partnerCode, amount, invoiceReference },
+    });
+    res.status(201).json({
+      request: {
+        id: request.id,
+        status: request.status,
+        amount,
+        partner: partner.name,
+        product: product.name,
+        message: "Request received. Kuula will verify the invoice/order and approved payee before any money can move.",
+      },
+    });
   } catch (error: any) {
     if (error?.code === "P2002" && externalReference) throw new AppError("This partner request was already submitted", 409);
     throw error;
