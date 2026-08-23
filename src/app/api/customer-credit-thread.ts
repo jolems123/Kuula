@@ -1,8 +1,17 @@
 import { env } from "../config/env";
 import { ApiError } from "./types";
 
-async function call<T>(token: string, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${env.API_BASE_URL}/api/customer${path}`, {
+export interface CustomerCreditThreadMessage {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: string;
+  content: string;
+  created_at: string;
+}
+
+async function request<T>(token: string, path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${env.API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init?.headers },
   });
@@ -12,6 +21,8 @@ async function call<T>(token: string, path: string, init?: RequestInit): Promise
 }
 
 export const customerCreditThreadApi = {
-  list: (token: string, applicationId: string) => call<{ messages: Array<Record<string, any>> }>(token, `/applications/${applicationId}/messages`),
-  post: (token: string, applicationId: string, content: string) => call<{ message: Record<string, unknown> }>(token, `/applications/${applicationId}/messages`, { method: "POST", body: JSON.stringify({ content }) }),
+  getApplicationMessages: (token: string, applicationId: string) =>
+    request<{ messages: CustomerCreditThreadMessage[] }>(token, `/api/customer/applications/${encodeURIComponent(applicationId)}/messages`),
+  postApplicationMessage: (token: string, applicationId: string, content: string) =>
+    request<{ message: CustomerCreditThreadMessage }>(token, `/api/customer/applications/${encodeURIComponent(applicationId)}/messages`, { method: "POST", body: JSON.stringify({ content }) }),
 };
