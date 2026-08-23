@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const APP_ID = 'com.kuula.ap';
-const legacyIds = ['ug.kuula.app'];
+const APP_ID = 'com.kuula.app';
+const legacyIds = ['ug.kuula.app', 'com.kuula.ap'];
 const files = [
   'ios/App/App.xcodeproj/project.pbxproj',
 ];
