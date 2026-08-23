@@ -10,7 +10,7 @@ import {
 const { boolean, integer, like, string } = Matchers;
 
 const pact = new Pact({
-  consumer: "KuulaWebMobile",
+  consumer: "KuulaBusinessOperations",
   provider: "KuulaNodeApi",
   dir: path.resolve(process.cwd(), "pacts"),
   spec: SpecificationVersion.SPECIFICATION_VERSION_V4,
