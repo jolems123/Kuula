@@ -187,8 +187,11 @@ workflows:
 
       - name: Set iOS build number
         script: |
-          cd ios/App
-          agvtool new-version -all "$CM_BUILD_NUMBER"
+          BUILD_NUMBER=$((24100 + CM_BUILD_NUMBER))
+          /usr/bin/sed -i '' -E \
+            "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g" \
+            ios/App/App.xcodeproj/project.pbxproj
+          grep "CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Apply iOS signing profiles
         script: xcode-project use-profiles
