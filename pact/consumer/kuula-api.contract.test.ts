@@ -221,22 +221,22 @@ describe("Kuula frontend -> Node API contracts", () => {
           isPending: boolean(true),
           amount: integer(10000),
           reference: string("KUULA-PAY-001"),
-          uuid: string("provider-request-001"),
           message: string("Approve the mobile-money prompt on your phone to complete the repayment."),
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ isPending?: boolean; reference?: string; attempt: { success: boolean } }>(
+        const result = await json<{ isPending?: boolean; reference?: string; attempt: { success: boolean; reason: string } }>(
           `${mockServer.url}/api/loans/repayment/pay`,
           { method: "POST", headers: { Authorization: "Bearer contract-token" }, body: JSON.stringify({ amount: 10000 }) },
         );
         expect(result.isPending).toBe(true);
         expect(result.attempt.success).toBe(false);
+        expect(result.attempt.reason).toBe("pending-customer-approval");
         expect(result.reference).toBeTruthy();
       });
   });
 
-  it("keeps notification fields compatible with the existing UI model", async () => {
+  it("keeps notification fields on the current camelCase API contract", async () => {
     await pact
       .addInteraction()
       .uponReceiving("a customer requests notifications")
@@ -246,25 +246,60 @@ describe("Kuula frontend -> Node API contracts", () => {
       .willRespondWith(200, (builder) => {
         builder.headers({ "Content-Type": "application/json" });
         builder.jsonBody({
-          notifications: [like({
-            id: "66666666-6666-4666-8666-666666666666",
-            user_id: "11111111-1111-4111-8111-111111111111",
-            title: "Payment Received",
-            body: "Your repayment is settled.",
-            type: "success",
-            is_read: false,
-            created_at: "2026-08-23T10:20:00.000Z",
-          })],
+          notifications: [{
+            id: string("66666666-6666-4666-8666-666666666666"),
+            userId: string("11111111-1111-4111-8111-111111111111"),
+            title: string("Payment Received"),
+            body: string("Your repayment is settled."),
+            type: string("success"),
+            isRead: boolean(false),
+            createdAt: string("2026-08-23T10:20:00.000Z"),
+          }],
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ notifications: Array<{ user_id: string; is_read: boolean; created_at: string }> }>(
+        const result = await json<{ notifications: Array<{ userId: string; isRead: boolean; createdAt: string }> }>(
           `${mockServer.url}/api/notifications`,
           { headers: { Authorization: "Bearer contract-token" } },
         );
-        expect(result.notifications[0].user_id).toBeTruthy();
-        expect(result.notifications[0].is_read).toBe(false);
-        expect(result.notifications[0].created_at).toBeTruthy();
+        expect(result.notifications[0].userId).toBeTruthy();
+        expect(result.notifications[0].isRead).toBe(false);
+        expect(Number.isNaN(new Date(result.notifications[0].createdAt).getTime())).toBe(false);
+      });
+  });
+
+  it("keeps transaction history on the current camelCase ledger contract", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("a customer requests transaction history")
+      .withRequest("GET", "/api/transactions", (builder) => {
+        builder.headers({ Authorization: "Bearer contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          transactions: [{
+            id: string("77777777-7777-4777-8777-777777777777"),
+            loanId: string("88888888-8888-4888-8888-888888888888"),
+            type: string("loan_payment"),
+            amount: integer(10000),
+            status: string("completed"),
+            reference: string("KUULA-PAY-001"),
+            provider: string("marzpay"),
+            providerStatus: string("completed"),
+            reconciliationStatus: string("matched"),
+            createdAt: string("2026-08-23T10:20:00.000Z"),
+            updatedAt: string("2026-08-23T10:21:00.000Z"),
+          }],
+        });
+      })
+      .executeTest(async (mockServer) => {
+        const result = await json<{ transactions: Array<{ reference: string; createdAt: string }> }>(
+          `${mockServer.url}/api/transactions`,
+          { headers: { Authorization: "Bearer contract-token" } },
+        );
+        expect(result.transactions[0].reference).toBe("KUULA-PAY-001");
+        expect(Number.isNaN(new Date(result.transactions[0].createdAt).getTime())).toBe(false);
       });
   });
 });
