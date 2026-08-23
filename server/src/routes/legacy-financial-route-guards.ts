@@ -3,9 +3,16 @@ import { Router } from "express";
 /**
  * Fail-closed guards for routes that still exist in older compatibility routers.
  * Canonical handlers are mounted before these guards. Reaching a guard means the
- * canonical route unexpectedly fell through, so stale money-moving code must not run.
+ * canonical route unexpectedly fell through, so stale money-moving or broad-read
+ * compatibility code must not run.
  */
 export const loanFinancialFallbackGuard = Router();
+loanFinancialFallbackGuard.get("/applications", (_req, res) => {
+  res.status(503).json({
+    error: "Legacy broad application reads are disabled. Use the canonical assignment-scoped application reader.",
+    code: "LEGACY_APPLICATION_READ_DISABLED",
+  });
+});
 loanFinancialFallbackGuard.post("/:id/accept", (_req, res) => {
   res.status(503).json({
     error: "Loan disbursement fallback is disabled. Use the canonical provider-aware disbursement flow.",
