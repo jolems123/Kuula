@@ -61,17 +61,25 @@ router.get("/dashboard", async (req: Request, res: Response) => {
 router.post("/applications/:id/decision", async (req: Request, _res: Response, next: NextFunction) => {
   const applicationId = String(req.params.id || "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(applicationId)) throw new AppError("Application ID is invalid", 400);
-  const assigned = await prisma.$queryRaw<any[]>(Prisma.sql`
-    SELECT c.current_level
+
+  const cases = await prisma.$queryRaw<Array<{ current_level: number; assignee_id: string | null }>>(Prisma.sql`
+    SELECT c.current_level, aa.assignee_id
     FROM credit_cases c
-    JOIN approval_assignments aa ON aa.application_id = c.application_id
+    LEFT JOIN approval_assignments aa ON aa.application_id = c.application_id
       AND aa.level = c.current_level
       AND aa.status = 'active'
     WHERE c.application_id = ${applicationId}::uuid
-      AND aa.assignee_id = ${req.user!.userId}::uuid
     LIMIT 1
   `);
-  if (!assigned[0]) throw new AppError("This application is not assigned to you at the current review level", 403);
+  const current = cases[0];
+  if (!current) throw new AppError("Credit case not found", 404);
+  if (req.user!.role === "admin" && current.current_level === 3) {
+    next();
+    return;
+  }
+  if (current.assignee_id !== req.user!.userId) {
+    throw new AppError("This application is not assigned to you at the current review level", 403);
+  }
   next();
 });
 
