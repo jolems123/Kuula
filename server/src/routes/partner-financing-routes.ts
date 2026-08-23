@@ -114,7 +114,16 @@ router.post("/partner-financing/:id/accept", authenticateToken, async (req: Requ
   const application = request.loanApplication;
   const existingBatch = await disbursementBatchForApplication(application.id);
   if (existingBatch) {
-    res.json({ requestId: request.id, applicationId: application.id, applicationStatus: application.status, disbursement: existingBatch });
+    res.json({
+      requestId: request.id,
+      applicationId: application.id,
+      applicationStatus: application.status,
+      payee: request.payeeName,
+      disbursement: existingBatch,
+      message: existingBatch.status === "settled"
+        ? `Settlement to ${request.payeeName} is complete.`
+        : `Settlement to ${request.payeeName} is already being processed.`,
+    });
     return;
   }
 
