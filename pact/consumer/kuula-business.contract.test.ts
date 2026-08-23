@@ -169,4 +169,42 @@ describe("Kuula business and admin API contracts", () => {
         expect(result.loans.disbursing).toBeGreaterThanOrEqual(0);
       });
   });
+
+  it("keeps the credit operations dashboard contract stable for staff clients", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("an admin requests the credit operations dashboard")
+      .withRequest("GET", "/api/operations/dashboard", (builder) => {
+        builder.headers({ Authorization: "Bearer admin-contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          level: integer(3),
+          role: string("admin"),
+          counts: like({ final_review: 2 }),
+          queue: [like({
+            id: "33333333-3333-4333-8333-333333333333",
+            current_level: 3,
+            status: "final_review",
+            updated_at: "2026-08-23T10:30:00.000Z",
+            applicant_name: "Kuula Test",
+            amount: 100000,
+            purpose: "Working capital",
+            created_at: "2026-08-23T10:00:00.000Z",
+            phone: "+256700000000",
+            kyc_verified: true,
+            credit_score: 720,
+            approved_limit: 500000,
+          })],
+        });
+      })
+      .executeTest(async (mockServer) => {
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getCreditOperationsDashboard("admin-contract-token");
+        expect(result.level).toBe(3);
+        expect(result.role).toBe("admin");
+        expect(result.queue).toHaveLength(1);
+      });
+  });
 });
