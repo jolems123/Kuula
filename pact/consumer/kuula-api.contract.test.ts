@@ -1,6 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { Matchers, Pact, SpecificationVersion } from "@pact-foundation/pact";
+import { api, configureApiClientForContractTest } from "../../src/app/api/client";
 
 const { boolean, integer, like, string } = Matchers;
 
@@ -10,15 +11,6 @@ const pact = new Pact({
   dir: path.resolve(process.cwd(), "pacts"),
   spec: SpecificationVersion.SPECIFICATION_VERSION_V4,
 });
-
-async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  expect(response.ok).toBe(true);
-  return response.json() as Promise<T>;
-}
 
 const application = {
   id: "33333333-3333-4333-8333-333333333333",
@@ -55,7 +47,8 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const response = await json<{ ok: boolean; realMoneyEnabled?: boolean }>(`${mockServer.url}/api/health`);
+        configureApiClientForContractTest(mockServer.url);
+        const response = await api.health();
         expect(response.ok).toBe(true);
         expect(response.realMoneyEnabled).toBe(false);
       });
@@ -98,10 +91,8 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const session = await json<{ token: string; refreshToken: string; role: string; unreadNotifications: number }>(
-          `${mockServer.url}/api/auth/login`,
-          { method: "POST", body: JSON.stringify({ phone: "+256700000000", pin: "12345678" }) },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const session = await api.login("+256700000000", "12345678");
         expect(session.token).toBeTruthy();
         expect(session.refreshToken).toBeTruthy();
         expect(session.role).toBe("customer");
@@ -132,10 +123,8 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const quote = await json<{ principal: number; total: number; compound: boolean }>(
-          `${mockServer.url}/api/loans/quote`,
-          { method: "POST", headers: { Authorization: "Bearer contract-token" }, body: JSON.stringify({ amount: 100000, termDays: 90 }) },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const quote = await api.quoteLoan("contract-token", 100000, 90);
         expect(quote.total).toBeGreaterThanOrEqual(quote.principal);
         expect(quote.compound).toBe(false);
       });
@@ -159,9 +148,11 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ ok: boolean; agreementHash: string }>(
-          `${mockServer.url}/api/loans/33333333-3333-4333-8333-333333333333/agreement/accept`,
-          { method: "POST", headers: { Authorization: "Bearer contract-token" }, body: JSON.stringify({ clientContext: { source: "mobile" } }) },
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.acceptLoanAgreement(
+          "contract-token",
+          "33333333-3333-4333-8333-333333333333",
+          { source: "mobile" },
         );
         expect(result.ok).toBe(true);
         expect(result.agreementHash).toHaveLength(64);
@@ -195,12 +186,10 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ application: typeof application; disbursement: { reference: string } }>(
-          `${mockServer.url}/api/loans/33333333-3333-4333-8333-333333333333/accept`,
-          { method: "POST", headers: { Authorization: "Bearer contract-token" } },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.acceptLoan("contract-token", "33333333-3333-4333-8333-333333333333");
         expect(result.application.amount).toBe(100000);
-        expect(result.disbursement.reference).toBeTruthy();
+        expect(result.disbursement?.reference).toBeTruthy();
       });
   });
 
@@ -225,10 +214,8 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ isPending?: boolean; reference?: string; attempt: { success: boolean; reason: string } }>(
-          `${mockServer.url}/api/loans/repayment/pay`,
-          { method: "POST", headers: { Authorization: "Bearer contract-token" }, body: JSON.stringify({ amount: 10000 }) },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.payRepayment("contract-token", 10000);
         expect(result.isPending).toBe(true);
         expect(result.attempt.success).toBe(false);
         expect(result.attempt.reason).toBe("pending-customer-approval");
@@ -258,10 +245,8 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ notifications: Array<{ userId: string; isRead: boolean; createdAt: string }> }>(
-          `${mockServer.url}/api/notifications`,
-          { headers: { Authorization: "Bearer contract-token" } },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getNotifications("contract-token");
         expect(result.notifications[0].userId).toBeTruthy();
         expect(result.notifications[0].isRead).toBe(false);
         expect(Number.isNaN(new Date(result.notifications[0].createdAt).getTime())).toBe(false);
@@ -294,12 +279,10 @@ describe("Kuula frontend -> Node API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ transactions: Array<{ reference: string; createdAt: string }> }>(
-          `${mockServer.url}/api/transactions`,
-          { headers: { Authorization: "Bearer contract-token" } },
-        );
-        expect(result.transactions[0].reference).toBe("KUULA-PAY-001");
-        expect(Number.isNaN(new Date(result.transactions[0].createdAt).getTime())).toBe(false);
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getTransactions("contract-token");
+        expect(String(result.transactions[0].reference)).toBe("KUULA-PAY-001");
+        expect(Number.isNaN(new Date(String(result.transactions[0].createdAt)).getTime())).toBe(false);
       });
   });
 });
