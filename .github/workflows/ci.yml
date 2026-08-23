@@ -27,6 +27,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Pact consumer contracts
+        run: npm run test:contracts
       - name: Pricing compliance
         run: npm run check:pricing
       - name: Client-server pricing parity
@@ -47,6 +49,12 @@ jobs:
           name: web-dist
           path: dist/
           retention-days: 7
+      - name: Upload Pact contracts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-contracts
+          path: pacts/
+          retention-days: 14
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Route sweep
