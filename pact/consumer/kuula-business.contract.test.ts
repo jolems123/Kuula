@@ -1,0 +1,181 @@
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { Matchers, Pact, SpecificationVersion } from "@pact-foundation/pact";
+
+const { boolean, integer, like, string } = Matchers;
+
+const pact = new Pact({
+  consumer: "KuulaWebMobile",
+  provider: "KuulaNodeApi",
+  dir: path.resolve(process.cwd(), "pacts"),
+  spec: SpecificationVersion.SPECIFICATION_VERSION_V4,
+});
+
+async function json<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  expect(response.ok).toBe(true);
+  return response.json() as Promise<T>;
+}
+
+describe("Kuula business and admin API contracts", () => {
+  it("keeps partner settlement retries shape-compatible", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("an already-started partner settlement")
+      .withRequest("POST", "/api/network/partner-financing/99999999-9999-4999-8999-999999999999/accept", (builder) => {
+        builder.headers({ "Content-Type": "application/json", Authorization: "Bearer contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          requestId: string("99999999-9999-4999-8999-999999999999"),
+          applicationId: string("33333333-3333-4333-8333-333333333333"),
+          applicationStatus: string("disbursing"),
+          payee: string("Kuula Partner Clinic"),
+          disbursement: like({
+            id: "44444444-4444-4444-8444-444444444444",
+            status: "pending",
+            beneficiaryType: "partner",
+            network: "mtn",
+            currency: "UGX",
+            approvedAmount: 100000,
+            totalSettled: 0,
+            remainingAmount: 100000,
+            legs: [{
+              id: "55555555-5555-4555-8555-555555555555",
+              sequence: 1,
+              amount: 100000,
+              status: "pending",
+              reference: "KUULA-PARTNER-001",
+            }],
+          }),
+          message: string("Settlement to Kuula Partner Clinic is already being processed."),
+        });
+      })
+      .executeTest(async (mockServer) => {
+        const result = await json<{ payee: string; message: string; applicationStatus: string }>(
+          `${mockServer.url}/api/network/partner-financing/99999999-9999-4999-8999-999999999999/accept`,
+          { method: "POST", headers: { Authorization: "Bearer contract-token" } },
+        );
+        expect(result.payee).toBeTruthy();
+        expect(result.message).toBeTruthy();
+        expect(result.applicationStatus).toBe("disbursing");
+      });
+  });
+
+  it("keeps admin customer KYC fields available", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("an admin requests customer rows")
+      .withRequest("GET", "/api/admin/customers", (builder) => {
+        builder.headers({ Authorization: "Bearer admin-contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          customers: [{
+            id: string("11111111-1111-4111-8111-111111111111"),
+            full_name: string("Kuula Test"),
+            phone: string("+256700000000"),
+            email: string("customer@kuula.test"),
+            verified: boolean(true),
+            kyc_verified: boolean(true),
+            loans_total: integer(2),
+            created_at: string("2026-08-23T10:00:00.000Z"),
+          }],
+        });
+      })
+      .executeTest(async (mockServer) => {
+        const result = await json<{ customers: Array<{ kyc_verified: boolean; loans_total: number }> }>(
+          `${mockServer.url}/api/admin/customers`,
+          { headers: { Authorization: "Bearer admin-contract-token" } },
+        );
+        expect(result.customers[0].kyc_verified).toBe(true);
+        expect(result.customers[0].loans_total).toBe(2);
+      });
+  });
+
+  it("keeps all operational loan states representable in admin stats", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("an admin requests dashboard statistics")
+      .withRequest("GET", "/api/admin/stats", (builder) => {
+        builder.headers({ Authorization: "Bearer admin-contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          totalCustomers: integer(10),
+          pendingApprovals: integer(2),
+          overdueLoans: integer(1),
+          recentApplications: [like({
+            id: "33333333-3333-4333-8333-333333333333",
+            applicantId: "11111111-1111-4111-8111-111111111111",
+            applicantName: "Kuula Test",
+            amount: 100000,
+            purpose: "Working capital",
+            termDays: 90,
+            channel: "MTN MoMo",
+            status: "disbursing",
+            total: 106000,
+            createdAt: "2026-08-23T10:00:00.000Z",
+            decidedAt: "2026-08-23T10:05:00.000Z",
+            decisionNotes: "Approved",
+            offerExpiresAt: "2026-08-24T10:05:00.000Z",
+          })],
+          monthlyChart: [like({ month: "Aug", loans: 3, amount: 1 })],
+        });
+      })
+      .executeTest(async (mockServer) => {
+        const result = await json<{ recentApplications: Array<{ status: string }> }>(
+          `${mockServer.url}/api/admin/stats`,
+          { headers: { Authorization: "Bearer admin-contract-token" } },
+        );
+        expect(result.recentApplications[0].status).toBe("disbursing");
+      });
+  });
+
+  it("keeps investor pipeline counts explicit", async () => {
+    await pact
+      .addInteraction()
+      .uponReceiving("an admin requests investor reporting")
+      .withRequest("GET", "/api/admin/investor-report", (builder) => {
+        builder.headers({ Authorization: "Bearer admin-contract-token" });
+      })
+      .willRespondWith(200, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          generatedAt: string("2026-08-23T10:30:00.000Z"),
+          customers: like({ total: 10, verified: 8, newThisMonth: 2 }),
+          loans: like({
+            total: 12,
+            pending: 2,
+            offered: 1,
+            disbursing: 1,
+            active: 3,
+            paid: 4,
+            overdue: 1,
+            rejected: 0,
+            disbursedPrincipal: 800000,
+            outstanding: 300000,
+          }),
+          revenue: like({ totalDisbursed: 800000, totalCollected: 500000, realizedInterest: 40000, expectedInterest: 80000 }),
+          ratios: like({ defaultRatePct: 12.5, repaymentRatePct: 50, parPct: 10 }),
+          monthly: [like({ month: "Aug 26", disbursed: 100000, collected: 50000, newCustomers: 2 })],
+          today: like({ applications: 1, approved: 1, rejected: 0, disbursed: 100000, collected: 0 }),
+          daily: [like({ day: "Sun", applications: 1, approved: 1, disbursed: 100000, collected: 0 })],
+        });
+      })
+      .executeTest(async (mockServer) => {
+        const result = await json<{ loans: { offered: number; disbursing: number } }>(
+          `${mockServer.url}/api/admin/investor-report`,
+          { headers: { Authorization: "Bearer admin-contract-token" } },
+        );
+        expect(result.loans.offered).toBeGreaterThanOrEqual(0);
+        expect(result.loans.disbursing).toBeGreaterThanOrEqual(0);
+      });
+  });
+});
