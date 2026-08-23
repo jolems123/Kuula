@@ -7,10 +7,9 @@ android {
         applicationId "ug.kuula.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // versionCode must be a monotonically increasing integer for every
-        // Play Store upload. Bump it for every release.
-        //   2.4.1 → 24100  (major*10000 + minor*100 + patch)
-        versionCode 24100
+        // Keep Play Store uploads monotonic. Codemagic increments CM_BUILD_NUMBER
+        // for each build while local builds retain the checked-in base code.
+        versionCode System.getenv('CM_BUILD_NUMBER') ? 24100 + Integer.parseInt(System.getenv('CM_BUILD_NUMBER')) : 24100
         versionName "2.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -19,13 +18,17 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    // Release signing — keystore path / passwords come from gradle.properties
-    // (or a CI secret). When unset, the release variant is built unsigned so
-    // local builds keep working. Production uploads to Play Console MUST be
-    // signed with the release keystore.
     signingConfigs {
         release {
-            if (project.hasProperty('KUULA_RELEASE_STORE_FILE')) {
+            // Codemagic injects these variables when the configured Android
+            // signing identity is attached to the workflow.
+            if (System.getenv('CM_KEYSTORE_PATH')) {
+                storeFile file(System.getenv('CM_KEYSTORE_PATH'))
+                storePassword System.getenv('CM_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('CM_KEY_ALIAS')
+                keyPassword System.getenv('CM_KEY_PASSWORD')
+            } else if (project.hasProperty('KUULA_RELEASE_STORE_FILE')) {
+                // Preserve the existing local/other-CI signing path.
                 storeFile file(project.getProperty('KUULA_RELEASE_STORE_FILE'))
                 storePassword project.getProperty('KUULA_RELEASE_STORE_PASSWORD')
                 keyAlias project.getProperty('KUULA_RELEASE_KEY_ALIAS')
@@ -37,7 +40,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (project.hasProperty('KUULA_RELEASE_STORE_FILE')) {
+            if (System.getenv('CM_KEYSTORE_PATH') || project.hasProperty('KUULA_RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
             }
         }
