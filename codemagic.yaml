@@ -5,12 +5,8 @@ workflows:
     max_build_duration: 90
     environment:
       groups:
-        # Create this group in Codemagic and add VITE_API_BASE_URL only.
-        # Browser/mobile variables are public; never put server secrets in it.
         - kuula_production
       android_signing:
-        # Upload the Android release keystore in Codemagic Code signing identities
-        # with this exact reference name.
         - kuula_android_release
       vars:
         VITE_BACKEND: node
@@ -33,9 +29,7 @@ workflows:
         - $HOME/.gradle/caches
         - $HOME/.gradle/wrapper
     triggering:
-      events:
-        - push
-        - tag
+      events: [push, tag]
       branch_patterns:
         - pattern: main
           include: true
@@ -47,41 +41,29 @@ workflows:
       - name: Verify production mobile environment
         script: |
           test -n "$VITE_API_BASE_URL"
-          node --version
-          npm --version
-          java -version
           npm run check:env
-
       - name: Install application dependencies
         script: npm ci --legacy-peer-deps --no-audit --no-fund
-
       - name: Typecheck
         script: npm run typecheck
-
       - name: Unit tests
         script: npm test
-
       - name: Pact consumer contracts
         script: |
           cd pact
           npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm test
-
       - name: Financial pricing checks
         script: |
           npm run check:pricing
           npm run check:pricing-parity
-
       - name: Build production web bundle
         script: npm run build
-
       - name: Sync Capacitor Android
         script: npx cap sync android
-
       - name: Configure Android SDK
         script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
       - name: Build signed Android APK and AAB
         script: |
           test -n "$CM_KEYSTORE_PATH"
@@ -91,7 +73,6 @@ workflows:
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon clean assembleRelease bundleRelease
-
     artifacts:
       - android/app/build/outputs/**/*.apk
       - android/app/build/outputs/**/*.aab
@@ -104,12 +85,10 @@ workflows:
     max_build_duration: 120
     environment:
       groups:
-        # Same public production variables as Android. VITE_API_BASE_URL is
-        # required. Do not add DATABASE_URL, JWT, MarZPay, KYC or S3 secrets.
         - kuula_production
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: ug.kuula.app
+        bundle_identifier: com.kuula.ap
       vars:
         VITE_BACKEND: node
         VITE_USE_API: "true"
@@ -134,9 +113,7 @@ workflows:
         - $HOME/Library/Caches/CocoaPods
         - $HOME/.cocoapods
     triggering:
-      events:
-        - push
-        - tag
+      events: [push, tag]
       branch_patterns:
         - pattern: main
           include: true
@@ -148,60 +125,40 @@ workflows:
       - name: Verify production mobile environment
         script: |
           test -n "$VITE_API_BASE_URL"
-          node --version
-          npm --version
-          xcodebuild -version
           npm run check:env
-
       - name: Install application dependencies
         script: npm ci --legacy-peer-deps --no-audit --no-fund
-
       - name: Typecheck
         script: npm run typecheck
-
       - name: Unit tests
         script: npm test
-
       - name: Pact consumer contracts
         script: |
           cd pact
           npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm test
-
       - name: Financial pricing checks
         script: |
           npm run check:pricing
           npm run check:pricing-parity
-
       - name: Build production web bundle
         script: npm run build
-
       - name: Sync Capacitor iOS
         script: npx cap sync ios
-
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
           pod install
-
       - name: Set iOS build number
         script: |
           BUILD_NUMBER=$((24100 + CM_BUILD_NUMBER))
-          /usr/bin/sed -i '' -E \
-            "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g" \
-            ios/App/App.xcodeproj/project.pbxproj
-          grep "CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};" ios/App/App.xcodeproj/project.pbxproj
-
+          /usr/bin/sed -i '' -E "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g" ios/App/App.xcodeproj/project.pbxproj
       - name: Apply iOS signing profiles
         script: xcode-project use-profiles
-
       - name: Build signed IPA
         script: |
-          xcode-project build-ipa \
-            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
-
+          xcode-project build-ipa --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - ios/App/build/ios/ipa/*.ipa

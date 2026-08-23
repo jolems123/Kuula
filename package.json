@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "check:env": "node scripts/check-env.mjs",
-    "prebuild": "node scripts/check-env.mjs",
+    "sync:app-id": "node scripts/sync-native-app-id.mjs",
+    "prebuild": "node scripts/check-env.mjs && node scripts/sync-native-app-id.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

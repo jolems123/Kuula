@@ -1,34 +1,27 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "ug.kuula.app"
+    namespace "com.kuula.ap"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "ug.kuula.app"
+        applicationId "com.kuula.ap"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Keep Play Store uploads monotonic. Codemagic increments CM_BUILD_NUMBER
-        // for each build while local builds retain the checked-in base code.
         versionCode System.getenv('CM_BUILD_NUMBER') ? 24100 + Integer.parseInt(System.getenv('CM_BUILD_NUMBER')) : 24100
         versionName "2.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
     signingConfigs {
         release {
-            // Codemagic injects these variables when the configured Android
-            // signing identity is attached to the workflow.
             if (System.getenv('CM_KEYSTORE_PATH')) {
                 storeFile file(System.getenv('CM_KEYSTORE_PATH'))
                 storePassword System.getenv('CM_KEYSTORE_PASSWORD')
                 keyAlias System.getenv('CM_KEY_ALIAS')
                 keyPassword System.getenv('CM_KEY_PASSWORD')
             } else if (project.hasProperty('KUULA_RELEASE_STORE_FILE')) {
-                // Preserve the existing local/other-CI signing path.
                 storeFile file(project.getProperty('KUULA_RELEASE_STORE_FILE'))
                 storePassword project.getProperty('KUULA_RELEASE_STORE_PASSWORD')
                 keyAlias project.getProperty('KUULA_RELEASE_KEY_ALIAS')
