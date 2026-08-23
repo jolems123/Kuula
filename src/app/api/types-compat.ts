@@ -14,6 +14,7 @@ export type CustomerRow = {
   phone: string;
   email: string | null;
   verified: boolean;
+  kyc_verified: boolean;
   loans_total: number;
   created_at: string;
 };
@@ -30,11 +31,12 @@ export type AdminStats = {
     purpose: string;
     termDays: number;
     channel: string;
-    status: "pending" | "offered" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
+    status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
     total: number;
     createdAt: string;
     decidedAt: string | null;
     decisionNotes: string | null;
+    offerExpiresAt?: string | null;
   }>;
   monthlyChart: Array<{ month: string; loans: number; amount: number }>;
 };
@@ -49,6 +51,8 @@ export type InvestorReport = {
   loans: {
     total: number;
     pending: number;
+    offered: number;
+    disbursing: number;
     active: number;
     paid: number;
     overdue: number;
