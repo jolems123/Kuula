@@ -255,7 +255,7 @@ router.post(
     const id = String(req.body?.id || "");
     const decision = String(req.body?.decision || "");
     const notes = String(req.body?.notes || "").trim();
-    if (!['approved', 'rejected'].includes(decision)) throw new AppError("Decision must be approved or rejected", 400);
+    if (!["approved", "rejected"].includes(decision)) throw new AppError("Decision must be approved or rejected", 400);
     if (!notes) throw new AppError("Written decision notes are required", 400);
 
     const application = await prisma.loanApplication.findUnique({
@@ -263,7 +263,7 @@ router.post(
       include: { applicant: true, underwriting: true },
     });
     if (!application) throw new AppError("Loan application not found", 404);
-    if (!['pending', 'resubmitted'].includes(application.status)) throw new AppError("Only pending applications can be decided", 409);
+    if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Only pending applications can be decided", 409);
     if (!application.underwriting) throw new AppError("Application has no underwriting assessment", 409);
 
     if (decision === "approved") {
@@ -311,7 +311,12 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
   if (!application.offerExpiresAt || application.offerExpiresAt <= new Date()) throw new AppError("This loan offer has expired", 409);
   if (!application.underwriting) throw new AppError("Loan underwriting record is missing", 409);
   if (application.agreementAcceptance) {
-    res.json({ ok: true, acceptedAt: application.agreementAcceptance.acceptedAt, agreementVersion: application.agreementAcceptance.agreementVersion });
+    res.json({
+      ok: true,
+      acceptedAt: application.agreementAcceptance.acceptedAt,
+      agreementVersion: application.agreementAcceptance.agreementVersion,
+      agreementHash: application.agreementAcceptance.agreementHash,
+    });
     return;
   }
 
