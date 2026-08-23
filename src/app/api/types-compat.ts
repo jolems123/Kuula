@@ -1,11 +1,11 @@
 export type AppNotification = {
   id: string;
-  user_id: string;
+  userId: string;
   title: string;
   body: string;
   type: "success" | "warning" | "info" | "alert";
-  is_read: boolean;
-  created_at: string;
+  isRead: boolean;
+  createdAt: string;
 };
 
 export type CustomerRow = {
