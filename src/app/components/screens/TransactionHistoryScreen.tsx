@@ -42,19 +42,21 @@ function mapTxn(r: Record<string, unknown>): TxnItem {
   const txnType = String(r.type ?? "");
   const amount = Number(r.amount ?? 0);
   const isIn = txnType === "loan_disbursement";
-  const reference = r.loan_id ? String(r.loan_id) : String(r.transaction_id ?? "");
+  const reference = String(r.reference ?? r.loanId ?? "");
+  const createdAt = String(r.createdAt ?? "");
+  const createdDate = new Date(createdAt);
   return {
     id: String(r.id),
     label: TYPE_LABEL[txnType] ?? txnType,
     sub: reference,
     amount,
     type: isIn ? "in" : "out",
-    date: new Date(String(r.created_at)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    date: Number.isNaN(createdDate.getTime()) ? "" : createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
     category: TYPE_CATEGORY[txnType] ?? "payments",
     rawType: txnType,
-    status: String(r.status ?? "completed"),
+    status: String(r.status ?? "pending"),
     reference,
-    createdAtISO: String(r.created_at ?? new Date().toISOString()),
+    createdAtISO: createdAt,
   };
 }
 
