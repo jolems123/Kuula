@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:contracts": "vitest run pact/consumer/**/*.contract.test.ts",
     "sweep": "node scripts/route-sweep.mjs",
     "check:pricing": "node scripts/check-pricing-compliance.mjs",
     "check:pricing-parity": "tsx scripts/check-pricing-parity.ts",
@@ -49,7 +48,6 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
-    "@pact-foundation/pact": "^17.1.2",
     "@prisma/client": "^5.22.0",
     "@tailwindcss/vite": "4.1.12",
     "@types/bcryptjs": "^2.4.6",
