@@ -1,0 +1,14 @@
+{
+  "name": "kuula-pact-contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run consumer/**/*.contract.test.ts"
+  },
+  "devDependencies": {
+    "@pact-foundation/pact": "17.1.2",
+    "@types/node": "26.1.1",
+    "typescript": "5.8.3",
+    "vitest": "4.1.9"
+  }
+}
