@@ -23,6 +23,7 @@ function maskNin(value: string | null): string | null {
 router.get("/dashboard", async (req: Request, res: Response) => {
   const level = roleLevel(req.user!.role);
   if (!level) throw new AppError("Staff role required", 403);
+  const userId = req.user!.userId;
   const queue = await prisma.$queryRaw<any[]>(Prisma.sql`
     SELECT c.application_id AS id, c.current_level, c.status, c.updated_at,
            a.applicant_name, a.amount, a.purpose, a.created_at,
@@ -32,12 +33,12 @@ router.get("/dashboard", async (req: Request, res: Response) => {
     JOIN loan_applications a ON a.id = c.application_id
     JOIN users u ON u.id = c.customer_id
     LEFT JOIN underwriting_assessments ua ON ua.application_id = a.id
-    JOIN approval_assignments aa ON aa.application_id = c.application_id
+    LEFT JOIN approval_assignments aa ON aa.application_id = c.application_id
       AND aa.level = c.current_level
       AND aa.status = 'active'
-      AND aa.assignee_id = ${req.user!.userId}::uuid
     WHERE c.current_level = ${level}
       AND c.status NOT IN ('completed','rejected')
+      AND (${req.user!.role === "admin"}::boolean OR aa.assignee_id = ${userId}::uuid)
     ORDER BY c.updated_at ASC
     LIMIT 200
   `);
