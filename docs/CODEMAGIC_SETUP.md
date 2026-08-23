@@ -4,7 +4,7 @@ Kuula uses `codemagic.yaml` at the repository root for signed Android and iOS pr
 
 ## App identity
 
-The canonical mobile application identifier is **`com.kuula.ap`** for both Android and iOS. Use this exact identifier in Google Play, Apple Developer/App Store Connect, provisioning profiles, Firebase/push configuration, deep links, and any provider configuration tied to the native app.
+The canonical mobile application identifier is **`com.kuula.app`** for both Android and iOS. Use this exact identifier in Google Play, Apple Developer/App Store Connect, provisioning profiles, Firebase/push configuration, deep links, and any provider configuration tied to the native app.
 
 ## Required Codemagic app setup
 
@@ -17,11 +17,11 @@ The canonical mobile application identifier is **`com.kuula.ap`** for both Andro
 
 ## Android signing
 
-Upload the Kuula release keystore in Codemagic and use the reference name `kuula_android_release`. The Android package/application ID is `com.kuula.ap`. The workflow produces a signed APK and AAB.
+Upload the Kuula release keystore in Codemagic and use the reference name `kuula_android_release`. The Android package/application ID is `com.kuula.app`. The workflow produces a signed APK and AAB.
 
 ## iOS signing
 
-Configure an App Store distribution certificate and provisioning profile for bundle identifier `com.kuula.ap`. The workflow uses workspace `ios/App/App.xcworkspace`, scheme `App`, `xcode-project use-profiles`, and `xcode-project build-ipa`.
+Configure an App Store distribution certificate and provisioning profile for bundle identifier `com.kuula.app`. The workflow uses workspace `ios/App/App.xcworkspace`, scheme `App`, `xcode-project use-profiles`, and `xcode-project build-ipa`.
 
 ## Build gates
 
