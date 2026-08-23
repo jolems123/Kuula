@@ -4,15 +4,21 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
+ARG NPM_RESOLUTION_BEFORE=2026-08-23T00:00:00.000Z
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install --global npm@11.12.1
+    && npm install --global npm@10.9.2 \
+    && test "$(npm --version)" = "10.9.2"
 
-# Install from the server manifest. The lockfile is currently stale and is
-# intentionally not used until it is regenerated to match package.json.
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+# The repository's historical server lockfile is incomplete. Until a canonical
+# lockfile can be regenerated and committed, freeze resolution to a fixed npm
+# version and publication cutoff, generate the complete lock deterministically,
+# then install exactly from that generated lock with npm ci.
+COPY package.json package-lock.json ./
+RUN npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund \
+    && npm ci --no-audit --no-fund
 
 COPY prisma ./prisma
 COPY scripts ./scripts

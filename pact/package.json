@@ -2,6 +2,11 @@
   "name": "kuula-pact-contracts",
   "private": true,
   "type": "module",
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": "10.9.2"
+  },
   "scripts": {
     "test": "vitest run consumer/**/*.contract.test.ts"
   },
