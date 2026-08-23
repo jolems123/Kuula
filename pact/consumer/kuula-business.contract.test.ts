@@ -1,6 +1,11 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { Matchers, Pact, SpecificationVersion } from "@pact-foundation/pact";
+import { api, configureApiClientForContractTest } from "../../src/app/api/client";
+import {
+  configurePartnerFinancingApiForContractTest,
+  partnerFinancingApi,
+} from "../../src/app/api/partner-financing";
 
 const { boolean, integer, like, string } = Matchers;
 
@@ -10,15 +15,6 @@ const pact = new Pact({
   dir: path.resolve(process.cwd(), "pacts"),
   spec: SpecificationVersion.SPECIFICATION_VERSION_V4,
 });
-
-async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  expect(response.ok).toBe(true);
-  return response.json() as Promise<T>;
-}
 
 describe("Kuula business and admin API contracts", () => {
   it("keeps partner settlement retries shape-compatible", async () => {
@@ -56,9 +52,10 @@ describe("Kuula business and admin API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ payee: string; message: string; applicationStatus: string }>(
-          `${mockServer.url}/api/network/partner-financing/99999999-9999-4999-8999-999999999999/accept`,
-          { method: "POST", headers: { Authorization: "Bearer contract-token" } },
+        configurePartnerFinancingApiForContractTest(mockServer.url);
+        const result = await partnerFinancingApi.accept(
+          "contract-token",
+          "99999999-9999-4999-8999-999999999999",
         );
         expect(result.payee).toBeTruthy();
         expect(result.message).toBeTruthy();
@@ -89,10 +86,8 @@ describe("Kuula business and admin API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ customers: Array<{ kyc_verified: boolean; loans_total: number }> }>(
-          `${mockServer.url}/api/admin/customers`,
-          { headers: { Authorization: "Bearer admin-contract-token" } },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getCustomers("admin-contract-token");
         expect(result.customers[0].kyc_verified).toBe(true);
         expect(result.customers[0].loans_total).toBe(2);
       });
@@ -130,10 +125,8 @@ describe("Kuula business and admin API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ recentApplications: Array<{ status: string }> }>(
-          `${mockServer.url}/api/admin/stats`,
-          { headers: { Authorization: "Bearer admin-contract-token" } },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getAdminStats("admin-contract-token");
         expect(result.recentApplications[0].status).toBe("disbursing");
       });
   });
@@ -170,10 +163,8 @@ describe("Kuula business and admin API contracts", () => {
         });
       })
       .executeTest(async (mockServer) => {
-        const result = await json<{ loans: { offered: number; disbursing: number } }>(
-          `${mockServer.url}/api/admin/investor-report`,
-          { headers: { Authorization: "Bearer admin-contract-token" } },
-        );
+        configureApiClientForContractTest(mockServer.url);
+        const result = await api.getInvestorReport("admin-contract-token");
         expect(result.loans.offered).toBeGreaterThanOrEqual(0);
         expect(result.loans.disbursing).toBeGreaterThanOrEqual(0);
       });
