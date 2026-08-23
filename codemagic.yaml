@@ -88,7 +88,7 @@ workflows:
         - kuula_production
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.kuula.ap
+        bundle_identifier: com.kuula.app
       vars:
         VITE_BACKEND: node
         VITE_USE_API: "true"

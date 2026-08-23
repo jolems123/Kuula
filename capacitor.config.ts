@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.kuula.ap',
+  appId: 'com.kuula.app',
   appName: 'Kuula',
   webDir: 'dist',
   android: {
