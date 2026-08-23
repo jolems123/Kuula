@@ -48,7 +48,6 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
     momoMonths: evidence.momoMonths,
     momoTxnCount: evidence.momoTxnCount,
     crbStatus: evidence.crbStatus,
-    savingsBalance: 0,
     kycVerified: user.kycVerified,
     loansRepaid: user.loansRepaid,
     loansTotal: user.loansTotal,

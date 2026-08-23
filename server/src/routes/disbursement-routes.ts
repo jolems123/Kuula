@@ -16,6 +16,27 @@ import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 
+function mapApplication(application: any) {
+  return {
+    id: application.id,
+    applicantId: application.applicantId,
+    applicantName: application.applicantName,
+    amount: Number(application.amount),
+    purpose: application.purpose,
+    termDays: application.termDays,
+    channel: application.channel,
+    status: application.status,
+    total: Number(application.total),
+    apr: Number(application.apr),
+    interest: Number(application.interest),
+    createdAt: application.createdAt,
+    decidedAt: application.decidedAt ?? null,
+    decisionNotes: application.decisionNotes ?? null,
+    offerExpiresAt: application.offerExpiresAt ?? null,
+    underwritingStatus: application.underwriting?.status ?? null,
+  };
+}
+
 async function recheck(application: any) {
   if (!application.underwriting) throw new AppError("Loan underwriting record is missing", 409);
   const user = application.applicant;
@@ -74,7 +95,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   const existingBatch = await disbursementBatchForApplication(applicationId);
   if (existingBatch) {
     res.json({
-      application: { id: application.id, status: application.status },
+      application: mapApplication(application),
       disbursement: compatibleBatch(existingBatch),
       message: existingBatch.status === "settled" ? "Disbursement is complete." : "Disbursement is already being processed.",
     });
@@ -133,7 +154,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
 
   const batch = await disbursementBatchForApplication(application.id);
   res.json({
-    application: { id: application.id, status: "disbursing" },
+    application: mapApplication({ ...application, status: "disbursing" }),
     disbursement: compatibleBatch(batch),
     message: first.dispatched
       ? `Disbursement started in ${plan.legs.length} provider-safe transaction${plan.legs.length === 1 ? "" : "s"}.`

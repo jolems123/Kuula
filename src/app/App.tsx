@@ -40,6 +40,11 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "add-payment-method": "home",
   "payment-methods-list": "home",
 
+  // The old notification detail screen contains illustrative borrower/loan data
+  // and is not backed by a selected persisted notification. Keep customers on
+  // the authoritative server-backed notification list until a detail API exists.
+  "notification-detail": "notifications",
+
   // Prototype ticket/history screens contained fabricated agents and ticket data.
   // Keep one real support surface backed by /api/messages.
   "customer-support-chat": "user-support-chat",

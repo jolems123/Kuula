@@ -1,11 +1,21 @@
 import { env } from "../config/env";
 import { ApiError, type PartnerFinancingRequestInput } from "./types";
 
+let apiBaseUrl = env.API_BASE_URL;
+let apiTimeoutMs = env.API_TIMEOUT_MS;
+
+/** Pact-only hook so contract tests exercise the production partner client. */
+export function configurePartnerFinancingApiForContractTest(baseUrl: string, timeoutMs = 5_000): void {
+  if (import.meta.env.PROD) throw new Error("Contract-test API overrides are disabled in production builds");
+  apiBaseUrl = baseUrl.replace(/\/$/, "");
+  apiTimeoutMs = timeoutMs;
+}
+
 async function request<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), env.API_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), apiTimeoutMs);
   try {
-    const res = await fetch(`${env.API_BASE_URL}${path}`, {
+    const res = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -22,7 +32,7 @@ async function request<T>(token: string, path: string, init?: RequestInit): Prom
     if (error instanceof DOMException && error.name === "AbortError") throw new ApiError("Request timed out. Check your connection.", 0);
     throw new ApiError("Could not reach Kuula servers. Try again.", 0);
   } finally {
-    window.clearTimeout(timer);
+    clearTimeout(timer);
   }
 }
 

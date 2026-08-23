@@ -34,12 +34,18 @@ router.post("/applications/:id/messages", async (req: Request, res: Response) =>
   const content = typeof req.body?.content === "string" ? req.body.content.trim().slice(0, 3000) : "";
   if (!content) throw new AppError("Message is required", 400);
   const id = crypto.randomUUID();
-  await prisma.$executeRaw(Prisma.sql`
-    INSERT INTO application_messages (id, application_id, sender_id, recipient_id, message_type, content)
-    VALUES (${id}::uuid, ${applicationId}::uuid, ${req.user!.userId}::uuid, NULL, 'customer', ${content})
+  const rows = await prisma.$queryRaw<any[]>(Prisma.sql`
+    WITH inserted AS (
+      INSERT INTO application_messages (id, application_id, sender_id, recipient_id, message_type, content)
+      VALUES (${id}::uuid, ${applicationId}::uuid, ${req.user!.userId}::uuid, NULL, 'customer', ${content})
+      RETURNING id, sender_id, content, created_at
+    )
+    SELECT i.id, i.sender_id, i.content, i.created_at, u.full_name AS sender_name, u.role AS sender_role
+    FROM inserted i
+    JOIN users u ON u.id=i.sender_id
   `);
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: application.applicantId, action: "credit.customer_message_posted", resourceType: "loan_application", resourceId: applicationId, metadata: { messageId: id } });
-  res.status(201).json({ message: { id, content, createdAt: new Date().toISOString() } });
+  res.status(201).json({ message: rows[0] });
 });
 
 export default router;
