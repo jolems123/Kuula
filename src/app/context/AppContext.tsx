@@ -134,7 +134,7 @@ interface AppContextValue {
   state: AppState;
   login: {
     (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number): void;
-    (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number): void;
+    (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number | undefined, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number): void;
   };
   updateToken: (token: string, expiresAt: number) => void;
   logout: () => void;
@@ -161,15 +161,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user: UserProfile,
     credit: CreditProfile | null,
     loan: LoanProfile | null,
-    roleOrSavings: Role | number,
+    roleOrSavings: Role | number | undefined,
     messagesOrRole?: Message[] | Role,
     unreadOrMessages?: number | Message[],
     expiresOrUnread?: number,
     legacyExpiresAt?: number,
   ) => {
-    const legacy = typeof roleOrSavings === "number";
+    const legacy = typeof roleOrSavings !== "string";
     const role = (legacy ? messagesOrRole : roleOrSavings) as Role;
-    const savingsBalance = legacy ? roleOrSavings : 0;
+    const savingsBalance = typeof roleOrSavings === "number" ? roleOrSavings : 0;
     const messages = (legacy ? unreadOrMessages : messagesOrRole) as Message[] | undefined;
     const unreadNotifications = legacy ? expiresOrUnread : (unreadOrMessages as number | undefined);
     const expiresAt = legacy ? legacyExpiresAt : expiresOrUnread;
