@@ -1,9 +1,10 @@
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Search } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Search, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
 import { setSelectedTransaction } from "../../lib/selection";
+import { downloadTransactionStatement } from "../../lib/statement";
 
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + n.toLocaleString(); }
@@ -26,6 +27,7 @@ interface TxnItem {
 
 const TYPE_CATEGORY: Record<string, Filter> = {
   loan_disbursement: "loans",
+  loan_disbursement_leg: "loans",
   loan_payment: "payments",
   savings_deposit: "savings",
   savings_withdrawal: "savings",
@@ -33,6 +35,7 @@ const TYPE_CATEGORY: Record<string, Filter> = {
 
 const TYPE_LABEL: Record<string, string> = {
   loan_disbursement: "Loan Disbursed",
+  loan_disbursement_leg: "Loan Disbursed",
   loan_payment: "Loan Repayment",
   savings_deposit: "Savings Deposit",
   savings_withdrawal: "Savings Withdrawal",
@@ -41,7 +44,7 @@ const TYPE_LABEL: Record<string, string> = {
 function mapTxn(r: Record<string, unknown>): TxnItem {
   const txnType = String(r.type ?? "");
   const amount = Number(r.amount ?? 0);
-  const isIn = txnType === "loan_disbursement";
+  const isIn = txnType === "loan_disbursement" || txnType === "loan_disbursement_leg";
   const reference = String(r.reference ?? r.loanId ?? "");
   const createdAt = String(r.createdAt ?? "");
   const createdDate = new Date(createdAt);
@@ -67,14 +70,23 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
   const [search, setSearch] = useState("");
   const [txns, setTxns] = useState<TxnItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = async () => {
     if (!token) { setLoading(false); return; }
-    api.getTransactions(token)
-      .then(({ transactions }) => setTxns(transactions.map(mapTxn)))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [token]);
+    setLoading(true);
+    setError("");
+    try {
+      const { transactions } = await api.getTransactions(token);
+      setTxns(transactions.map(mapTxn));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load transaction history.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [token]);
 
   const list = txns.filter((t) => {
     const matchFilter = filter === "all" || t.category === filter;
@@ -82,14 +94,28 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
     return matchFilter && matchSearch;
   });
 
+  const downloadStatement = () => {
+    downloadTransactionStatement(txns.map((txn) => ({
+      id: txn.id,
+      type: txn.rawType,
+      amount: txn.amount,
+      status: txn.status,
+      reference: txn.reference,
+      createdAt: txn.createdAtISO,
+    })));
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
       <div style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)", padding: "16px 16px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <button onClick={() => onNavigate("wallet")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
           </button>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>Transaction History</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: "white", flex: 1 }}>Transaction History</span>
+          <button onClick={downloadStatement} disabled={loading} aria-label="Download statement" style={{ height: 36, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", color: "white", display: "flex", gap: 6, alignItems: "center", fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.55 : 1 }}>
+            <Download size={14} /> Statement
+          </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "8px 12px" }}>
           <Search size={14} color="rgba(255,255,255,0.7)" />
@@ -104,6 +130,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 90px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {error && <div role="alert" style={{ background: "#FFF1F1", color: "#9D3737", borderRadius: 12, padding: 12, fontSize: 12, display: "flex", justifyContent: "space-between", gap: 10 }}><span>{error}</span><button onClick={() => void load()} style={{ border: 0, background: "transparent", color: "#9D3737", fontWeight: 700 }}>Retry</button></div>}
         {loading && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
             <p style={{ fontSize: 14 }}>Loading transactions…</p>
@@ -116,7 +143,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</p>
-              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}>{t.sub ? `${t.sub} · ` : ""}{t.date}</p>
+              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}>{t.sub ? `${t.sub} · ` : ""}{t.date} · {t.status}</p>
             </div>
             <span style={{ fontSize: 14, fontWeight: 800, color: t.type === "in" ? "#12B984" : "#EF4444", flexShrink: 0 }}>
               {t.type === "in" ? "+" : ""}{ugx(Math.abs(t.amount))}
@@ -126,7 +153,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
         {!loading && list.length === 0 && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
             <p style={{ fontSize: 16 }}>No transactions yet</p>
-            <p style={{ fontSize: 13 }}>Your transactions will appear here once you have loan or savings activity.</p>
+            <p style={{ fontSize: 13 }}>Your settled and pending loan transactions will appear here.</p>
           </div>
         )}
       </div>
