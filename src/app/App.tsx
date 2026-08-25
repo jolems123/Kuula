@@ -10,6 +10,8 @@ import {
 import { useAppContext } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
+import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
+import { PartnerFinancingScreen } from "./components/screens/PartnerFinancingScreen";
 import { env } from "./config/env";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
@@ -201,6 +203,8 @@ function Shell() {
             <Routes>
               <Route path="/" element={<RootRedirect />} />
               <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
+              <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><ScreenRoute Component={PartnerNetworkScreen} /></Guard>} />
+              <Route path="/partner-financing" element={<Guard access="customer" screenId="partner-financing"><ScreenRoute Component={PartnerFinancingScreen} /></Guard>} />
               {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
                 <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer" screenId={from}><Navigate to={`/${to}`} replace /></Guard>} />
               ))}
