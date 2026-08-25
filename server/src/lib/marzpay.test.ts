@@ -40,17 +40,21 @@ test("creates valid unique UUID v4 references", () => {
   assert.notEqual(first, second);
 });
 
-test("builds a secret callback URL and requires HTTPS in production", () => {
+test("builds the callback URL only when real money is enabled and requires HTTPS in production", () => {
   process.env.PUBLIC_API_URL = "https://api.kuula.ug/";
-  process.env.MARZPAY_WEBHOOK_SECRET = "a secret with spaces";
   process.env.NODE_ENV = "production";
+  process.env.REAL_MONEY_ENABLED = "true";
   assert.equal(
     buildMarzPayWebhookUrl(),
-    "https://api.kuula.ug/api/payments/marzpay/webhook?token=a%20secret%20with%20spaces"
+    "https://api.kuula.ug/api/payments/marzpay/webhook"
   );
 
   process.env.PUBLIC_API_URL = "http://api.kuula.ug";
   assert.throws(() => buildMarzPayWebhookUrl(), /HTTPS/);
+
+  process.env.PUBLIC_API_URL = "https://api.kuula.ug";
+  process.env.REAL_MONEY_ENABLED = "false";
+  assert.throws(() => buildMarzPayWebhookUrl(), /disabled/);
 });
 
 test("sends current send-money and collect-money requests", async () => {
