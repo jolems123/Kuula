@@ -28,7 +28,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
 
   const select = (product: CreditProduct) => {
     setCreditUseSelection({ productCode: product.code, productName: product.name, category: product.category, description: product.description, minAmount: product.minAmount, maxAmount: product.maxAmount, customerLimit: product.customerLimit, minTermDays: product.minTermDays, maxTermDays: product.maxTermDays, partnerRequired: product.partnerRequired, disbursementMode: product.disbursementMode });
-    onNavigate(product.partnerRequired ? "wallet" : "loan-apply");
+    onNavigate(product.partnerRequired ? "partner-network" : "loan-apply");
   };
 
   const currency = overview?.market.currency ?? "UGX";
@@ -66,7 +66,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
 
         {overview?.nextPayment && <div style={{ marginTop: 13, padding: 14, borderRadius: 17, border: "1px solid #EFE0A0", background: "#FFFDF4", display: "flex", gap: 11, alignItems: "center" }}><span style={{ width: 41, height: 41, borderRadius: 13, background: "#F2C94C", display: "grid", placeItems: "center" }}><CalendarDays size={19} /></span><div style={{ flex: 1 }}><div style={{ fontSize: 10.5, color: "#7B6A2F", fontWeight: 800 }}>NEXT PAYMENT</div><strong style={{ color: "#32321F" }}>{money(overview.nextPayment.amount, currency)}</strong></div><button onClick={() => onNavigate("make-payment")} style={{ border: 0, background: "#0B5E3A", color: "white", borderRadius: 11, padding: "9px 12px", fontWeight: 800 }}>Pay</button></div>}
 
-        <button onClick={() => onNavigate("wallet")} style={{ width: "100%", marginTop: 13, border: 0, borderRadius: 18, background: "#EAF5EF", textAlign: "left", padding: 16 }}><div style={{ color: "#547162", fontSize: 10.5, fontWeight: 800 }}>KUULA PARTNERS</div><strong style={{ display: "block", marginTop: 3, color: "#0A4C30", fontSize: 16 }}>Credit where everyday growth happens</strong><span style={{ display: "block", marginTop: 5, color: "#5B7164", fontSize: 11.5, lineHeight: 1.45 }}>Hospitals, agro-dealers, schools, suppliers and merchants can receive approved financing directly.</span></button>
+        <button onClick={() => onNavigate("quick-actions")} style={{ width: "100%", marginTop: 13, border: 0, borderRadius: 18, background: "#EAF5EF", textAlign: "left", padding: 16 }}><div style={{ color: "#547162", fontSize: 10.5, fontWeight: 800 }}>KUULA PARTNERS</div><strong style={{ display: "block", marginTop: 3, color: "#0A4C30", fontSize: 16 }}>Credit where everyday growth happens</strong><span style={{ display: "block", marginTop: 5, color: "#5B7164", fontSize: 11.5, lineHeight: 1.45 }}>Hospitals, agro-dealers, schools, suppliers and merchants can receive approved financing directly.</span></button>
       </main>
       <BottomNav active="home" onNavigate={onNavigate} />
     </div>
