@@ -96,7 +96,7 @@ jobs:
             -X POST http://localhost:3000/api/auth/signup \
             -H 'Content-Type: application/json' \
             -d '{"name":"Auth Test User","phone":"+256770111222","email":"auth-user@kuula.test","password":"Secure2026","nationalId":"CF8602410E8EWG","acceptedTerms":true,"termsVersion":"2026-08-01"}')
-          expect_code "signup" 201 "$SIGNUP_CODE"
+          expect_code "signup" 202 "$SIGNUP_CODE"
           grep -q '"needsConfirmation":true' /tmp/signup.json
 
           OTP_HASH=$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -Atc \
