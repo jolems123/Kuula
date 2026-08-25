@@ -20,6 +20,127 @@ function maskNin(value: string | null): string | null {
   return `${value.slice(0, 4)}••••${value.slice(-2)}`;
 }
 
+function validUuid(value: string): boolean {
+  return /^[0-9a-f-]{36}$/i.test(value);
+}
+
+/**
+ * Enrich the canonical credit-case response without taking ownership of the
+ * underlying workflow route. This middleware runs before credit-operations.ts,
+ * lets that route build the authoritative case, then adds borrower declarations,
+ * affordability evidence, risk flags and a derived evidence checklist.
+ */
+router.get("/applications/:id", async (req: Request, res: Response, next: NextFunction) => {
+  const applicationId = String(req.params.id || "").trim();
+  if (!validUuid(applicationId)) throw new AppError("Application ID is invalid", 400);
+
+  const originalJson = res.json.bind(res);
+  res.json = ((body: any) => {
+    if (res.statusCode >= 400 || body?.application?.id !== applicationId) return originalJson(body);
+    void Promise.all([
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT employment_status, occupation_or_business, employer_or_business_name,
+               work_duration, income_source, repayment_source
+        FROM loan_application_details
+        WHERE application_id = ${applicationId}::uuid
+        LIMIT 1
+      `),
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT declared_monthly_income, declared_monthly_expenses, existing_debt_payment,
+               verified_monthly_income, disposable_income, max_affordable_payment,
+               credit_score, approved_limit, status, flags
+        FROM underwriting_assessments
+        WHERE application_id = ${applicationId}::uuid
+        LIMIT 1
+      `),
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT source_type, status, expires_at, revoked_at
+        FROM credit_evidence
+        WHERE user_id = ${body.application.applicantId}::uuid
+        ORDER BY observed_at DESC
+      `),
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT evidence_type, count(*)::int AS count
+        FROM evaluation_evidence
+        WHERE application_id = ${applicationId}::uuid
+        GROUP BY evidence_type
+      `),
+      prisma.user.findUnique({
+        where: { id: body.application.applicantId },
+        select: { phoneVerified: true },
+      }),
+    ]).then(([detailsRows, assessmentRows, creditRows, evidenceRows, applicant]) => {
+      const details = detailsRows[0] || null;
+      const assessment = assessmentRows[0] || null;
+      const now = new Date();
+      const liveCredit = (source: string) => creditRows.some((row) =>
+        row.source_type === source && row.status === "verified" && !row.revoked_at && new Date(row.expires_at) > now
+      );
+      const evidenceCount = evidenceRows.reduce((sum, row) => sum + Number(row.count || 0), 0);
+      const evidenceTypes = new Set(evidenceRows.map((row) => String(row.evidence_type)));
+      const employmentStatus = details?.employment_status || null;
+      const businessApplicant = ["Business owner", "Self-employed", "Farmer"].includes(employmentStatus);
+      const kycVerified = Boolean(body.application.customer?.kycVerified);
+      const phoneVerified = Boolean(applicant?.phoneVerified);
+      const flags = Array.isArray(assessment?.flags) ? assessment.flags.map(String) : [];
+
+      const checklist = [
+        { key: "identity", label: "National ID / KYC", required: true, status: kycVerified ? "verified" : "missing", detail: kycVerified ? "Identity verification complete" : "Identity verification is incomplete" },
+        { key: "phone", label: "Verified phone number", required: true, status: phoneVerified ? "verified" : "missing", detail: phoneVerified ? "Account phone verified" : "Phone verification is incomplete" },
+        { key: "crb", label: "CRB / credit evidence", required: true, status: liveCredit("crb") ? "verified" : "missing", detail: liveCredit("crb") ? "Current verified CRB evidence" : "No current verified CRB evidence" },
+        { key: "momo", label: "Mobile-money evidence", required: true, status: liveCredit("momo") ? "verified" : "missing", detail: liveCredit("momo") ? "Current verified mobile-money evidence" : "No current verified mobile-money evidence" },
+        { key: "livelihood", label: "Employment / livelihood declaration", required: true, status: details ? "received" : "missing", detail: details ? `${details.employment_status} · ${details.income_source}` : "Borrower livelihood declaration is missing" },
+        { key: "field_evidence", label: "Field supporting evidence", required: true, status: evidenceCount >= 2 ? "received" : "missing", detail: `${evidenceCount} evidence item${evidenceCount === 1 ? "" : "s"} uploaded` },
+        ...(businessApplicant ? [
+          { key: "business_site", label: "Business/site evidence", required: true, status: (evidenceTypes.has("storefront") || evidenceTypes.has("business_interior") || evidenceTypes.has("applicant_at_business")) ? "received" : "missing", detail: "Required for business/self-employed/farming cases" },
+          { key: "business_docs", label: "Business document evidence", required: false, status: (evidenceTypes.has("licence") || evidenceTypes.has("supplier_invoice")) ? "received" : "not_provided", detail: "Licence or supplier invoice where available" },
+        ] : []),
+      ];
+
+      const requestedAmount = Number(body.application.amount || 0);
+      const approvedLimit = assessment?.approved_limit == null ? null : Number(assessment.approved_limit);
+      const maxAffordablePayment = assessment?.max_affordable_payment == null ? null : Number(assessment.max_affordable_payment);
+      const riskSummary = {
+        status: flags.length === 0 && checklist.every((item) => !item.required || item.status === "verified" || item.status === "received") ? "clear" : "review_required",
+        flags,
+        requestedAboveLimit: approvedLimit != null && requestedAmount > approvedLimit,
+        missingRequiredEvidence: checklist.filter((item) => item.required && item.status === "missing").map((item) => item.label),
+      };
+
+      originalJson({
+        ...body,
+        application: {
+          ...body.application,
+          customer: { ...body.application.customer, phoneVerified },
+          livelihood: details ? {
+            employmentStatus: details.employment_status,
+            occupationOrBusiness: details.occupation_or_business,
+            employerOrBusinessName: details.employer_or_business_name,
+            workDuration: details.work_duration,
+            incomeSource: details.income_source,
+            repaymentSource: details.repayment_source,
+          } : null,
+          affordability: assessment ? {
+            declaredMonthlyIncome: Number(assessment.declared_monthly_income),
+            declaredMonthlyExpenses: Number(assessment.declared_monthly_expenses),
+            existingDebtPayment: Number(assessment.existing_debt_payment),
+            verifiedMonthlyIncome: assessment.verified_monthly_income == null ? null : Number(assessment.verified_monthly_income),
+            disposableIncome: Number(assessment.disposable_income),
+            maxAffordablePayment,
+            creditScore: assessment.credit_score,
+            approvedLimit,
+            underwritingStatus: assessment.status,
+          } : null,
+        },
+        documentChecklist: checklist,
+        riskSummary,
+      });
+    }).catch(next);
+    return res;
+  }) as Response["json"];
+  next();
+});
+
 router.get("/dashboard", async (req: Request, res: Response) => {
   const level = roleLevel(req.user!.role);
   if (!level) throw new AppError("Staff role required", 403);
@@ -60,7 +181,7 @@ router.get("/dashboard", async (req: Request, res: Response) => {
 
 router.post("/applications/:id/decision", async (req: Request, _res: Response, next: NextFunction) => {
   const applicationId = String(req.params.id || "").trim();
-  if (!/^[0-9a-f-]{36}$/i.test(applicationId)) throw new AppError("Application ID is invalid", 400);
+  if (!validUuid(applicationId)) throw new AppError("Application ID is invalid", 400);
 
   const cases = await prisma.$queryRaw<Array<{ current_level: number; assignee_id: string | null }>>(Prisma.sql`
     SELECT c.current_level, aa.assignee_id
