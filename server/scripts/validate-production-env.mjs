@@ -11,6 +11,14 @@ const required = [
   "KYC_S3_BUCKET",
   "KYC_S3_REGION",
   "TRUST_PROXY_HOPS",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASSWORD",
+  "EMAIL_FROM",
+  "SUPPORT_EMAIL",
+  "COMPLAINTS_EMAIL",
+  "PRIVACY_EMAIL",
 ];
 
 for (const name of required) {
@@ -33,6 +41,19 @@ const trustProxyRaw = String(process.env.TRUST_PROXY_HOPS ?? "").trim();
 const trustProxyHops = Number(trustProxyRaw);
 if (!/^\d+$/.test(trustProxyRaw) || !Number.isInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHops > 5) {
   problems.push("TRUST_PROXY_HOPS must be an integer from 0 to 5 matching the exact production proxy topology");
+}
+
+const smtpPortRaw = String(process.env.SMTP_PORT ?? "").trim();
+const smtpPort = Number(smtpPortRaw);
+if (!/^\d+$/.test(smtpPortRaw) || !Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) {
+  problems.push("SMTP_PORT must be a valid TCP port");
+}
+for (const name of ["SMTP_USER", "EMAIL_FROM", "SUPPORT_EMAIL", "COMPLAINTS_EMAIL", "PRIVACY_EMAIL"]) {
+  const value = String(process.env[name] ?? "").trim();
+  if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) problems.push(`${name} must be a valid email address`);
+}
+if (String(process.env.EMAIL_FROM ?? "").trim().toLowerCase() !== "notifications@kuulapp.com") {
+  problems.push("EMAIL_FROM must be notifications@kuulapp.com for the Kuula production sender");
 }
 
 if (String(process.env.SMS_PROVIDER ?? "").trim().toLowerCase() !== "africastalking") {
