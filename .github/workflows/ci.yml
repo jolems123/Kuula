@@ -36,7 +36,7 @@ jobs:
         working-directory: pact
         env:
           PACT_DO_NOT_TRACK: "1"
-        run: npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install Pact contract workspace from resolved lock
         working-directory: pact
         env:
