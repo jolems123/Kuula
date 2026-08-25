@@ -72,6 +72,15 @@ jobs:
         run: |
           set -euo pipefail
 
+          expect_code() {
+            local label="$1" expected="$2" actual="$3"
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::$label expected HTTP $expected but received $actual"
+              exit 1
+            fi
+            echo "::notice::$label passed ($actual)"
+          }
+
           npm start > /tmp/kuula-auth-api.log 2>&1 &
           API_PID=$!
           trap 'kill $API_PID 2>/dev/null || true' EXIT
@@ -81,45 +90,49 @@ jobs:
             sleep 0.5
           done
           curl -sf http://localhost:3000/api/health | grep -q '"ok":true'
+          echo "::notice::auth API healthy"
 
           SIGNUP_CODE=$(curl -s -o /tmp/signup.json -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/signup \
             -H 'Content-Type: application/json' \
             -d '{"name":"Auth Test User","phone":"+256770111222","email":"auth-user@kuula.test","password":"Secure2026","nationalId":"CF8602410E8EWG","acceptedTerms":true,"termsVersion":"2026-08-01"}')
-          test "$SIGNUP_CODE" = "201"
+          expect_code "signup" 201 "$SIGNUP_CODE"
           grep -q '"needsConfirmation":true' /tmp/signup.json
 
           OTP_HASH=$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -Atc \
             "SELECT otp_hash FROM users WHERE phone = '+256770111222';")
           test "$OTP_HASH" != "246810"
           test "${#OTP_HASH}" = "64"
+          echo "::notice::OTP stored as keyed hash"
 
           LOGIN_UNVERIFIED=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","pin":"Secure2026"}')
-          test "$LOGIN_UNVERIFIED" = "403"
+          expect_code "unverified login" 403 "$LOGIN_UNVERIFIED"
 
           RESEND_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/resend-otp \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222"}')
-          test "$RESEND_CODE" = "429"
+          expect_code "OTP resend cooldown" 429 "$RESEND_CODE"
 
           WRONG_VERIFY=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/verify-phone \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","code":"111111"}')
-          test "$WRONG_VERIFY" = "401"
+          expect_code "wrong phone verification" 401 "$WRONG_VERIFY"
 
           VERIFIED_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/verify-phone \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","code":"246810"}')
           ORIGINAL_TOKEN=$(echo "$VERIFIED_JSON" | jq -r '.token')
           test -n "$ORIGINAL_TOKEN"
+          echo "::notice::phone verification passed"
 
           curl -sf http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $ORIGINAL_TOKEN" | grep -q '"fullName":"Auth Test User"'
+          echo "::notice::authenticated profile passed"
 
           PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_auth_test -c \
             "UPDATE users SET otp_last_sent_at = NULL WHERE phone = '+256770111222';"
@@ -128,47 +141,50 @@ jobs:
             -X POST http://localhost:3000/api/auth/reset-password \
             -H 'Content-Type: application/json' \
             -d '{"identifier":"nobody@kuula.test"}')
-          test "$UNKNOWN_RESET" = "200"
+          expect_code "unknown reset privacy" 200 "$UNKNOWN_RESET"
           grep -q '"ok":true' /tmp/unknown-reset.json
 
           curl -sf -X POST http://localhost:3000/api/auth/reset-password \
             -H 'Content-Type: application/json' \
             -d '{"identifier":"auth-user@kuula.test"}' | grep -q '"ok":true'
+          echo "::notice::known reset request passed"
 
           WRONG_RESET=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/reset-password/confirm \
             -H 'Content-Type: application/json' \
             -d '{"identifier":"auth-user@kuula.test","code":"111111","newPassword":"NewSecure2027"}')
-          test "$WRONG_RESET" = "401"
+          expect_code "wrong reset OTP" 401 "$WRONG_RESET"
 
           curl -sf -X POST http://localhost:3000/api/auth/reset-password/confirm \
             -H 'Content-Type: application/json' \
             -d '{"identifier":"auth-user@kuula.test","code":"246810","newPassword":"NewSecure2027"}' \
             | grep -q '"ok":true'
+          echo "::notice::password reset confirmation passed"
 
           OLD_TOKEN_AFTER_RESET=$(curl -s -o /dev/null -w '%{http_code}' \
             http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $ORIGINAL_TOKEN")
-          test "$OLD_TOKEN_AFTER_RESET" = "401"
+          expect_code "old token after password reset" 401 "$OLD_TOKEN_AFTER_RESET"
 
           OLD_PASSWORD=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","pin":"Secure2026"}')
-          test "$OLD_PASSWORD" = "401"
+          expect_code "old password after reset" 401 "$OLD_PASSWORD"
 
           NEW_LOGIN=$(curl -sf -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
           NEW_TOKEN=$(echo "$NEW_LOGIN" | jq -r '.token')
           test -n "$NEW_TOKEN"
+          echo "::notice::new password login passed"
 
           curl -sf -X POST http://localhost:3000/api/auth/signout \
             -H "Authorization: Bearer $NEW_TOKEN" | grep -q '"ok":true'
           REVOKED_AFTER_LOGOUT=$(curl -s -o /dev/null -w '%{http_code}' \
             http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $NEW_TOKEN")
-          test "$REVOKED_AFTER_LOGOUT" = "401"
+          expect_code "token after signout" 401 "$REVOKED_AFTER_LOGOUT"
 
           FINAL_LOGIN=$(curl -sf -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
@@ -177,17 +193,18 @@ jobs:
 
           curl -sf -X POST http://localhost:3000/api/users/me/delete \
             -H "Authorization: Bearer $FINAL_TOKEN" | grep -q '"ok":true'
+          echo "::notice::account deletion passed"
 
           DELETED_TOKEN=$(curl -s -o /dev/null -w '%{http_code}' \
             http://localhost:3000/api/auth/me \
             -H "Authorization: Bearer $FINAL_TOKEN")
-          test "$DELETED_TOKEN" = "401"
+          expect_code "deleted account token" 401 "$DELETED_TOKEN"
 
           DELETED_LOGIN=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111222","pin":"NewSecure2027"}')
-          test "$DELETED_LOGIN" = "401"
+          expect_code "deleted account login" 401 "$DELETED_LOGIN"
 
           curl -sf -X POST http://localhost:3000/api/auth/signup \
             -H 'Content-Type: application/json' \
@@ -198,18 +215,22 @@ jobs:
               -X POST http://localhost:3000/api/auth/verify-phone \
               -H 'Content-Type: application/json' \
               -d '{"phone":"+256770111333","code":"111111"}')
-            test "$code" = "401"
+            expect_code "OTP lock attempt $attempt" 401 "$code"
           done
           FIFTH_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/verify-phone \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111333","code":"111111"}')
-          test "$FIFTH_CODE" = "429"
+          expect_code "OTP fifth-attempt lock" 429 "$FIFTH_CODE"
 
           LOCKED_CORRECT=$(curl -s -o /dev/null -w '%{http_code}' \
             -X POST http://localhost:3000/api/auth/verify-phone \
             -H 'Content-Type: application/json' \
             -d '{"phone":"+256770111333","code":"246810"}')
-          test "$LOCKED_CORRECT" = "429"
+          expect_code "correct OTP while locked" 429 "$LOCKED_CORRECT"
 
-          ! grep -q '246810' /tmp/kuula-auth-api.log
+          if grep -q '246810' /tmp/kuula-auth-api.log; then
+            echo "::error::OTP value leaked to server logs"
+            exit 1
+          fi
+          echo "::notice::OTP log secrecy passed"
