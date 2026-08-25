@@ -4,7 +4,7 @@ import { Matchers, Pact, SpecificationVersion } from "@pact-foundation/pact";
 import { api, configureApiClientForContractTest } from "../../src/app/api/client";
 import type { LoanDraft } from "../../src/app/lib/selection";
 
-const { integer, like, string } = Matchers;
+const { like } = Matchers;
 
 const pact = new Pact({
   consumer: "KuulaLoanApplication",
