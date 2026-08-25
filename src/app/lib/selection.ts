@@ -32,6 +32,12 @@ export interface LoanDraft {
   termDays: number;
   purpose: string;
   channel: string;
+  employmentStatus: string;
+  occupationOrBusiness: string;
+  employerOrBusinessName: string;
+  workDuration: string;
+  incomeSource: string;
+  repaymentSource: string;
   declaredMonthlyIncome: number;
   declaredMonthlyExpenses: number;
   existingDebtPayment: number;
