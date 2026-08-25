@@ -83,6 +83,9 @@ export interface Compliance {
   appleAprCapPercent: number;
   minTermDays: number;
   googleMinTermDays: number;
+  savingsAprPercent?: number;
+  savingsDiscountPercent?: number;
+  savingsThreshold?: number;
   compound: boolean;
   dataRetentionYears: number;
 }
