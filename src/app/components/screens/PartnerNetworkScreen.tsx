@@ -40,7 +40,7 @@ export function PartnerNetworkScreen({ onNavigate }: Props) {
 
   const choosePartner = (partner: KuulaPartner, locationId?: string | null, locationName?: string | null) => {
     setPartnerSelection({ partnerCode: partner.code, partnerName: partner.name, partnerType: partner.partnerType, locationId, locationName });
-    onNavigate(selectedProduct ? "add-payment-method" : "quick-actions");
+    onNavigate(selectedProduct ? "partner-financing" : "quick-actions");
   };
 
   return (
