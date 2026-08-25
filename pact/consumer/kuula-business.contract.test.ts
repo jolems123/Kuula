@@ -17,6 +17,55 @@ const pact = new Pact({
 });
 
 describe("Kuula business and admin API contracts", () => {
+  it("keeps partner financing submission shape-compatible", async () => {
+    const input = {
+      marketCode: "UG",
+      productCode: "HEALTH",
+      partnerCode: "CLINIC-001",
+      partnerLocationId: null,
+      invoiceReference: "INV-20481",
+      purpose: "Medical treatment",
+      amount: 100000,
+      termDays: 90,
+      declaredMonthlyIncome: 1000000,
+      declaredMonthlyExpenses: 250000,
+      existingDebtPayment: 0,
+      externalReference: "HEALTH-INV-20481",
+    };
+
+    await pact
+      .addInteraction()
+      .uponReceiving("a customer submits restricted-purpose partner financing")
+      .withRequest("POST", "/api/network/partner-financing", (builder) => {
+        builder.headers({ "Content-Type": "application/json", Authorization: "Bearer contract-token" });
+        builder.jsonBody(input);
+      })
+      .willRespondWith(201, (builder) => {
+        builder.headers({ "Content-Type": "application/json" });
+        builder.jsonBody({
+          request: {
+            id: string("99999999-9999-4999-8999-999999999999"),
+            status: string("pending_review"),
+            amount: integer(100000),
+            partner: string("Kuula Partner Clinic"),
+            partnerLocation: null,
+            product: string("Healthcare Credit"),
+            applicationId: string("33333333-3333-4333-8333-333333333333"),
+            applicationStatus: string("pending"),
+            underwritingStatus: string("approved"),
+            message: string("Credit application created. Kuula will complete field/reviewer checks and verify the invoice and payee before an offer can be issued."),
+          },
+        });
+      })
+      .executeTest(async (mockServer) => {
+        configurePartnerFinancingApiForContractTest(mockServer.url);
+        const result = await partnerFinancingApi.submit("contract-token", input);
+        expect(result.request.applicationId).toBeTruthy();
+        expect(result.request.amount).toBe(100000);
+        expect(result.request.partner).toBeTruthy();
+      });
+  });
+
   it("keeps partner settlement retries shape-compatible", async () => {
     await pact
       .addInteraction()
