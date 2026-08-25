@@ -28,6 +28,12 @@ export interface LoanApplication {
   termDays: number;
   channel: string;
   disbursementMethod?: string;
+  employmentStatus?: string | null;
+  occupationOrBusiness?: string | null;
+  employerOrBusinessName?: string | null;
+  workDuration?: string | null;
+  incomeSource?: string | null;
+  repaymentSource?: string | null;
   status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
   apr?: number;
