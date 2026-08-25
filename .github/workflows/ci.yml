@@ -223,7 +223,7 @@ jobs:
             -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}")
           test "$blocked_code" = "409"
 
-          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; const tx=await prisma.transaction.findUnique({where:{reference:ref}}); console.log(tx?.id||""); await prisma.$disconnect();' "$DISBURSEMENT_REF")
+          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; prisma.transaction.findUnique({where:{reference:ref}}).then((tx)=>console.log(tx?.id||"")).finally(()=>prisma.$disconnect());' "$DISBURSEMENT_REF")
           test -n "$RECON_ID"
 
           curl -sf -X POST "http://localhost:3000/api/admin/reconciliation/$RECON_ID/review" \
@@ -252,7 +252,7 @@ jobs:
           AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
 
-          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; console.log(await prisma.journal.count()); await prisma.$disconnect();')
+          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; prisma.journal.count().then((count)=>console.log(count)).finally(()=>prisma.$disconnect());')
           test "$JOURNAL_COUNT" -ge 2
 
   capacitor-sync:
