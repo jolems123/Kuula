@@ -6,6 +6,7 @@ import { creditOperationsApi, type OperationsStaff } from "../../api/credit-oper
 import { useAppContext, type Role } from "../../context/AppContext";
 import { getCreditOperationsSelection } from "../../lib/selection";
 import { AdminApprovalHistoryScreen as FieldOfficerCaseScreen } from "./CreditOperationsScreens";
+import { CreditCaseSummaryPanel } from "./CreditCaseSummaryPanel";
 
 interface Props { onNavigate: (screen: string) => void; }
 interface ReviewerProps extends Props { token: string; role: Role; }
@@ -172,6 +173,7 @@ function SeniorFinalReviewScreen({ onNavigate, token, role }: ReviewerProps) {
   return <AdminLayout activeScreen="admin-approval-history" onNavigate={onNavigate} title={`Credit Review · Level ${level}`}>
     <AdminPageHeader title={application.applicantName || selected?.applicantName || "Credit application"} subtitle={`${applicationId.slice(0, 8)} · assigned Level ${level} review · ${creditCase.status}`} action={<button style={button} onClick={() => onNavigate("admin-officer-dashboard")}><ArrowLeft size={14}/> My queue</button>}/>
     <ErrorBox value={error}/>
+    <CreditCaseSummaryPanel detail={detail}/>
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 14, marginBottom: 14 }}>
       <AdminCard><div style={{ display: "flex", justifyContent: "space-between" }}><h3 style={{ marginTop: 0 }}>Application</h3><StatusBadge status={application.status}/></div>{facts.map(([label,value]) => <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${BORDER}`, fontSize: 12 }}><span style={{ color: "#64748B" }}>{label}</span><strong>{value}</strong></div>)}</AdminCard>
       <AdminCard><h3 style={{ marginTop: 0 }}>Field assessment</h3>{[["Business",evaluation.business_name],["Location",evaluation.business_location],["Monthly sales",evaluation.estimated_monthly_sales?ugx(evaluation.estimated_monthly_sales):"—"],["Stock",evaluation.estimated_stock_value?ugx(evaluation.estimated_stock_value):"—"],["Repayment capacity",evaluation.repayment_capacity],["Risks",evaluation.risks],["Mitigants",evaluation.mitigating_factors],["Officer recommendation",evaluation.recommendation],["Recommended amount",evaluation.recommended_amount?ugx(evaluation.recommended_amount):"—"]].map(([label,value]) => <div key={String(label)} style={{ padding: "7px 0", borderBottom: `1px solid ${BORDER}` }}><div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", fontWeight: 800 }}>{label}</div><div style={{ fontSize: 12, marginTop: 3 }}>{String(value || "—")}</div></div>)}</AdminCard>
