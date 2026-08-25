@@ -242,11 +242,14 @@ jobs:
 
           PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":10000}')
           PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
+          PAYMENT_UUID=$(echo "$PAYMENT_JSON" | jq -r '.uuid')
           test -n "$PAYMENT_REF"
+          test -n "$PAYMENT_UUID"
+          test "$PAYMENT_UUID" != "null"
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
+            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"$PAYMENT_UUID\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
             | grep -q '"settled":true'
 
           AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
