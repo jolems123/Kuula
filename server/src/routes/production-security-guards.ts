@@ -95,16 +95,39 @@ router.post("/payments/marzpay/webhook", async (req: Request, res: Response, nex
       return;
     }
 
-    const inserted = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-      INSERT INTO webhook_receipts (id, provider, event_id, payload_hash, received_at)
-      VALUES (${crypto.randomUUID()}::uuid, 'marzpay', ${eventId}, ${crypto.createHash("sha256").update(rawBody).digest("hex")}, CURRENT_TIMESTAMP)
-      ON CONFLICT (provider, event_id) DO NOTHING
-      RETURNING id::text
+    const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
+    const existing = await prisma.$queryRaw<Array<{ payload_hash: string }>>(Prisma.sql`
+      SELECT payload_hash
+      FROM webhook_receipts
+      WHERE provider='marzpay' AND event_id=${eventId}
+      LIMIT 1
     `);
-    if (!inserted[0]) {
-      res.status(409).json({ error: "Webhook event has already been processed" });
+    if (existing[0]) {
+      if (existing[0].payload_hash !== payloadHash) {
+        res.status(409).json({ error: "Webhook event id was reused with a different payload" });
+        return;
+      }
+      // An already-completed provider event is acknowledged idempotently so the
+      // provider stops retrying. Downstream financial state has already been
+      // protected by transaction-level settlement claims.
+      res.status(200).json({ received: true, duplicate: true });
       return;
     }
+
+    // Record the replay receipt only after downstream handling succeeds. A
+    // transient validation/provider/database failure must remain retryable with
+    // the same signed event id. Concurrent duplicates are still safe because
+    // the settlement routes atomically claim only pending financial rows.
+    res.once("finish", () => {
+      if (res.statusCode < 200 || res.statusCode >= 300) return;
+      void prisma.$executeRaw(Prisma.sql`
+        INSERT INTO webhook_receipts (id, provider, event_id, payload_hash, received_at)
+        VALUES (${crypto.randomUUID()}::uuid, 'marzpay', ${eventId}, ${payloadHash}, CURRENT_TIMESTAMP)
+        ON CONFLICT (provider, event_id) DO NOTHING
+      `).catch((error) => {
+        console.error("Failed to persist completed MarZPay webhook receipt", error instanceof Error ? error.message : "unknown error");
+      });
+    });
   }
 
   const event = parseMarzPayWebhook(req.body);
@@ -151,8 +174,6 @@ router.post("/messages", authenticateToken, (req: Request, _res: Response, next:
   const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
   if (!content || content.length > 2_000) throw new AppError("Message content must be between 1 and 2,000 characters", 400);
   if (CUSTOMER_ROLES.has(req.user!.role) && req.body && typeof req.body === "object") {
-    // Defense in depth: customer support routing is chosen by the server route.
-    // Strip any injected recipient before downstream persistence.
     delete req.body.receiverId;
   }
   next();
