@@ -65,7 +65,11 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
         WHERE application_id = ${applicationId}::uuid
         GROUP BY evidence_type
       `),
-    ]).then(([detailsRows, assessmentRows, creditRows, evidenceRows]) => {
+      prisma.user.findUnique({
+        where: { id: body.application.applicantId },
+        select: { phoneVerified: true },
+      }),
+    ]).then(([detailsRows, assessmentRows, creditRows, evidenceRows, applicant]) => {
       const details = detailsRows[0] || null;
       const assessment = assessmentRows[0] || null;
       const now = new Date();
@@ -77,7 +81,7 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
       const employmentStatus = details?.employment_status || null;
       const businessApplicant = ["Business owner", "Self-employed", "Farmer"].includes(employmentStatus);
       const kycVerified = Boolean(body.application.customer?.kycVerified);
-      const phoneVerified = Boolean(body.application.customer?.phoneVerified);
+      const phoneVerified = Boolean(applicant?.phoneVerified);
       const flags = Array.isArray(assessment?.flags) ? assessment.flags.map(String) : [];
 
       const checklist = [
