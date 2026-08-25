@@ -186,13 +186,13 @@ jobs:
 
           APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
+            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo","employmentStatus":"Employed","occupationOrBusiness":"Accountant","employerOrBusinessName":"CI Test Employer","workDuration":"2+ years","incomeSource":"Salary","repaymentSource":"Salary","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
           APPLICATION_ID=$(echo "$APPLICATION_JSON" | jq -r '.application.id')
           test -n "$APPLICATION_ID"
 
           duplicate_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"duplicate","termDays":90,"declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
+            -d '{"amount":100000,"purpose":"duplicate","termDays":90,"employmentStatus":"Employed","occupationOrBusiness":"Accountant","employerOrBusinessName":"CI Test Employer","workDuration":"2+ years","incomeSource":"Salary","repaymentSource":"Salary","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
           test "$duplicate_code" = "409"
 
           OFFER_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications/decision \
