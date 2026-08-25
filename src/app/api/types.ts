@@ -9,6 +9,7 @@ export interface SessionPayload {
   user: UserProfile;
   credit: CreditProfile | null;
   loan: LoanProfile | null;
+  savingsBalance?: number;
   messages: Message[];
   unreadNotifications: number;
 }
