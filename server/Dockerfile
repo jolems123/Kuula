@@ -12,18 +12,20 @@ RUN apt-get update \
     && npm install --global npm@10.9.2 \
     && test "$(npm --version)" = "10.9.2"
 
-# This Dockerfile is intentionally built from the repository root so Railway
-# and GitHub Actions use the same deterministic build context.
-COPY server/package.json server/package-lock.json ./
+# The repository's historical server lockfile is incomplete. Until a canonical
+# lockfile can be regenerated and committed, freeze resolution to a fixed npm
+# version and publication cutoff, generate the complete lock deterministically,
+# then install exactly from that generated lock with npm ci.
+COPY package.json package-lock.json ./
 RUN npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund \
     && npm ci --no-audit --no-fund
 
-COPY server/prisma ./prisma
-COPY server/scripts ./scripts
+COPY prisma ./prisma
+COPY scripts ./scripts
 RUN npx prisma generate
 
-COPY server/tsconfig.json ./
-COPY server/src ./src
+COPY tsconfig.json ./
+COPY src ./src
 RUN npm run build \
     && npm prune --omit=dev
 
