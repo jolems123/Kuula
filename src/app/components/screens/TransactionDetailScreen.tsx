@@ -11,6 +11,7 @@ interface Props { onNavigate: (s: string) => void; }
 
 const TYPE_LABEL: Record<string, string> = {
   loan_disbursement: "Loan Disbursement",
+  loan_disbursement_leg: "Loan Disbursement",
   loan_payment: "Loan Repayment",
   savings_deposit: "Savings Deposit",
   savings_withdrawal: "Savings Withdrawal",
@@ -18,7 +19,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 function isIncoming(type: string) {
-  return type === "loan_disbursement" || type === "wallet_topup" || type === "savings_withdrawal";
+  return type === "loan_disbursement" || type === "loan_disbursement_leg" || type === "wallet_topup" || type === "savings_withdrawal";
 }
 
 function mapRaw(r: Record<string, unknown>): SelectedTransaction {
@@ -26,9 +27,9 @@ function mapRaw(r: Record<string, unknown>): SelectedTransaction {
     id: String(r.id ?? ""),
     type: String(r.type ?? ""),
     amount: Number(r.amount ?? 0),
-    status: String(r.status ?? "completed"),
-    reference: String(r.loan_id ?? r.transaction_id ?? r.reference ?? ""),
-    createdAt: String(r.created_at ?? new Date().toISOString()),
+    status: String(r.status ?? "pending"),
+    reference: String(r.reference ?? r.loanId ?? ""),
+    createdAt: String(r.createdAt ?? ""),
   };
 }
 
@@ -41,7 +42,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   useEffect(() => {
     // If we arrived without a selected transaction (e.g. deep link), fall back
-    // to the customer's most recent real transaction rather than showing fakes.
+    // to the customer's most recent authoritative server transaction.
     if (txn || !token) { setLoading(false); return; }
     api.getTransactions(token)
       .then(({ transactions }) => {
@@ -53,18 +54,19 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   const label = txn ? (TYPE_LABEL[txn.type] ?? txn.type) : "";
   const incoming = txn ? isIncoming(txn.type) : true;
-  const when = txn ? new Date(txn.createdAt) : new Date();
+  const when = txn?.createdAt ? new Date(txn.createdAt) : new Date();
   const statusOk = txn ? ["completed", "success", "paid"].includes(txn.status.toLowerCase()) : true;
 
   const saveReceipt = () => {
     if (!txn) return;
     downloadReceiptPdf({
-      reference: txn.id,
+      reference: txn.reference || txn.id,
       title: "Transaction Receipt",
       status: statusOk ? "Completed" : txn.status,
       amount: txn.amount,
       dateISO: txn.createdAt,
       rows: [
+        { label: "Transaction ID", value: txn.id },
         { label: "Type", value: label },
         ...(txn.reference ? [{ label: "Reference", value: txn.reference }] : []),
       ],
@@ -73,7 +75,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   const share = async () => {
     if (!txn) return;
-    const text = `Kuula — ${label}: ${incoming ? "+" : "-"}${formatUGX(txn.amount)} on ${when.toLocaleDateString("en-GB")} (Ref ${txn.id})`;
+    const text = `Kuula — ${label}: ${incoming ? "+" : "-"}${formatUGX(txn.amount)} on ${when.toLocaleDateString("en-GB")} (Ref ${txn.reference || txn.id})`;
     const nav = navigator as Navigator & { share?: (d: { title: string; text: string }) => Promise<void> };
     if (nav.share) {
       try { await nav.share({ title: "Kuula Transaction", text }); return; } catch { /* fall through */ }
@@ -110,7 +112,6 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
           </div>
         ) : (
           <>
-            {/* Status hero */}
             <div style={{ background: "white", borderRadius: 20, padding: "24px", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div style={{ width: 64, height: 64, borderRadius: 32, background: incoming ? "#F0FDF4" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {incoming ? <ArrowDownLeft size={32} color="#12B984" /> : <ArrowUpRight size={32} color="#EF4444" />}
@@ -124,7 +125,6 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
               </p>
             </div>
 
-            {/* Details card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
               <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 4 }}>Transaction Information</p>
               {[

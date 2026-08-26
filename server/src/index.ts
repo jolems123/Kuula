@@ -22,6 +22,7 @@ import partnerOfferGuardRoutes from "./routes/partner-offer-guard.js";
 import messageRoutes from "./routes/messages.js";
 import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
+import ussdRoutes from "./routes/ussd.js";
 import adminRoutes from "./routes/admin.js";
 import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
@@ -168,6 +169,7 @@ app.get("/api/ready", async (_req, res) => {
 });
 
 app.get("/api/compliance", (_req, res) => res.json(COMPLIANCE));
+app.use("/api", ussdRoutes);
 
 app.use("/api/auth", authPrivacyGuardRoutes);
 app.use("/api/auth", authRoutes);

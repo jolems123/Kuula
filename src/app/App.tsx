@@ -10,6 +10,8 @@ import {
 import { useAppContext } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
+import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
+import { PartnerFinancingScreen } from "./components/screens/PartnerFinancingScreen";
 import { env } from "./config/env";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
@@ -21,41 +23,18 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-loan-rejection": "loan-history",
   "customer-credit-limit-increase": "credit-dashboard",
   "customer-loan-refinance": "loan-detail",
-
-  // The current application flow collects purpose, affordability and the
-  // supported MTN/Airtel rail in one server-compatible form. Older separate
-  // purpose/disbursement screens contained unsaved selections and fake account data.
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
-
-  // The active backend currently stores one facility repayment obligation and
-  // allows partial payments. The old six-installment schedule was illustrative,
-  // not a contractual server schedule, so route it to authoritative credit detail.
   "loan-schedule": "loan-detail",
-
-  // Kuula is a credit/loan platform, not a stored-value wallet. Historical
-  // wallet and payment-method screens remain in source only for archive/design
-  // reference and are not part of the production customer journey.
   "wallet": "home",
   "add-payment-method": "home",
   "payment-methods-list": "home",
-
-  // The old notification detail screen contains illustrative borrower/loan data
-  // and is not backed by a selected persisted notification. Keep customers on
-  // the authoritative server-backed notification list until a detail API exists.
   "notification-detail": "notifications",
-
-  // Prototype ticket/history screens contained fabricated agents and ticket data.
-  // Keep one real support surface backed by /api/messages.
   "customer-support-chat": "user-support-chat",
   "customer-chat-history": "user-support-chat",
   "customer-create-ticket": "user-support-chat",
   "customer-ticket-status": "user-support-chat",
   "customer-ticket-details": "user-support-chat",
-
-  // These concepts do not yet have an approved production policy/backend flow.
-  // Redirect old bookmarks and stale navigation rather than exposing mock or
-  // partially implemented financial functionality to customers.
   "customer-available-promotions": "home",
   "customer-claim-promotion": "home",
   "customer-autopay-setup": "make-payment",
@@ -99,11 +78,11 @@ const ADMIN_ONLY_SCREENS = new Set([
   "admin-auto-approve-settings",
 ]);
 
-function staffHome(role: string): string {
+function staffHome(role: string | null): string {
   return role === "officer" ? "/admin-officer-dashboard" : "/admin-dashboard";
 }
 
-function staffCanOpenScreen(screenId: string, role: string): boolean {
+function staffCanOpenScreen(screenId: string, role: string | null): boolean {
   if (role === "admin") return true;
   if (role === "officer") return OFFICER_SCREEN_ALLOWLIST.has(screenId);
   if (role === "manager") return !ADMIN_ONLY_SCREENS.has(screenId);
@@ -150,7 +129,6 @@ function useSessionBootstrap(): boolean {
       if (active) setChecking(false);
     })();
     return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return checking;
@@ -225,6 +203,8 @@ function Shell() {
             <Routes>
               <Route path="/" element={<RootRedirect />} />
               <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
+              <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><ScreenRoute Component={PartnerNetworkScreen} /></Guard>} />
+              <Route path="/partner-financing" element={<Guard access="customer" screenId="partner-financing"><ScreenRoute Component={PartnerFinancingScreen} /></Guard>} />
               {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
                 <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer" screenId={from}><Navigate to={`/${to}`} replace /></Guard>} />
               ))}

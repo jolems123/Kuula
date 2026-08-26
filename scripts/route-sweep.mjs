@@ -36,12 +36,13 @@ page.on("pageerror", (error) => {
 page.on("console", (message) => {
   if (message.type() !== "error") return;
   const text = message.text();
-  const isExpectedNetworkNoise =
+  const isExpectedBrowserNoise =
     text.includes("ERR_CONNECTION_REFUSED") ||
     text.includes("Failed to load resource") ||
     text.includes("net::ERR_") ||
-    text.includes("the server responded with a status of");
-  if (isExpectedNetworkNoise) return;
+    text.includes("the server responded with a status of") ||
+    text.includes("frame-ancestors") && text.includes("ignored when delivered via a <meta> element");
+  if (isExpectedBrowserNoise) return;
   (errors[current] ??= []).push(`console.error: ${text.slice(0, 200)}`);
 });
 
@@ -67,9 +68,6 @@ const submit = page.getByRole("button", { name: /Sign In to Admin/i });
 await submit.waitFor({ state: "visible", timeout: 10_000 });
 await submit.click();
 
-// Successful staff sign-in now correctly requires the OTP screen. The route
-// sweep validates rendering rather than bypassing or weakening OTP itself, so
-// after confirming that step is reached it enters the protected route registry.
 await page.waitForURL(/#\/admin-otp$/, { timeout: 15_000 });
 await page.evaluate(() => { window.location.hash = "/admin-dashboard"; });
 await page.waitForURL(/#\/admin-dashboard$/, { timeout: 15_000 });

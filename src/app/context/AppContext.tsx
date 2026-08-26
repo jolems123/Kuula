@@ -69,12 +69,13 @@ export interface AppState {
   user: UserProfile | null;
   credit: CreditProfile | null;
   loan: LoanProfile | null;
+  savingsBalance: number;
   unreadNotifications: number;
   messages: Message[];
 }
 
 type Action =
-  | { type: "LOGIN"; payload: { token: string; expiresAt?: number; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; role: Role; messages?: Message[]; unreadNotifications?: number } }
+  | { type: "LOGIN"; payload: { token: string; expiresAt?: number; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; savingsBalance?: number; role: Role; messages?: Message[]; unreadNotifications?: number } }
   | { type: "UPDATE_TOKEN"; payload: { token: string; expiresAt: number } }
   | { type: "LOGOUT" }
   | { type: "UPDATE_PROFILE"; payload: Partial<UserProfile> }
@@ -92,6 +93,7 @@ const INITIAL_STATE: AppState = {
   user: null,
   credit: null,
   loan: null,
+  savingsBalance: 0,
   unreadNotifications: 0,
   messages: [],
 };
@@ -110,6 +112,7 @@ function reducer(state: AppState, action: Action): AppState {
         user: action.payload.user,
         credit: action.payload.credit,
         loan: action.payload.loan,
+        savingsBalance: action.payload.savingsBalance ?? 0,
         messages: action.payload.messages ?? [],
         unreadNotifications: action.payload.unreadNotifications ?? 0,
       };
@@ -129,7 +132,10 @@ function reducer(state: AppState, action: Action): AppState {
 
 interface AppContextValue {
   state: AppState;
-  login: (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => void;
+  login: {
+    (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number): void;
+    (token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, savingsBalance: number | undefined, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number): void;
+  };
   updateToken: (token: string, expiresAt: number) => void;
   logout: () => void;
   updateProfile: (patch: Partial<UserProfile>) => void;
@@ -150,9 +156,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [pendingPhone, setPendingPhone] = useState("");
 
-  const login = useCallback((token: string, user: UserProfile, credit: CreditProfile | null, loan: LoanProfile | null, role: Role, messages?: Message[], unreadNotifications?: number, expiresAt?: number) => {
-    dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, role, messages, unreadNotifications } });
-  }, []);
+  const login = useCallback((
+    token: string,
+    user: UserProfile,
+    credit: CreditProfile | null,
+    loan: LoanProfile | null,
+    roleOrSavings: Role | number | undefined,
+    messagesOrRole?: Message[] | Role,
+    unreadOrMessages?: number | Message[],
+    expiresOrUnread?: number,
+    legacyExpiresAt?: number,
+  ) => {
+    const legacy = typeof roleOrSavings !== "string";
+    const role = (legacy ? messagesOrRole : roleOrSavings) as Role;
+    const savingsBalance = typeof roleOrSavings === "number" ? roleOrSavings : 0;
+    const messages = (legacy ? unreadOrMessages : messagesOrRole) as Message[] | undefined;
+    const unreadNotifications = legacy ? expiresOrUnread : (unreadOrMessages as number | undefined);
+    const expiresAt = legacy ? legacyExpiresAt : expiresOrUnread;
+    dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, savingsBalance, role, messages, unreadNotifications } });
+  }, []) as AppContextValue["login"];
   const updateToken = useCallback((token: string, expiresAt: number) => dispatch({ type: "UPDATE_TOKEN", payload: { token, expiresAt } }), []);
   const logout = useCallback(() => {
     clearSessionTokens();

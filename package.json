@@ -3,12 +3,19 @@
   "private": true,
   "version": "2.4.1",
   "type": "module",
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=20 <23",
+    "npm": "10.9.2"
+  },
   "scripts": {
     "dev": "vite",
     "check:env": "node scripts/check-env.mjs",
     "sync:app-id": "node scripts/sync-native-app-id.mjs",
     "prebuild": "node scripts/check-env.mjs && node scripts/sync-native-app-id.mjs",
     "build": "vite build",
+    "build:web": "node scripts/check-env.mjs && vite build",
+    "serve:web": "node scripts/serve-web.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

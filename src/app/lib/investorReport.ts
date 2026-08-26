@@ -23,10 +23,6 @@ function kpiRows(r: InvestorReport): [string, string][] {
     ["Total collected (cash in)", formatUGX(r.revenue.totalCollected)],
     ["Realized interest revenue", formatUGX(r.revenue.realizedInterest)],
     ["Expected interest revenue", formatUGX(r.revenue.expectedInterest)],
-    ["Savings under management", formatUGX(r.savings.total)],
-    ["Savings accounts", r.savings.accounts.toLocaleString()],
-    ["Savings deposits", formatUGX(r.savings.deposits)],
-    ["Savings withdrawals", formatUGX(r.savings.withdrawals)],
     ["Default rate", `${r.ratios.defaultRatePct}%`],
     ["Repayment rate", `${r.ratios.repaymentRatePct}%`],
     ["Portfolio at risk (PAR)", `${r.ratios.parPct}%`],
@@ -76,4 +72,3 @@ export function exportInvestorReportExcel(r: InvestorReport): void {
 export function exportInvestorReportCsv(r: InvestorReport): void {
   downloadCsv("kuula-investor-report", ["Metric", "Value"], kpiRows(r));
 }
-

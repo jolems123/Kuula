@@ -32,7 +32,6 @@ export function useRealtimeSubscriptions(): void {
   const { state, sendMessage, setUnread } = useAppContext();
   const pollTimersRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
-  // Keep refs to latest state so callbacks don't go stale
   const messagesRef = useRef<Message[]>(state.messages);
   messagesRef.current = state.messages;
 
@@ -45,22 +44,17 @@ export function useRealtimeSubscriptions(): void {
   const userId = state.user?.id;
   const isAuthenticated = state.session.isAuthenticated;
 
-  // Stable callback references that read from refs
-
-  // ── Cleanup helper ────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
     pollTimersRef.current.forEach(clearInterval);
     pollTimersRef.current = [];
   }, []);
 
   useEffect(() => {
-    // Not authenticated — clean up and bail
     if (!isAuthenticated || !userId) {
       cleanup();
       return;
     }
 
-    // ── Node backend: polling ───────────────────────────────────
     const pollMessages = () => {
       const token = tokenRef.current;
       if (!token) return;
@@ -68,9 +62,7 @@ export function useRealtimeSubscriptions(): void {
       api.getMessages(token).then(({ messages }) => {
         const existingIds = new Set(messagesRef.current.map((m) => m.id));
         for (const msg of messages) {
-          if (!existingIds.has(msg.id)) {
-            sendMessage(msg);
-          }
+          if (!existingIds.has(msg.id)) sendMessage(msg);
         }
       }).catch(() => { /* polling errors are non-fatal */ });
     };
@@ -80,20 +72,16 @@ export function useRealtimeSubscriptions(): void {
       if (!token) return;
 
       api.getNotifications(token).then(({ notifications }) => {
-        const unreadCount = notifications.filter((n) => !n.is_read).length;
-        if (unreadCount !== unreadRef.current) {
-          setUnread(unreadCount);
-        }
+        const unreadCount = notifications.filter((n) => !n.isRead).length;
+        if (unreadCount !== unreadRef.current) setUnread(unreadCount);
       }).catch(() => { /* polling errors are non-fatal */ });
     };
 
-    // Initial fetch
     pollMessages();
     pollNotifications();
 
-    // Start polling intervals
     const msgTimer = setInterval(pollMessages, POLL_INTERVAL_MS);
-    const notifTimer = setInterval(pollNotifications, POLL_INTERVAL_MS * 3); // Notifications less frequently
+    const notifTimer = setInterval(pollNotifications, POLL_INTERVAL_MS * 3);
     pollTimersRef.current = [msgTimer, notifTimer];
 
     return () => {

@@ -9,6 +9,7 @@ export interface SessionPayload {
   user: UserProfile;
   credit: CreditProfile | null;
   loan: LoanProfile | null;
+  savingsBalance?: number;
   messages: Message[];
   unreadNotifications: number;
 }
@@ -82,6 +83,9 @@ export interface Compliance {
   appleAprCapPercent: number;
   minTermDays: number;
   googleMinTermDays: number;
+  savingsAprPercent?: number;
+  savingsDiscountPercent?: number;
+  savingsThreshold?: number;
   compound: boolean;
   dataRetentionYears: number;
 }

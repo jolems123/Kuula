@@ -36,7 +36,7 @@ jobs:
         working-directory: pact
         env:
           PACT_DO_NOT_TRACK: "1"
-        run: npm install --package-lock-only --ignore-scripts --before="$NPM_RESOLUTION_BEFORE" --no-audit --no-fund
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install Pact contract workspace from resolved lock
         working-directory: pact
         env:
@@ -186,13 +186,13 @@ jobs:
 
           APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
+            -d '{"amount":100000,"purpose":"CI provider settlement","termDays":90,"channel":"MTN MoMo","employmentStatus":"Employed","occupationOrBusiness":"Accountant","employerOrBusinessName":"CI Test Employer","workDuration":"2+ years","incomeSource":"Salary","repaymentSource":"Salary","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
           APPLICATION_ID=$(echo "$APPLICATION_JSON" | jq -r '.application.id')
           test -n "$APPLICATION_ID"
 
           duplicate_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"duplicate","termDays":90,"declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
+            -d '{"amount":100000,"purpose":"duplicate","termDays":90,"employmentStatus":"Employed","occupationOrBusiness":"Accountant","employerOrBusinessName":"CI Test Employer","workDuration":"2+ years","incomeSource":"Salary","repaymentSource":"Salary","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0}')
           test "$duplicate_code" = "409"
 
           OFFER_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications/decision \
@@ -223,7 +223,7 @@ jobs:
             -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}")
           test "$blocked_code" = "409"
 
-          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; const tx=await prisma.transaction.findUnique({where:{reference:ref}}); console.log(tx?.id||""); await prisma.$disconnect();' "$DISBURSEMENT_REF")
+          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; prisma.transaction.findUnique({where:{reference:ref}}).then((tx)=>console.log(tx?.id||"")).finally(()=>prisma.$disconnect());' "$DISBURSEMENT_REF")
           test -n "$RECON_ID"
 
           curl -sf -X POST "http://localhost:3000/api/admin/reconciliation/$RECON_ID/review" \
@@ -242,17 +242,20 @@ jobs:
 
           PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":10000}')
           PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
+          PAYMENT_UUID=$(echo "$PAYMENT_JSON" | jq -r '.uuid')
           test -n "$PAYMENT_REF"
+          test -n "$PAYMENT_UUID"
+          test "$PAYMENT_UUID" != "null"
 
           curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
             -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"provider-collection\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
+            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"$PAYMENT_UUID\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
             | grep -q '"settled":true'
 
           AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
           test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
 
-          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; console.log(await prisma.journal.count()); await prisma.$disconnect();')
+          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; prisma.journal.count().then((count)=>console.log(count)).finally(()=>prisma.$disconnect());')
           test "$JOURNAL_COUNT" -ge 2
 
   capacitor-sync:
