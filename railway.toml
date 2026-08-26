@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci --legacy-peer-deps && npm run build"
+buildCommand = "npm ci --legacy-peer-deps && npm run build:web"
 
 [deploy]
 startCommand = "npm run serve:web"
