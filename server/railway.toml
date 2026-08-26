@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "/Dockerfile.railway-api"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 preDeployCommand = "npm run production:validate && npx prisma migrate deploy"
