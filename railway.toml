@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci --legacy-peer-deps && npm run build:web"
+buildCommand = "npm ci --legacy-peer-deps && VITE_BACKEND=node VITE_USE_API=true VITE_APP_ENV=production VITE_API_BASE_URL=https://api.kuulapp.com VITE_REVIEWER_MODE=false npm run build:web"
 
 [deploy]
 startCommand = "npm run serve:web"
