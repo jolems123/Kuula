@@ -85,7 +85,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("transaction-history")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -114,13 +114,13 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
           <>
             <div style={{ background: "white", borderRadius: 20, padding: "24px", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <div style={{ width: 64, height: 64, borderRadius: 32, background: incoming ? "#F0FDF4" : "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {incoming ? <ArrowDownLeft size={32} color="#12B984" /> : <ArrowUpRight size={32} color="#EF4444" />}
+                {incoming ? <ArrowDownLeft size={32} color="#178654" /> : <ArrowUpRight size={32} color="#EF4444" />}
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: statusOk ? "#12B984" : "#F59E0B", background: statusOk ? "#F0FDF4" : "#FFFBEB", padding: "3px 12px", borderRadius: 20, textTransform: "capitalize" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: statusOk ? "#178654" : "#F59E0B", background: statusOk ? "#F0FDF4" : "#FFFBEB", padding: "3px 12px", borderRadius: 20, textTransform: "capitalize" }}>
                 ● {statusOk ? "Successful" : txn.status}
               </span>
               <p style={{ fontSize: 13, color: "#6B7280", margin: 0 }}>{label}</p>
-              <p style={{ fontSize: 38, fontWeight: 900, color: incoming ? "#12B984" : "#1F2937", margin: 0, letterSpacing: -1 }}>
+              <p style={{ fontSize: 38, fontWeight: 900, color: incoming ? "#178654" : "#1F2937", margin: 0, letterSpacing: -1 }}>
                 {incoming ? "+" : "-"}{formatUGX(txn.amount)}
               </p>
             </div>
@@ -142,7 +142,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
               ))}
             </div>
 
-            <button onClick={saveReceipt} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, borderRadius: 14, background: "#FFF6EF", border: "none", color: "#F4612B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={saveReceipt} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, borderRadius: 14, background: "#F3FAF7", border: "none", color: "#0B5E3A", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               <Download size={16} /> Download Receipt (PDF)
             </button>
           </>

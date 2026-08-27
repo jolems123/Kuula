@@ -23,7 +23,7 @@ function LoanBreakdownRow({ label, value, highlight }: { label: string; value: s
       borderTop: "1px solid #F3F4F6",
     }}>
       <span style={{ fontSize: 13, color: "#6B7280" }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: highlight ? 800 : 600, color: highlight ? "#D9531F" : "#1F2937" }}>
+      <span style={{ fontSize: 14, fontWeight: highlight ? 800 : 600, color: highlight ? "#064A2E" : "#1F2937" }}>
         {value}
       </span>
     </div>
@@ -77,7 +77,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
       {/* Header */}
       <div
         style={{
-          background: "linear-gradient(135deg, #F4612B, #D9531F)",
+          background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
           padding: "16px 20px",
         }}
       >
@@ -100,7 +100,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             {/* Track fill */}
             <div style={{
               position: "absolute", left: 0, height: 6, borderRadius: 3,
-              width: `${sliderPct}%`, background: "linear-gradient(90deg, #F4612B, #F59E0B)",
+              width: `${sliderPct}%`, background: "linear-gradient(90deg, #0B5E3A, #F59E0B)",
               pointerEvents: "none", zIndex: 1,
             }} />
             {/* Track bg */}
@@ -125,8 +125,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
               left: `clamp(0px, calc(${sliderPct}% - 14px), calc(100% - 28px))`,
               width: 28, height: 28, borderRadius: 14,
               background: "white",
-              border: "3px solid #F4612B",
-              boxShadow: "0 2px 8px rgba(255,107,53,0.35)",
+              border: "3px solid #0B5E3A",
+              boxShadow: "0 2px 8px rgba(11,94,58,0.35)",
               zIndex: 1,
               pointerEvents: "none",
             }} />
@@ -140,9 +140,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                 onClick={() => setAmount(v)}
                 style={{
                   padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                  border: `1.5px solid ${amount === v ? "#F4612B" : "#E5E7EB"}`,
-                  background: amount === v ? "#FFF6EF" : "white",
-                  color: amount === v ? "#D9531F" : "#6B7280",
+                  border: `1.5px solid ${amount === v ? "#0B5E3A" : "#E5E7EB"}`,
+                  background: amount === v ? "#F3FAF7" : "white",
+                  color: amount === v ? "#064A2E" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
@@ -164,9 +164,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                   onClick={() => setTermIdx(i)}
                   style={{
                     flex: 1, padding: "8px 4px", borderRadius: 10, fontSize: 11, fontWeight: 600,
-                    border: `1.5px solid ${termIdx === i ? "#F4612B" : "#E5E7EB"}`,
-                    background: termIdx === i ? "#FFF6EF" : "white",
-                    color: termIdx === i ? "#D9531F" : "#6B7280",
+                    border: `1.5px solid ${termIdx === i ? "#0B5E3A" : "#E5E7EB"}`,
+                    background: termIdx === i ? "#F3FAF7" : "white",
+                    color: termIdx === i ? "#064A2E" : "#6B7280",
                     cursor: "pointer",
                   }}
                 >
@@ -187,9 +187,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                 onClick={() => setPurpose(p.key)}
                 style={{
                   padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  border: `1.5px solid ${purpose === p.key ? "#F4612B" : "#E5E7EB"}`,
-                  background: purpose === p.key ? "#FFF6EF" : "white",
-                  color: purpose === p.key ? "#D9531F" : "#6B7280",
+                  border: `1.5px solid ${purpose === p.key ? "#0B5E3A" : "#E5E7EB"}`,
+                  background: purpose === p.key ? "#F3FAF7" : "white",
+                  color: purpose === p.key ? "#064A2E" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
@@ -203,8 +203,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
         <div
           style={{
             borderRadius: 14,
-            background: "#FFF6EF",
-            border: "1px solid #FFDCC8",
+            background: "#F3FAF7",
+            border: "1px solid #DFF2E9",
             padding: "12px 16px",
             marginBottom: 16,
           }}
@@ -213,7 +213,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}>{t("loanApply.summary")}</p>
             <button
               onClick={() => setShowBreakdown(!showBreakdown)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#D9531F", fontSize: 12 }}
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#064A2E", fontSize: 12 }}
             >
               <Info size={13} />
               Details
@@ -223,7 +223,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span style={{ fontSize: 12, color: "#6B7280" }}>{t("loanApply.totalRepayable")}</span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: "#D9531F", letterSpacing: -0.5 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: "#064A2E", letterSpacing: -0.5 }}>
               {fmt(total)}
             </span>
           </div>
@@ -250,9 +250,9 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
           onClick={() => onApply?.(amount, termDays, purpose)}
           style={{
             width: "100%", height: 52, borderRadius: 14,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
             color: "white", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
+            boxShadow: "0 6px 20px rgba(11,94,58,0.35)",
             cursor: "pointer",
           }}
         >

@@ -83,7 +83,7 @@ export function PasswordRecoveryScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "28px 20px 120px", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ width: 82, height: 82, borderRadius: 41, background: step === "done" ? "#DCFCE7" : "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-          {step === "done" ? <ShieldCheck size={42} color="#15803D" /> : <KeyRound size={40} color="#D9531F" />}
+          {step === "done" ? <ShieldCheck size={42} color="#15803D" /> : <KeyRound size={40} color="#064A2E" />}
         </div>
 
         {step === "request" && (
@@ -178,7 +178,7 @@ export function PasswordRecoveryScreen({ onNavigate }: Props) {
           </button>
         )}
         {step === "confirm" && (
-          <button onClick={confirmReset} disabled={busy} style={{ width: "100%", height: 52, borderRadius: 14, border: "none", background: busy ? "#86EFAC" : "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={confirmReset} disabled={busy} style={{ width: "100%", height: 52, borderRadius: 14, border: "none", background: busy ? "#86EFAC" : "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
             {busy ? "Updating…" : "Set new password"}
           </button>
         )}

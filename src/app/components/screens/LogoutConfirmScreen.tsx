@@ -44,7 +44,7 @@ export function LogoutConfirmScreen({ onNavigate }: Props) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, background: "#F9FAFB", border: "1px solid #F3F4F6" }}>
-          <div style={{ width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #F4612B, #D9531F)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{user?.initials ?? "?"}</span>
           </div>
           <div>

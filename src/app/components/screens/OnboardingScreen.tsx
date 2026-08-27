@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, PiggyBank, TrendingUp, ChevronRight } from "lucide-react";
-import kuulaLogo from "/kuula-logo-light.png";
+const kuulaLogo = "/kuula-icon.svg";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface Props {
@@ -65,7 +65,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
       {/* Top bar: brand + skip */}
       <div className="flex items-center justify-between px-5 pt-5">
         <div className="flex items-center">
-          <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ height: 26, width: "auto", objectFit: "contain" }} />
+          <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ height: 34, width: 34, objectFit: "contain", borderRadius: 8 }} />
         </div>
         <button
           onClick={finish}
@@ -87,16 +87,16 @@ export function OnboardingScreen({ onNavigate }: Props) {
             width: 132,
             height: 132,
             borderRadius: 36,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 16px 36px rgba(255,107,53,0.28)",
+            boxShadow: "0 16px 36px rgba(11,94,58,0.24)",
             marginBottom: 40,
             position: "relative",
           }}
         >
-          <Icon size={56} color="#12B984" strokeWidth={2.2} />
+          <Icon size={56} color="#F2C94C" strokeWidth={2.2} />
         </div>
         <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1F2937", letterSpacing: -0.5, marginBottom: 12 }}>
           {slides[index].title}
@@ -120,7 +120,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
               border: "none",
               padding: 0,
               cursor: "pointer",
-              background: i === index ? "#F4612B" : "#D1D5DB",
+              background: i === index ? "#0B5E3A" : "#D1D5DB",
               transition: "width 0.25s, background 0.25s",
             }}
           />
@@ -135,13 +135,13 @@ export function OnboardingScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
             color: "white",
             fontSize: 16,
             fontWeight: 700,
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(255,107,53,0.3)",
+            boxShadow: "0 6px 20px rgba(11,94,58,0.28)",
           }}
         >
           {isLast ? t("onboarding.getStarted") : t("onboarding.next")}
@@ -152,7 +152,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           {t("onboarding.haveAccount")}{" "}
           <button
             onClick={finish}
-            style={{ background: "none", border: "none", color: "#F4612B", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "#0B5E3A", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
           >
             {t("onboarding.logIn")}
           </button>

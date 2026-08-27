@@ -77,7 +77,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E2E8F0", background: filter === f ? "#F4612B" : "white", color: filter === f ? "white" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E2E8F0", background: filter === f ? "#0B5E3A" : "white", color: filter === f ? "white" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             {f}
           </button>
         ))}
@@ -99,7 +99,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
             a.status === "pending" ? (
               <div key={a.id + "-act"} style={{ display: "flex", gap: 6 }}>
                 <button disabled={busyId === a.id} onClick={(e) => { e.stopPropagation(); decide(a.id, "approved"); }}
-                  style={{ padding: "4px 10px", borderRadius: 6, background: "#12B984", color: "white", border: "none", fontSize: 11, fontWeight: 600, cursor: busyId === a.id ? "not-allowed" : "pointer" }}>
+                  style={{ padding: "4px 10px", borderRadius: 6, background: "#178654", color: "white", border: "none", fontSize: 11, fontWeight: 600, cursor: busyId === a.id ? "not-allowed" : "pointer" }}>
                   {busyId === a.id ? "…" : "Approve"}
                 </button>
                 <button disabled={busyId === a.id} onClick={(e) => { e.stopPropagation(); decide(a.id, "rejected"); }}
@@ -124,7 +124,7 @@ export function AdminLoanAppDetailScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-loan-apps" onNavigate={onNavigate} title="Application Detail">
       <AdminPageHeader title="Loan Application Detail"
         action={<div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => onNavigate("admin-loan-approval")} style={{ padding: "8px 16px", borderRadius: 8, background: "#12B984", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Approve</button>
+          <button onClick={() => onNavigate("admin-loan-approval")} style={{ padding: "8px 16px", borderRadius: 8, background: "#178654", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Approve</button>
           <button onClick={() => onNavigate("admin-loan-rejection")} style={{ padding: "8px 16px", borderRadius: 8, background: "#EF4444", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reject</button>
         </div>}
       />
@@ -145,7 +145,7 @@ export function AdminLoanApprovalScreen({ onNavigate }: Props) {
         <AdminCard style={{ marginBottom: 16 }}>
           <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
             <div style={{ width:48,height:48,borderRadius:24,background:"#F0FDF4",border:"2px solid #A7F3D0",display:"flex",alignItems:"center",justifyContent:"center" }}>
-              <CheckCircle size={28} color="#12B984" />
+              <CheckCircle size={28} color="#178654" />
             </div>
             <div>
               <p style={{ fontSize:16,fontWeight:800,color:"#065F46",margin:0 }}>Approve Loan</p>
@@ -158,7 +158,7 @@ export function AdminLoanApprovalScreen({ onNavigate }: Props) {
           </div>
         </AdminCard>
         <div style={{ display:"flex",gap:12 }}>
-          <button onClick={()=>onNavigate("admin-loan-apps")} style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#12B984,#059669)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:"pointer" }}>✓ Confirm Approval</button>
+          <button onClick={()=>onNavigate("admin-loan-apps")} style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#178654,#059669)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:"pointer" }}>✓ Confirm Approval</button>
           <button onClick={()=>onNavigate("admin-loan-apps")} style={{ flex:1,height:46,borderRadius:10,background:"#F1F5F9",color:"#64748B",fontSize:15,fontWeight:600,border:"none",cursor:"pointer" }}>Cancel</button>
         </div>
       </div>
@@ -236,8 +236,8 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-active-loans", ["Customer", "Loan ID", "Amount (UGX)", "Applied", "Status"], apps.map((a) => [a.applicantName || "—", a.id, a.amount, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export CSV</button>}
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="#F4612B" icon={<></>} />
-        <StatCard label="Total Amount" value={loading ? "…" : `UGX ${(apps.reduce((s, a) => s + a.amount, 0) / 1000000).toFixed(1)}M`} color="#12B984" icon={<></>} />
+        <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="#0B5E3A" icon={<></>} />
+        <StatCard label="Total Amount" value={loading ? "…" : `UGX ${(apps.reduce((s, a) => s + a.amount, 0) / 1000000).toFixed(1)}M`} color="#178654" icon={<></>} />
         <StatCard label="Pending Decisions" value={loading ? "…" : String(apps.filter(a => a.status === "pending").length)} color="#F59E0B" icon={<></>} />
       </div>
       {loading ? (
@@ -301,7 +301,7 @@ export function AdminRepaymentTrackingScreen({ onNavigate }: Props) {
             <XAxis dataKey="month" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <Tooltip contentStyle={{ borderRadius:8,border:"none",boxShadow:"0 4px 12px rgba(0,0,0,.1)" }}/>
-            <Bar dataKey="loans" fill="#F4612B" radius={[4,4,0,0]} name="Applications"/>
+            <Bar dataKey="loans" fill="#0B5E3A" radius={[4,4,0,0]} name="Applications"/>
           </BarChart>
         </ResponsiveContainer>
       </AdminCard>
@@ -367,8 +367,8 @@ export function AdminOverdueLoanDetailScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Contact Customer</h3>
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
             {[
-              { Icon:Phone,label:"Call customer",color:"#12B984",bg:"#F0FDF4" },
-              { Icon:MessageSquare,label:"Send SMS Reminder",color:"#F4612B",bg:"#FFF6EF" },
+              { Icon:Phone,label:"Call customer",color:"#178654",bg:"#F0FDF4" },
+              { Icon:MessageSquare,label:"Send SMS Reminder",color:"#0B5E3A",bg:"#F3FAF7" },
             ].map(({ Icon,label,color,bg })=>(
               <button key={label} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:bg,border:"none",cursor:"pointer",textAlign:"left" }}>
                 <Icon size={18} color={color}/><span style={{ fontSize:13,fontWeight:600,color }}>{label}</span>

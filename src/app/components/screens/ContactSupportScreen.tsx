@@ -13,7 +13,7 @@ function mailto(address: string, subject: string) {
 export function ContactSupportScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB" }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
         <button onClick={() => onNavigate("help-support")} aria-label="Back" style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -29,7 +29,7 @@ export function ContactSupportScreen({ onNavigate }: Props) {
 
         <div style={{ display: "grid", gap: 12 }}>
           <button onClick={() => onNavigate("user-support-chat")} style={{ width: "100%", textAlign: "left", background: "white", border: "1px solid #E5E7EB", borderRadius: 16, padding: 16, display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
-            <span style={{ width: 42, height: 42, borderRadius: 12, background: "#FFF6EF", display: "grid", placeItems: "center" }}><MessageCircle size={20} color="#F4612B" /></span>
+            <span style={{ width: 42, height: 42, borderRadius: 12, background: "#F3FAF7", display: "grid", placeItems: "center" }}><MessageCircle size={20} color="#0B5E3A" /></span>
             <div><strong style={{ display: "block", fontSize: 14, color: "#1F2937" }}>In-app support</strong><span style={{ fontSize: 11.5, color: "#6B7280" }}>Send a message through Kuula's authenticated support channel.</span></div>
           </button>
 

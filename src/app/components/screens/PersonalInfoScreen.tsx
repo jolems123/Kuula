@@ -21,7 +21,7 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
         <button onClick={() => onNavigate("profile")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -53,12 +53,12 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>National ID (NIN)</p>
             <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>CM86H00****PL · Verified</p>
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#12B984", background: "#F0FDF4", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#178654", background: "#F0FDF4", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
         </div>
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
-        <button onClick={() => onNavigate("profile")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
+        <button onClick={() => onNavigate("profile")} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer" }}>
           Save Changes
         </button>
       </div>

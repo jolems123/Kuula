@@ -27,13 +27,13 @@ export function CustomerSupportChatScreen({ onNavigate }: Props) {
   };
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
             <ArrowLeft size={18} color="white"/>
           </button>
           <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-            <div style={{ width:34,height:34,borderRadius:17,background:"#12B984",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"white" }}>L</div>
+            <div style={{ width:34,height:34,borderRadius:17,background:"#178654",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"white" }}>L</div>
             <div>
               <p style={{ fontSize:14,fontWeight:700,color:"white",margin:0 }}>Lisa · Kuula Support</p>
               <p style={{ fontSize:10,color:"rgba(255,255,255,0.75)",margin:0 }}>● Online — Avg response: 2 min</p>
@@ -44,7 +44,7 @@ export function CustomerSupportChatScreen({ onNavigate }: Props) {
       <div style={{ flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:10 }}>
         {msgs.map((m,i)=>(
           <div key={i} style={{ display:"flex",justifyContent:m.from==="user"?"flex-end":"flex-start" }}>
-            <div style={{ maxWidth:"80%",padding:"10px 14px",borderRadius:m.from==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.from==="user"?"#F4612B":"white",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>
+            <div style={{ maxWidth:"80%",padding:"10px 14px",borderRadius:m.from==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.from==="user"?"#0B5E3A":"white",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>
               <p style={{ fontSize:13,color:m.from==="user"?"white":"#1F2937",margin:0,lineHeight:1.5 }}>{m.text}</p>
               <span style={{ fontSize:10,color:m.from==="user"?"rgba(255,255,255,0.7)":"#9CA3AF",display:"block",textAlign:"right",marginTop:4 }}>{m.time}</span>
             </div>
@@ -53,7 +53,7 @@ export function CustomerSupportChatScreen({ onNavigate }: Props) {
       </div>
       <div style={{ padding:"12px 16px",background:"white",borderTop:"1px solid #F3F4F6",display:"flex",gap:8 }}>
         <input value={msg} onChange={e=>setMsg(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Type your message..." style={{ flex:1,height:46,borderRadius:12,border:"1.5px solid #E5E7EB",padding:"0 14px",fontSize:13,outline:"none" }}/>
-        <button onClick={send} style={{ width:46,height:46,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
+        <button onClick={send} style={{ width:46,height:46,borderRadius:12,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
           <Send size={18} color="white"/>
         </button>
       </div>
@@ -70,7 +70,7 @@ export function CustomerChatHistoryScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("customer-support-chat")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -79,13 +79,13 @@ export function CustomerChatHistoryScreen({ onNavigate }: Props) {
       <div style={{ flex:1,overflowY:"auto",padding:"12px 16px 90px",display:"flex",flexDirection:"column",gap:10 }}>
         {chats.map((c,i)=>(
           <button key={i} onClick={()=>onNavigate("customer-support-chat")} style={{ background:"white",borderRadius:14,padding:"14px 16px",border:"1px solid #F3F4F6",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",cursor:"pointer",textAlign:"left",display:"flex",gap:12,width:"100%" }}>
-            <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#F4612B,#D9531F)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
               <span style={{ fontSize:16,fontWeight:700,color:"white" }}>{c.agent[0]}</span>
             </div>
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
                 <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:0 }}>{c.topic}</p>
-                <span style={{ fontSize:10,color:"#12B984",fontWeight:600 }}>{c.status}</span>
+                <span style={{ fontSize:10,color:"#178654",fontWeight:600 }}>{c.status}</span>
               </div>
               <p style={{ fontSize:11,color:"#9CA3AF",margin:"2px 0" }}>Agent {c.agent} · {c.date}</p>
               <p style={{ fontSize:12,color:"#6B7280",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{c.preview}</p>
@@ -105,7 +105,7 @@ export function CustomerCreateTicketScreen({ onNavigate }: Props) {
   const [desc, setDesc] = useState("");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -117,7 +117,7 @@ export function CustomerCreateTicketScreen({ onNavigate }: Props) {
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Issue Category</label>
             <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
               {[{id:"loan",l:"Loan Issue"},{id:"payment",l:"Payment"},{id:"account",l:"Account"},{id:"savings",l:"Savings"},{id:"other",l:"Other"}].map(c=>(
-                <button key={c.id} onClick={()=>setCategory(c.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:category===c.id?"#F4612B":"#F3F4F6",color:category===c.id?"white":"#6B7280" }}>{c.l}</button>
+                <button key={c.id} onClick={()=>setCategory(c.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:category===c.id?"#0B5E3A":"#F3F4F6",color:category===c.id?"white":"#6B7280" }}>{c.l}</button>
               ))}
             </div>
           </div>
@@ -132,7 +132,7 @@ export function CustomerCreateTicketScreen({ onNavigate }: Props) {
           <div>
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Priority</label>
             <div style={{ display:"flex",gap:8 }}>
-              {[{id:"low",l:"Low",c:"#12B984"},{id:"medium",l:"Medium",c:"#F59E0B"},{id:"high",l:"High",c:"#EF4444"}].map(p=>(
+              {[{id:"low",l:"Low",c:"#178654"},{id:"medium",l:"Medium",c:"#F59E0B"},{id:"high",l:"High",c:"#EF4444"}].map(p=>(
                 <button key={p.id} onClick={()=>setPriority(p.id)} style={{ flex:1,height:38,borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,background:priority===p.id?p.c+"20":"#F3F4F6",color:priority===p.id?p.c:"#6B7280" }}>{p.l}</button>
               ))}
             </div>
@@ -140,7 +140,7 @@ export function CustomerCreateTicketScreen({ onNavigate }: Props) {
         </div>
       </div>
       <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-        <button onClick={()=>onNavigate("customer-ticket-status")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>
+        <button onClick={()=>onNavigate("customer-ticket-status")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>
           Submit Ticket
         </button>
       </div>
@@ -157,26 +157,26 @@ export function CustomerTicketStatusScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>My Tickets</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"12px 16px 90px",display:"flex",flexDirection:"column",gap:10 }}>
-        <button onClick={()=>onNavigate("customer-create-ticket")} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,height:48,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",cursor:"pointer",fontSize:14,fontWeight:700,marginBottom:4 }}>
+        <button onClick={()=>onNavigate("customer-create-ticket")} style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,height:48,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",cursor:"pointer",fontSize:14,fontWeight:700,marginBottom:4 }}>
           + Submit New Ticket
         </button>
         {tickets.map((t,i)=>(
           <button key={i} onClick={()=>onNavigate("customer-ticket-details")} style={{ background:"white",borderRadius:14,padding:"14px 16px",border:"1px solid #F3F4F6",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",cursor:"pointer",textAlign:"left",width:"100%",display:"flex",flexDirection:"column",gap:8 }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
               <span style={{ fontSize:11,color:"#9CA3AF",fontWeight:600 }}>{t.id}</span>
-              <span style={{ fontSize:10,fontWeight:700,color:t.status==="In Progress"?"#F59E0B":t.status==="Resolved"?"#12B984":"#F4612B",background:t.status==="In Progress"?"#FFF7ED":t.status==="Resolved"?"#F0FDF4":"#FFF6EF",padding:"2px 8px",borderRadius:20 }}>{t.status}</span>
+              <span style={{ fontSize:10,fontWeight:700,color:t.status==="In Progress"?"#F59E0B":t.status==="Resolved"?"#178654":"#0B5E3A",background:t.status==="In Progress"?"#FFF7ED":t.status==="Resolved"?"#F0FDF4":"#F3FAF7",padding:"2px 8px",borderRadius:20 }}>{t.status}</span>
             </div>
             <p style={{ fontSize:14,fontWeight:700,color:"#1F2937",margin:0 }}>{t.subject}</p>
             <div style={{ display:"flex",justifyContent:"space-between" }}>
               <span style={{ fontSize:11,color:"#9CA3AF" }}>{t.date}</span>
-              <span style={{ fontSize:11,fontWeight:600,color:t.priority==="High"?"#EF4444":t.priority==="Medium"?"#F59E0B":"#12B984" }}>{t.priority} Priority</span>
+              <span style={{ fontSize:11,fontWeight:600,color:t.priority==="High"?"#EF4444":t.priority==="Medium"?"#F59E0B":"#178654" }}>{t.priority} Priority</span>
             </div>
           </button>
         ))}
@@ -191,7 +191,7 @@ export function CustomerTicketDetailsScreen({ onNavigate }: Props) {
   const [reply, setReply] = useState("");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("customer-ticket-status")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -208,7 +208,7 @@ export function CustomerTicketDetailsScreen({ onNavigate }: Props) {
           { from:"Lisa (Support)",text:"Thank you! I can see the transaction. It was delayed due to a network issue. Your account will be updated within 30 minutes.",time:"Jun 11, 09:20 AM",isUser:false },
         ].map((m,i)=>(
           <div key={i} style={{ display:"flex",justifyContent:m.isUser?"flex-end":"flex-start" }}>
-            <div style={{ maxWidth:"85%",padding:"10px 14px",borderRadius:m.isUser?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.isUser?"#F4612B":"white",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>
+            <div style={{ maxWidth:"85%",padding:"10px 14px",borderRadius:m.isUser?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.isUser?"#0B5E3A":"white",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>
               <p style={{ fontSize:11,fontWeight:700,color:m.isUser?"rgba(255,255,255,0.7)":"#6B7280",margin:"0 0 4px" }}>{m.from}</p>
               <p style={{ fontSize:13,color:m.isUser?"white":"#1F2937",margin:0,lineHeight:1.5 }}>{m.text}</p>
               <span style={{ fontSize:10,color:m.isUser?"rgba(255,255,255,0.6)":"#9CA3AF",display:"block",marginTop:4 }}>{m.time}</span>
@@ -218,7 +218,7 @@ export function CustomerTicketDetailsScreen({ onNavigate }: Props) {
       </div>
       <div style={{ padding:"10px 16px 20px",background:"white",borderTop:"1px solid #F3F4F6",display:"flex",gap:8 }}>
         <input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Add a reply..." style={{ flex:1,height:44,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 14px",fontSize:13,outline:"none" }}/>
-        <button style={{ width:44,height:44,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
+        <button style={{ width:44,height:44,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
           <Send size={16} color="white"/>
         </button>
       </div>
@@ -264,7 +264,7 @@ export function CustomerWhatsAppSupportScreen({ onNavigate }: Props) {
 export function CustomerPhoneSupportScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -272,11 +272,11 @@ export function CustomerPhoneSupportScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 20px",gap:20 }}>
         <div style={{ width:88,height:88,borderRadius:44,background:"#F0FDF4",border:"2px solid #A7F3D0",display:"flex",alignItems:"center",justifyContent:"center" }}>
-          <Phone size={44} color="#12B984" strokeWidth={1.5}/>
+          <Phone size={44} color="#178654" strokeWidth={1.5}/>
         </div>
         <div style={{ textAlign:"center" }}>
           <h2 style={{ fontSize:22,fontWeight:800,color:"#1F2937",margin:0 }}>Toll-Free Hotline</h2>
-          <p style={{ fontSize:32,fontWeight:900,color:"#12B984",margin:"8px 0",letterSpacing:-1 }}>0800 123 456</p>
+          <p style={{ fontSize:32,fontWeight:900,color:"#178654",margin:"8px 0",letterSpacing:-1 }}>0800 123 456</p>
           <p style={{ fontSize:13,color:"#6B7280" }}>Free to call from any network · 24/7</p>
         </div>
         <div style={{ width:"100%",background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -286,7 +286,7 @@ export function CustomerPhoneSupportScreen({ onNavigate }: Props) {
             </div>
           ))}
         </div>
-        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#12B984,#059669)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer",boxShadow:"0 4px 12px rgba(16,185,129,0.3)",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#178654,#059669)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer",boxShadow:"0 4px 12px rgba(16,185,129,0.3)",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
           <Phone size={20}/> Call 0800 123 456
         </button>
       </div>
@@ -301,14 +301,14 @@ export function CustomerEmailSupportScreen({ onNavigate }: Props) {
   const [body, setBody] = useState("");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Email Support</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:14 }}>
-        <div style={{ background:"#FFF6EF",borderRadius:12,padding:"12px 14px",border:"1px solid #FFDCC8" }}>
+        <div style={{ background:"#F3FAF7",borderRadius:12,padding:"12px 14px",border:"1px solid #DFF2E9" }}>
           <p style={{ fontSize:12,color:"#374151",margin:0 }}>📧 Sending to <strong>support@kuula.ug</strong> · Reply within 24 hours</p>
         </div>
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:12 }}>
@@ -327,7 +327,7 @@ export function CustomerEmailSupportScreen({ onNavigate }: Props) {
         </div>
       </div>
       <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
           <Send size={18}/> Send Email
         </button>
       </div>
@@ -352,7 +352,7 @@ export function CustomerFAQScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -372,7 +372,7 @@ export function CustomerFAQScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}>
                     {["Tap 'Apply for Loan' on your Home screen. Select your amount, repayment term, and purpose, then review and submit.","We charge simple interest at an all-inclusive APR of up to 33.6% per year (Uganda's UMRA cap). No compounding, no hidden fees.","Most applications are approved within 2–5 minutes. Complex cases may take up to 2 hours.","Pay via MTN MoMo or Airtel Money through the 'Make Payment' button on your loan screen.","Yes! Kuula charges zero early repayment penalty. Paying early saves you on interest.","Apply through Settings → Credit Limit Increase. Eligibility is based on your repayment history.","A one-time late fee within UMRA limits may apply (never compounded), and your credit score may be affected. Please contact us immediately.","Go to Settings → Payment Methods → Enable Auto-Pay and select your preferred MoMo account.","We pay 5.2% annual interest, credited monthly to your savings account.","Go to Settings → Privacy & Security → Change PIN."][i]}
                   </p>
-                  <button onClick={()=>onNavigate("customer-faq-detail")} style={{ marginTop:10,padding:"6px 14px",borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Read Full Answer</button>
+                  <button onClick={()=>onNavigate("customer-faq-detail")} style={{ marginTop:10,padding:"6px 14px",borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Read Full Answer</button>
                 </div>
               )}
             </div>
@@ -388,7 +388,7 @@ export function CustomerFAQScreen({ onNavigate }: Props) {
 export function CustomerFAQDetailScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("customer-faq")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -396,26 +396,26 @@ export function CustomerFAQDetailScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 30px" }}>
         <div style={{ background:"white",borderRadius:16,padding:"20px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
-          <span style={{ fontSize:11,fontWeight:700,color:"#F4612B",background:"#FFF6EF",padding:"3px 10px",borderRadius:20 }}>Payments</span>
+          <span style={{ fontSize:11,fontWeight:700,color:"#0B5E3A",background:"#F3FAF7",padding:"3px 10px",borderRadius:20 }}>Payments</span>
           <h2 style={{ fontSize:18,fontWeight:800,color:"#1F2937",margin:"12px 0" }}>How do I repay my loan?</h2>
           <p style={{ fontSize:13,color:"#374151",lineHeight:1.8 }}>
             Kuula offers multiple ways to repay your loan:
           </p>
           {["<strong>Via the App:</strong> Go to your Home screen → tap the active loan → tap 'Make Payment' → enter amount → choose MTN MoMo or Airtel Money → confirm.","<strong>MTN MoMo Menu:</strong> Dial *165# → Payments → Pay Bill → Enter Biller Code 123456 → Enter your Loan ID → Confirm with PIN.","<strong>Airtel Money:</strong> Dial *185# → Make Payments → Pay Bill → Kuula → Enter Loan ID → Confirm."].map((s,i)=>(
             <div key={i} style={{ display:"flex",gap:10,marginBottom:14 }}>
-              <div style={{ width:24,height:24,borderRadius:12,background:"#F4612B",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2 }}>
+              <div style={{ width:24,height:24,borderRadius:12,background:"#0B5E3A",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2 }}>
                 <span style={{ fontSize:11,fontWeight:700,color:"white" }}>{i+1}</span>
               </div>
               <p style={{ fontSize:13,color:"#374151",lineHeight:1.7,margin:0 }} dangerouslySetInnerHTML={{ __html:s }}/>
             </div>
           ))}
-          <div style={{ padding:"12px 14px",borderRadius:10,background:"#FFF6EF",border:"1px solid #FFDCC8",marginTop:16 }}>
+          <div style={{ padding:"12px 14px",borderRadius:10,background:"#F3FAF7",border:"1px solid #DFF2E9",marginTop:16 }}>
             <p style={{ fontSize:12,color:"#374151",margin:0 }}>💡 Tip: Enable Auto-Pay so you never miss a due date. Go to Settings → Auto-Payment.</p>
           </div>
         </div>
         <div style={{ marginTop:14,display:"flex",gap:10 }}>
           <button style={{ flex:1,height:46,borderRadius:12,background:"#F3F4F6",color:"#374151",border:"none",fontSize:13,fontWeight:600,cursor:"pointer" }}>Was this helpful? 👍</button>
-          <button onClick={()=>onNavigate("customer-support-chat")} style={{ flex:1,height:46,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Chat with Us</button>
+          <button onClick={()=>onNavigate("customer-support-chat")} style={{ flex:1,height:46,borderRadius:12,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Chat with Us</button>
         </div>
       </div>
     </div>
@@ -434,7 +434,7 @@ export function CustomerLoanGuidesScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -483,7 +483,7 @@ export function CustomerHowToPayScreen({ onNavigate }: Props) {
   };
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("help-support")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -492,15 +492,15 @@ export function CustomerHowToPayScreen({ onNavigate }: Props) {
       <div style={{ flex:1,overflowY:"auto",padding:"16px 16px 90px" }}>
         <div style={{ display:"flex",gap:8,marginBottom:16 }}>
           {[{id:"app",l:"📱 Via App"},{id:"mtn",l:"🟡 MTN USSD"}].map(m=>(
-            <button key={m.id} onClick={()=>setMethod(m.id)} style={{ flex:1,height:42,borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:method===m.id?"#F4612B":"white",color:method===m.id?"white":"#374151",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>{m.l}</button>
+            <button key={m.id} onClick={()=>setMethod(m.id)} style={{ flex:1,height:42,borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:method===m.id?"#0B5E3A":"white",color:method===m.id?"white":"#374151",boxShadow:"0 2px 6px rgba(0,0,0,0.06)" }}>{m.l}</button>
           ))}
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
           {(steps[method]||[]).map((s,i)=>(
             <div key={i} style={{ display:"flex",alignItems:"center",gap:14,background:"white",borderRadius:14,padding:"14px 16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
-              <div style={{ width:36,height:36,borderRadius:10,background:"#FFF6EF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18 }}>{s.icon}</div>
+              <div style={{ width:36,height:36,borderRadius:10,background:"#F3FAF7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18 }}>{s.icon}</div>
               <div style={{ display:"flex",gap:10,alignItems:"flex-start" }}>
-                <span style={{ fontSize:20,fontWeight:800,color:"#F4612B",lineHeight:1 }}>{i+1}</span>
+                <span style={{ fontSize:20,fontWeight:800,color:"#0B5E3A",lineHeight:1 }}>{i+1}</span>
                 <p style={{ fontSize:13,color:"#374151",margin:0,lineHeight:1.5 }}>{s.s}</p>
               </div>
             </div>
@@ -530,16 +530,16 @@ export function AdminTicketReplyScreen({ onNavigate }: Props) {
           <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Your Reply</label>
           <textarea value={reply||template} onChange={e=>setReply(e.target.value)} rows={6} placeholder="Type your response to the customer..." style={{ width:"100%",borderRadius:10,border:"1.5px solid #E5E7EB",padding:"10px 12px",fontSize:13,outline:"none",boxSizing:"border-box" as "border-box",resize:"none" }}/>
           <div style={{ display:"flex",gap:10,marginTop:14 }}>
-            <button onClick={()=>onNavigate("admin-tickets")} style={{ flex:1,height:44,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
+            <button onClick={()=>onNavigate("admin-tickets")} style={{ flex:1,height:44,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>
               <Send size={15}/> Send Reply
             </button>
-            <button style={{ flex:1,height:44,borderRadius:10,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Mark Resolved</button>
+            <button style={{ flex:1,height:44,borderRadius:10,background:"#F0FDF4",color:"#178654",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Mark Resolved</button>
           </div>
         </AdminCard>
         <AdminCard>
           <h3 style={{ fontSize:13,fontWeight:700,margin:"0 0 12px" }}>Quick Templates</h3>
           {templates.map((t,i)=>(
-            <button key={i} onClick={()=>setTemplate(t)} style={{ width:"100%",padding:"9px 12px",borderRadius:8,background:"#F8FAFC",border:`1px solid ${template===t?"#F4612B":"#E2E8F0"}`,color:"#374151",fontSize:11,textAlign:"left",cursor:"pointer",marginBottom:8,lineHeight:1.4 }}>{t}</button>
+            <button key={i} onClick={()=>setTemplate(t)} style={{ width:"100%",padding:"9px 12px",borderRadius:8,background:"#F8FAFC",border:`1px solid ${template===t?"#0B5E3A":"#E2E8F0"}`,color:"#374151",fontSize:11,textAlign:"left",cursor:"pointer",marginBottom:8,lineHeight:1.4 }}>{t}</button>
           ))}
         </AdminCard>
       </div>
@@ -584,8 +584,8 @@ export function AdminSupportStaffDashboardScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Support Staff Dashboard" subtitle="Agent performance and ticket distribution"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Open Tickets" value="12" color="#F59E0B" icon={<Clock size={18} color="#F59E0B"/>}/>
-        <StatCard label="In Progress" value="8" color="#F4612B" icon={<></>}/>
-        <StatCard label="Resolved Today" value="24" color="#12B984" icon={<CheckCircle size={18} color="#12B984"/>}/>
+        <StatCard label="In Progress" value="8" color="#0B5E3A" icon={<></>}/>
+        <StatCard label="Resolved Today" value="24" color="#178654" icon={<CheckCircle size={18} color="#178654"/>}/>
         <StatCard label="Avg Response" value="18 min" color="#8B5CF6" icon={<></>}/>
       </div>
       <AdminTable
@@ -606,15 +606,15 @@ export function AdminSupportAnalyticsScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-tickets" onNavigate={onNavigate} title="Support Analytics">
       <AdminPageHeader title="Support Analytics" subtitle="Performance metrics for customer support"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Avg Response Time" value="18 min" sub="Target: 30 min ✓" color="#12B984" icon={<Clock size={18} color="#12B984"/>}/>
-        <StatCard label="Resolution Rate" value="94.2%" sub="This month" color="#F4612B" icon={<></>}/>
+        <StatCard label="Avg Response Time" value="18 min" sub="Target: 30 min ✓" color="#178654" icon={<Clock size={18} color="#178654"/>}/>
+        <StatCard label="Resolution Rate" value="94.2%" sub="This month" color="#0B5E3A" icon={<></>}/>
         <StatCard label="Customer Satisfaction" value="4.7/5" sub="From 312 ratings" color="#F59E0B" icon={<></>}/>
         <StatCard label="Tickets This Month" value="347" sub="+12% vs last month" color="#8B5CF6" icon={<></>}/>
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
         <AdminCard>
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Top Issue Categories</h3>
-          {[["Payment issues","38%","#F4612B"],["Loan queries","24%","#12B984"],["Account access","18%","#F59E0B"],["Interest queries","12%","#8B5CF6"],["Other","8%","#94A3B8"]].map(([l,v,c])=>(
+          {[["Payment issues","38%","#0B5E3A"],["Loan queries","24%","#178654"],["Account access","18%","#F59E0B"],["Interest queries","12%","#8B5CF6"],["Other","8%","#94A3B8"]].map(([l,v,c])=>(
             <div key={l} style={{ marginBottom:10 }}>
               <div style={{ display:"flex",justifyContent:"space-between",marginBottom:4 }}>
                 <span style={{ fontSize:12,color:"#374151" }}>{l}</span>

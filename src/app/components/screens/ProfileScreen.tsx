@@ -24,7 +24,7 @@ export function ProfileScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -38,7 +38,7 @@ export function ProfileScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 0 90px" }}>
         {/* Avatar section */}
-        <div style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)", padding: "0 0 32px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <div style={{ background: "linear-gradient(135deg, #0B5E3A, #064A2E)", padding: "0 0 32px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           <div style={{ position: "relative" }}>
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.fullName} style={{ width: 88, height: 88, borderRadius: 44, border: "3px solid rgba(255,255,255,0.5)", objectFit: "cover" }} />
@@ -47,7 +47,7 @@ export function ProfileScreen({ onNavigate }: Props) {
                 <span style={{ fontSize: 36, fontWeight: 800, color: "white" }}>{user?.initials ?? "?"}</span>
               </div>
             )}
-            <button style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, background: "#12B984", border: "2px solid white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <button style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, background: "#178654", border: "2px solid white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <Camera size={13} color="white" />
             </button>
           </div>
@@ -55,7 +55,7 @@ export function ProfileScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 20, fontWeight: 800, color: "white", margin: 0 }}>{user?.fullName ?? "—"}</p>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", margin: "2px 0 0" }}>{user?.phone ?? "—"} · {user?.district ?? ""}, Uganda</p>
             {user?.verified && (
-              <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, color: "#12B984", background: "rgba(255,255,255,0.95)", padding: "3px 12px", borderRadius: 20, marginTop: 8 }}>{t("profile.verifiedAccount")}</span>
+              <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, color: "#178654", background: "rgba(255,255,255,0.95)", padding: "3px 12px", borderRadius: 20, marginTop: 8 }}>{t("profile.verifiedAccount")}</span>
             )}
           </div>
         </div>
@@ -64,8 +64,8 @@ export function ProfileScreen({ onNavigate }: Props) {
           {/* Stats from mockData */}
           <div style={{ display: "flex", gap: 10 }}>
             {[
-              { label: t("profile.creditScore"), value: String(creditProfile?.score ?? "—"), sub: creditProfile?.tier ?? "—", color: "#12B984", Icon: Star },
-              { label: t("profile.totalLoans"), value: String(loanProfile?.totalLoansCount ?? 0), sub: t("profile.allRepaid"), color: "#F4612B", Icon: TrendingUp },
+              { label: t("profile.creditScore"), value: String(creditProfile?.score ?? "—"), sub: creditProfile?.tier ?? "—", color: "#178654", Icon: Star },
+              { label: t("profile.totalLoans"), value: String(loanProfile?.totalLoansCount ?? 0), sub: t("profile.allRepaid"), color: "#0B5E3A", Icon: TrendingUp },
               { label: t("profile.memberSince"), value: "2024", sub: user?.memberSince ?? "—", color: "#F59E0B", Icon: UserCircle },
             ].map(({ label, value, sub, color, Icon }) => (
               <div key={label} style={{ flex: 1, background: "white", borderRadius: 12, padding: "12px 8px", textAlign: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
@@ -88,7 +88,7 @@ export function ProfileScreen({ onNavigate }: Props) {
             ))}
           </div>
 
-          <button onClick={() => onNavigate("personal-info")} style={{ width: "100%", height: 48, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
+          <button onClick={() => onNavigate("personal-info")} style={{ width: "100%", height: 48, borderRadius: 14, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" }}>
             {t("profile.editProfile")}
           </button>
         </div>

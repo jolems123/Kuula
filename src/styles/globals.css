@@ -2,13 +2,13 @@
    Approved palette: deep green, gold and clean white surfaces. */
 
 :root {
-  --kuula-green-950: #062d1c;
-  --kuula-green-900: #084629;
+  --kuula-green-950: #04351f;
+  --kuula-green-900: #064a2e;
   --kuula-green-800: #0b5e3a;
-  --kuula-green-700: #117548;
-  --kuula-green-600: #178654;
-  --kuula-green-100: #dff2e7;
-  --kuula-green-50: #edf7f1;
+  --kuula-green-700: #0f7045;
+  --kuula-green-600: #168052;
+  --kuula-green-100: #dff2e9;
+  --kuula-green-50: #f3faf7;
   --kuula-gold: #f2c94c;
   --kuula-gold-dark: #d7a91d;
   --kuula-ink: #13241b;
@@ -34,48 +34,6 @@ body {
 ::selection {
   background: rgba(242, 201, 76, 0.35);
   color: var(--kuula-green-950);
-}
-
-/* Turn the previous orange visual language into the approved Kuula green. */
-[style*="#F4612B"],
-[style*="#f4612b"],
-[style*="#D9531F"],
-[style*="#d9531f"],
-[style*="#FF6B35"],
-[style*="#ff6b35"] {
-  color: var(--kuula-green-800) !important;
-  border-color: var(--kuula-green-800) !important;
-}
-
-[style*="background: #F4612B"],
-[style*="background:#F4612B"],
-[style*="background: #D9531F"],
-[style*="background:#D9531F"],
-[style*="background: #FF6B35"],
-[style*="background:#FF6B35"] {
-  background: var(--kuula-green-800) !important;
-  color: #ffffff !important;
-}
-
-[style*="linear-gradient(135deg, #F4612B"],
-[style*="linear-gradient(135deg,#F4612B"],
-[style*="linear-gradient(135deg, #FF6B35"],
-[style*="linear-gradient(135deg,#FF6B35"] {
-  background: linear-gradient(145deg, var(--kuula-green-800), var(--kuula-green-950)) !important;
-  color: #ffffff !important;
-}
-
-[style*="#FFF6EF"],
-[style*="#fff6ef"],
-[style*="#FFDCC8"],
-[style*="#ffdcc8"] {
-  background-color: var(--kuula-green-50) !important;
-  border-color: rgba(11, 94, 58, 0.14) !important;
-}
-
-[style*="rgba(255,107,53"],
-[style*="rgba(244,97,43"] {
-  box-shadow: 0 10px 24px rgba(8, 70, 41, 0.2) !important;
 }
 
 /* Shared surfaces */

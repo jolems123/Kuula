@@ -13,6 +13,8 @@ const BASE = process.argv[2] ?? process.env.SWEEP_BASE_URL ?? "http://localhost:
 
 const CHROMIUM_CANDIDATES = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
   "/home/z/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome",
   "/home/z/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome",
 ];

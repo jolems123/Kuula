@@ -131,7 +131,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
         {!selectedUserId ? (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-              <MessageSquare size={20} color="#F4612B" />
+              <MessageSquare size={20} color="#0B5E3A" />
               <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: 0 }}>
                 Support Inbox
               </h2>
@@ -157,14 +157,14 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
                         alignItems: "center",
                         gap: 14,
                         padding: "14px 16px",
-                        background: t.unreadCount > 0 ? "#FFF6EF" : "white",
+                        background: t.unreadCount > 0 ? "#F3FAF7" : "white",
                         border: "1px solid #F1F5F9",
                         borderRadius: 12,
                         cursor: "pointer",
                         textAlign: "left",
                       }}
                     >
-                      <div style={{ width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #F4612B, #D9531F)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{display.initials}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -172,7 +172,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
                           <span style={{ fontSize: 14, fontWeight: t.unreadCount > 0 ? 700 : 600, color: "#1F2937" }}>{display.name}</span>
                           <span style={{ fontSize: 10, color: "#9CA3AF", flexShrink: 0 }}>{relativeTime(t.lastMessage.createdAt)}</span>
                         </div>
-                        <p style={{ fontSize: 12, color: t.unreadCount > 0 ? "#F4612B" : "#6B7280", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: t.unreadCount > 0 ? 600 : 400 }}>
+                        <p style={{ fontSize: 12, color: t.unreadCount > 0 ? "#0B5E3A" : "#6B7280", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: t.unreadCount > 0 ? 600 : 400 }}>
                           {t.lastMessage.content.slice(0, 60)}{t.lastMessage.content.length > 60 ? "…" : ""}
                         </p>
                       </div>
@@ -194,7 +194,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
               <button onClick={() => setSelectedUserId(null)} style={{ width: 36, height: 36, borderRadius: 10, background: "#F1F5F9", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <ArrowLeft size={18} color="#374151" />
               </button>
-              <div style={{ width: 38, height: 38, borderRadius: 19, background: "linear-gradient(135deg, #F4612B, #D9531F)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 38, height: 38, borderRadius: 19, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>
                   {(USER_DISPLAY[selectedUserId] ?? { initials: "?" }).initials}
                 </span>
@@ -217,7 +217,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
                       <div style={{
                         padding: "10px 14px",
                         borderRadius: isAdmin ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                        background: isAdmin ? "linear-gradient(135deg, #F4612B, #D9531F)" : "white",
+                        background: isAdmin ? "linear-gradient(135deg, #0B5E3A, #064A2E)" : "white",
                         color: isAdmin ? "white" : "#1F2937",
                         fontSize: 13,
                         lineHeight: 1.5,
@@ -259,7 +259,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  background: replyText.trim() ? "linear-gradient(135deg, #F4612B, #D9531F)" : "#E5E7EB",
+                  background: replyText.trim() ? "linear-gradient(135deg, #0B5E3A, #064A2E)" : "#E5E7EB",
                   border: "none",
                   cursor: replyText.trim() ? "pointer" : "default",
                   display: "flex",

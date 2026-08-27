@@ -1,8 +1,5 @@
-// One-off brand palette migration to the Kuula brand kit.
-//   Kuula Coral  #F4612B  (was #FF6B35)
-//   Coral Deep   #D9531F  (gradient partner, was #E05A2B)
-//   Grow Mint    #12B984  (was #10B981 / accent gold #C4920A)
-//   Cream        #FFF6EF  (was #FFF0E8)
+// One-off migration from the retired coral identity to the approved
+// emerald/gold Kuula brand kit.
 // Run: node scripts/rebrand-palette.mjs
 import fs from "node:fs";
 import path from "node:path";
@@ -11,14 +8,21 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const MAP = [
-  [/#ff6b35/gi, "#F4612B"],
-  [/#e05a2b/gi, "#D9531F"],
-  [/#10b981/gi, "#12B984"],
-  [/#fff0e8/gi, "#FFF6EF"],
-  [/#c4920a/gi, "#12B984"],
+  [/#ff6b35/gi, "#0B5E3A"],
+  [/#f4612b/gi, "#0B5E3A"],
+  [/#e05a2b/gi, "#064A2E"],
+  [/#d9531f/gi, "#064A2E"],
+  [/#10b981/gi, "#178654"],
+  [/#12b984/gi, "#178654"],
+  [/#fff0e8/gi, "#F3FAF7"],
+  [/#fff6ef/gi, "#F3FAF7"],
+  [/#ffdcc8/gi, "#DFF2E9"],
+  [/#c4920a/gi, "#F2C94C"],
+  [/rgba\(\s*255\s*,\s*107\s*,\s*53\s*,/gi, "rgba(11,94,58,"],
+  [/rgba\(\s*244\s*,\s*97\s*,\s*43\s*,/gi, "rgba(11,94,58,"],
 ];
 
-const EXT = new Set([".ts", ".tsx", ".css", ".html", ".json"]);
+const EXT = new Set([".ts", ".tsx", ".html", ".json"]);
 const targets = [];
 
 function walk(dir) {

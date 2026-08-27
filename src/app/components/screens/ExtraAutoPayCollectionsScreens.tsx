@@ -21,15 +21,15 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
   const [done, setDone] = useState(false);
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("settings")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Auto-Payment Setup</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:16 }}>
         {done ? (
           <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:16,paddingTop:20 }}>
-            <div style={{ width:80,height:80,borderRadius:40,background:"#F0FDF4",border:"2px solid #12B984",display:"flex",alignItems:"center",justifyContent:"center" }}>
-              <CheckCircle size={44} color="#12B984" strokeWidth={1.5}/>
+            <div style={{ width:80,height:80,borderRadius:40,background:"#F0FDF4",border:"2px solid #178654",display:"flex",alignItems:"center",justifyContent:"center" }}>
+              <CheckCircle size={44} color="#178654" strokeWidth={1.5}/>
             </div>
             <h2 style={{ fontSize:21,fontWeight:800,color:"#1F2937",textAlign:"center" }}>Auto-Payment Enabled!</h2>
             <p style={{ fontSize:13,color:"#6B7280",textAlign:"center",lineHeight:1.6 }}>Your loans will be paid automatically from MTN MoMo (+256 770 123 456) on each due date.</p>
@@ -43,8 +43,8 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
           </div>
         ) : (
           <>
-            <div style={{ background:"linear-gradient(135deg,#FFF6EF,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #FFDCC8" }}>
-              <h3 style={{ fontSize:15,fontWeight:800,color:"#D9531F",margin:"0 0 6px" }}>Never Miss a Payment</h3>
+            <div style={{ background:"linear-gradient(135deg,#F3FAF7,#DFF2E9)",borderRadius:16,padding:"16px",border:"1px solid #DFF2E9" }}>
+              <h3 style={{ fontSize:15,fontWeight:800,color:"#064A2E",margin:"0 0 6px" }}>Never Miss a Payment</h3>
               <p style={{ fontSize:12,color:"#374151",margin:0,lineHeight:1.6 }}>Auto-Payment deducts your loan repayment automatically on the due date from your linked MoMo account. No manual action needed.</p>
             </div>
             <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:12 }}>
@@ -53,7 +53,7 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:14,fontWeight:700,color:"#1F2937",margin:0 }}>Enable Auto-Payment</p>
                   <p style={{ fontSize:11,color:"#9CA3AF",margin:"2px 0 0" }}>Automatically pay loans on due date</p>
                 </div>
-                <button onClick={()=>setEnabled(!enabled)} style={{ width:50,height:28,borderRadius:14,background:enabled?"#F4612B":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:enabled?"flex-end":"flex-start",padding:3 }}>
+                <button onClick={()=>setEnabled(!enabled)} style={{ width:50,height:28,borderRadius:14,background:enabled?"#0B5E3A":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:enabled?"flex-end":"flex-start",padding:3 }}>
                   <div style={{ width:22,height:22,borderRadius:11,background:"white" }}/>
                 </button>
               </div>
@@ -62,7 +62,7 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
                   <div>
                     <p style={{ fontSize:12,fontWeight:600,color:"#374151",marginBottom:8 }}>Deduct From</p>
                     {[{id:"mtn",l:"MTN MoMo · +256 770 123 456",logo:"🟡"},{id:"airtel",l:"Airtel Money · +256 752 987 654",logo:"🔴"}].map((m,i)=>(
-                      <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:"#FFF6EF",border:"1.5px solid #F4612B",marginBottom:6 }}>
+                      <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:"#F3FAF7",border:"1.5px solid #0B5E3A",marginBottom:6 }}>
                         <span style={{ fontSize:20 }}>{m.logo}</span>
                         <span style={{ fontSize:13,fontWeight:600,color:"#1F2937" }}>{m.l}</span>
                       </div>
@@ -79,7 +79,7 @@ export function CustomerAutoPaySetupScreen({ onNavigate }: Props) {
       </div>
       {!done && (
         <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-          <button onClick={()=>{ if(enabled) setDone(true); }} style={{ width:"100%",height:52,borderRadius:14,background:enabled?"linear-gradient(135deg,#F4612B,#D9531F)":"#E5E7EB",color:enabled?"white":"#9CA3AF",fontSize:16,fontWeight:700,border:"none",cursor:enabled?"pointer":"not-allowed" }}>
+          <button onClick={()=>{ if(enabled) setDone(true); }} style={{ width:"100%",height:52,borderRadius:14,background:enabled?"linear-gradient(135deg,#0B5E3A,#064A2E)":"#E5E7EB",color:enabled?"white":"#9CA3AF",fontSize:16,fontWeight:700,border:"none",cursor:enabled?"pointer":"not-allowed" }}>
             Enable Auto-Payment
           </button>
         </div>
@@ -96,7 +96,7 @@ export function CustomerAutoPaySettingsScreen({ onNavigate }: Props) {
   const [maxAmt, setMaxAmt] = useState("full");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("settings")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Auto-Payment Settings</span>
       </div>
@@ -104,8 +104,8 @@ export function CustomerAutoPaySettingsScreen({ onNavigate }: Props) {
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
           <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",marginBottom:10 }}>Collection Timing</p>
           {[{id:"early",l:"3 days before due date"},{id:"due",l:"On due date at 8:00 AM"},{id:"late",l:"1 day after due date (grace period)"}].map(t=>(
-            <button key={t.id} onClick={()=>setTiming(t.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`2px solid ${timing===t.id?"#F4612B":"#E5E7EB"}`,background:timing===t.id?"#FFF6EF":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
-              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${timing===t.id?"#F4612B":"#D1D5DB"}`,background:timing===t.id?"#F4612B":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <button key={t.id} onClick={()=>setTiming(t.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`2px solid ${timing===t.id?"#0B5E3A":"#E5E7EB"}`,background:timing===t.id?"#F3FAF7":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
+              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${timing===t.id?"#0B5E3A":"#D1D5DB"}`,background:timing===t.id?"#0B5E3A":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                 {timing===t.id&&<div style={{ width:6,height:6,borderRadius:3,background:"white" }}/>}
               </div>
               <span style={{ fontSize:13,color:"#374151" }}>{t.l}</span>
@@ -115,8 +115,8 @@ export function CustomerAutoPaySettingsScreen({ onNavigate }: Props) {
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
           <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",marginBottom:10 }}>Payment Amount</p>
           {[{id:"full",l:"Full outstanding balance"},{id:"min",l:"Minimum due only"},{id:"custom",l:"Custom amount"}].map(a=>(
-            <button key={a.id} onClick={()=>setMaxAmt(a.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`2px solid ${maxAmt===a.id?"#F4612B":"#E5E7EB"}`,background:maxAmt===a.id?"#FFF6EF":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
-              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${maxAmt===a.id?"#F4612B":"#D1D5DB"}`,background:maxAmt===a.id?"#F4612B":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <button key={a.id} onClick={()=>setMaxAmt(a.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`2px solid ${maxAmt===a.id?"#0B5E3A":"#E5E7EB"}`,background:maxAmt===a.id?"#F3FAF7":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
+              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${maxAmt===a.id?"#0B5E3A":"#D1D5DB"}`,background:maxAmt===a.id?"#0B5E3A":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                 {maxAmt===a.id&&<div style={{ width:6,height:6,borderRadius:3,background:"white" }}/>}
               </div>
               <span style={{ fontSize:13,color:"#374151" }}>{a.l}</span>
@@ -125,7 +125,7 @@ export function CustomerAutoPaySettingsScreen({ onNavigate }: Props) {
         </div>
       </div>
       <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Save Settings</button>
+        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Save Settings</button>
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ export function CustomerAutoPayHistoryScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("settings")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Auto-Payment History</span>
       </div>
@@ -149,15 +149,15 @@ export function CustomerAutoPayHistoryScreen({ onNavigate }: Props) {
         {history.map((h,i)=>(
           <div key={i} style={{ background:"white",borderRadius:14,padding:"14px 16px",border:"1px solid #F3F4F6",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",alignItems:"center",gap:14 }}>
             <div style={{ width:40,height:40,borderRadius:12,background:h.status==="success"?"#F0FDF4":"#FEF2F2",display:"flex",alignItems:"center",justifyContent:"center" }}>
-              {h.status==="success" ? <CheckCircle size={20} color="#12B984"/> : <XCircle size={20} color="#EF4444"/>}
+              {h.status==="success" ? <CheckCircle size={20} color="#178654"/> : <XCircle size={20} color="#EF4444"/>}
             </div>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:0 }}>Auto-Payment · {h.method}</p>
               <p style={{ fontSize:11,color:"#9CA3AF",margin:"2px 0 0" }}>{h.date}</p>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontSize:14,fontWeight:800,color:h.status==="success"?"#12B984":"#EF4444",margin:0 }}>{ugx(h.amount)}</p>
-              <span style={{ fontSize:10,color:h.status==="success"?"#12B984":"#EF4444",fontWeight:600 }}>{h.status==="success"?"✓ Success":"✗ Failed"}</span>
+              <p style={{ fontSize:14,fontWeight:800,color:h.status==="success"?"#178654":"#EF4444",margin:0 }}>{ugx(h.amount)}</p>
+              <span style={{ fontSize:10,color:h.status==="success"?"#178654":"#EF4444",fontWeight:600 }}>{h.status==="success"?"✓ Success":"✗ Failed"}</span>
             </div>
           </div>
         ))}
@@ -216,19 +216,19 @@ export function AdminAutoPayRulesScreen({ onNavigate }: Props) {
           ].map(({ label, val, set, note })=>(
             <div key={label} style={{ marginBottom:18 }}>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>{label}</label>
-              <input type="number" value={val} onChange={e=>set(e.target.value)} min="0" max="10" style={{ width:80,height:44,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#F4612B",outline:"none",textAlign:"center" }}/>
+              <input type="number" value={val} onChange={e=>set(e.target.value)} min="0" max="10" style={{ width:80,height:44,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#0B5E3A",outline:"none",textAlign:"center" }}/>
               <p style={{ fontSize:11,color:"#94A3B8",margin:"4px 0 0" }}>{note}</p>
             </div>
           ))}
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
             {[{l:"Send SMS notification 1 day before collection",v:true},{l:"Stop auto-collection if account is blocked",v:true},{l:"Apply penalty automatically after 7 days overdue",v:true}].map((r,i)=>(
               <label key={i} style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }}>
-                <input type="checkbox" defaultChecked={r.v} style={{ accentColor:"#F4612B",width:16,height:16 }}/>
+                <input type="checkbox" defaultChecked={r.v} style={{ accentColor:"#0B5E3A",width:16,height:16 }}/>
                 <span style={{ fontSize:13,color:"#374151" }}>{r.l}</span>
               </label>
             ))}
           </div>
-          <button style={{ width:"100%",height:44,marginTop:20,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rules</button>
+          <button style={{ width:"100%",height:44,marginTop:20,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rules</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -241,8 +241,8 @@ export function AdminCollectionScheduleScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-collection-schedule" onNavigate={onNavigate} title="Collection Schedule">
       <AdminPageHeader title="Auto-Collection Schedule" subtitle="Today: Jun 11, 2026 — 50 collections scheduled"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Scheduled Today" value="50" color="#F4612B" icon={<></>}/>
-        <StatCard label="Completed" value="38" color="#12B984" icon={<></>}/>
+        <StatCard label="Scheduled Today" value="50" color="#0B5E3A" icon={<></>}/>
+        <StatCard label="Completed" value="38" color="#178654" icon={<></>}/>
         <StatCard label="Pending" value="10" color="#F59E0B" icon={<></>}/>
         <StatCard label="Failed" value="2" color="#EF4444" icon={<></>}/>
       </div>
@@ -293,8 +293,8 @@ export function AdminFailedCollectionScreen({ onNavigate }: Props) {
       <AdminTable
         columns={["Customer","Amount","Reason","Attempts","Last Try","Action"]}
         rows={[
-          ["Tom Mugisha",ugx(70000),"Insufficient balance","2","08:00 AM",<button onClick={()=>onNavigate("admin-retry-collection")} style={{ padding:"4px 10px",borderRadius:6,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>],
-          ["Lydia Atim",ugx(30000),"Number not found","1","08:00 AM",<button style={{ padding:"4px 10px",borderRadius:6,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>],
+          ["Tom Mugisha",ugx(70000),"Insufficient balance","2","08:00 AM",<button onClick={()=>onNavigate("admin-retry-collection")} style={{ padding:"4px 10px",borderRadius:6,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>],
+          ["Lydia Atim",ugx(30000),"Number not found","1","08:00 AM",<button style={{ padding:"4px 10px",borderRadius:6,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Retry</button>],
           ["Richard Kato",ugx(85000),"Wallet locked","3","09:00 AM",<button style={{ padding:"4px 10px",borderRadius:6,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Call</button>],
         ]}
       />
@@ -318,11 +318,11 @@ export function AdminRetryCollectionScreen({ onNavigate }: Props) {
           ))}
           {done ? (
             <div style={{ marginTop:16,padding:"14px",borderRadius:10,background:"#F0FDF4",border:"1px solid #A7F3D0",display:"flex",alignItems:"center",gap:10 }}>
-              <CheckCircle size={20} color="#12B984"/>
+              <CheckCircle size={20} color="#178654"/>
               <p style={{ fontSize:13,fontWeight:700,color:"#065F46",margin:0 }}>Collection retry successful! UGX 70,000 collected.</p>
             </div>
           ) : (
-            <button onClick={()=>{ setRetrying(true); setTimeout(()=>{ setRetrying(false); setDone(true); },2000); }} style={{ width:"100%",height:46,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+            <button onClick={()=>{ setRetrying(true); setTimeout(()=>{ setRetrying(false); setDone(true); },2000); }} style={{ width:"100%",height:46,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
               {retrying ? <><RefreshCw size={16} style={{ animation:"spin 1s linear infinite" }}/>Retrying...</> : "Retry Collection Now"}
             </button>
           )}
@@ -339,8 +339,8 @@ export function AdminAutoPayAnalyticsScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-autopay-rules" onNavigate={onNavigate} title="Auto-Pay Analytics">
       <AdminPageHeader title="Auto-Payment Analytics" subtitle="Performance metrics for automatic collections"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Success Rate" value="85.3%" sub="This month" color="#12B984" icon={<></>}/>
-        <StatCard label="Auto-Collected" value="UGX 42M" color="#F4612B" icon={<></>}/>
+        <StatCard label="Success Rate" value="85.3%" sub="This month" color="#178654" icon={<></>}/>
+        <StatCard label="Auto-Collected" value="UGX 42M" color="#0B5E3A" icon={<></>}/>
         <StatCard label="Failed Amount" value="UGX 7.2M" color="#EF4444" icon={<></>}/>
         <StatCard label="Customers on Auto-Pay" value="1,847" sub="48% of borrowers" color="#8B5CF6" icon={<></>}/>
       </div>
@@ -364,19 +364,19 @@ export function CustomerAutoPayLinkScreen({ onNavigate }: Props) {
 export function CustomerAutoPayNotificationScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("home")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Auto-Pay Alert</span>
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 20px",gap:20 }}>
-        <div style={{ width:72,height:72,borderRadius:36,background:"#FFF6EF",border:"2px solid #FFDCC8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36 }}>🔔</div>
+        <div style={{ width:72,height:72,borderRadius:36,background:"#F3FAF7",border:"2px solid #DFF2E9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36 }}>🔔</div>
         <div style={{ textAlign:"center" }}>
           <h2 style={{ fontSize:20,fontWeight:800,color:"#1F2937",margin:0 }}>Auto-Payment Reminder</h2>
           <p style={{ fontSize:13,color:"#6B7280",marginTop:8,lineHeight:1.7 }}>Your loan payment of <strong>UGX 92,083</strong> will be automatically deducted from your <strong>MTN MoMo (+256 770 123 456)</strong> tomorrow, <strong>Jun 25, 2026 at 8:00 AM</strong>.</p>
         </div>
         <div style={{ width:"100%",background:"white",borderRadius:14,padding:"14px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
           <p style={{ fontSize:12,color:"#374151",margin:"0 0 8px",fontWeight:600 }}>Please ensure you have sufficient balance:</p>
-          <p style={{ fontSize:18,fontWeight:900,color:"#12B984",margin:0 }}>UGX 92,083</p>
+          <p style={{ fontSize:18,fontWeight:900,color:"#178654",margin:0 }}>UGX 92,083</p>
           <p style={{ fontSize:11,color:"#9CA3AF",margin:"4px 0 0" }}>Available: UGX 234,000 · ✓ Sufficient</p>
         </div>
         <button onClick={()=>onNavigate("customer-autopay-settings")} style={{ width:"100%",height:48,borderRadius:14,background:"#F3F4F6",color:"#374151",fontSize:14,fontWeight:600,border:"none",cursor:"pointer" }}>Change Settings</button>
@@ -419,9 +419,9 @@ export function AdminCollectionsDashboardScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Collections Dashboard" subtitle="Manual collections team — Jun 11, 2026"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Total Overdue" value="18" sub="UGX 9.1M at risk" color="#EF4444" icon={<AlertTriangle size={18} color="#EF4444"/>}/>
-        <StatCard label="Contacted Today" value="8" color="#F4612B" icon={<></>}/>
+        <StatCard label="Contacted Today" value="8" color="#0B5E3A" icon={<></>}/>
         <StatCard label="Promised to Pay" value="5" color="#F59E0B" icon={<></>}/>
-        <StatCard label="Collected Today" value="UGX 2.1M" color="#12B984" icon={<></>}/>
+        <StatCard label="Collected Today" value="UGX 2.1M" color="#178654" icon={<></>}/>
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
         <AdminCard>
@@ -447,7 +447,7 @@ export function AdminCollectionsDashboardScreen({ onNavigate }: Props) {
                 <span style={{ fontSize:11,color:"#64748B" }}>{a.contacted}/{a.loans} contacted</span>
               </div>
               <div style={{ height:4,background:"#F3F4F6",borderRadius:2,marginTop:4 }}>
-                <div style={{ width:`${(a.contacted/a.loans)*100}%`,height:"100%",background:"#F4612B",borderRadius:2 }}/>
+                <div style={{ width:`${(a.contacted/a.loans)*100}%`,height:"100%",background:"#0B5E3A",borderRadius:2 }}/>
               </div>
             </div>
           ))}
@@ -473,7 +473,7 @@ export function AdminCallCustomerScreen({ onNavigate }: Props) {
               <span style={{ fontSize:12,color:"#64748B" }}>{l}</span>
               <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                 <span style={{ fontSize:12,fontWeight:600,color:"#0F172A" }}>{v}</span>
-                {l==="Phone"&&<button style={{ padding:"3px 10px",borderRadius:6,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Call</button>}
+                {l==="Phone"&&<button style={{ padding:"3px 10px",borderRadius:6,background:"#F0FDF4",color:"#178654",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Call</button>}
               </div>
             </div>
           ))}
@@ -484,7 +484,7 @@ export function AdminCallCustomerScreen({ onNavigate }: Props) {
             <div>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Call Outcome</label>
               {["Customer answered — will pay","Customer answered — cannot pay now","No answer — left voicemail","Number not reachable","Wrong number"].map(o=>(
-                <button key={o} onClick={()=>setOutcome(o)} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:`2px solid ${outcome===o?"#F4612B":"#E5E7EB"}`,background:outcome===o?"#FFF6EF":"white",color:"#374151",fontSize:12,textAlign:"left",cursor:"pointer",marginBottom:6 }}>{o}</button>
+                <button key={o} onClick={()=>setOutcome(o)} style={{ width:"100%",padding:"8px 12px",borderRadius:8,border:`2px solid ${outcome===o?"#0B5E3A":"#E5E7EB"}`,background:outcome===o?"#F3FAF7":"white",color:"#374151",fontSize:12,textAlign:"left",cursor:"pointer",marginBottom:6 }}>{o}</button>
               ))}
             </div>
             {outcome.includes("will pay")&&(
@@ -497,7 +497,7 @@ export function AdminCallCustomerScreen({ onNavigate }: Props) {
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Notes</label>
               <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Notes from the call..." style={{ width:"100%",borderRadius:8,border:"1.5px solid #E5E7EB",padding:"8px 12px",fontSize:13,outline:"none",resize:"none",...S }}/>
             </div>
-            <button style={{ height:42,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Call Log</button>
+            <button style={{ height:42,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Call Log</button>
           </div>
         </AdminCard>
       </div>
@@ -536,21 +536,21 @@ export function AdminRepaymentNegotiationScreen({ onNavigate }: Props) {
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14 }}>
             <div>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Number of Months</label>
-              <input type="number" value={months} onChange={e=>setMonths(e.target.value)} min="1" max="24" style={{ width:"100%",height:48,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#F4612B",outline:"none",...S }}/>
+              <input type="number" value={months} onChange={e=>setMonths(e.target.value)} min="1" max="24" style={{ width:"100%",height:48,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#0B5E3A",outline:"none",...S }}/>
             </div>
             <div>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Monthly Payment (UGX)</label>
-              <input type="number" value={monthly} onChange={e=>setMonthly(e.target.value)} style={{ width:"100%",height:48,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#12B984",outline:"none",...S }}/>
+              <input type="number" value={monthly} onChange={e=>setMonthly(e.target.value)} style={{ width:"100%",height:48,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:22,fontWeight:800,color:"#178654",outline:"none",...S }}/>
             </div>
           </div>
-          <div style={{ padding:"12px 14px",borderRadius:10,background:"#FFF6EF",border:"1px solid #FFDCC8",marginBottom:14 }}>
+          <div style={{ padding:"12px 14px",borderRadius:10,background:"#F3FAF7",border:"1px solid #DFF2E9",marginBottom:14 }}>
             {[["Total to Repay",ugx(Number(monthly)*Number(months))],["vs Original Owed",ugx(570000)],["Difference",ugx(Number(monthly)*Number(months)-570000)]].map(([l,v])=>(
               <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"4px 0" }}>
-                <span style={{ fontSize:12,color:"#374151" }}>{l}</span><span style={{ fontSize:12,fontWeight:700,color:"#D9531F" }}>{v}</span>
+                <span style={{ fontSize:12,color:"#374151" }}>{l}</span><span style={{ fontSize:12,fontWeight:700,color:"#064A2E" }}>{v}</span>
               </div>
             ))}
           </div>
-          <button onClick={()=>onNavigate("admin-repayment-plan-detail")} style={{ width:"100%",height:44,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Create Repayment Plan</button>
+          <button onClick={()=>onNavigate("admin-repayment-plan-detail")} style={{ width:"100%",height:44,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Create Repayment Plan</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -584,11 +584,11 @@ export function AdminPartialPaymentScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:480 }}>
         <AdminCard>
           <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Payment Amount Received (UGX)</label>
-          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{ width:"100%",height:56,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 16px",fontSize:28,fontWeight:900,color:"#12B984",outline:"none",...S }}/>
+          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{ width:"100%",height:56,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 16px",fontSize:28,fontWeight:900,color:"#178654",outline:"none",...S }}/>
           <div style={{ marginTop:14,padding:"10px 12px",borderRadius:10,background:"#FFF7ED",border:"1px solid #FED7AA" }}>
             <p style={{ fontSize:12,color:"#92400E",margin:0 }}>Remaining after payment: <strong>{ugx(70000-Number(amount))}</strong></p>
           </div>
-          <button style={{ width:"100%",height:44,marginTop:14,borderRadius:10,background:"linear-gradient(135deg,#12B984,#059669)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Record Partial Payment</button>
+          <button style={{ width:"100%",height:44,marginTop:14,borderRadius:10,background:"linear-gradient(135deg,#178654,#059669)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Record Partial Payment</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -602,7 +602,7 @@ export function AdminCollectionNotesScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:560 }}>
         <AdminCard style={{ marginBottom:14 }}>
           <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4} placeholder="Add internal note (e.g. 'Customer promised to pay Dec 20 when salary comes')..." style={{ width:"100%",borderRadius:8,border:"1.5px solid #E5E7EB",padding:"10px 12px",fontSize:13,outline:"none",resize:"none",...S }}/>
-          <button style={{ width:"100%",height:42,marginTop:10,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Note</button>
+          <button style={{ width:"100%",height:42,marginTop:10,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Note</button>
         </AdminCard>
         <AdminCard>
           <h3 style={{ fontSize:13,fontWeight:700,margin:"0 0 12px" }}>Previous Notes</h3>
@@ -695,8 +695,8 @@ export function AdminCollectionSuccessRateScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-overdue-loans" onNavigate={onNavigate} title="Collection Success Rate">
       <AdminPageHeader title="Collection Success Rate" subtitle="Historical collection performance"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="June Success Rate" value="70%" color="#12B984" icon={<></>}/>
-        <StatCard label="Amount Collected" value="UGX 6.4M" color="#F4612B" icon={<></>}/>
+        <StatCard label="June Success Rate" value="70%" color="#178654" icon={<></>}/>
+        <StatCard label="Amount Collected" value="UGX 6.4M" color="#0B5E3A" icon={<></>}/>
         <StatCard label="Written Off" value="UGX 2.7M" color="#EF4444" icon={<></>}/>
         <StatCard label="In Legal" value="UGX 0.7M" color="#8B5CF6" icon={<></>}/>
       </div>
@@ -709,7 +709,7 @@ export function AdminCollectionSuccessRateScreen({ onNavigate }: Props) {
 export function CustomerRepaymentOfferScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("home")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>New Repayment Plan Offer</span>
       </div>
@@ -726,7 +726,7 @@ export function CustomerRepaymentOfferScreen({ onNavigate }: Props) {
             </div>
           ))}
         </div>
-        <button onClick={()=>onNavigate("customer-accept-plan")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#12B984,#059669)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Review & Accept Plan</button>
+        <button onClick={()=>onNavigate("customer-accept-plan")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#178654,#059669)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Review & Accept Plan</button>
         <button style={{ width:"100%",height:44,borderRadius:14,background:"transparent",color:"#6B7280",fontSize:14,border:"none",cursor:"pointer" }}>Decline — I'll Pay in Full</button>
       </div>
       <BottomNav active="home" onNavigate={onNavigate}/>
@@ -738,30 +738,30 @@ export function CustomerAcceptPlanScreen({ onNavigate }: Props) {
   const [done, setDone] = useState(false);
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("customer-repayment-offer")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Accept Repayment Plan</span>
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",padding:"20px 20px 120px",gap:16 }}>
         {done ? (
           <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:16,paddingTop:20 }}>
-            <CheckCircle size={56} color="#12B984" strokeWidth={1.5}/>
+            <CheckCircle size={56} color="#178654" strokeWidth={1.5}/>
             <h2 style={{ fontSize:21,fontWeight:800,color:"#1F2937",textAlign:"center" }}>Plan Accepted!</h2>
             <p style={{ fontSize:13,color:"#6B7280",textAlign:"center",lineHeight:1.6 }}>Your first payment of UGX 20,000 is due <strong>Jul 20, 2026</strong>. Auto-pay has been enabled.</p>
-            <button onClick={()=>onNavigate("home")} style={{ width:"100%",height:50,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:"pointer" }}>Back to Home</button>
+            <button onClick={()=>onNavigate("home")} style={{ width:"100%",height:50,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:"pointer" }}>Back to Home</button>
           </div>
         ) : (
           <>
             <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
               <p style={{ fontSize:13,color:"#374151",lineHeight:1.7 }}>By accepting, I agree to pay <strong>UGX 20,000 per month for 6 months</strong> starting July 20, 2026. Missed payments will resume normal overdue penalties.</p>
             </div>
-            <button onClick={()=>setAgreed(!agreed)} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px",background:"white",borderRadius:12,border:`2px solid ${agreed?"#12B984":"#E5E7EB"}`,cursor:"pointer",textAlign:"left" }}>
-              <div style={{ width:22,height:22,borderRadius:6,border:`2px solid ${agreed?"#12B984":"#D1D5DB"}`,background:agreed?"#12B984":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <button onClick={()=>setAgreed(!agreed)} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px",background:"white",borderRadius:12,border:`2px solid ${agreed?"#178654":"#E5E7EB"}`,cursor:"pointer",textAlign:"left" }}>
+              <div style={{ width:22,height:22,borderRadius:6,border:`2px solid ${agreed?"#178654":"#D1D5DB"}`,background:agreed?"#178654":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                 {agreed&&<CheckCircle size={14} color="white"/>}
               </div>
               <span style={{ fontSize:12,color:"#374151",lineHeight:1.5 }}>I agree to these repayment terms and authorise auto-collection from my MTN MoMo account.</span>
             </button>
-            <button onClick={()=>{ if(agreed) setDone(true); }} style={{ width:"100%",height:52,borderRadius:14,background:agreed?"linear-gradient(135deg,#12B984,#059669)":"#E5E7EB",color:agreed?"white":"#9CA3AF",fontSize:16,fontWeight:700,border:"none",cursor:agreed?"pointer":"not-allowed" }}>
+            <button onClick={()=>{ if(agreed) setDone(true); }} style={{ width:"100%",height:52,borderRadius:14,background:agreed?"linear-gradient(135deg,#178654,#059669)":"#E5E7EB",color:agreed?"white":"#9CA3AF",fontSize:16,fontWeight:700,border:"none",cursor:agreed?"pointer":"not-allowed" }}>
               I Agree — Accept Plan
             </button>
           </>

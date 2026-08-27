@@ -41,7 +41,7 @@ export function AdminReportsDashboardScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Financial Reports Dashboard" subtitle="Live financial performance from Kuula's ledger"
         action={<div style={{ display:"flex",gap:8 }}>
           {["Daily","Weekly","Monthly","Export"].map((l,i)=>(
-            <button key={l} onClick={()=>onNavigate(["admin-daily-report","admin-weekly-report","admin-monthly-report","admin-export-report"][i])} style={{ padding:"7px 14px",borderRadius:8,background:i===2?"#F4612B":"white",color:i===2?"white":"#374151",border:"1px solid #E2E8F0",fontSize:12,fontWeight:600,cursor:"pointer" }}>{l}</button>
+            <button key={l} onClick={()=>onNavigate(["admin-daily-report","admin-weekly-report","admin-monthly-report","admin-export-report"][i])} style={{ padding:"7px 14px",borderRadius:8,background:i===2?"#0B5E3A":"white",color:i===2?"white":"#374151",border:"1px solid #E2E8F0",fontSize:12,fontWeight:600,cursor:"pointer" }}>{l}</button>
           ))}
         </div>}
       />
@@ -52,8 +52,8 @@ export function AdminReportsDashboardScreen({ onNavigate }: Props) {
       ) : (
       <>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Total Collected" value={formatUGX(report.revenue.totalCollected)} color="#12B984" icon={<></>}/>
-        <StatCard label="Principal Disbursed" value={formatUGX(report.loans.disbursedPrincipal)} color="#F4612B" icon={<></>}/>
+        <StatCard label="Total Collected" value={formatUGX(report.revenue.totalCollected)} color="#178654" icon={<></>}/>
+        <StatCard label="Principal Disbursed" value={formatUGX(report.loans.disbursedPrincipal)} color="#0B5E3A" icon={<></>}/>
         <StatCard label="Realized Interest" value={formatUGX(report.revenue.realizedInterest)} color="#8B5CF6" icon={<></>}/>
         <StatCard label="Default Rate" value={`${report.ratios.defaultRatePct}%`} color="#EF4444" icon={<></>}/>
       </div>
@@ -66,14 +66,14 @@ export function AdminReportsDashboardScreen({ onNavigate }: Props) {
               <XAxis dataKey="m" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
               <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
               <Tooltip contentStyle={{ borderRadius:8,border:"none",boxShadow:"0 4px 12px rgba(0,0,0,.1)" }}/>
-              <Bar key="disbursed" dataKey="disbursed" fill="#F4612B" radius={[4,4,0,0]} name="Disbursed (M)"/>
-              <Bar key="collected" dataKey="collected" fill="#12B984" radius={[4,4,0,0]} name="Collected (M)"/>
+              <Bar key="disbursed" dataKey="disbursed" fill="#0B5E3A" radius={[4,4,0,0]} name="Disbursed (M)"/>
+              <Bar key="collected" dataKey="collected" fill="#178654" radius={[4,4,0,0]} name="Collected (M)"/>
             </BarChart>
           </ResponsiveContainer>
         </AdminCard>
         <AdminCard>
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 14px" }}>Performance Ratios</h3>
-          {[["Repayment Rate",`${report.ratios.repaymentRatePct}%`,"#12B984"],["Default Rate",`${report.ratios.defaultRatePct}%`,"#EF4444"],["Portfolio at Risk",`${report.ratios.parPct}%`,"#F59E0B"]].map(([l,v,c])=>(
+          {[["Repayment Rate",`${report.ratios.repaymentRatePct}%`,"#178654"],["Default Rate",`${report.ratios.defaultRatePct}%`,"#EF4444"],["Portfolio at Risk",`${report.ratios.parPct}%`,"#F59E0B"]].map(([l,v,c])=>(
             <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #F8FAFC" }}>
               <span style={{ fontSize:12,color:"#64748B" }}>{l}</span>
               <span style={{ fontSize:13,fontWeight:800,color:c as string }}>{v}</span>
@@ -111,7 +111,7 @@ export function AdminDailyReportScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-daily-report" onNavigate={onNavigate} title="Daily Report">
       <AdminPageHeader title={`Daily Report — ${dateLabel}`} subtitle="Today's operational summary"
-        action={<button onClick={exportPdf} disabled={!t} style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:t?"pointer":"default",opacity:t?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
+        action={<button onClick={exportPdf} disabled={!t} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:t?"pointer":"default",opacity:t?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
       />
       {loading ? (
         <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading today's figures…</div>
@@ -121,8 +121,8 @@ export function AdminDailyReportScreen({ onNavigate }: Props) {
       <>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Applications Today" value={String(t.applications)} color="#F59E0B" icon={<></>}/>
-        <StatCard label="Approved Today" value={String(t.approved)} color="#12B984" icon={<></>}/>
-        <StatCard label="Amount Disbursed" value={formatUGX(t.disbursed)} color="#F4612B" icon={<></>}/>
+        <StatCard label="Approved Today" value={String(t.approved)} color="#178654" icon={<></>}/>
+        <StatCard label="Amount Disbursed" value={formatUGX(t.disbursed)} color="#0B5E3A" icon={<></>}/>
         <StatCard label="Repayments Collected" value={formatUGX(t.collected)} color="#8B5CF6" icon={<></>}/>
       </div>
       <AdminCard>
@@ -172,7 +172,7 @@ export function AdminWeeklyReportScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-weekly-report" onNavigate={onNavigate} title="Weekly Report">
       <AdminPageHeader title={`Weekly Report — ${rangeLabel}`} subtitle="7-day operational summary"
-        action={<button onClick={exportPdf} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
+        action={<button onClick={exportPdf} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
       />
       {loading ? (
         <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading this week…</div>
@@ -181,9 +181,9 @@ export function AdminWeeklyReportScreen({ onNavigate }: Props) {
       ) : (
       <>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Weekly Applications" value={String(weeklyApps)} color="#F4612B" icon={<></>}/>
+        <StatCard label="Weekly Applications" value={String(weeklyApps)} color="#0B5E3A" icon={<></>}/>
         <StatCard label="Approved" value={String(weeklyApproved)} color="#8B5CF6" icon={<></>}/>
-        <StatCard label="Disbursed" value={formatUGX(weeklyDisbursed)} color="#12B984" icon={<></>}/>
+        <StatCard label="Disbursed" value={formatUGX(weeklyDisbursed)} color="#178654" icon={<></>}/>
         <StatCard label="Collected" value={formatUGX(weeklyCollected)} color="#F59E0B" icon={<></>}/>
       </div>
       <AdminCard>
@@ -193,8 +193,8 @@ export function AdminWeeklyReportScreen({ onNavigate }: Props) {
             <XAxis dataKey="day" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <Tooltip contentStyle={{ borderRadius:8,border:"none" }}/>
-            <Bar key="applications" dataKey="applications" fill="#FFDCC8" radius={[4,4,0,0]} name="Applications"/>
-            <Bar key="approved" dataKey="approved" fill="#F4612B" radius={[4,4,0,0]} name="Approved"/>
+            <Bar key="applications" dataKey="applications" fill="#DFF2E9" radius={[4,4,0,0]} name="Applications"/>
+            <Bar key="approved" dataKey="approved" fill="#0B5E3A" radius={[4,4,0,0]} name="Approved"/>
           </BarChart>
         </ResponsiveContainer>
       </AdminCard>
@@ -212,7 +212,7 @@ export function AdminMonthlyReportScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-monthly-report" onNavigate={onNavigate} title="Monthly Report">
       <AdminPageHeader title={`Monthly Report — ${monthLabel}`}
-        action={<button onClick={()=>report&&exportInvestorReportPdf(report)} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
+        action={<button onClick={()=>report&&exportInvestorReportPdf(report)} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
       />
       {loading ? (
         <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading…</div>
@@ -228,7 +228,7 @@ export function AdminMonthlyReportScreen({ onNavigate }: Props) {
               <XAxis dataKey="m" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
               <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
               <Tooltip contentStyle={{ borderRadius:8,border:"none" }}/>
-              <Line key="revenue" type="monotone" dataKey="revenue" stroke="#12B984" strokeWidth={2.5} dot={{ fill:"#12B984",r:4 }} name="Collected"/>
+              <Line key="revenue" type="monotone" dataKey="revenue" stroke="#178654" strokeWidth={2.5} dot={{ fill:"#178654",r:4 }} name="Collected"/>
             </LineChart>
           </ResponsiveContainer>
         </AdminCard>
@@ -266,12 +266,12 @@ export function AdminExportReportScreen({ onNavigate }: Props) {
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Format</label>
             <div style={{ display:"flex",gap:8 }}>
               {["pdf","excel","csv"].map((f)=>(
-                <button key={f} onClick={()=>setFmt(f)} style={{ flex:1,height:44,borderRadius:8,border:`2px solid ${fmt===f?"#F4612B":"#E2E8F0"}`,cursor:"pointer",fontSize:13,fontWeight:600,background:fmt===f?"#FFF6EF":"white",color:fmt===f?"#F4612B":"#374151",textTransform:"uppercase" }}>{f}</button>
+                <button key={f} onClick={()=>setFmt(f)} style={{ flex:1,height:44,borderRadius:8,border:`2px solid ${fmt===f?"#0B5E3A":"#E2E8F0"}`,cursor:"pointer",fontSize:13,fontWeight:600,background:fmt===f?"#F3FAF7":"white",color:fmt===f?"#0B5E3A":"#374151",textTransform:"uppercase" }}>{f}</button>
               ))}
             </div>
           </div>
           {error && <p style={{ fontSize:12,color:"#EF4444",marginBottom:12 }}>The report could not be loaded.</p>}
-          <button onClick={generate} disabled={loading || !report} style={{ width:"100%",height:48,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:loading||!report?"default":"pointer",opacity:loading||!report?0.6:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+          <button onClick={generate} disabled={loading || !report} style={{ width:"100%",height:48,borderRadius:12,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:loading||!report?"default":"pointer",opacity:loading||!report?0.6:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
             <Download size={18}/> {loading ? "Loading live data…" : "Generate & Download Report"}
           </button>
         </AdminCard>
@@ -318,7 +318,7 @@ export function AdminLoanProductsScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-loan-products" onNavigate={onNavigate} title="Loan Products">
       <AdminPageHeader title="Loan Product Settings" subtitle="Configure available loan types"
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>New Product</button>}
+        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>New Product</button>}
       />
       <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
         {PRODUCTS.map((p)=>(
@@ -336,8 +336,8 @@ export function AdminLoanProductsScreen({ onNavigate }: Props) {
                 </div>
               </div>
               <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                <span style={{ fontSize:11,fontWeight:700,color:"#12B984",background:"#F0FDF4",padding:"3px 10px",borderRadius:20 }}>{p.status}</span>
-                <button style={{ padding:"6px 12px",borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
+                <span style={{ fontSize:11,fontWeight:700,color:"#178654",background:"#F0FDF4",padding:"3px 10px",borderRadius:20 }}>{p.status}</span>
+                <button style={{ padding:"6px 12px",borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
               </div>
             </div>
           </AdminCard>
@@ -361,7 +361,7 @@ export function AdminInterestSettingsScreen({ onNavigate }: Props) {
             <div key={p} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<2?"1px solid #F8FAFC":"none" }}>
               <span style={{ fontSize:13,color:"#374151" }}>{p}</span>
               <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                <input type="number" defaultValue={[8,7,5][i]} step="0.5" min="0" max="50" style={{ width:60,height:34,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 8px",fontSize:14,fontWeight:700,color:"#F4612B",textAlign:"center",outline:"none" }}/>
+                <input type="number" defaultValue={[8,7,5][i]} step="0.5" min="0" max="50" style={{ width:60,height:34,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 8px",fontSize:14,fontWeight:700,color:"#0B5E3A",textAlign:"center",outline:"none" }}/>
                 <span style={{ fontSize:12,color:"#64748B" }}>%/mo</span>
               </div>
             </div>
@@ -370,13 +370,13 @@ export function AdminInterestSettingsScreen({ onNavigate }: Props) {
         <AdminCard>
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>Savings Interest Rate</h3>
           <div style={{ display:"flex",alignItems:"center",gap:16 }}>
-            <input type="number" value={savingsRate} onChange={(e)=>setSavingsRate(e.target.value)} step="0.1" style={{ width:90,height:50,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:24,fontWeight:800,color:"#12B984",textAlign:"center",outline:"none" }}/>
+            <input type="number" value={savingsRate} onChange={(e)=>setSavingsRate(e.target.value)} step="0.1" style={{ width:90,height:50,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:24,fontWeight:800,color:"#178654",textAlign:"center",outline:"none" }}/>
             <div>
               <p style={{ fontSize:12,color:"#64748B",margin:0 }}>Annual rate</p>
               <p style={{ fontSize:13,fontWeight:700,color:"#374151",margin:"2px 0 0" }}>Monthly: {(Number(savingsRate)/12).toFixed(2)}% · Daily: {(Number(savingsRate)/365).toFixed(3)}%</p>
             </div>
           </div>
-          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rate Changes</button>
+          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rate Changes</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -398,13 +398,13 @@ export function AdminServiceFeeScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>{f.note}</p>
                 </div>
                 <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                  <input type="number" defaultValue={f.val} step="0.5" style={{ width:64,height:36,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 8px",fontSize:16,fontWeight:800,color:"#F4612B",textAlign:"center",outline:"none" }}/>
+                  <input type="number" defaultValue={f.val} step="0.5" style={{ width:64,height:36,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 8px",fontSize:16,fontWeight:800,color:"#0B5E3A",textAlign:"center",outline:"none" }}/>
                   <span style={{ fontSize:12,color:"#64748B" }}>%</span>
                 </div>
               </div>
             </div>
           ))}
-          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Fee Settings</button>
+          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Fee Settings</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -422,7 +422,7 @@ export function AdminMTNAPIScreen({ onNavigate }: Props) {
             <span style={{ fontSize:32 }}>🟡</span>
             <div>
               <p style={{ fontSize:15,fontWeight:700,color:"#0F172A",margin:0 }}>MTN Mobile Money Uganda</p>
-              <p style={{ fontSize:12,color:"#12B984",margin:"2px 0 0" }}>● Connected · Sandbox Mode</p>
+              <p style={{ fontSize:12,color:"#178654",margin:"2px 0 0" }}>● Connected · Sandbox Mode</p>
             </div>
           </div>
           {[{ label:"API Key", value:"sk_live_mtn_••••••••••••4821",type:"password" },{ label:"API Secret", value:"••••••••••••••••••••••••",type:"password" },{ label:"Subscription Key", value:"sub_••••••••••••••••1234",type:"password" },{ label:"Callback URL", value:import.meta.env.VITE_MTN_CALLBACK_URL || "https://api.kuula.ug/mtn/callback",type:"text" },{ label:"Environment", value:import.meta.env.VITE_MTN_ENVIRONMENT || "sandbox",type:"text" }].map((f)=>(
@@ -432,8 +432,8 @@ export function AdminMTNAPIScreen({ onNavigate }: Props) {
             </div>
           ))}
           <div style={{ display:"flex",gap:10,marginTop:8 }}>
-            <button style={{ flex:1,height:42,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Settings</button>
-            <button style={{ flex:1,height:42,borderRadius:10,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Test Connection</button>
+            <button style={{ flex:1,height:42,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Settings</button>
+            <button style={{ flex:1,height:42,borderRadius:10,background:"#F0FDF4",color:"#178654",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Test Connection</button>
           </div>
         </AdminCard>
       </div>
@@ -452,7 +452,7 @@ export function AdminAirtelAPIScreen({ onNavigate }: Props) {
             <span style={{ fontSize:32 }}>🔴</span>
             <div>
               <p style={{ fontSize:15,fontWeight:700,color:"#0F172A",margin:0 }}>Airtel Money Uganda</p>
-              <p style={{ fontSize:12,color:"#12B984",margin:"2px 0 0" }}>● Connected · Production</p>
+              <p style={{ fontSize:12,color:"#178654",margin:"2px 0 0" }}>● Connected · Production</p>
             </div>
           </div>
           {[{ label:"Client ID", value:"airtel_client_••••••••••••9832" },{ label:"Client Secret", value:"••••••••••••••••••••••••" },{ label:"Callback URL", value:import.meta.env.VITE_AIRTEL_CALLBACK_URL || "https://api.kuula.ug/airtel/callback" },{ label:"Environment", value:import.meta.env.VITE_AIRTEL_ENVIRONMENT || "sandbox" }].map((f)=>(
@@ -462,8 +462,8 @@ export function AdminAirtelAPIScreen({ onNavigate }: Props) {
             </div>
           ))}
           <div style={{ display:"flex",gap:10 }}>
-            <button style={{ flex:1,height:42,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Settings</button>
-            <button style={{ flex:1,height:42,borderRadius:10,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Test Connection</button>
+            <button style={{ flex:1,height:42,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Settings</button>
+            <button style={{ flex:1,height:42,borderRadius:10,background:"#F0FDF4",color:"#178654",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Test Connection</button>
           </div>
         </AdminCard>
       </div>
@@ -482,7 +482,7 @@ export function AdminNotifTemplatesScreen({ onNavigate }: Props) {
       <div style={{ display:"grid",gridTemplateColumns:"220px 1fr",gap:16 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
           {TEMPLATES.map((t,i)=>(
-            <button key={t} onClick={()=>setActive(i)} style={{ padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",textAlign:"left",fontSize:12,fontWeight:active===i?700:500,background:active===i?"#FFF6EF":"white",color:active===i?"#F4612B":"#374151",boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>{t}</button>
+            <button key={t} onClick={()=>setActive(i)} style={{ padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",textAlign:"left",fontSize:12,fontWeight:active===i?700:500,background:active===i?"#F3FAF7":"white",color:active===i?"#0B5E3A":"#374151",boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>{t}</button>
           ))}
         </div>
         <AdminCard>
@@ -493,8 +493,8 @@ export function AdminNotifTemplatesScreen({ onNavigate }: Props) {
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8 }}>
             <span style={{ fontSize:11,color:"#94A3B8" }}>{body.length} / 160 chars</span>
             <div style={{ display:"flex",gap:8 }}>
-              <button style={{ padding:"8px 14px",borderRadius:8,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Send Test</button>
-              <button style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Save Template</button>
+              <button style={{ padding:"8px 14px",borderRadius:8,background:"#F0FDF4",color:"#178654",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Send Test</button>
+              <button style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Save Template</button>
             </div>
           </div>
         </AdminCard>
@@ -514,13 +514,13 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-staff" onNavigate={onNavigate} title="Staff Management">
       <AdminPageHeader title="Staff Management" subtitle="4 staff members"
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add Staff</button>}
+        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add Staff</button>}
       />
       <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
         {STAFF.map((s)=>(
           <AdminCard key={s.name}>
             <div style={{ display:"flex",alignItems:"center",gap:14 }}>
-              <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#F4612B,#D9531F)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+              <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center" }}>
                 <span style={{ fontSize:16,fontWeight:700,color:"white" }}>{s.name.split(" ").map(n=>n[0]).join("")}</span>
               </div>
               <div style={{ flex:1 }}>
@@ -529,8 +529,8 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                 <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>Last login: {s.lastLogin}</p>
               </div>
               <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                <span style={{ fontSize:11,fontWeight:700,color:s.status==="Active"?"#12B984":"#9CA3AF",background:s.status==="Active"?"#F0FDF4":"#F3F4F6",padding:"3px 10px",borderRadius:20 }}>{s.status}</span>
-                <button style={{ padding:"6px 12px",borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
+                <span style={{ fontSize:11,fontWeight:700,color:s.status==="Active"?"#178654":"#9CA3AF",background:s.status==="Active"?"#F0FDF4":"#F3F4F6",padding:"3px 10px",borderRadius:20 }}>{s.status}</span>
+                <button style={{ padding:"6px 12px",borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
                 <button style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Remove</button>
               </div>
             </div>
@@ -552,7 +552,7 @@ export function AdminStaffPermissionsScreen({ onNavigate }: Props) {
       <div style={{ display:"grid",gridTemplateColumns:"200px 1fr",gap:16 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
           {ROLES.map((r,i)=>(
-            <button key={r} onClick={()=>setSelected(i)} style={{ padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",textAlign:"left",fontSize:12,fontWeight:selected===i?700:500,background:selected===i?"#FFF6EF":"white",color:selected===i?"#F4612B":"#374151" }}>{r}</button>
+            <button key={r} onClick={()=>setSelected(i)} style={{ padding:"10px 14px",borderRadius:10,border:"none",cursor:"pointer",textAlign:"left",fontSize:12,fontWeight:selected===i?700:500,background:selected===i?"#F3FAF7":"white",color:selected===i?"#0B5E3A":"#374151" }}>{r}</button>
           ))}
         </div>
         <AdminCard>
@@ -562,13 +562,13 @@ export function AdminStaffPermissionsScreen({ onNavigate }: Props) {
               const defaultOn = selected===0||(selected===1&&i<4)||(selected===2&&i<3);
               return (
                 <label key={p} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:"#F8FAFC",cursor:"pointer" }}>
-                  <input type="checkbox" defaultChecked={defaultOn} style={{ accentColor:"#F4612B",width:16,height:16 }}/>
+                  <input type="checkbox" defaultChecked={defaultOn} style={{ accentColor:"#0B5E3A",width:16,height:16 }}/>
                   <span style={{ fontSize:12,fontWeight:500,color:"#374151" }}>{p}</span>
                 </label>
               );
             })}
           </div>
-          <button style={{ width:"100%",height:42,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Permissions</button>
+          <button style={{ width:"100%",height:42,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>Save Permissions</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -595,7 +595,7 @@ export function AdminComplianceScreen({ onNavigate }: Props) {
           <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Customer data retention period (years)</label>
           <div style={{ display:"flex",gap:8 }}>
             {["5","7","10"].map((y)=>(
-              <button key={y} onClick={()=>setRetention(y)} style={{ flex:1,height:44,borderRadius:10,border:"none",cursor:"pointer",fontSize:16,fontWeight:800,background:retention===y?"#F4612B":"#F3F4F6",color:retention===y?"white":"#374151" }}>{y} yrs</button>
+              <button key={y} onClick={()=>setRetention(y)} style={{ flex:1,height:44,borderRadius:10,border:"none",cursor:"pointer",fontSize:16,fontWeight:800,background:retention===y?"#0B5E3A":"#F3F4F6",color:retention===y?"white":"#374151" }}>{y} yrs</button>
             ))}
           </div>
         </AdminCard>
@@ -603,7 +603,7 @@ export function AdminComplianceScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Compliance Checklist</h3>
           {["KYC verification for all customers","AML transaction monitoring active","Data encrypted at rest and in transit","Regular security audits scheduled","Credit bureau reporting enabled","Fraud detection system active"].map((item,i)=>(
             <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<5?"1px solid #F8FAFC":"none" }}>
-              <Check size={16} color="#12B984"/>
+              <Check size={16} color="#178654"/>
               <span style={{ fontSize:12,color:"#374151" }}>{item}</span>
             </div>
           ))}
@@ -634,12 +634,12 @@ export function AdminTicketsListScreen({ onNavigate }: Props) {
             <div style={{ flex:1 }}>
               <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4 }}>
                 <span style={{ fontSize:11,color:"#94A3B8",fontWeight:600 }}>{t.id}</span>
-                <span style={{ fontSize:11,fontWeight:700,color:t.priority==="High"?"#EF4444":t.priority==="Medium"?"#F59E0B":"#12B984",background:t.priority==="High"?"#FEF2F2":t.priority==="Medium"?"#FFF7ED":"#F0FDF4",padding:"2px 8px",borderRadius:20 }}>{t.priority}</span>
+                <span style={{ fontSize:11,fontWeight:700,color:t.priority==="High"?"#EF4444":t.priority==="Medium"?"#F59E0B":"#178654",background:t.priority==="High"?"#FEF2F2":t.priority==="Medium"?"#FFF7ED":"#F0FDF4",padding:"2px 8px",borderRadius:20 }}>{t.priority}</span>
               </div>
               <p style={{ fontSize:14,fontWeight:700,color:"#0F172A",margin:0 }}>{t.subject}</p>
               <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>{t.customer} · {t.date}</p>
             </div>
-            <span style={{ fontSize:11,fontWeight:700,color:t.status==="Open"?"#EF4444":t.status==="In Progress"?"#F59E0B":"#12B984",background:t.status==="Open"?"#FEF2F2":t.status==="In Progress"?"#FFF7ED":"#F0FDF4",padding:"4px 12px",borderRadius:20,whiteSpace:"nowrap" }}>{t.status}</span>
+            <span style={{ fontSize:11,fontWeight:700,color:t.status==="Open"?"#EF4444":t.status==="In Progress"?"#F59E0B":"#178654",background:t.status==="Open"?"#FEF2F2":t.status==="In Progress"?"#FFF7ED":"#F0FDF4",padding:"4px 12px",borderRadius:20,whiteSpace:"nowrap" }}>{t.status}</span>
           </button>
         ))}
       </div>
@@ -654,7 +654,7 @@ export function AdminTicketDetailScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-tickets" onNavigate={onNavigate} title="Support Ticket">
       <AdminPageHeader title="Ticket TKT-0482 · Payment Not Reflected"
         action={<div style={{ display:"flex",gap:8 }}>
-          <button style={{ padding:"7px 14px",borderRadius:8,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Mark Resolved</button>
+          <button style={{ padding:"7px 14px",borderRadius:8,background:"#F0FDF4",color:"#178654",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Mark Resolved</button>
           <button style={{ padding:"7px 14px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Escalate</button>
         </div>}
       />
@@ -663,8 +663,8 @@ export function AdminTicketDetailScreen({ onNavigate }: Props) {
           <AdminCard style={{ marginBottom:14 }}>
             <div style={{ padding:"12px 14px",borderRadius:10,background:"#F8FAFC",marginBottom:16 }}>
               <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8 }}>
-                <div style={{ width:32,height:32,borderRadius:16,background:"#FFDCC8",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                  <span style={{ fontSize:12,fontWeight:700,color:"#F4612B" }}>AN</span>
+                <div style={{ width:32,height:32,borderRadius:16,background:"#DFF2E9",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <span style={{ fontSize:12,fontWeight:700,color:"#0B5E3A" }}>AN</span>
                 </div>
                 <div>
                   <p style={{ fontSize:12,fontWeight:700,color:"#0F172A",margin:0 }}>Amara Nakato</p>
@@ -675,7 +675,7 @@ export function AdminTicketDetailScreen({ onNavigate }: Props) {
             </div>
             <div style={{ display:"flex",gap:10 }}>
               <textarea value={reply} onChange={(e)=>setReply(e.target.value)} placeholder="Type your reply to the customer..." rows={3} style={{ flex:1,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"10px 12px",fontSize:13,outline:"none",resize:"none" }}/>
-              <button onClick={()=>setReply("")} style={{ height:88,padding:"0 16px",borderRadius:10,background:"#F4612B",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
+              <button onClick={()=>setReply("")} style={{ height:88,padding:"0 16px",borderRadius:10,background:"#0B5E3A",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
                 <Send size={18}/>
               </button>
             </div>
@@ -688,7 +688,7 @@ export function AdminTicketDetailScreen({ onNavigate }: Props) {
               <span style={{ fontSize:11,color:"#64748B" }}>{l}</span><span style={{ fontSize:11,fontWeight:600,color:"#0F172A" }}>{v}</span>
             </div>
           ))}
-          <button onClick={()=>onNavigate("admin-customer-detail")} style={{ width:"100%",height:36,marginTop:12,borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View Customer Profile</button>
+          <button onClick={()=>onNavigate("admin-customer-detail")} style={{ width:"100%",height:36,marginTop:12,borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View Customer Profile</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -708,7 +708,7 @@ export function AdminBulkSMSScreen({ onNavigate }: Props) {
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Target Audience</label>
             <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
               {[["all","All Customers (3,847)"],["active","Active Borrowers (1,203)"],["overdue","Overdue Customers (18)"],["new","New This Month (247)"]].map(([id,label])=>(
-                <button key={id} onClick={()=>setAudience(id)} style={{ padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:audience===id?"#F4612B":"#F3F4F6",color:audience===id?"white":"#6B7280" }}>{label}</button>
+                <button key={id} onClick={()=>setAudience(id)} style={{ padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:audience===id?"#0B5E3A":"#F3F4F6",color:audience===id?"white":"#6B7280" }}>{label}</button>
               ))}
             </div>
           </div>
@@ -724,10 +724,10 @@ export function AdminBulkSMSScreen({ onNavigate }: Props) {
             <p style={{ fontSize:12,color:"#92400E",margin:0 }}>⚠ This will send SMS to all customers in the selected audience. Estimated cost: UGX {(3847*150).toLocaleString()}.</p>
           </div>
           <div style={{ display:"flex",gap:10 }}>
-            <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+            <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
               <Send size={16}/> Send Bulk SMS
             </button>
-            <button style={{ flex:1,height:46,borderRadius:10,background:"#F0FDF4",color:"#12B984",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Preview</button>
+            <button style={{ flex:1,height:46,borderRadius:10,background:"#F0FDF4",color:"#178654",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Preview</button>
           </div>
         </AdminCard>
       </div>
@@ -758,7 +758,7 @@ export function AdminBulkEmailScreen({ onNavigate }: Props) {
             ))}
           </div>
           <div style={{ display:"flex",gap:10 }}>
-            <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+            <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
               <Send size={16}/> Send Email Campaign
             </button>
             <button style={{ flex:1,height:46,borderRadius:10,background:"#F3F4F6",color:"#374151",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Draft</button>

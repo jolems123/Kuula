@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
-import kuulaLogo from "/kuula-logo-light.png";
+const kuulaLogo = "/kuula-logo.svg";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { api, type Compliance } from "../../api/client";
 import { useTranslation } from "react-i18next";
@@ -20,7 +20,7 @@ export function AboutAppScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
         <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -35,8 +35,8 @@ export function AboutAppScreen({ onNavigate }: Props) {
         <div style={{ textAlign: "center" }}>
           <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0" }}>Version 2.4.1 (Build 241)</p>
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 4 }}>
-            <Shield size={14} color="#12B984" />
-            <span style={{ fontSize: 12, color: "#12B984", fontWeight: 600 }}>UMRA Licensed · BOU Regulated</span>
+            <Shield size={14} color="#178654" />
+            <span style={{ fontSize: 12, color: "#178654", fontWeight: 600 }}>UMRA Licensed · BOU Regulated</span>
           </div>
         </div>
 

@@ -19,17 +19,17 @@ export function CustomerDisbursementStatusScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#12B984,#059669)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#178654,#059669)" }}>
         <button onClick={()=>onNavigate("loan-approval")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Funds Sent!</span>
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 20px",gap:20 }}>
-        <div style={{ width:88,height:88,borderRadius:44,background:"#F0FDF4",border:"2px solid #12B984",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 24px rgba(16,185,129,0.25)" }}>
-          <CheckCircle size={52} color="#12B984" strokeWidth={1.5}/>
+        <div style={{ width:88,height:88,borderRadius:44,background:"#F0FDF4",border:"2px solid #178654",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 24px rgba(16,185,129,0.25)" }}>
+          <CheckCircle size={52} color="#178654" strokeWidth={1.5}/>
         </div>
         <div style={{ textAlign:"center" }}>
           <h2 style={{ fontSize:22,fontWeight:800,color:"#1F2937",margin:0 }}>Loan Disbursed!</h2>
-          <p style={{ fontSize:32,fontWeight:900,color:"#12B984",margin:"8px 0" }}>UGX 500,000</p>
+          <p style={{ fontSize:32,fontWeight:900,color:"#178654",margin:"8px 0" }}>UGX 500,000</p>
           <p style={{ fontSize:13,color:"#6B7280" }}>Sent to MTN MoMo · +256 770 123 456</p>
         </div>
         <div style={{ width:"100%",background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -40,7 +40,7 @@ export function CustomerDisbursementStatusScreen({ onNavigate }: Props) {
           ))}
         </div>
         <div style={{ display:"flex",gap:10,width:"100%" }}>
-          <button onClick={()=>onNavigate("loan-detail")} style={{ flex:1,height:50,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>View Loan Details</button>
+          <button onClick={()=>onNavigate("loan-detail")} style={{ flex:1,height:50,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>View Loan Details</button>
           <button onClick={()=>onNavigate("home")} style={{ flex:1,height:50,borderRadius:14,background:"#F3F4F6",color:"#374151",fontSize:14,fontWeight:600,border:"none",cursor:"pointer" }}>Go to Home</button>
         </div>
       </div>
@@ -78,13 +78,13 @@ export function CustomerLoanRejectionScreen({ onNavigate }: Props) {
           <p style={{ fontSize:13,fontWeight:700,color:"#374151",marginBottom:10 }}>How to Improve Your Chances:</p>
           {["Repay existing loans on time to build credit history","Reduce your loan request to within your credit limit","Save regularly to demonstrate financial discipline","Wait 30 days before reapplying"].map((r,i)=>(
             <div key={i} style={{ display:"flex",gap:10,marginBottom:8 }}>
-              <TrendingUp size={14} color="#12B984" style={{ flexShrink:0,marginTop:2 }}/>
+              <TrendingUp size={14} color="#178654" style={{ flexShrink:0,marginTop:2 }}/>
               <p style={{ fontSize:12,color:"#374151",margin:0 }}>{r}</p>
             </div>
           ))}
         </div>
         <div style={{ display:"flex",gap:10,width:"100%" }}>
-          <button onClick={()=>onNavigate("improve-credit")} style={{ flex:1,height:50,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>Improve Score</button>
+          <button onClick={()=>onNavigate("improve-credit")} style={{ flex:1,height:50,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:14,fontWeight:700,border:"none",cursor:"pointer" }}>Improve Score</button>
           <button onClick={()=>onNavigate("loan-apply")} style={{ flex:1,height:50,borderRadius:14,background:"white",color:"#374151",fontSize:14,fontWeight:600,border:"1px solid #E5E7EB",cursor:"pointer" }}>Try Smaller Amount</button>
         </div>
       </div>
@@ -100,14 +100,14 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
   const [submitted, setSubmitted] = useState(false);
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("credit-dashboard")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Request Credit Limit Increase</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:16 }}>
         {submitted ? (
           <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:16,paddingTop:20 }}>
-            <CheckCircle size={56} color="#12B984" strokeWidth={1.5}/>
+            <CheckCircle size={56} color="#178654" strokeWidth={1.5}/>
             <h2 style={{ fontSize:20,fontWeight:800,color:"#1F2937",textAlign:"center" }}>Request Submitted!</h2>
             <p style={{ fontSize:13,color:"#6B7280",textAlign:"center",lineHeight:1.6 }}>Your request to increase the credit limit to {ugx(Number(requested))} is under review. Decision within 24 hours.</p>
           </div>
@@ -120,16 +120,16 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:20,fontWeight:800,color:"#1F2937",margin:"4px 0" }}>{ugx(1500000)}</p>
                 </div>
                 <div style={{ display:"flex",alignItems:"center",fontSize:20 }}>→</div>
-                <div style={{ flex:1,textAlign:"center",padding:"12px",background:"#FFF6EF",borderRadius:10,border:"1.5px solid #FFDCC8" }}>
+                <div style={{ flex:1,textAlign:"center",padding:"12px",background:"#F3FAF7",borderRadius:10,border:"1.5px solid #DFF2E9" }}>
                   <p style={{ fontSize:11,color:"#6B7280",margin:0 }}>Requested</p>
-                  <p style={{ fontSize:20,fontWeight:800,color:"#F4612B",margin:"4px 0" }}>{ugx(Number(requested))}</p>
+                  <p style={{ fontSize:20,fontWeight:800,color:"#0B5E3A",margin:"4px 0" }}>{ugx(Number(requested))}</p>
                 </div>
               </div>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Requested Limit (UGX)</label>
-              <input type="number" value={requested} onChange={e=>setRequested(e.target.value)} style={{ width:"100%",height:50,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 16px",fontSize:22,fontWeight:800,color:"#F4612B",outline:"none",...S }}/>
+              <input type="number" value={requested} onChange={e=>setRequested(e.target.value)} style={{ width:"100%",height:50,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 16px",fontSize:22,fontWeight:800,color:"#0B5E3A",outline:"none",...S }}/>
               <div style={{ display:"flex",gap:8,marginTop:8 }}>
                 {[1500000,2000000,3000000].map(a=>(
-                  <button key={a} onClick={()=>setRequested(String(a))} style={{ flex:1,height:34,borderRadius:8,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,background:"#FFF6EF",color:"#F4612B" }}>{ugx(a)}</button>
+                  <button key={a} onClick={()=>setRequested(String(a))} style={{ flex:1,height:34,borderRadius:8,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,background:"#F3FAF7",color:"#0B5E3A" }}>{ugx(a)}</button>
                 ))}
               </div>
             </div>
@@ -137,7 +137,7 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Reason for Increase</label>
               <textarea value={reason} onChange={e=>setReason(e.target.value)} rows={4} placeholder="Explain why you need a higher credit limit..." style={{ width:"100%",borderRadius:10,border:"1.5px solid #E5E7EB",padding:"10px 14px",fontSize:13,outline:"none",resize:"none",...S }}/>
             </div>
-            <div style={{ padding:"10px 14px",borderRadius:10,background:"#FFF6EF",border:"1px solid #FFDCC8" }}>
+            <div style={{ padding:"10px 14px",borderRadius:10,background:"#F3FAF7",border:"1px solid #DFF2E9" }}>
               <p style={{ fontSize:12,color:"#374151",margin:0 }}>💡 Your credit score of <strong>742</strong> makes you eligible for up to <strong>UGX 3,000,000</strong>.</p>
             </div>
           </>
@@ -145,7 +145,7 @@ export function CustomerCreditLimitIncreaseScreen({ onNavigate }: Props) {
       </div>
       {!submitted && (
         <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-          <button onClick={()=>setSubmitted(true)} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Submit Request</button>
+          <button onClick={()=>setSubmitted(true)} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Submit Request</button>
         </div>
       )}
       {submitted && <BottomNav active="home" onNavigate={onNavigate}/>}
@@ -159,7 +159,7 @@ export function AdminCreditLimitApprovalScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-customer-list" onNavigate={onNavigate} title="Credit Limit Approval">
       <AdminPageHeader title="Credit Limit Increase Request" subtitle="Amara Nakato · Requesting UGX 500K → UGX 2,000,000"
         action={<div style={{ display:"flex",gap:8 }}>
-          <button style={{ padding:"8px 14px",borderRadius:8,background:"#12B984",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Approve</button>
+          <button style={{ padding:"8px 14px",borderRadius:8,background:"#178654",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Approve</button>
           <button style={{ padding:"8px 14px",borderRadius:8,background:"#EF4444",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Deny</button>
         </div>}
       />
@@ -176,7 +176,7 @@ export function AdminCreditLimitApprovalScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Eligibility Check</h3>
           {[["Credit Score","742 ✓ (min 650)"],["Payment History","100% on-time ✓"],["Active Loans","1 (within limit) ✓"],["Member Duration","2 years ✓"],["System Recommendation","APPROVE"],["Max Eligible",ugx(3000000)]].map(([l,v])=>(
             <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #F8FAFC" }}>
-              <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:v.includes("✓")||v==="APPROVE"?"#12B984":"#0F172A" }}>{v}</span>
+              <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:v.includes("✓")||v==="APPROVE"?"#178654":"#0F172A" }}>{v}</span>
             </div>
           ))}
         </AdminCard>
@@ -192,22 +192,22 @@ export function CustomerLoanRefinanceScreen({ onNavigate }: Props) {
   const newMonthly = Math.ceil(balance / (term / 30));
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("loan-detail")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Refinance Loan</span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 130px",display:"flex",flexDirection:"column",gap:16 }}>
-        <div style={{ background:"linear-gradient(135deg,#FFF6EF,#FFDCC8)",borderRadius:16,padding:"16px",border:"1px solid #FFDCC8" }}>
+        <div style={{ background:"linear-gradient(135deg,#F3FAF7,#DFF2E9)",borderRadius:16,padding:"16px",border:"1px solid #DFF2E9" }}>
           <p style={{ fontSize:12,color:"#6B7280",fontWeight:600,margin:0 }}>Current Remaining Balance</p>
-          <p style={{ fontSize:28,fontWeight:900,color:"#D9531F",margin:"4px 0" }}>{ugx(balance)}</p>
+          <p style={{ fontSize:28,fontWeight:900,color:"#064A2E",margin:"4px 0" }}>{ugx(balance)}</p>
           <p style={{ fontSize:12,color:"#6B7280",margin:0 }}>KUL-2026-04821 · Original 30-day term</p>
         </div>
         <div style={{ background:"white",borderRadius:16,padding:"16px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
           <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",marginBottom:12 }}>Extend Repayment Term</p>
-          <input type="range" min={30} max={180} step={30} value={term} onChange={e=>setTerm(Number(e.target.value))} style={{ width:"100%",accentColor:"#F4612B" }}/>
+          <input type="range" min={30} max={180} step={30} value={term} onChange={e=>setTerm(Number(e.target.value))} style={{ width:"100%",accentColor:"#0B5E3A" }}/>
           <div style={{ display:"flex",justifyContent:"space-between",marginTop:4 }}>
             <span style={{ fontSize:11,color:"#9CA3AF" }}>30 days</span>
-            <span style={{ fontSize:16,fontWeight:800,color:"#F4612B" }}>{term} days</span>
+            <span style={{ fontSize:16,fontWeight:800,color:"#0B5E3A" }}>{term} days</span>
             <span style={{ fontSize:11,color:"#9CA3AF" }}>180 days</span>
           </div>
         </div>
@@ -221,7 +221,7 @@ export function CustomerLoanRefinanceScreen({ onNavigate }: Props) {
         </div>
       </div>
       <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px 36px",background:"white",borderTop:"1px solid #F3F4F6" }}>
-        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Request Refinancing</button>
+        <button style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Request Refinancing</button>
       </div>
     </div>
   );
@@ -233,7 +233,7 @@ export function AdminRefinanceApprovalScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-active-loans" onNavigate={onNavigate} title="Refinance Approval">
       <AdminPageHeader title="Refinance Request — KUL-2026-04821" subtitle="Amara Nakato · Requesting 30→90 day extension"
         action={<div style={{ display:"flex",gap:8 }}>
-          <button style={{ padding:"8px 14px",borderRadius:8,background:"#12B984",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Approve Extension</button>
+          <button style={{ padding:"8px 14px",borderRadius:8,background:"#178654",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Approve Extension</button>
           <button style={{ padding:"8px 14px",borderRadius:8,background:"#EF4444",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Deny</button>
         </div>}
       />
@@ -253,14 +253,14 @@ export function AdminRiskAssessmentScreen({ onNavigate }: Props) {
   return <AdminLayout activeScreen="admin-customer-list" onNavigate={onNavigate} title="Risk Assessment">
     <AdminPageHeader title="Risk Assessment — Amara Nakato" subtitle="Full risk profile and scoring"/>
     <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-      <StatCard label="Overall Risk" value="LOW" color="#12B984" icon={<Shield size={18} color="#12B984"/>}/>
-      <StatCard label="Risk Score" value="82/100" sub="Higher = safer" color="#F4612B" icon={<></>}/>
+      <StatCard label="Overall Risk" value="LOW" color="#178654" icon={<Shield size={18} color="#178654"/>}/>
+      <StatCard label="Risk Score" value="82/100" sub="Higher = safer" color="#0B5E3A" icon={<></>}/>
       <StatCard label="Max Eligible" value={ugx(3000000)} color="#8B5CF6" icon={<></>}/>
     </div>
     <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
       <AdminCard>
         <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Risk Factors</h3>
-        {[["Payment History (35%)","92/100","#12B984"],["Credit Utilization (30%)","68/100","#06B6D4"],["Income Stability (15%)","75/100","#F59E0B"],["Identity Verification (10%)","100/100","#12B984"],["Loan-to-Income Ratio (10%)","80/100","#8B5CF6"]].map(([l,v,c])=>(
+        {[["Payment History (35%)","92/100","#178654"],["Credit Utilization (30%)","68/100","#06B6D4"],["Income Stability (15%)","75/100","#F59E0B"],["Identity Verification (10%)","100/100","#178654"],["Loan-to-Income Ratio (10%)","80/100","#8B5CF6"]].map(([l,v,c])=>(
           <div key={l} style={{ marginBottom:12 }}>
             <div style={{ display:"flex",justifyContent:"space-between",marginBottom:4 }}>
               <span style={{ fontSize:11,color:"#374151" }}>{l}</span>
@@ -280,7 +280,7 @@ export function AdminRiskAssessmentScreen({ onNavigate }: Props) {
         <h3 style={{ fontSize:13,fontWeight:700,margin:"12px 0 8px" }}>Eligibility</h3>
         {[["Eligible for Loan","Yes ✓"],["Max Amount",ugx(3000000)],["Min Down Payment","None"],["Requires Manual Review","No"]].map(([l,v])=>(
           <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #F8FAFC" }}>
-            <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:v.includes("✓")?"#12B984":"#0F172A" }}>{v}</span>
+            <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:v.includes("✓")?"#178654":"#0F172A" }}>{v}</span>
           </div>
         ))}
       </AdminCard>
@@ -306,11 +306,11 @@ export function AdminUnblockCustomerScreen({ onNavigate }: Props) {
           ))}
           {done ? (
             <div style={{ marginTop:16,padding:"12px",borderRadius:10,background:"#F0FDF4",border:"1px solid #A7F3D0",display:"flex",alignItems:"center",gap:8 }}>
-              <CheckCircle size={18} color="#12B984"/>
+              <CheckCircle size={18} color="#178654"/>
               <span style={{ fontSize:13,fontWeight:700,color:"#065F46" }}>Account successfully unblocked.</span>
             </div>
           ) : (
-            <button onClick={()=>setDone(true)} style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#12B984,#059669)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>✓ Unblock Account</button>
+            <button onClick={()=>setDone(true)} style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#178654,#059669)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>✓ Unblock Account</button>
           )}
         </AdminCard>
       </div>
@@ -327,7 +327,7 @@ export function AdminFraudDetectionScreen({ onNavigate }: Props) {
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Active Flags" value="3" color="#EF4444" icon={<AlertTriangle size={18} color="#EF4444"/>}/>
-        <StatCard label="Resolved This Month" value="12" color="#12B984" icon={<></>}/>
+        <StatCard label="Resolved This Month" value="12" color="#178654" icon={<></>}/>
         <StatCard label="Under Investigation" value="2" color="#F59E0B" icon={<></>}/>
       </div>
       <AdminTable
@@ -335,7 +335,7 @@ export function AdminFraudDetectionScreen({ onNavigate }: Props) {
         rows={[
           ["Richard Kato","Multiple login locations","High","Jun 10",<StatusBadge status="active"/>,<button onClick={()=>onNavigate("admin-fraud-investigation")} style={{ padding:"4px 10px",borderRadius:6,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Investigate</button>],
           ["Grace Mugo","Unusual loan application pattern","Medium","Jun 9",<StatusBadge status="active"/>,<button style={{ padding:"4px 10px",borderRadius:6,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Investigate</button>],
-          ["David Ochieng","Duplicate NIN attempt","High","Jun 8",<StatusBadge status="pending"/>,<button style={{ padding:"4px 10px",borderRadius:6,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Review</button>],
+          ["David Ochieng","Duplicate NIN attempt","High","Jun 8",<StatusBadge status="pending"/>,<button style={{ padding:"4px 10px",borderRadius:6,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Review</button>],
         ]}
       />
     </AdminLayout>
@@ -349,7 +349,7 @@ export function AdminFraudInvestigationScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Fraud Investigation — Richard Kato" subtitle="Case: FRAUD-2026-003 · Multiple login locations"
         action={<div style={{ display:"flex",gap:8 }}>
           <button style={{ padding:"8px 14px",borderRadius:8,background:"#EF4444",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Freeze Account</button>
-          <button style={{ padding:"8px 14px",borderRadius:8,background:"#12B984",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Clear Flag</button>
+          <button style={{ padding:"8px 14px",borderRadius:8,background:"#178654",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Clear Flag</button>
         </div>}
       />
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
@@ -365,7 +365,7 @@ export function AdminFraudInvestigationScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Investigation Notes</h3>
           <textarea rows={6} placeholder="Document investigation findings..." style={{ width:"100%",borderRadius:8,border:"1.5px solid #E5E7EB",padding:"10px 12px",fontSize:13,outline:"none",resize:"none",...S }}/>
           <div style={{ display:"flex",gap:8,marginTop:12 }}>
-            <button style={{ flex:1,height:38,borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Contact Customer</button>
+            <button style={{ flex:1,height:38,borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Contact Customer</button>
             <button style={{ flex:1,height:38,borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Escalate to Legal</button>
           </div>
         </AdminCard>
@@ -379,17 +379,17 @@ export function CustomerReverifyIdentityScreen({ onNavigate }: Props) {
   const [step, setStep] = useState(1);
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("settings")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Re-verify Identity</span>
       </div>
       <div style={{ flex:1,display:"flex",flexDirection:"column",padding:"20px 16px",gap:16 }}>
-        <div style={{ background:"#FFF6EF",borderRadius:12,padding:"14px",border:"1px solid #FFDCC8" }}>
+        <div style={{ background:"#F3FAF7",borderRadius:12,padding:"14px",border:"1px solid #DFF2E9" }}>
           <p style={{ fontSize:12,color:"#374151",margin:0 }}>🛡 UMRA regulations require identity re-verification every 6 months. This keeps your account secure.</p>
         </div>
         {[1,2,3].map(s=>(
-          <div key={s} style={{ display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:14,background:step>=s?"#FFF6EF":"white",border:`2px solid ${step===s?"#F4612B":step>s?"#12B984":"#E5E7EB"}` }}>
-            <div style={{ width:32,height:32,borderRadius:16,background:step>s?"#12B984":step===s?"#F4612B":"#E5E7EB",display:"flex",alignItems:"center",justifyContent:"center" }}>
+          <div key={s} style={{ display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:14,background:step>=s?"#F3FAF7":"white",border:`2px solid ${step===s?"#0B5E3A":step>s?"#178654":"#E5E7EB"}` }}>
+            <div style={{ width:32,height:32,borderRadius:16,background:step>s?"#178654":step===s?"#0B5E3A":"#E5E7EB",display:"flex",alignItems:"center",justifyContent:"center" }}>
               {step>s ? <CheckCircle size={16} color="white"/> : <span style={{ fontSize:12,fontWeight:700,color:step===s?"white":"#9CA3AF" }}>{s}</span>}
             </div>
             <div>
@@ -398,7 +398,7 @@ export function CustomerReverifyIdentityScreen({ onNavigate }: Props) {
             </div>
           </div>
         ))}
-        <button onClick={()=>{ if(step<3) setStep(step+1); else onNavigate("settings"); }} style={{ height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>
+        <button onClick={()=>{ if(step<3) setStep(step+1); else onNavigate("settings"); }} style={{ height:52,borderRadius:14,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>
           {step<3?"Continue":"Complete Verification"}
         </button>
       </div>
@@ -412,13 +412,13 @@ export function AdminComplianceReportScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-compliance" onNavigate={onNavigate} title="Compliance Report">
       <AdminPageHeader title="UMRA Compliance Report — June 2026"
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
+        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="KYC Verified" value="93.9%" sub="3,612/3,847" color="#12B984" icon={<></>}/>
-        <StatCard label="AML Checks" value="100%" sub="All transactions" color="#F4612B" icon={<></>}/>
+        <StatCard label="KYC Verified" value="93.9%" sub="3,612/3,847" color="#178654" icon={<></>}/>
+        <StatCard label="AML Checks" value="100%" sub="All transactions" color="#0B5E3A" icon={<></>}/>
         <StatCard label="Data Encrypted" value="100%" color="#8B5CF6" icon={<></>}/>
-        <StatCard label="Violations" value="0" color="#12B984" icon={<></>}/>
+        <StatCard label="Violations" value="0" color="#178654" icon={<></>}/>
       </div>
       <AdminTable
         columns={["Requirement","Status","Last Checked","Notes"]}
@@ -444,14 +444,14 @@ export function AdminDataRetentionScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Data Retention Settings" subtitle="Configure how long customer data is stored"/>
       <div style={{ maxWidth:560 }}>
         <AdminCard style={{ marginBottom:14 }}>
-          <div style={{ padding:"10px 14px",borderRadius:10,background:"#FFF6EF",border:"1px solid #FFDCC8",marginBottom:16 }}>
+          <div style={{ padding:"10px 14px",borderRadius:10,background:"#F3FAF7",border:"1px solid #DFF2E9",marginBottom:16 }}>
             <p style={{ fontSize:12,color:"#374151",margin:0 }}>📋 UMRA requires Kuula to retain customer loan records for a minimum of <strong>10 years</strong> from the date of last transaction.</p>
           </div>
           <div style={{ marginBottom:20 }}>
             <label style={{ fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:10 }}>Retention Period (years)</label>
             <div style={{ display:"flex",gap:10 }}>
               {["5","7","10"].map(y=>(
-                <button key={y} onClick={()=>setYears(y)} style={{ flex:1,height:56,borderRadius:12,border:"none",cursor:"pointer",fontSize:22,fontWeight:900,background:years===y?"#F4612B":"#F3F4F6",color:years===y?"white":"#374151" }}>{y}</button>
+                <button key={y} onClick={()=>setYears(y)} style={{ flex:1,height:56,borderRadius:12,border:"none",cursor:"pointer",fontSize:22,fontWeight:900,background:years===y?"#0B5E3A":"#F3F4F6",color:years===y?"white":"#374151" }}>{y}</button>
               ))}
             </div>
           </div>
@@ -466,7 +466,7 @@ export function AdminDataRetentionScreen({ onNavigate }: Props) {
               <span style={{ fontSize:12,color:"#64748B" }}>{label}</span><span style={{ fontSize:12,fontWeight:600,color:"#0F172A" }}>{val}</span>
             </div>
           ))}
-          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Retention Policy</button>
+          <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Retention Policy</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -477,7 +477,7 @@ export function AdminDataRetentionScreen({ onNavigate }: Props) {
 export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("about-app")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Privacy Policy</span>
       </div>
@@ -504,7 +504,7 @@ export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
           ))}
           <div style={{ borderTop:"1px solid #F3F4F6", paddingTop:12, marginTop:4, textAlign:"center" }}>
             <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}>This policy is also published at:</p>
-            <p style={{ fontSize:12,color:"#F4612B",fontWeight:700,margin:0 }}>https://kuula.ug/privacy</p>
+            <p style={{ fontSize:12,color:"#0B5E3A",fontWeight:700,margin:0 }}>https://kuula.ug/privacy</p>
             <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}>Questions? privacy@kuula.ug · 0800 123 456 (toll-free)</p>
           </div>
         </div>
@@ -517,7 +517,7 @@ export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
 export function CustomerTermsScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
         <button onClick={()=>onNavigate("about-app")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
         <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Terms of Service</span>
       </div>
@@ -542,7 +542,7 @@ export function CustomerTermsScreen({ onNavigate }: Props) {
           ))}
           <div style={{ borderTop:"1px solid #F3F4F6", paddingTop:12, marginTop:4, textAlign:"center" }}>
             <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}>These terms are also published at:</p>
-            <p style={{ fontSize:12,color:"#F4612B",fontWeight:700,margin:0 }}>https://kuula.ug/terms</p>
+            <p style={{ fontSize:12,color:"#0B5E3A",fontWeight:700,margin:0 }}>https://kuula.ug/terms</p>
             <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}>Questions? support@kuula.ug · 0800 123 456 (toll-free)</p>
           </div>
         </div>
@@ -575,20 +575,20 @@ export function AdminAuditLogScreen({ onNavigate }: Props) {
 // ─── 99. Admin: System Health ────────────────────────────────────────────────
 export function AdminSystemHealthScreen({ onNavigate }: Props) {
   const services = [
-    { name:"MTN MoMo API",status:"Operational",latency:"124ms",uptime:"99.9%",color:"#12B984" },
-    { name:"Airtel Money API",status:"Operational",latency:"98ms",uptime:"99.7%",color:"#12B984" },
+    { name:"MTN MoMo API",status:"Operational",latency:"124ms",uptime:"99.9%",color:"#178654" },
+    { name:"Airtel Money API",status:"Operational",latency:"98ms",uptime:"99.7%",color:"#178654" },
     { name:"NIRA (KYC) API",status:"Degraded",latency:"2,340ms",uptime:"97.2%",color:"#F59E0B" },
-    { name:"Database",status:"Operational",latency:"8ms",uptime:"100%",color:"#12B984" },
-    { name:"Credit Bureau API",status:"Operational",latency:"234ms",uptime:"99.5%",color:"#12B984" },
-    { name:"SMS Gateway",status:"Operational",latency:"45ms",uptime:"99.8%",color:"#12B984" },
-    { name:"Push Notifications",status:"Operational",latency:"67ms",uptime:"99.9%",color:"#12B984" },
+    { name:"Database",status:"Operational",latency:"8ms",uptime:"100%",color:"#178654" },
+    { name:"Credit Bureau API",status:"Operational",latency:"234ms",uptime:"99.5%",color:"#178654" },
+    { name:"SMS Gateway",status:"Operational",latency:"45ms",uptime:"99.8%",color:"#178654" },
+    { name:"Push Notifications",status:"Operational",latency:"67ms",uptime:"99.9%",color:"#178654" },
   ];
   return (
     <AdminLayout activeScreen="admin-settings" onNavigate={onNavigate} title="System Health">
       <AdminPageHeader title="System Health Monitor" subtitle="Real-time status of all integrations and services"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Services Up" value="6/7" color="#12B984" icon={<Server size={18} color="#12B984"/>}/>
-        <StatCard label="System Uptime" value="99.8%" sub="Last 30 days" color="#F4612B" icon={<Activity size={18} color="#F4612B"/>}/>
+        <StatCard label="Services Up" value="6/7" color="#178654" icon={<Server size={18} color="#178654"/>}/>
+        <StatCard label="System Uptime" value="99.8%" sub="Last 30 days" color="#0B5E3A" icon={<Activity size={18} color="#0B5E3A"/>}/>
         <StatCard label="NIRA API" value="Degraded" color="#F59E0B" icon={<AlertTriangle size={18} color="#F59E0B"/>}/>
         <StatCard label="Avg Latency" value="417ms" color="#8B5CF6" icon={<></>}/>
       </div>
@@ -627,11 +627,11 @@ export function AdminBackupRestoreScreen({ onNavigate }: Props) {
             ))}
             {backed ? (
               <div style={{ padding:"10px",borderRadius:8,background:"#F0FDF4",border:"1px solid #A7F3D0",display:"flex",alignItems:"center",gap:8 }}>
-                <CheckCircle size={16} color="#12B984"/>
+                <CheckCircle size={16} color="#178654"/>
                 <span style={{ fontSize:12,fontWeight:700,color:"#065F46" }}>Backup complete! Saved to AWS S3.</span>
               </div>
             ) : (
-              <button onClick={()=>{ setBacking(true); setTimeout(()=>{ setBacking(false); setBacked(true); },3000); }} style={{ height:42,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+              <button onClick={()=>{ setBacking(true); setTimeout(()=>{ setBacking(false); setBacked(true); },3000); }} style={{ height:42,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
                 {backing ? <><Database size={14} style={{ animation:"spin 1s linear infinite" }}/>Backing up...</> : <><Download size={14}/>Run Backup Now</>}
               </button>
             )}
