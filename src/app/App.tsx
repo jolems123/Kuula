@@ -137,7 +137,12 @@ function useSessionBootstrap(): boolean {
 function ScreenLoader() {
   return (
     <div className="kuula-loader-screen">
-      <img src="/kuula-icon.svg" alt="Kuula" className="kuula-loader-mark" />
+      <div className="kuula-loader-brand" aria-label="Kuula Microfinance Limited">
+        <img src="/kuula-icon.svg" alt="" className="kuula-loader-mark" />
+        <strong>Kuula</strong>
+        <span>MICROFINANCE LIMITED</span>
+        <small>Access <b>•</b> Grow <b>•</b> Prosper</small>
+      </div>
       <div className="kuula-loader-track"><span /></div>
       <p>Building your brighter future</p>
     </div>
@@ -164,14 +169,12 @@ function ScreenRoute({ Component }: { Component: React.ComponentType<{ onNavigat
   return <Component onNavigate={(id) => navigate(`/${id}`)} />;
 }
 
-function hasOnboarded(): boolean {
-  try { return localStorage.getItem("kuula_onboarded") === "1"; } catch { return false; }
-}
-
 function RootRedirect() {
   const { state } = useAppContext();
   if (!state.session.isAuthenticated) {
-    if (!env.REVIEWER_MODE && !hasOnboarded()) return <Navigate to="/onboarding" replace />;
+    // Start every fresh app launch with the pre-welcome experience. Returning
+    // customers can still use Skip / Log in to move straight to sign-in.
+    if (!env.REVIEWER_MODE) return <Navigate to="/onboarding" replace />;
     return <Navigate to="/welcome" replace />;
   }
   const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
@@ -186,14 +189,26 @@ function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
 function Shell() {
   const location = useLocation();
   const restoringSession = useSessionBootstrap();
+  const [showLaunchSplash, setShowLaunchSplash] = useState(true);
   useNativeChrome();
   useRealtimeSubscriptions();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowLaunchSplash(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const screenId = location.pathname.replace(/^\//, "") || "root";
   const isAdminScreen = screenId.startsWith("admin-");
   const isPublicScreen = ["welcome", "language", "onboarding", "create-account", "phone-verify", "biometric-setup", "admin-login", "admin-otp"].includes(screenId);
 
-  if (restoringSession) return <ScreenLoader />;
+  if (restoringSession || showLaunchSplash) {
+    return (
+      <div className="kuula-app-shell kuula-mobile-shell" data-screen="splash" data-surface="public">
+        <div className="kuula-device-frame"><ScreenLoader /></div>
+      </div>
+    );
+  }
 
   return (
     <div className={`kuula-app-shell ${isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell"}`} data-screen={screenId} data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}>

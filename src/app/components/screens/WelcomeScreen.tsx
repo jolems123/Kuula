@@ -53,7 +53,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ minHeight: "100%", background: "#FFFFFF", padding: "34px 22px 26px", display: "flex", flexDirection: "column" }}>
-      <div style={{ textAlign: "center", paddingTop: 14 }}><img src="/kuula-logo.svg" alt="Kuula Microfinance Limited" style={{ width: 190, maxWidth: "72%", height: "auto" }} /></div>
+      <div style={{ width: "100%", paddingTop: 14, display: "flex", alignItems: "center", justifyContent: "center" }}><img src="/kuula-logo.svg" alt="Kuula Microfinance Limited" style={{ display: "block", width: 190, maxWidth: "72%", height: "auto", margin: "0 auto" }} /></div>
       <div style={{ marginTop: 38, textAlign: "center" }}><h1 style={{ margin: 0, fontSize: 29, fontWeight: 800, color: "#101815", letterSpacing: -0.8 }}>Welcome back</h1><p style={{ margin: "7px 0 0", fontSize: 14, color: "#68766F" }}>Sign in to continue</p></div>
       <div style={{ marginTop: 30, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: 5, borderRadius: 13, background: "#F2F6F4" }}>
         <button onClick={() => setMode("customer")} style={{ height: 40, border: 0, borderRadius: 10, background: mode === "customer" ? "white" : "transparent", color: mode === "customer" ? "#0B5E3A" : "#7B8781", boxShadow: mode === "customer" ? "0 3px 10px rgba(4,53,31,.08)" : "none", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}><UserRound size={16} /> Customer</button>

@@ -62,14 +62,14 @@ export function OnboardingScreen({ onNavigate }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
-      {/* Top bar: brand + skip */}
-      <div className="flex items-center justify-between px-5 pt-5">
-        <div className="flex items-center">
+      {/* The mark stays optically centred while Skip remains easy to reach. */}
+      <div className="flex items-center justify-center px-5 pt-5" style={{ position: "relative", minHeight: 46 }}>
+        <div className="flex items-center justify-center" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
           <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ height: 34, width: 34, objectFit: "contain", borderRadius: 8 }} />
         </div>
         <button
           onClick={finish}
-          style={{ background: "none", border: "none", fontSize: 14, fontWeight: 600, color: "#6B7280", cursor: "pointer", padding: "6px 4px" }}
+          style={{ position: "absolute", right: 20, background: "none", border: "none", fontSize: 14, fontWeight: 600, color: "#6B7280", cursor: "pointer", padding: "6px 4px" }}
         >
           {t("onboarding.skip")}
         </button>

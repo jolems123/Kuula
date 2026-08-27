@@ -44,11 +44,11 @@ export function useNativeChrome(): void {
     void applyStatusBar();
 
     // ── Splash screen ──────────────────────────────────────────────────────
-    // Hide the launch splash as soon as React is interactive. A 200ms grace
-    // keeps the handoff smooth on slower devices.
+    // Keep the native launch artwork visible long enough to be perceived,
+    // then hand off to the matching React splash without a blank flash.
     const hideSplash = async () => {
       try {
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 1200));
         await SplashScreen.hide();
       } catch {
         /* SplashScreen plugin unavailable — silently ignore */
