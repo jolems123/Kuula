@@ -12,11 +12,14 @@ function run(command, args) {
 }
 
 try {
-  console.log(JSON.stringify({ event: "production.startup", stage: "validate" }));
-  await run(process.execPath, ["scripts/validate-production-env.mjs"]);
-  console.log(JSON.stringify({ event: "production.startup", stage: "migrate" }));
-  await run("npx", ["prisma", "migrate", "deploy"]);
-  console.log(JSON.stringify({ event: "production.startup", stage: "serve" }));
+  if (process.env.NODE_ENV === "production") {
+    console.log(JSON.stringify({ event: "production.startup", stage: "validate" }));
+    await run(process.execPath, ["scripts/validate-production-env.mjs"]);
+    console.log(JSON.stringify({ event: "production.startup", stage: "migrate" }));
+    await run("npx", ["prisma", "migrate", "deploy"]);
+  }
+
+  console.log(JSON.stringify({ event: "production.startup", stage: "serve", nodeEnv: process.env.NODE_ENV || "development" }));
   await run(process.execPath, ["dist/index.js"]);
 } catch (error) {
   console.error(JSON.stringify({
