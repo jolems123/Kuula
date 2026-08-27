@@ -55,6 +55,7 @@ export function splitName(fullName: string): { first: string; last: string } {
 
 export interface VerifyNinInput {
   nationalId: string;
+  secondaryIdNumber: string;
   fullName: string;
   dob: string;
   userId: string;
@@ -74,28 +75,27 @@ export async function verifyNinWithSmileId(input: VerifyNinInput): Promise<KycVe
 
   const timestamp = new Date().toISOString();
   const signature = computeSignature(config.apiKey, config.partnerId, timestamp);
-  const { first, last } = splitName(input.fullName);
   const payload = {
+    source_sdk: "rest_api",
+    source_sdk_version: "2.0.0",
     partner_id: config.partnerId,
     timestamp,
     signature,
     country: "UG",
-    id_type: "NATIONAL_ID",
+    id_type: "NATIONAL_ID_NO_PHOTO",
     id_number: input.nationalId,
-    first_name: first,
-    last_name: last,
+    secondary_id_number: input.secondaryIdNumber,
     dob: input.dob,
     partner_params: {
       user_id: input.userId,
       job_id: `kyc-${input.userId}-${Date.now()}`,
-      job_type: 5,
     },
   };
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
-    const response = await fetch(`${config.baseUrl}/v1/id_verification`, {
+    const response = await fetch(`${config.baseUrl}/v2/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -120,7 +120,7 @@ export async function verifyNinWithSmileId(input: VerifyNinInput): Promise<KycVe
     };
     const action = data.Actions?.Verify_ID_Number?.trim() || "";
 
-    if (action.toLowerCase() === "verified") {
+    if (action.toLowerCase() === "verified" || data.ResultCode === "1020") {
       return {
         configured: true,
         verified: true,

@@ -165,3 +165,22 @@ export function secureTokenEquals(actual: string, expected: string): boolean {
   if (actualBuffer.length !== expectedBuffer.length || expectedBuffer.length === 0) return false;
   return crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
+
+export function verifyMarzPayWebhookSignature(input: {
+  rawBody: Buffer;
+  timestamp: string;
+  signatureHeader: string;
+  secret: string;
+  nowMs?: number;
+}): boolean {
+  if (!input.rawBody.length || !input.secret || !/^\d{10}$/.test(input.timestamp)) return false;
+  const timestampMs = Number(input.timestamp) * 1000;
+  if (Math.abs((input.nowMs ?? Date.now()) - timestampMs) > 5 * 60_000) return false;
+  const received = /(?:^|,)v1=([a-f0-9]{64})(?:,|$)/i.exec(input.signatureHeader)?.[1] || "";
+  const expected = crypto
+    .createHmac("sha256", input.secret)
+    .update(`${input.timestamp}.`)
+    .update(input.rawBody)
+    .digest("hex");
+  return secureTokenEquals(received.toLowerCase(), expected);
+}

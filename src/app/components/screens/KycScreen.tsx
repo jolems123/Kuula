@@ -15,6 +15,7 @@ export function KycScreen({ onNavigate }: Props) {
   // Pre-fill from the account created at sign-up so the user doesn't re-enter
   // their NIN and name. DOB is not captured at sign-up, so it starts empty.
   const [idNumber, setIdNumber] = useState(state.user?.nationalId ?? "");
+  const [secondaryIdNumber, setSecondaryIdNumber] = useState("");
   const [fullName, setFullName] = useState(state.user?.fullName ?? "");
   const [dob, setDob] = useState(state.user?.dateOfBirth ?? "");
 
@@ -209,6 +210,21 @@ export function KycScreen({ onNavigate }: Props) {
               <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
                 {t("kyc.ninHint")}
               </p>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>
+                {t("kyc.cardNumberLabel")}
+              </label>
+              <input
+                value={secondaryIdNumber}
+                onChange={(e) => setSecondaryIdNumber(e.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())}
+                maxLength={9}
+                autoComplete="off"
+                placeholder={t("kyc.cardNumberPlaceholder")}
+                style={{ width: "100%", height: 52, borderRadius: 12, border: "1.5px solid #E5E7EB", padding: "0 16px", fontSize: 15, color: "#1F2937", background: "#F9FAFB", outline: "none", boxSizing: "border-box" }}
+              />
+              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>{t("kyc.cardNumberHint")}</p>
             </div>
 
             <div>
@@ -419,6 +435,10 @@ export function KycScreen({ onNavigate }: Props) {
                 setError("Please enter your full legal name.");
                 return;
               }
+              if (!/^[A-Z0-9]{9}$/.test(secondaryIdNumber)) {
+                setError("Please enter the 9-character card number printed on your National ID.");
+                return;
+              }
               if (!dob) {
                 setError("Please select your date of birth.");
                 return;
@@ -447,6 +467,7 @@ export function KycScreen({ onNavigate }: Props) {
                 ]);
                 await api.submitKyc(token, {
                   nationalId: normalizeNin(idNumber),
+                  secondaryIdNumber,
                   fullName: fullName.trim(),
                   dob,
                   documentType: "national-id",

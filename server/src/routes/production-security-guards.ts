@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { parseMarzPayWebhook, secureTokenEquals } from "../lib/marzpay.js";
+import { parseMarzPayWebhook, secureTokenEquals, verifyMarzPayWebhookSignature } from "../lib/marzpay.js";
 
 const router = Router();
 const OPEN_FINANCIAL_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
@@ -17,20 +17,6 @@ function isProductionMoney(): boolean {
 function header(req: Request, name: string): string {
   const value = req.headers[name.toLowerCase()];
   return Array.isArray(value) ? String(value[0] || "") : String(value || "");
-}
-
-function safeEqualHex(actual: string, expected: string): boolean {
-  const a = Buffer.from(actual.replace(/^sha256=/i, "").trim().toLowerCase(), "utf8");
-  const e = Buffer.from(expected.trim().toLowerCase(), "utf8");
-  return a.length === e.length && e.length > 0 && crypto.timingSafeEqual(a, e);
-}
-
-function webhookTimestampMs(value: string): number {
-  if (/^\d{10,13}$/.test(value)) {
-    const numeric = Number(value);
-    return value.length === 10 ? numeric * 1000 : numeric;
-  }
-  return Date.parse(value);
 }
 
 async function requireCaseScope(applicationId: string, userId: string, role: string): Promise<void> {
@@ -46,52 +32,44 @@ async function requireCaseScope(applicationId: string, userId: string, role: str
 }
 
 router.post("/payments/marzpay/webhook", async (req: Request, res: Response, next: NextFunction) => {
+  const event = parseMarzPayWebhook(req.body);
   const sharedSecret = process.env.MARZPAY_WEBHOOK_SECRET?.trim() || "";
   const headerToken = header(req, "x-webhook-token");
   const allowQueryToken = process.env.NODE_ENV === "test" || process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN === "true";
   const suppliedToken = headerToken || (allowQueryToken ? String(req.query.token || "") : "");
-  if (!sharedSecret) {
-    res.status(503).json({ error: "Webhook is not configured" });
+  const legacyTokenValid = Boolean(sharedSecret) && secureTokenEquals(suppliedToken, sharedSecret);
+
+  // MarzPay signs `timestamp.raw_body` and sends the signature as
+  // `X-MarzPay-Signature: t=<timestamp>,v1=<hex>`. Keep legacy token support
+  // for sandbox callbacks, but require the provider signature for live money.
+  const signatureSecret = process.env.MARZPAY_WEBHOOK_SIGNATURE_SECRET?.trim() || "";
+  const timestamp = header(req, "x-marzpay-timestamp");
+  const signatureHeader = header(req, "x-marzpay-signature");
+  const rawBody = req.rawBody;
+  const signatureValid = verifyMarzPayWebhookSignature({
+    rawBody: rawBody || Buffer.alloc(0),
+    timestamp,
+    signatureHeader,
+    secret: signatureSecret,
+  });
+
+  if (isProductionMoney() && !signatureValid) {
+    res.status(401).json({ error: "A valid MarzPay webhook signature is required" });
     return;
   }
-  if (!secureTokenEquals(suppliedToken, sharedSecret)) {
+  if (!isProductionMoney() && !signatureValid && !legacyTokenValid) {
     res.status(401).json({ error: "Invalid webhook authentication" });
     return;
   }
 
   if (isProductionMoney()) {
-    const signatureSecret = process.env.MARZPAY_WEBHOOK_SIGNATURE_SECRET?.trim() || "";
-    const timestamp = header(req, "x-webhook-timestamp");
-    const eventId = header(req, "x-webhook-id");
-    const signature = header(req, "x-webhook-signature");
-    if (!signatureSecret || !timestamp || !eventId || !signature) {
-      res.status(401).json({ error: "Signed webhook headers are required" });
-      return;
-    }
+    const eventId = `${event.eventType || "transaction"}:${event.uuid || event.reference}:${event.status}`;
     if (!/^[A-Za-z0-9._:-]{8,200}$/.test(eventId)) {
       res.status(400).json({ error: "Webhook event id is invalid" });
       return;
     }
-    const timestampMs = webhookTimestampMs(timestamp);
-    if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60_000) {
-      res.status(401).json({ error: "Webhook timestamp is outside the allowed replay window" });
-      return;
-    }
-    const rawBody = req.rawBody;
     if (!rawBody?.length) {
       res.status(400).json({ error: "Raw webhook body is unavailable for signature verification" });
-      return;
-    }
-    const expectedSignature = crypto
-      .createHmac("sha256", signatureSecret)
-      .update(timestamp)
-      .update(".")
-      .update(eventId)
-      .update(".")
-      .update(rawBody)
-      .digest("hex");
-    if (!safeEqualHex(signature, expectedSignature)) {
-      res.status(401).json({ error: "Invalid webhook signature" });
       return;
     }
 
@@ -130,7 +108,6 @@ router.post("/payments/marzpay/webhook", async (req: Request, res: Response, nex
     });
   }
 
-  const event = parseMarzPayWebhook(req.body);
   if (isProductionMoney() && event.reference && event.isFinal && event.isSuccess) {
     const transaction = await prisma.transaction.findUnique({
       where: { reference: event.reference },

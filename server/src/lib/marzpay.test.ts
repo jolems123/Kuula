@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import {
   buildMarzPayWebhookUrl,
   collectMoney,
@@ -9,6 +10,7 @@ import {
   parseMarzPayWebhook,
   secureTokenEquals,
   sendMoney,
+  verifyMarzPayWebhookSignature,
 } from "./marzpay.js";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -133,4 +135,25 @@ test("compares webhook tokens in constant time", () => {
   assert.equal(secureTokenEquals("same-secret", "same-secret"), true);
   assert.equal(secureTokenEquals("wrong", "same-secret"), false);
   assert.equal(secureTokenEquals("", ""), false);
+});
+
+test("verifies the current MarzPay signed webhook format", () => {
+  const rawBody = Buffer.from('{"event_type":"collection.completed"}');
+  const timestamp = "1787839200";
+  const secret = "signing-secret";
+  const signature = crypto.createHmac("sha256", secret).update(`${timestamp}.`).update(rawBody).digest("hex");
+  assert.equal(verifyMarzPayWebhookSignature({
+    rawBody,
+    timestamp,
+    signatureHeader: `t=${timestamp},v1=${signature}`,
+    secret,
+    nowMs: Number(timestamp) * 1000,
+  }), true);
+  assert.equal(verifyMarzPayWebhookSignature({
+    rawBody,
+    timestamp,
+    signatureHeader: `t=${timestamp},v1=${signature}`,
+    secret,
+    nowMs: Number(timestamp) * 1000 + 301_000,
+  }), false);
 });

@@ -96,7 +96,7 @@ const nodeApi = {
   partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
   partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
   submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
-  submitKyc: (token: string, body: { nationalId: string; fullName: string; dob: string; documentType?: string; documentFront: string; documentBack: string }) => request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  submitKyc: (token: string, body: { nationalId: string; secondaryIdNumber: string; fullName: string; dob: string; documentType?: string; documentFront: string; documentBack: string }) => request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),
   getMessages: (token: string) => request<{ messages: Message[] }>("/api/messages", { headers: auth(token) }),
   postMessage: (token: string, content: string, receiverId?: string) => request<{ message: Message }>("/api/messages", { method: "POST", headers: auth(token), body: JSON.stringify({ content, receiverId }) }),

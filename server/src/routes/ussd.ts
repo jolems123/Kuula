@@ -8,7 +8,7 @@ const textResponse = (res: express.Response, body: string): void => {
   res.type("text/plain").status(200).send(body);
 };
 
-router.post("/ussd", (req, res) => {
+const ussdCallback: express.RequestHandler = (req, res) => {
   const sessionId = String(req.body?.sessionId ?? "").trim();
   const serviceCode = String(req.body?.serviceCode ?? "").trim();
   const phoneNumber = String(req.body?.phoneNumber ?? "").trim();
@@ -16,6 +16,12 @@ router.post("/ussd", (req, res) => {
 
   if (!sessionId || !serviceCode || !phoneNumber) {
     textResponse(res, "END Unable to start Kuula USSD. Please try again later.");
+    return;
+  }
+
+  const expectedServiceCode = process.env.AFRICASTALKING_USSD_SERVICE_CODE?.trim();
+  if (expectedServiceCode && serviceCode !== expectedServiceCode) {
+    textResponse(res, "END This USSD service code is not registered for Kuula.");
     return;
   }
 
@@ -57,6 +63,10 @@ router.post("/ussd", (req, res) => {
     default:
       textResponse(res, "END Invalid selection. Please dial the Kuula USSD code again.");
   }
-});
+};
+
+// Compatibility for the callback already provisioned in Africa's Talking.
+// `/api/ussd` remains the canonical URL for future dashboard configuration.
+router.post(["/ussd", "/ussdEvents"], ussdCallback);
 
 export default router;

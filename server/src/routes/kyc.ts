@@ -55,12 +55,14 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
 router.post("/submit", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
   const nationalId = normalizeNin(normalizeString(req.body?.nationalId));
+  const secondaryIdNumber = normalizeString(req.body?.secondaryIdNumber).toUpperCase();
   const fullName = normalizeString(req.body?.fullName);
   const dobRaw = normalizeString(req.body?.dob);
   const documentFront = normalizeString(req.body?.documentFront);
   const documentBack = normalizeString(req.body?.documentBack);
 
   if (!isValidUgandaNin(nationalId)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
+  if (!/^[A-Z0-9]{9}$/.test(secondaryIdNumber)) throw new AppError("A valid 9-character National ID card number is required", 400);
   if (!fullName || fullName.length < 2) throw new AppError("Valid full name is required", 400);
   const dobDate = parseDateOnly(dobRaw);
   if (!dobDate) throw new AppError("Valid date of birth is required (YYYY-MM-DD)", 400);
@@ -89,7 +91,7 @@ router.post("/submit", authenticateToken, async (req: Request, res: Response) =>
   try {
     front = await saveKycImage({ userId, side: "front", dataUrl: documentFront });
     back = await saveKycImage({ userId, side: "back", dataUrl: documentBack });
-    const verification = await verifyNinWithSmileId({ nationalId, fullName, dob: dobRaw, userId });
+    const verification = await verifyNinWithSmileId({ nationalId, secondaryIdNumber, fullName, dob: dobRaw, userId });
     const status = verification.verified ? "verified" : "pending";
 
     const submission = await prisma.$transaction(async (tx) => {
