@@ -156,7 +156,7 @@ async function createLoanApplicationForUser(
   });
   if (open) throw new AppError(`You already have an open loan or application (${open.status})`, 409);
 
-  const quote = quoteForRequest(payload.amount, payload.termDays, 0);
+  const quote = quoteForRequest(payload.amount, payload.termDays);
   const declaredMonthlyIncome = money(payload.declaredMonthlyIncome, "Monthly income");
   const declaredMonthlyExpenses = money(payload.declaredMonthlyExpenses, "Monthly expenses", true);
   const existingDebtPayment = money(payload.existingDebtPayment, "Existing debt payment", true);
