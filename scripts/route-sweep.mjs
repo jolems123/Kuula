@@ -52,15 +52,23 @@ await page.addInitScript(() => {
   try { localStorage.setItem("kuula_onboarded", "1"); } catch { /* ignore */ }
 });
 await page.goto(BASE + "/", { waitUntil: "networkidle" });
-await page.waitForURL(/#\/onboarding$/, { timeout: 15_000 });
+// Hash navigation can happen while the document's load event is still held up
+// by a slow external resource. The route is ready once navigation commits; CI
+// must not wait for an unrelated resource after the expected URL is visible.
+const waitForHash = (pattern) => page.waitForURL(pattern, {
+  timeout: 15_000,
+  waitUntil: "commit",
+});
+
+await waitForHash(/#\/onboarding$/);
 await page.getByRole("button", { name: /^Skip$/i }).click();
-await page.waitForURL(/#\/welcome$/, { timeout: 15_000 });
+await waitForHash(/#\/welcome$/);
 
 await page.getByRole("button", { name: /^Admin$/i }).click();
 const continueToAdmin = page.getByRole("button", { name: /Continue to Admin Login/i });
 await continueToAdmin.waitFor({ state: "visible", timeout: 10_000 });
 await continueToAdmin.click();
-await page.waitForURL(/#\/admin-login$/, { timeout: 15_000 });
+await waitForHash(/#\/admin-login$/);
 
 const emailInput = page.locator('input[type="email"]').first();
 const passwordInput = page.locator('input[type="password"]').first();
@@ -72,9 +80,9 @@ const submit = page.getByRole("button", { name: /Sign In to Admin/i });
 await submit.waitFor({ state: "visible", timeout: 10_000 });
 await submit.click();
 
-await page.waitForURL(/#\/admin-otp$/, { timeout: 15_000 });
+await waitForHash(/#\/admin-otp$/);
 await page.evaluate(() => { window.location.hash = "/admin-dashboard"; });
-await page.waitForURL(/#\/admin-dashboard$/, { timeout: 15_000 });
+await waitForHash(/#\/admin-dashboard$/);
 
 const blank = [];
 for (const id of ids) {
