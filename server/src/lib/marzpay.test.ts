@@ -5,6 +5,7 @@ import {
   buildMarzPayWebhookUrl,
   collectMoney,
   createPaymentReference,
+  marzPayBaseUrl,
   normalizeMarzPayAmount,
   normalizeUgandaMobileMoneyPhone,
   parseMarzPayWebhook,
@@ -60,6 +61,7 @@ test("builds the callback URL only when real money is enabled and requires HTTPS
 });
 
 test("sends current send-money and collect-money requests", async () => {
+  process.env.NODE_ENV = "test";
   process.env.MARZPAY_API_KEY = "key";
   process.env.MARZPAY_API_SECRET = "secret";
   process.env.MARZPAY_BASE_URL = "https://wallet.example/api/v1";
@@ -106,6 +108,15 @@ test("sends current send-money and collect-money requests", async () => {
     "https://wallet.example/api/v1/send-money",
     "https://wallet.example/api/v1/collect-money",
   ]);
+});
+
+test("rejects an unapproved MarZPay endpoint in production", () => {
+  process.env.NODE_ENV = "production";
+  process.env.REAL_MONEY_ENABLED = "true";
+  process.env.MARZPAY_API_KEY = "key";
+  process.env.MARZPAY_API_SECRET = "secret";
+  process.env.MARZPAY_BASE_URL = "https://attacker.example/api/v1";
+  assert.throws(() => marzPayBaseUrl(), /approved production endpoint/);
 });
 
 test("parses final and pending webhook payloads", () => {

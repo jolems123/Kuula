@@ -55,7 +55,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     setAmount((current) => Math.min(Math.max(current, MIN_AMOUNT), maxEligibleAmount));
   }, [canApply, maxEligibleAmount]);
 
-  const quote = localQuote(amount, term, 0);
+  const quote = localQuote(amount, term);
 
   const continueToReview = () => {
     setError("");

@@ -284,7 +284,7 @@ export function AdminExportReportScreen({ onNavigate }: Props) {
 export function AdminSettingsScreen({ onNavigate }: Props) {
   const ITEMS = [
     { label:"Loan Product Settings", sub:"Configure loan types and limits", screen:"admin-loan-products" },
-    { label:"Interest Rate Settings", sub:"Set loan and savings interest rates", screen:"admin-interest-settings" },
+    { label:"Interest Rate Settings", sub:"Set loan interest rates", screen:"admin-interest-settings" },
     { label:"Service Fee Settings", sub:"Configure fees and charges", screen:"admin-service-fee" },
     { label:"MTN MoMo API", sub:"Mobile money integration config", screen:"admin-mtn-api" },
     { label:"Airtel Money API", sub:"Airtel payment integration config", screen:"admin-airtel-api" },
@@ -349,13 +349,11 @@ export function AdminLoanProductsScreen({ onNavigate }: Props) {
 
 // A9.3
 export function AdminInterestSettingsScreen({ onNavigate }: Props) {
-  const [loanRate, setLoanRate] = useState("8.0");
-  const [savingsRate, setSavingsRate] = useState("5.2");
   return (
     <AdminLayout activeScreen="admin-interest-settings" onNavigate={onNavigate} title="Interest Rates">
       <AdminPageHeader title="Interest Rate Settings"/>
       <div style={{ maxWidth:560 }}>
-        <AdminCard style={{ marginBottom:14 }}>
+        <AdminCard>
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>Loan Interest Rates</h3>
           {["Quick Loan","Business Loan","Salary Advance"].map((p,i)=>(
             <div key={p} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<2?"1px solid #F8FAFC":"none" }}>
@@ -366,16 +364,6 @@ export function AdminInterestSettingsScreen({ onNavigate }: Props) {
               </div>
             </div>
           ))}
-        </AdminCard>
-        <AdminCard>
-          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>Savings Interest Rate</h3>
-          <div style={{ display:"flex",alignItems:"center",gap:16 }}>
-            <input type="number" value={savingsRate} onChange={(e)=>setSavingsRate(e.target.value)} step="0.1" style={{ width:90,height:50,borderRadius:10,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:24,fontWeight:800,color:"#178654",textAlign:"center",outline:"none" }}/>
-            <div>
-              <p style={{ fontSize:12,color:"#64748B",margin:0 }}>Annual rate</p>
-              <p style={{ fontSize:13,fontWeight:700,color:"#374151",margin:"2px 0 0" }}>Monthly: {(Number(savingsRate)/12).toFixed(2)}% · Daily: {(Number(savingsRate)/365).toFixed(3)}%</p>
-            </div>
-          </div>
           <button style={{ width:"100%",height:44,marginTop:16,borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Rate Changes</button>
         </AdminCard>
       </div>
@@ -390,8 +378,8 @@ export function AdminServiceFeeScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Service Fee Settings"/>
       <div style={{ maxWidth:560 }}>
         <AdminCard>
-          {[{ label:"Loan Origination Fee",val:"2.5",note:"Charged on disbursement" },{ label:"Late Payment Penalty",val:"5.0",note:"Per week overdue" },{ label:"Early Repayment Fee",val:"0.0",note:"No penalty for early repayment" },{ label:"Withdrawal Fee (Savings)",val:"0.0",note:"Free withdrawals" }].map((f,i)=>(
-            <div key={f.label} style={{ padding:"14px 0",borderBottom:i<3?"1px solid #F8FAFC":"none" }}>
+          {[{ label:"Loan Origination Fee",val:"2.5",note:"Charged on disbursement" },{ label:"Late Payment Penalty",val:"5.0",note:"Per week overdue" },{ label:"Early Repayment Fee",val:"0.0",note:"No penalty for early repayment" }].map((f,i)=>(
+            <div key={f.label} style={{ padding:"14px 0",borderBottom:i<2?"1px solid #F8FAFC":"none" }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
                 <div>
                   <p style={{ fontSize:13,fontWeight:600,color:"#0F172A",margin:0 }}>{f.label}</p>
@@ -753,7 +741,7 @@ export function AdminBulkEmailScreen({ onNavigate }: Props) {
             <textarea value={body} onChange={(e)=>setBody(e.target.value)} rows={10} placeholder="Compose your email here. Use {{name}}, {{loan_id}}, {{amount}} for personalization..." style={{ width:"100%",borderRadius:10,border:"1.5px solid #E5E7EB",padding:"12px 14px",fontSize:13,outline:"none",boxSizing:"border-box",resize:"none" }}/>
           </div>
           <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap" }}>
-            {["All Customers","Active Borrowers","Overdue Customers","Savings Users"].map((a)=>(
+            {["All Customers","Active Borrowers","Overdue Customers"].map((a)=>(
               <button key={a} style={{ padding:"6px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:"#F3F4F6",color:"#6B7280" }}>{a}</button>
             ))}
           </div>
@@ -768,4 +756,3 @@ export function AdminBulkEmailScreen({ onNavigate }: Props) {
     </AdminLayout>
   );
 }
-

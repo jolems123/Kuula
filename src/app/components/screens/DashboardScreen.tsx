@@ -1,4 +1,4 @@
-import { ArrowLeft, TrendingUp, PiggyBank, Wallet, PlusCircle, X } from "lucide-react";
+import { ArrowLeft, TrendingUp, Wallet, PlusCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { BottomNav } from "../BottomNav";
@@ -20,7 +20,6 @@ export function DashboardScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const credit = state.credit;
   const loan = state.loan;
-  const savingsBalance = state.savingsBalance;
   const { t } = useTranslation();
 
   // ── Top-up modal state ────────────────────────────────────────────────
@@ -102,7 +101,7 @@ export function DashboardScreen({ onNavigate }: Props) {
         {tab === "overview" && (
           <>
             {/* Key stats row */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
               {[
                 {
                   label: t("dashboard.availableCredit"),
@@ -112,13 +111,6 @@ export function DashboardScreen({ onNavigate }: Props) {
                   sub: loan?.creditIncreaseFromLastMonth
                     ? <span style={{ fontSize: 9, color: "#178654", fontWeight: 600 }}>+{(loan.creditIncreaseFromLastMonth / 1000).toFixed(0)}K ↑</span>
                     : null,
-                },
-                {
-                  label: t("dashboard.savings"),
-                  icon: <PiggyBank size={15} color="#178654" />,
-                  bg: "#F0FDF4",
-                  value: <AnimatedStat value={savingsBalance / 1000} prefix="UGX " suffix="K" decimals={0} style={{ fontSize: 17, fontWeight: 800, color: "#065F46" }} />,
-                  sub: null,
                 },
                 {
                   label: t("dashboard.creditScore"),
@@ -210,7 +202,6 @@ export function DashboardScreen({ onNavigate }: Props) {
               {[
                 { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "#0B5E3A", bg: "linear-gradient(135deg, #0B5E3A, #064A2E)", border: "none" },
                 { label: t("dashboard.makePayment"), screen: "make-payment", color: "white", bg: "linear-gradient(135deg, #178654, #059669)", border: "none" },
-                { label: t("dashboard.viewSavings"), screen: "goals", color: "#0B5E3A", bg: "white", border: "1.5px solid #DFF2E9" },
                 { label: t("dashboard.creditReport"), screen: "credit-dashboard", color: "#0B5E3A", bg: "white", border: "1.5px solid #DFF2E9" },
               ].map((a) => (
                 <button

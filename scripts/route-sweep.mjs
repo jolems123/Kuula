@@ -52,6 +52,8 @@ await page.addInitScript(() => {
   try { localStorage.setItem("kuula_onboarded", "1"); } catch { /* ignore */ }
 });
 await page.goto(BASE + "/", { waitUntil: "networkidle" });
+await page.waitForURL(/#\/onboarding$/, { timeout: 15_000 });
+await page.getByRole("button", { name: /^Skip$/i }).click();
 await page.waitForURL(/#\/welcome$/, { timeout: 15_000 });
 
 await page.getByRole("button", { name: /^Admin$/i }).click();

@@ -7,7 +7,6 @@ const TIPS = [
   { done: true, title: "Pay loans on time", impact: "+High", desc: "Every on-time payment boosts your score. Never miss a due date.", icon: "✓" },
   { done: true, title: "Keep utilization below 30%", impact: "+High", desc: "Currently at 32%. Paying down your balance will help.", icon: "📊" },
   { done: false, title: "Build a longer credit history", impact: "+Medium", desc: "Continue borrowing responsibly. History length improves over time.", icon: "📅" },
-  { done: false, title: "Enable Auto-Save", impact: "+Medium", desc: "Regular savings deposits signal financial discipline to our scoring model.", icon: "🐷" },
   { done: false, title: "Avoid multiple loan applications", impact: "+Low", desc: "Multiple applications in a short period can lower your score temporarily.", icon: "📋" },
   { done: true, title: "Complete full KYC verification", impact: "+Low", desc: "Your identity is fully verified. This adds trust to your profile.", icon: "🆔" },
 ];

@@ -62,7 +62,7 @@
       "id": "msg-002",
       "senderId": "ADMIN-2024-000001",
       "receiverId": "KUU-2024-001847",
-      "content": "Hi Amara! Of course — what would you like to know?",
+      "content": "Hi Amara! Of course \u2014 what would you like to know?",
       "createdAt": "2026-06-10T09:32:00.000Z",
       "isRead": true
     },
@@ -130,36 +130,6 @@
       "daysLeft": 14
     }
   },
-  "savings": {
-    "balance": 340000,
-    "monthlyGrowthPercent": 5.2,
-    "goals": [
-      {
-        "id": "g1",
-        "name": "Emergency Fund",
-        "target": 1000000,
-        "saved": 340000,
-        "deadline": "Dec 2026",
-        "emoji": "🏦"
-      },
-      {
-        "id": "g2",
-        "name": "School Fees",
-        "target": 750000,
-        "saved": 180000,
-        "deadline": "Sep 2026",
-        "emoji": "📚"
-      },
-      {
-        "id": "g3",
-        "name": "Business Capital",
-        "target": 2000000,
-        "saved": 620000,
-        "deadline": "Mar 2027",
-        "emoji": "💼"
-      }
-    ]
-  },
   "recentTransactions": [
     {
       "id": "t1",
@@ -178,28 +148,12 @@
       "method": "MTN MoMo"
     },
     {
-      "id": "t3",
-      "label": "Savings deposit",
-      "amount": 50000,
-      "type": "credit",
-      "date": "May 20",
-      "method": "Wallet"
-    },
-    {
       "id": "t4",
       "label": "Loan payment",
       "amount": -285000,
       "type": "debit",
       "date": "Apr 25",
       "method": "Airtel Money"
-    },
-    {
-      "id": "t5",
-      "label": "Savings deposit",
-      "amount": 75000,
-      "type": "credit",
-      "date": "Apr 10",
-      "method": "Wallet"
     }
   ],
   "notifications": [
@@ -214,18 +168,10 @@
     {
       "id": "n2",
       "title": "Credit Score Improved!",
-      "body": "Your score increased by 12 points to 742 — Excellent tier.",
+      "body": "Your score increased by 12 points to 742 \u2014 Excellent tier.",
       "type": "success",
       "time": "3 days ago",
       "read": false
-    },
-    {
-      "id": "n3",
-      "title": "Savings Goal Progress",
-      "body": "You've saved 34% of your Emergency Fund goal.",
-      "type": "info",
-      "time": "1 week ago",
-      "read": true
     },
     {
       "id": "n4",

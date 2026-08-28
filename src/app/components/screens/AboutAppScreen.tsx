@@ -9,7 +9,6 @@ interface Props { onNavigate: (s: string) => void; }
 
 const FALLBACK_COMPLIANCE: Compliance = {
   maxAprPercent: 33.6, appleAprCapPercent: 36, minTermDays: 90, googleMinTermDays: 61,
-  savingsAprPercent: 5, savingsDiscountPercent: 5, savingsThreshold: 100000,
   compound: false, dataRetentionYears: 10,
 };
 
@@ -41,7 +40,7 @@ export function AboutAppScreen({ onNavigate }: Props) {
         </div>
 
         <p style={{ fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 1.7, maxWidth: 300 }}>
-          Kuula is Uganda's trusted mobile lending platform, providing fast, secure loans and savings services via MTN MoMo and Airtel Money.
+          Kuula is Uganda's trusted mobile credit platform, providing transparent loans and repayments via MTN MoMo and Airtel Money.
         </p>
 
         {/* Transparent, compliant lending facts */}
@@ -51,11 +50,9 @@ export function AboutAppScreen({ onNavigate }: Props) {
             ["Maximum APR (all-in)", `${c.maxAprPercent}% / year`],
             ["Interest type", c.compound ? "Compound" : "Simple — never compounded"],
             ["Minimum loan term", `${c.minTermDays} days`],
-            ["Savings interest", `${c.savingsAprPercent}% / year`],
-            ["Save ≥ UGX 100k", `−${c.savingsDiscountPercent}% loan APR`],
             ["Record retention", `${c.dataRetentionYears} years (UMRA)`],
           ].map(([l, v], i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: i < 5 ? "1px solid #F3F4F6" : "none" }}>
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: i < 3 ? "1px solid #F3F4F6" : "none" }}>
               <span style={{ fontSize: 12.5, color: "#6B7280" }}>{l}</span>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: "#1F2937" }}>{v}</span>
             </div>

@@ -183,7 +183,6 @@ VITE_API_TIMEOUT_MS=10000
 VITE_APP_ENV=development
 VITE_APP_VERSION=2.4.1
 VITE_ENABLE_BIOMETRIC=true
-VITE_ENABLE_SAVINGS=false
 VITE_REVIEWER_MODE=false
 ```
 
@@ -192,16 +191,12 @@ Production builds must use an HTTPS API URL:
 ```env
 VITE_BACKEND=node
 VITE_USE_API=true
-VITE_API_BASE_URL=https://api.kuula.ug
+VITE_API_BASE_URL=https://api.kuulapp.com
 VITE_APP_ENV=production
 VITE_APP_VERSION=2.4.1
 VITE_ENABLE_BIOMETRIC=true
-VITE_ENABLE_SAVINGS=false
 VITE_REVIEWER_MODE=false
 ```
-
-Savings remains disabled until provider-settled custody, deposits, withdrawals,
-interest and statements are implemented and independently verified.
 
 `npm run build` executes an environment guard before Vite. A production build
 fails when the backend is not `node`, the API URL is missing, the URL is local,
@@ -316,5 +311,4 @@ Keep:
 REAL_MONEY_ENABLED=false
 ```
 
-until every production-closeout item in `TODO.md` is complete. Savings is not a
-live production product and must remain disabled.
+until every production-closeout item in `TODO.md` is complete.

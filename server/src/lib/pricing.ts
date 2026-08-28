@@ -35,7 +35,7 @@ function normalizeTerm(value: number): number {
   return Math.min(PRICING.MAX_TERM_DAYS, Math.max(PRICING.MIN_TERM_DAYS, requested));
 }
 
-export function localQuote(principalInput: number, termDaysInput: number, ..._ignoredLegacyArgs: unknown[]): LoanQuote {
+export function localQuote(principalInput: number, termDaysInput: number): LoanQuote {
   const principal = normalizePrincipal(principalInput);
   const termDays = normalizeTerm(termDaysInput);
   const apr = PRICING.MAX_APR;

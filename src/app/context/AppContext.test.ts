@@ -19,18 +19,16 @@ interface AppState {
   user: UserProfile | null;
   credit: CreditProfile | null;
   loan: LoanProfile | null;
-  savingsBalance: number;
   unreadNotifications: number;
   messages: Message[];
 }
 
 type Action =
-  | { type: "LOGIN"; payload: { token: string; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; savingsBalance: number; role: Role; messages?: Message[]; unreadNotifications?: number } }
+  | { type: "LOGIN"; payload: { token: string; user: UserProfile; credit: CreditProfile | null; loan: LoanProfile | null; role: Role; messages?: Message[]; unreadNotifications?: number } }
   | { type: "LOGOUT" }
   | { type: "UPDATE_PROFILE"; payload: Partial<UserProfile> }
   | { type: "UPDATE_CREDIT"; payload: Partial<CreditProfile> }
   | { type: "UPDATE_LOAN"; payload: Partial<LoanProfile> }
-  | { type: "SET_SAVINGS"; payload: number }
   | { type: "SET_UNREAD"; payload: number }
   | { type: "SEND_MESSAGE"; payload: Message }
   | { type: "MARK_MESSAGE_READ"; payload: string }
@@ -42,7 +40,6 @@ const INITIAL_STATE: AppState = {
   user: null,
   credit: null,
   loan: null,
-  savingsBalance: 0,
   unreadNotifications: 0,
   messages: [],
 };
@@ -57,7 +54,6 @@ function reducer(state: AppState, action: Action): AppState {
         user: action.payload.user,
         credit: action.payload.credit,
         loan: action.payload.loan,
-        savingsBalance: action.payload.savingsBalance,
         messages: action.payload.messages ?? state.messages,
         unreadNotifications: action.payload.unreadNotifications ?? state.unreadNotifications,
       };
@@ -69,8 +65,6 @@ function reducer(state: AppState, action: Action): AppState {
       return state.credit ? { ...state, credit: { ...state.credit, ...action.payload } } : state;
     case "UPDATE_LOAN":
       return state.loan ? { ...state, loan: { ...state.loan, ...action.payload } } : state;
-    case "SET_SAVINGS":
-      return { ...state, savingsBalance: action.payload };
     case "SET_UNREAD":
       return { ...state, unreadNotifications: action.payload };
     case "SEND_MESSAGE":
@@ -113,7 +107,7 @@ describe("AppContext reducer", () => {
   it("LOGIN sets all session fields", () => {
     const next = reducer(INITIAL_STATE, {
       type: "LOGIN",
-      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: mockLoan, savingsBalance: 50000, role: "user" },
+      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: mockLoan, role: "user" },
     });
     expect(next.session.isAuthenticated).toBe(true);
     expect(next.session.token).toBe("tok");
@@ -121,14 +115,13 @@ describe("AppContext reducer", () => {
     expect(next.user?.fullName).toBe("John Doe");
     expect(next.credit?.score).toBe(650);
     expect(next.loan?.availableCredit).toBe(500000);
-    expect(next.savingsBalance).toBe(50000);
   });
 
   it("LOGIN preserves existing messages if none provided", () => {
     const withMsg = { ...INITIAL_STATE, messages: [mockMsg] };
     const next = reducer(withMsg, {
       type: "LOGIN",
-      payload: { token: "tok", user: mockUser, credit: null, loan: null, savingsBalance: 0, role: "user" },
+      payload: { token: "tok", user: mockUser, credit: null, loan: null, role: "user" },
     });
     expect(next.messages).toHaveLength(1);
   });
@@ -136,7 +129,7 @@ describe("AppContext reducer", () => {
   it("LOGOUT clears everything including messages", () => {
     const loggedIn = reducer(INITIAL_STATE, {
       type: "LOGIN",
-      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: mockLoan, savingsBalance: 100, role: "user", messages: [mockMsg] },
+      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: mockLoan, role: "user", messages: [mockMsg] },
     });
     const loggedOut = reducer(loggedIn, { type: "LOGOUT" });
     expect(loggedOut.session.isAuthenticated).toBe(false);
@@ -144,7 +137,6 @@ describe("AppContext reducer", () => {
     expect(loggedOut.user).toBeNull();
     expect(loggedOut.credit).toBeNull();
     expect(loggedOut.loan).toBeNull();
-    expect(loggedOut.savingsBalance).toBe(0);
     // Messages must be cleared on logout to prevent PII leaking between sessions
     expect(loggedOut.messages).toHaveLength(0);
   });
@@ -152,7 +144,7 @@ describe("AppContext reducer", () => {
   it("UPDATE_PROFILE merges partial fields", () => {
     const loggedIn = reducer(INITIAL_STATE, {
       type: "LOGIN",
-      payload: { token: "tok", user: mockUser, credit: null, loan: null, savingsBalance: 0, role: "user" },
+      payload: { token: "tok", user: mockUser, credit: null, loan: null, role: "user" },
     });
     const updated = reducer(loggedIn, {
       type: "UPDATE_PROFILE",
@@ -166,7 +158,7 @@ describe("AppContext reducer", () => {
   it("UPDATE_CREDIT merges partial fields", () => {
     const loggedIn = reducer(INITIAL_STATE, {
       type: "LOGIN",
-      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: null, savingsBalance: 0, role: "user" },
+      payload: { token: "tok", user: mockUser, credit: mockCredit, loan: null, role: "user" },
     });
     const updated = reducer(loggedIn, { type: "UPDATE_CREDIT", payload: { score: 720, tier: "Good" } });
     expect(updated.credit?.score).toBe(720);
@@ -200,12 +192,9 @@ describe("AppContext reducer", () => {
     expect(marked.messages[1].isRead).toBe(false); // receiverId === "other-user"
   });
 
-  it("SET_SAVINGS and SET_UNREAD update values", () => {
-    const next = reducer(INITIAL_STATE, { type: "SET_SAVINGS", payload: 250000 });
-    expect(next.savingsBalance).toBe(250000);
-
-    const next2 = reducer(next, { type: "SET_UNREAD", payload: 5 });
-    expect(next2.unreadNotifications).toBe(5);
+  it("SET_UNREAD updates the unread count", () => {
+    const next = reducer(INITIAL_STATE, { type: "SET_UNREAD", payload: 5 });
+    expect(next.unreadNotifications).toBe(5);
   });
 
   it("UPDATE_PROFILE and UPDATE_CREDIT are no-ops when null", () => {

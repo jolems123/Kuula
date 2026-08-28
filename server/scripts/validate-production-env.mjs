@@ -1,4 +1,5 @@
 const problems = [];
+const warnings = [];
 const required = [
   "DATABASE_URL",
   "JWT_SECRET",
@@ -29,6 +30,22 @@ const db = String(process.env.DATABASE_URL ?? "");
 if (!/^postgres(ql)?:\/\//i.test(db)) problems.push("DATABASE_URL must be PostgreSQL");
 if (/localhost|127\.0\.0\.1|example\.(com|net|org)|<password>/i.test(db)) {
   problems.push("DATABASE_URL contains a local/example placeholder and cannot be used in production");
+}
+try {
+  const url = new URL(db);
+  for (const [name, min, max] of [["connection_limit", 1, 50], ["pool_timeout", 1, 120]]) {
+    const raw = url.searchParams.get(name);
+    if (!raw) {
+      warnings.push(`DATABASE_URL does not set ${name}; the API will apply a conservative runtime default`);
+      continue;
+    }
+    const value = Number(raw);
+    if (!/^\d+$/.test(raw) || !Number.isInteger(value) || value < min || value > max) {
+      problems.push(`DATABASE_URL ${name} must be an integer from ${min} to ${max}`);
+    }
+  }
+} catch {
+  if (db) problems.push("DATABASE_URL must be a valid URL");
 }
 
 const jwt = String(process.env.JWT_SECRET ?? "");
@@ -70,6 +87,16 @@ if (String(process.env.MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN ?? "").toLowerCase() ==
   problems.push("MARZPAY_ALLOW_QUERY_WEBHOOK_TOKEN must be false in production");
 }
 
+const marzPayBaseUrl = String(process.env.MARZPAY_BASE_URL ?? "https://wallet.wearemarz.com/api/v1").trim();
+try {
+  const url = new URL(marzPayBaseUrl);
+  if (url.protocol !== "https:" || url.hostname !== "wallet.wearemarz.com") {
+    problems.push("MARZPAY_BASE_URL must use https://wallet.wearemarz.com in production");
+  }
+} catch {
+  problems.push("MARZPAY_BASE_URL must be a valid absolute URL");
+}
+
 if (String(process.env.REAL_MONEY_ENABLED ?? "").toLowerCase() === "true") {
   for (const name of [
     "MARZPAY_API_KEY",
@@ -95,5 +122,7 @@ if (problems.length) {
   for (const problem of problems) console.error(`- ${problem}`);
   process.exit(1);
 }
+
+for (const warning of warnings) console.warn(`Kuula production environment warning: ${warning}`);
 
 console.log("Kuula production environment validation passed.");

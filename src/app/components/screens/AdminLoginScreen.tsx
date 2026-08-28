@@ -43,7 +43,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const finishSession = (s: any) => {
     const expiresAt = Date.now() + (s.accessExpiresInSeconds ?? 900) * 1000;
     if (s.refreshToken) storeSessionTokens({ accessToken: s.token, refreshToken: s.refreshToken, accessExpiresAt: expiresAt });
-    login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications, expiresAt);
+    login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
   };
 
   const submit = async () => {
@@ -72,7 +72,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     const adminUser = mockData.testUsers.find((u) => u.role === "admin" && u.email === email.trim().toLowerCase());
     if (!adminUser || pw.length < 4) { setError("Invalid demo credentials."); return; }
     const userProfile: UserProfile = { id: adminUser.id, role: "admin", initials: adminUser.initials, fullName: adminUser.fullName, phone: adminUser.phone, email: adminUser.email, nationalId: adminUser.nationalId, dateOfBirth: adminUser.dateOfBirth, district: adminUser.district, occupation: adminUser.occupation, memberSince: adminUser.memberSince, verified: adminUser.verified, avatarUrl: adminUser.avatarUrl };
-    login("demo-token", userProfile, null, null, 0, "admin");
+    login("demo-token", userProfile, null, null, "admin");
     setAdminMfaChallenge({ challengeToken: "demo-only", destination: "demo mode" });
     onNavigate("admin-otp");
   };

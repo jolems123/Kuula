@@ -42,7 +42,7 @@ export function AdminOTPScreen({ onNavigate }: Props) {
       const session = await api.verifyAdminMfa(challenge.challengeToken, code);
       const expiresAt = Date.now() + (session.accessExpiresInSeconds ?? 900) * 1000;
       storeSessionTokens({ accessToken: session.token, refreshToken: session.refreshToken, accessExpiresAt: expiresAt });
-      login(session.token, session.user, session.credit, session.loan, session.savingsBalance, session.role, session.messages, session.unreadNotifications, expiresAt);
+      login(session.token, session.user, session.credit, session.loan, session.role, session.messages, session.unreadNotifications, expiresAt);
       setAdminMfaChallenge(null);
       onNavigate("admin-dashboard");
     } catch (e) {

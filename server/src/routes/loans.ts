@@ -23,9 +23,9 @@ const OPEN_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "activ
 const STAFF_ROLES = new Set(["admin", "manager", "officer"]);
 const AGREEMENT_VERSION = "2026-08-01";
 
-function quoteForRequest(amount: unknown, termDays: unknown, savingsBalance = 0): LoanQuote {
+function quoteForRequest(amount: unknown, termDays: unknown): LoanQuote {
   try {
-    return localQuote(Number(amount), Number(termDays), savingsBalance);
+    return localQuote(Number(amount), Number(termDays));
   } catch (error) {
     if (error instanceof RangeError) throw new AppError(error.message, 400);
     throw error;
@@ -156,7 +156,7 @@ async function createLoanApplicationForUser(
   });
   if (open) throw new AppError(`You already have an open loan or application (${open.status})`, 409);
 
-  const quote = quoteForRequest(payload.amount, payload.termDays, 0);
+  const quote = quoteForRequest(payload.amount, payload.termDays);
   const declaredMonthlyIncome = money(payload.declaredMonthlyIncome, "Monthly income");
   const declaredMonthlyExpenses = money(payload.declaredMonthlyExpenses, "Monthly expenses", true);
   const existingDebtPayment = money(payload.existingDebtPayment, "Existing debt payment", true);
@@ -461,7 +461,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
 });
 
 router.post("/quote", authenticateToken, async (req: Request, res: Response) => {
-  res.json(quoteForRequest(req.body?.amount, req.body?.termDays, 0));
+  res.json(quoteForRequest(req.body?.amount, req.body?.termDays));
 });
 
 router.get("/repayment", authenticateToken, async (req: Request, res: Response) => {

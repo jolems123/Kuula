@@ -9,7 +9,7 @@ import { downloadTransactionStatement } from "../../lib/statement";
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + n.toLocaleString(); }
 
-type Filter = "all" | "loans" | "savings" | "payments";
+type Filter = "all" | "loans" | "payments";
 
 interface TxnItem {
   id: string;
@@ -29,16 +29,12 @@ const TYPE_CATEGORY: Record<string, Filter> = {
   loan_disbursement: "loans",
   loan_disbursement_leg: "loans",
   loan_payment: "payments",
-  savings_deposit: "savings",
-  savings_withdrawal: "savings",
 };
 
 const TYPE_LABEL: Record<string, string> = {
   loan_disbursement: "Loan Disbursed",
   loan_disbursement_leg: "Loan Disbursed",
   loan_payment: "Loan Repayment",
-  savings_deposit: "Savings Deposit",
-  savings_withdrawal: "Savings Withdrawal",
 };
 
 function mapTxn(r: Record<string, unknown>): TxnItem {
@@ -124,7 +120,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 8, padding: "10px 16px", background: "white", borderBottom: "1px solid #F3F4F6", overflowX: "auto", scrollbarWidth: "none" }}>
-        {(["all", "loans", "savings", "payments"] as Filter[]).map((f) => (
+        {(["all", "loans", "payments"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "#0B5E3A" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
         ))}
       </div>

@@ -249,14 +249,31 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(JSON.stringify({ event: "server.started", port: PORT, realMoneyEnabled }));
 });
 
-async function shutdown(signal: string) {
+let shuttingDown = false;
+async function shutdown(signal: string, exitCode = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
   stopReconciliationSweeper();
+  const forceExit = setTimeout(() => process.exit(exitCode || 1), 10_000);
+  forceExit.unref();
   server.close(async () => {
     await prisma.$disconnect().catch(() => {});
-    console.log(JSON.stringify({ event: "server.stopped", signal }));
-    process.exit(0);
+    console.log(JSON.stringify({ event: "server.stopped", signal, exitCode }));
+    clearTimeout(forceExit);
+    process.exit(exitCode);
   });
 }
 
 process.on("SIGTERM", () => { void shutdown("SIGTERM"); });
 process.on("SIGINT", () => { void shutdown("SIGINT"); });
+process.on("unhandledRejection", (reason) => {
+  console.error(JSON.stringify({
+    event: "process.unhandled_rejection",
+    error: reason instanceof Error ? reason.message : String(reason),
+  }));
+  void shutdown("unhandledRejection", 1);
+});
+process.on("uncaughtException", (error) => {
+  console.error(JSON.stringify({ event: "process.uncaught_exception", error: error.message }));
+  void shutdown("uncaughtException", 1);
+});

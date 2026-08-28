@@ -25,12 +25,6 @@ describe("localQuote — loan pricing", () => {
     expect(quote.fee).toBe(0);
   });
 
-  it("ignores unverified legacy savings arguments", () => {
-    const noBalance = localQuote(100000, 90, 0);
-    const legacyBalance = localQuote(100000, 90, 10_000_000);
-    expect(legacyBalance).toEqual(noBalance);
-  });
-
   it("rounds principal to whole Uganda shillings", () => {
     expect(localQuote(100000.6, 90).principal).toBe(100001);
   });

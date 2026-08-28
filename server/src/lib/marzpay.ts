@@ -45,7 +45,14 @@ function readAmount(value: unknown): number | null {
   const raw = Number(object.raw);
   return Number.isFinite(raw) ? Math.round(raw) : null;
 }
-function baseUrl(): string { return (process.env.MARZPAY_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, ""); }
+export function marzPayBaseUrl(): string {
+  const configured = (process.env.MARZPAY_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const parsed = new URL(configured);
+  if (process.env.NODE_ENV === "production" && (parsed.protocol !== "https:" || parsed.hostname !== "wallet.wearemarz.com")) {
+    throw new Error("MARZPAY_BASE_URL is not an approved production endpoint");
+  }
+  return configured;
+}
 function credentials(): { key: string; secret: string } | null {
   const key = process.env.MARZPAY_API_KEY?.trim() || "";
   const secret = process.env.MARZPAY_API_SECRET?.trim() || "";
@@ -113,7 +120,7 @@ async function postMoney(path: "/send-money" | "/collect-money", input: MarzPayM
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${baseUrl()}${path}`, {
+    response = await fetch(`${marzPayBaseUrl()}${path}`, {
       method: "POST",
       headers: { Accept: "application/json", Authorization: basicAuthorization(auth.key, auth.secret) },
       body: form,

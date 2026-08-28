@@ -64,7 +64,7 @@ export async function createPartnerFinancingApplication(input: PartnerApplicatio
 
   let quote;
   try {
-    quote = localQuote(requestedAmount, input.termDays, 0);
+    quote = localQuote(requestedAmount, input.termDays);
   } catch (error) {
     throw new AppError(error instanceof Error ? error.message : "Could not price this financing request", 400);
   }

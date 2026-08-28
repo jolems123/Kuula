@@ -55,8 +55,8 @@ export function DeleteAccountScreen({ onNavigate }: Props) {
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: "#991B1B", margin: 0 }}>This is permanent</p>
             <p style={{ fontSize: 12, color: "#B91C1C", margin: "4px 0 0", lineHeight: 1.6 }}>
-              Deleting your account erases your profile, saved payment methods, savings goals and
-              notification history. This cannot be undone.
+              Deleting your account erases your profile, saved payment methods and notification
+              history. This cannot be undone.
             </p>
           </div>
         </div>
@@ -65,7 +65,6 @@ export function DeleteAccountScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 10 }}>Before you go</p>
           {[
             "Any active loan must be fully repaid before deletion can complete.",
-            "Your savings balance will be sent to your registered mobile money number.",
             "Some records are kept where Ugandan financial regulations require it (UMRA/AML retention periods).",
           ].map((t, i) => (
             <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0" }}>
