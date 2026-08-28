@@ -4,7 +4,7 @@
 
 **The lending app for Ugandans the banks ignore.**
 
-A mobile-first lending and savings platform being developed by Kuula
+A mobile-first credit platform being developed by Kuula
 Microfinance Limited for Uganda and its partner applications.
 
 </div>
@@ -15,10 +15,10 @@ Microfinance Limited for Uganda and its partner applications.
 
 Kuula has a broad customer and operator interface, Android/iOS packaging,
 PostgreSQL data models, Node/Express APIs, KYC submission, loan application
-workflows, savings goals, reporting, and multilingual screens.
+workflows, repayment operations, reporting, and multilingual screens.
 
 The repository is still under production hardening. **Do not use the current
-build for live disbursement, repayment collection, or customer savings until the
+build for live disbursement or repayment collection until the
 real-money integrations and accounting controls are completed and tested.**
 
 ## Product direction
@@ -89,7 +89,7 @@ server/
   prisma/                   PostgreSQL schema and migrations
   src/
     middleware/             Authentication and error handling
-    routes/                 Auth, KYC, loans, savings, admin, and support APIs
+    routes/                 Auth, KYC, loans, payments, admin, and support APIs
     lib/                    Prisma, scoring, pricing, storage, and compliance
 
 android/                    Capacitor Android project
@@ -239,7 +239,7 @@ Actions, Android, and iOS deployment instructions.
 1. Establish Node/PostgreSQL as the single backend and correct CI.
 2. Unify frontend and server loan pricing.
 3. Replace simulated loan disbursement and repayment with provider-settled money movement.
-4. Disable or replace simulated savings deposits and withdrawals.
+4. Verify that removed legacy product data remains quarantined and inaccessible.
 5. Complete SMS OTP and password recovery.
 6. Complete production KYC storage, review, and audit controls.
 7. Add partner-financing APIs for TibaPay and SiliFi.

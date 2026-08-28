@@ -19,7 +19,6 @@ export function AdminNotifTriggersScreen({ onNavigate }: Props) {
     { event:"Loan Approved",   timing:"Immediately",     channel:"SMS + Push + Email", enabled:true },
     { event:"Loan Rejected",   timing:"Immediately",     channel:"SMS + Email",enabled:true },
     { event:"Credit Score Up", timing:"On milestone",    channel:"Push",       enabled:false },
-    { event:"Savings Interest",timing:"Monthly",         channel:"Push",       enabled:true },
   ];
   const [list, setList] = useState(triggers);
   const { t } = useTranslation();
@@ -143,7 +142,6 @@ export function AdminCampaignTargetingScreen({ onNavigate }: Props) {
             {id:"new",l:"New customers (no previous loan)"},
             {id:"returning",l:"Returning customers (1+ loans)"},
             {id:"score",l:"High credit score (configurable threshold)"},
-            {id:"savings",l:"Customers with active savings"},
             {id:"all",l:"All customers"},
           ].map(a=>(
             <button key={a.id} onClick={()=>setAudience(a.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`2px solid ${audience===a.id?"#0B5E3A":"#E5E7EB"}`,background:audience===a.id?"#F3FAF7":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
@@ -213,7 +211,6 @@ export function CustomerNotifHistoryScreen({ onNavigate }: Props) {
   const items = [
     { icon:"✅",title:"Loan Approved!",body:"Your UGX 500,000 loan was approved.",time:"2 hrs ago",read:false },
     { icon:"💳",title:"Payment Due in 14 Days",body:"Your payment of UGX 92,083 is due Jun 25.",time:"5 hrs ago",read:false },
-    { icon:"💰",title:"Savings Interest Credited",body:"UGX 3,400 added to your savings.",time:"1 day ago",read:true },
     { icon:"🎁",title:"New Promotion Available",body:"You qualify for a 5% rate discount!",time:"3 days ago",read:true },
     { icon:"⭐",title:"Credit Score Updated",body:"Your score increased to 742. Excellent!",time:"1 week ago",read:true },
   ];
@@ -268,7 +265,7 @@ export function AdminBulkNotifScreen({ onNavigate }: Props) {
             <div>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Audience</label>
               <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                {[{id:"all",l:"All (3,847)"},{id:"active",l:"Active Borrowers (1,203)"},{id:"overdue",l:"Overdue (18)"},{id:"savings",l:"Savers (2,341)"}].map(a=>(
+                {[{id:"all",l:"All (3,847)"},{id:"active",l:"Active Borrowers (1,203)"},{id:"overdue",l:"Overdue (18)"}].map(a=>(
                   <button key={a.id} onClick={()=>setAudience(a.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:audience===a.id?"#0B5E3A":"#F3F4F6",color:audience===a.id?"white":"#6B7280" }}>{a.l}</button>
                 ))}
               </div>

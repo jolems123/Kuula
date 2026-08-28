@@ -21,12 +21,12 @@ export function LoanReviewScreen({ onNavigate }: Props) {
 
   const fallbackAmount = draft?.amount ?? 50_000;
   const fallbackTerm = draft?.termDays ?? 90;
-  const [quote, setQuote] = useState<LoanQuote | null>(() => env.USE_API ? null : localQuote(fallbackAmount, fallbackTerm, 0));
+  const [quote, setQuote] = useState<LoanQuote | null>(() => env.USE_API ? null : localQuote(fallbackAmount, fallbackTerm));
 
   useEffect(() => {
     let active = true;
     if (!draft) return () => { active = false; };
-    if (!env.USE_API) { setQuote(localQuote(draft.amount, draft.termDays, 0)); setQuoteLoading(false); return () => { active = false; }; }
+    if (!env.USE_API) { setQuote(localQuote(draft.amount, draft.termDays)); setQuoteLoading(false); return () => { active = false; }; }
     if (!token) { setQuote(null); setQuoteError("Your session is not available. Sign in again before reviewing this application."); setQuoteLoading(false); return () => { active = false; }; }
     setQuoteLoading(true); setQuoteError(""); setQuote(null);
     api.quoteLoan(token, draft.amount, draft.termDays)

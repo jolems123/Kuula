@@ -14,7 +14,6 @@ workflows:
         VITE_APP_ENV: production
         VITE_ENABLE_BIOMETRIC: "true"
         VITE_REVIEWER_MODE: "false"
-        VITE_ENABLE_SAVINGS: "false"
         VITE_ENABLE_INVESTMENTS: "false"
         VITE_ENABLE_AUTOPAY: "false"
         VITE_ENABLE_CREDIT_BUILDER: "false"
@@ -96,7 +95,6 @@ workflows:
         VITE_APP_ENV: production
         VITE_ENABLE_BIOMETRIC: "true"
         VITE_REVIEWER_MODE: "false"
-        VITE_ENABLE_SAVINGS: "false"
         VITE_ENABLE_INVESTMENTS: "false"
         VITE_ENABLE_AUTOPAY: "false"
         VITE_ENABLE_CREDIT_BUILDER: "false"

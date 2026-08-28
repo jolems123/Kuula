@@ -111,10 +111,13 @@ async function issueOtp(user: User, purpose: OtpPurpose): Promise<void> {
       where: { id: user.id, otpHash },
       data: { otpHash: null, otpPurpose: null, otpExpiresAt: null },
     });
-    throw new AppError(
-      error instanceof Error ? `Could not send verification SMS: ${error.message}` : "Could not send verification SMS",
-      503
-    );
+    console.error(JSON.stringify({
+      event: "otp.delivery_failed",
+      userId: user.id,
+      purpose,
+      error: error instanceof Error ? error.message : "Unknown SMS provider error",
+    }));
+    throw new AppError("Could not send the verification message. Try again later.", 503);
   }
 }
 
@@ -250,8 +253,10 @@ router.post("/signup", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
   const email = normalizedEmail(req.body.email);
   const newPassword = password(req.body.password);
+  const fullName = typeof name === "string" ? name.trim() : "";
 
-  if (!String(name || "").trim()) throw new AppError("Name is required", 400);
+  if (!fullName) throw new AppError("Name is required", 400);
+  if (fullName.length > 120) throw new AppError("Name must be 120 characters or fewer", 400);
   if (!acceptedTerms) throw new AppError("You must accept the Terms of Service and Privacy Policy", 400);
   const normalizedNin = nationalId ? normalizeNin(String(nationalId)) : "";
   if (normalizedNin && !isValidUgandaNin(normalizedNin)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
@@ -263,7 +268,7 @@ router.post("/signup", async (req: Request, res: Response) => {
 
   const user = await prisma.user.create({
     data: {
-      fullName: String(name).trim(),
+      fullName,
       phone,
       email,
       nationalId: normalizedNin || null,

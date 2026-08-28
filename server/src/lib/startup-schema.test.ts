@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 
 const script = readFileSync(new URL("../../scripts/start-production.mjs", import.meta.url), "utf8");
 
-test("production startup validates and migrates before serving", () => {
+test("production startup validates before serving", () => {
   const validate = script.indexOf('stage: "validate"');
   const migrate = script.indexOf('stage: "migrate"');
   const serve = script.indexOf('stage: "serve"');
-  assert.ok(validate >= 0 && migrate > validate && serve > migrate);
+  assert.ok(validate >= 0 && migrate === -1 && serve > validate);
 });
 
 test("production startup surfaces a structured fatal error", () => {

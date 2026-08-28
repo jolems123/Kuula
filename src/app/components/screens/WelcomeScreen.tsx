@@ -38,13 +38,13 @@ export function WelcomeScreen({ onNavigate }: Props) {
         const session = await api.login(normalizePhone(phone), pin);
         const expiresAt = Date.now() + (session.accessExpiresInSeconds ?? 900) * 1000;
         storeSessionTokens({ accessToken: session.token, refreshToken: session.refreshToken, accessExpiresAt: expiresAt });
-        login(session.token, session.user, session.credit, session.loan, session.savingsBalance, session.role, session.messages, session.unreadNotifications, expiresAt);
+        login(session.token, session.user, session.credit, session.loan, session.role, session.messages, session.unreadNotifications, expiresAt);
         const isStaff = session.role === "admin" || session.role === "manager" || session.role === "officer";
         onNavigate(isStaff ? "admin-dashboard" : "home");
       } else {
         if (pin !== "1234") throw new ApiError("Demo PIN is 1234", 401);
         const now = new Date().toISOString();
-        login("demo-token", { id: "demo-user", role: "user", initials: "AN", fullName: "Amara Nakato", phone: normalizePhone(phone), email: null, nationalId: "", dateOfBirth: "", district: "Kampala", occupation: "Trader", memberSince: now, verified: true, avatarUrl: null }, { score: 650, maxScore: 850, tier: "Fair", percentile: 50, improvementSinceStart: 0 }, { availableCredit: 200000, creditIncreaseFromLastMonth: 0, totalLoansCount: 0, activeLoan: null, nextPayment: null }, 0, "user", [], 0);
+        login("demo-token", { id: "demo-user", role: "user", initials: "AN", fullName: "Amara Nakato", phone: normalizePhone(phone), email: null, nationalId: "", dateOfBirth: "", district: "Kampala", occupation: "Trader", memberSince: now, verified: true, avatarUrl: null }, { score: 650, maxScore: 850, tier: "Fair", percentile: 50, improvementSinceStart: 0 }, { availableCredit: 200000, creditIncreaseFromLastMonth: 0, totalLoansCount: 0, activeLoan: null, nextPayment: null }, "user", [], 0);
         onNavigate("home");
       }
     } catch (err) { setError(err instanceof ApiError ? err.message : "Could not sign in. Try again."); }

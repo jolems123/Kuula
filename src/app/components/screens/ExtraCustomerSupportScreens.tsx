@@ -116,7 +116,7 @@ export function CustomerCreateTicketScreen({ onNavigate }: Props) {
           <div>
             <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Issue Category</label>
             <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-              {[{id:"loan",l:"Loan Issue"},{id:"payment",l:"Payment"},{id:"account",l:"Account"},{id:"savings",l:"Savings"},{id:"other",l:"Other"}].map(c=>(
+              {[{id:"loan",l:"Loan Issue"},{id:"payment",l:"Payment"},{id:"account",l:"Account"},{id:"other",l:"Other"}].map(c=>(
                 <button key={c.id} onClick={()=>setCategory(c.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:category===c.id?"#0B5E3A":"#F3F4F6",color:category===c.id?"white":"#6B7280" }}>{c.l}</button>
               ))}
             </div>
@@ -347,7 +347,6 @@ export function CustomerFAQScreen({ onNavigate }: Props) {
     { q:"How do I increase my credit limit?",category:"Credit" },
     { q:"What happens if I miss a payment?",category:"Payments" },
     { q:"How do I set up auto-payment?",category:"Payments" },
-    { q:"How does savings interest work?",category:"Savings" },
     { q:"How do I reset my PIN?",category:"Account" },
   ];
   return (
@@ -370,7 +369,7 @@ export function CustomerFAQScreen({ onNavigate }: Props) {
               {open===i && (
                 <div style={{ padding:"0 16px 14px" }}>
                   <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}>
-                    {["Tap 'Apply for Loan' on your Home screen. Select your amount, repayment term, and purpose, then review and submit.","We charge simple interest at an all-inclusive APR of up to 33.6% per year (Uganda's UMRA cap). No compounding, no hidden fees.","Most applications are approved within 2–5 minutes. Complex cases may take up to 2 hours.","Pay via MTN MoMo or Airtel Money through the 'Make Payment' button on your loan screen.","Yes! Kuula charges zero early repayment penalty. Paying early saves you on interest.","Apply through Settings → Credit Limit Increase. Eligibility is based on your repayment history.","A one-time late fee within UMRA limits may apply (never compounded), and your credit score may be affected. Please contact us immediately.","Go to Settings → Payment Methods → Enable Auto-Pay and select your preferred MoMo account.","We pay 5.2% annual interest, credited monthly to your savings account.","Go to Settings → Privacy & Security → Change PIN."][i]}
+                    {["Tap 'Apply for Loan' on your Home screen. Select your amount, repayment term, and purpose, then review and submit.","We charge simple interest at an all-inclusive APR of up to 33.6% per year (Uganda's UMRA cap). No compounding, no hidden fees.","Most applications are approved within 2–5 minutes. Complex cases may take up to 2 hours.","Pay via MTN MoMo or Airtel Money through the 'Make Payment' button on your loan screen.","Yes! Kuula charges zero early repayment penalty. Paying early saves you on interest.","Apply through Settings → Credit Limit Increase. Eligibility is based on your repayment history.","A one-time late fee within UMRA limits may apply (never compounded), and your credit score may be affected. Please contact us immediately.","Go to Settings → Payment Methods → Enable Auto-Pay and select your preferred MoMo account.","Go to Settings → Privacy & Security → Change PIN."][i]}
                   </p>
                   <button onClick={()=>onNavigate("customer-faq-detail")} style={{ marginTop:10,padding:"6px 14px",borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Read Full Answer</button>
                 </div>

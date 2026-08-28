@@ -1,4 +1,4 @@
-/** Kuula credit scoring engine. Savings is not a Kuula product or score input. */
+/** Kuula credit scoring engine based on verified credit and repayment evidence. */
 
 interface ScoreInput {
   momoMonths: number;

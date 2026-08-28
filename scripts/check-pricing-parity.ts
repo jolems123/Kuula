@@ -4,22 +4,14 @@ import { localQuote as serverQuote } from "../server/src/lib/pricing.ts";
 
 const amounts = [20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000];
 const terms = [0, 30, 90, 91, 120, 180, 365, 720];
-const savingsBalances = [0, 99_999, 100_000, 500_000];
-
 let comparisons = 0;
 
 for (const amount of amounts) {
   for (const term of terms) {
-    for (const savings of savingsBalances) {
-      const client = clientQuote(amount, term, savings);
-      const server = serverQuote(amount, term, savings);
-      assert.deepEqual(
-        server,
-        client,
-        `Pricing mismatch for amount=${amount}, term=${term}, savings=${savings}`
-      );
-      comparisons += 1;
-    }
+    const client = clientQuote(amount, term);
+    const server = serverQuote(amount, term);
+    assert.deepEqual(server, client, `Pricing mismatch for amount=${amount}, term=${term}`);
+    comparisons += 1;
   }
 }
 

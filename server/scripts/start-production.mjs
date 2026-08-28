@@ -15,8 +15,6 @@ try {
   if (process.env.NODE_ENV === "production") {
     console.log(JSON.stringify({ event: "production.startup", stage: "validate" }));
     await run(process.execPath, ["scripts/validate-production-env.mjs"]);
-    console.log(JSON.stringify({ event: "production.startup", stage: "migrate" }));
-    await run("npx", ["prisma", "migrate", "deploy"]);
   }
 
   console.log(JSON.stringify({ event: "production.startup", stage: "serve", nodeEnv: process.env.NODE_ENV || "development" }));

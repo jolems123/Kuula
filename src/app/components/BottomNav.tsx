@@ -1,7 +1,7 @@
 import { Home, ShieldCheck, Store, Menu, Sparkles } from "lucide-react";
 
 interface BottomNavProps {
-  active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet" | "goals";
+  active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet";
   onNavigate: (screen: string) => void;
 }
 
@@ -16,7 +16,7 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
 
   let normalizedActive: string = active;
   if (active === "loans") normalizedActive = "credit";
-  if (active === "goals" || active === "wallet") normalizedActive = "network";
+  if (active === "wallet") normalizedActive = "network";
   if (active === "more") normalizedActive = "settings";
 
   return (

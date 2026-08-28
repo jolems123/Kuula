@@ -66,7 +66,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
     try {
       const s = await api.verifyPhone(pendingPhone, otp.join(""));
       otpLimiter.reset();
-      login(s.token, s.user, s.credit, s.loan, s.savingsBalance, s.role, s.messages, s.unreadNotifications);
+      login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications);
       onNavigate("kyc");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Verification failed. Try again.");

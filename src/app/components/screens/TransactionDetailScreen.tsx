@@ -13,13 +13,11 @@ const TYPE_LABEL: Record<string, string> = {
   loan_disbursement: "Loan Disbursement",
   loan_disbursement_leg: "Loan Disbursement",
   loan_payment: "Loan Repayment",
-  savings_deposit: "Savings Deposit",
-  savings_withdrawal: "Savings Withdrawal",
   wallet_topup: "Wallet Top-up",
 };
 
 function isIncoming(type: string) {
-  return type === "loan_disbursement" || type === "loan_disbursement_leg" || type === "wallet_topup" || type === "savings_withdrawal";
+  return type === "loan_disbursement" || type === "loan_disbursement_leg" || type === "wallet_topup";
 }
 
 function mapRaw(r: Record<string, unknown>): SelectedTransaction {
