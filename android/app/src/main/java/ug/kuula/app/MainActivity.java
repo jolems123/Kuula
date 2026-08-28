@@ -1,4 +1,4 @@
-package ug.kuula.app;
+package com.kuula.app;
 
 import com.getcapacitor.BridgeActivity;
 

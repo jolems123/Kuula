@@ -157,8 +157,19 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/ready", async (_req, res) => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, database: "ready", timestamp: new Date().toISOString() });
+    const [schema] = await prisma.$queryRaw<Array<{ missing_tables: string[] }>>`
+      SELECT ARRAY_REMOVE(ARRAY[
+        CASE WHEN to_regclass('public.users') IS NULL THEN 'users' END,
+        CASE WHEN to_regclass('public.markets') IS NULL THEN 'markets' END,
+        CASE WHEN to_regclass('public.disbursement_batches') IS NULL THEN 'disbursement_batches' END,
+        CASE WHEN to_regclass('public.disbursement_legs') IS NULL THEN 'disbursement_legs' END,
+        CASE WHEN to_regclass('public.journals') IS NULL THEN 'journals' END
+      ], NULL) AS missing_tables
+    `;
+    if (schema.missing_tables.length) {
+      throw new Error(`Database schema is incomplete: ${schema.missing_tables.join(", ")}`);
+    }
+    res.json({ ok: true, database: "ready", schema: "ready", timestamp: new Date().toISOString() });
   } catch (error) {
     console.error(JSON.stringify({
       event: "readiness.failed",

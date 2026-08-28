@@ -55,6 +55,12 @@ async function seedCreditNetworkCatalog() {
 async function main() {
   console.log("Seeding database...");
 
+  await seedCreditNetworkCatalog();
+  if (process.argv.includes("--catalog-only")) {
+    console.log("Credit network catalog seed complete.");
+    return;
+  }
+
   const adminEmail = required("ADMIN_EMAIL").toLowerCase();
   const adminPassword = required("ADMIN_PASSWORD");
   const adminPhone = normalizeUgandaMobileMoneyPhone(process.env.ADMIN_PHONE?.trim() || "+256700000001");
@@ -65,8 +71,6 @@ async function main() {
   if (adminPassword.length < 12 || /Admin@123456/i.test(adminPassword)) throw new Error("ADMIN_PASSWORD must be a unique password of at least 12 characters");
   if (demoPassword.length < 8) throw new Error("DEMO_PASSWORD must contain at least 8 characters");
   if (isProduction) throw new Error("The development/CI seed must not be run in production. Provision staff and customers through controlled production onboarding.");
-
-  await seedCreditNetworkCatalog();
 
   let admin = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (!admin) {
