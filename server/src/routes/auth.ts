@@ -206,6 +206,7 @@ async function buildSession(user: any) {
       dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : "",
       district: user.district ?? "",
       occupation: user.occupation ?? "",
+      physicalAddress: user.physicalAddress ?? "",
       memberSince: user.createdAt,
       verified: user.verified,
       avatarUrl: null,
@@ -431,6 +432,51 @@ router.get("/me", authenticateToken, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
   res.json({ token: req.headers.authorization?.slice(7) || "", refreshToken: "", accessExpiresInSeconds: 15 * 60, ...await buildSession(user) });
+});
+
+router.patch("/me", authenticateToken, async (req: Request, res: Response) => {
+  const current = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+  if (!current || current.deletedAt) throw new AppError("User not found", 404);
+
+  const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : current.fullName;
+  if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter your full name", 400);
+  if (current.kycVerified && fullName !== current.fullName) {
+    throw new AppError("A verified legal name can only be changed through identity re-verification", 409);
+  }
+
+  const email = normalizedEmail(req.body.email);
+  if (email) {
+    const owner = await prisma.user.findFirst({ where: { email, id: { not: current.id }, deletedAt: null } });
+    if (owner) throw new AppError("That email address is already registered", 409);
+  }
+
+  let dateOfBirth: Date | null = current.dateOfBirth;
+  if (req.body.dateOfBirth === "" || req.body.dateOfBirth === null) dateOfBirth = null;
+  else if (typeof req.body.dateOfBirth === "string") {
+    dateOfBirth = new Date(`${req.body.dateOfBirth}T00:00:00.000Z`);
+    if (Number.isNaN(dateOfBirth.getTime()) || dateOfBirth > new Date()) throw new AppError("Enter a valid date of birth", 400);
+  }
+
+  const text = (value: unknown, fallback: string | null, max: number) => {
+    if (typeof value !== "string") return fallback;
+    const result = value.trim();
+    if (result.length > max) throw new AppError(`Profile field must be ${max} characters or fewer`, 400);
+    return result;
+  };
+
+  const user = await prisma.user.update({
+    where: { id: current.id },
+    data: {
+      fullName,
+      email,
+      dateOfBirth,
+      district: text(req.body.district, current.district, 100),
+      occupation: text(req.body.occupation, current.occupation, 120),
+      physicalAddress: text(req.body.physicalAddress, current.physicalAddress, 250),
+    },
+  });
+  await writeAuditEvent({ actorId: current.id, subjectUserId: current.id, action: "profile.updated", resourceType: "user", resourceId: current.id });
+  res.json({ user: (await buildSession(user)).user });
 });
 
 router.post("/signout", authenticateToken, async (req: Request, res: Response) => {

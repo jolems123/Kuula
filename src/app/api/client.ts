@@ -1,6 +1,6 @@
 /** Kuula Node/Express API client. PostgreSQL is the only production datastore. */
 import { env } from "../config/env";
-import type { Message } from "../context/AppContext";
+import type { Message, UserProfile } from "../context/AppContext";
 import {
   ApiError,
   type SessionPayload,
@@ -88,6 +88,7 @@ const nodeApi = {
   verifyPhone: (phone: string, code: string) => request<SessionPayload>("/api/auth/verify-phone", { method: "POST", body: JSON.stringify({ phone, code }) }),
   resendOtp: (phone: string) => request<{ ok: boolean }>("/api/auth/resend-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   me: (token: string) => request<SessionPayload>("/api/auth/me", { headers: auth(token) }),
+  updateProfile: (token: string, input: { fullName: string; email: string; dateOfBirth: string; district: string; occupation: string; physicalAddress: string }) => request<{ user: UserProfile }>("/api/auth/me", { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   markets: () => request<{ markets: KuulaMarket[] }>("/api/network/markets"),
   networkOverview: (token: string, market = "UG") => request<NetworkOverview>(`/api/network/overview${query({ market })}`, { headers: auth(token) }),
   growthLine: (token: string, market = "UG") => request<{ growthLine: GrowthLine }>(`/api/network/growth-line${query({ market })}`, { headers: auth(token) }),

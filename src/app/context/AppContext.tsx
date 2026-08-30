@@ -26,6 +26,7 @@ export interface UserProfile {
   dateOfBirth: string;
   district: string;
   occupation: string;
+  physicalAddress?: string;
   memberSince: string;
   verified: boolean;
   avatarUrl: string | null;

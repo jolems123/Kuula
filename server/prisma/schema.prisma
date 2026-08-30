@@ -17,6 +17,7 @@ model User {
   dateOfBirth    DateTime? @map("date_of_birth")
   district       String?   @default("")
   occupation     String?   @default("")
+  physicalAddress String?  @default("") @map("physical_address")
   verified       Boolean   @default(false)
   momoMonths     Int       @default(0) @map("momo_months")
   momoTxnCount   Int       @default(0) @map("momo_txn_count")
