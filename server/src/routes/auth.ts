@@ -109,7 +109,9 @@ async function issueOtp(user: User, purpose: OtpPurpose): Promise<void> {
   } catch (error) {
     await prisma.user.updateMany({
       where: { id: user.id, otpHash },
-      data: { otpHash: null, otpPurpose: null, otpExpiresAt: null },
+      // A provider failure must not start the resend cooldown. The customer
+      // should be able to retry as soon as delivery is available again.
+      data: { otpHash: null, otpPurpose: null, otpExpiresAt: null, otpLastSentAt: null },
     });
     console.error(JSON.stringify({
       event: "otp.delivery_failed",
@@ -259,12 +261,22 @@ router.post("/signup", async (req: Request, res: Response) => {
   if (fullName.length > 120) throw new AppError("Name must be 120 characters or fewer", 400);
   if (!acceptedTerms) throw new AppError("You must accept the Terms of Service and Privacy Policy", 400);
   const normalizedNin = nationalId ? normalizeNin(String(nationalId)) : "";
-  if (normalizedNin && !isValidUgandaNin(normalizedNin)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
+  if (!isValidUgandaNin(normalizedNin)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
 
   const existing = await prisma.user.findFirst({
-    where: { OR: [{ phone }, ...(email ? [{ email }] : []), ...(normalizedNin ? [{ nationalId: normalizedNin }] : [])] },
+    where: { OR: [{ phone }, ...(email ? [{ email }] : []), { nationalId: normalizedNin }] },
   });
-  if (existing) throw new AppError("Phone, email, or NIN already registered", 409);
+  if (existing) {
+    // A failed first delivery leaves a deliberately unverified account behind.
+    // Let the owner retry signup with the same phone; never replace credentials
+    // or identity data from this unauthenticated request.
+    if (existing.phone === phone && !existing.phoneVerified && !existing.deletedAt) {
+      await issueOtp(existing, "phone_verify");
+      res.status(201).json({ ok: true, needsConfirmation: true });
+      return;
+    }
+    throw new AppError("Phone, email, or NIN already registered", 409);
+  }
 
   const user = await prisma.user.create({
     data: {

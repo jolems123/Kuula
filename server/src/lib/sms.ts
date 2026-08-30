@@ -92,7 +92,9 @@ export async function sendOtpSms(
   };
   const recipient = response.SMSMessageData?.Recipients?.[0];
   const status = recipient?.status?.toLowerCase() || "";
-  const accepted = Boolean(recipient) && !/rejected|failed|invalid/.test(status);
+  // Africa's Talking uses status code 101 / "Success" for an accepted SMS.
+  // Do not interpret an unknown or empty provider status as successful.
+  const accepted = Boolean(recipient) && (recipient?.statusCode === 101 || status === "success");
 
   return {
     accepted,
