@@ -12,7 +12,23 @@ const JWT_SECRET: string = jwtSecret;
 
 // `user` is retained only as a legacy persisted/token value. All runtime
 // authentication normalizes it to the canonical borrower role `customer`.
-export type UserRole = "admin" | "manager" | "officer" | "customer" | "user";
+// `admin`/`manager`/`officer` are legacy staff roles kept for existing
+// accounts; new staff are invited with one of the dedicated roles below.
+export type UserRole =
+  | "super_admin"
+  | "administrator"
+  | "credit_manager"
+  | "final_approver"
+  | "loan_officer"
+  | "kyc_officer"
+  | "finance"
+  | "collections"
+  | "support"
+  | "admin"
+  | "manager"
+  | "officer"
+  | "customer"
+  | "user";
 export type Permission =
   | "loan.review"
   | "loan.approve"
@@ -23,18 +39,48 @@ export type Permission =
   | "support.manage"
   | "credit_evidence.manage"
   | "reconciliation.manage"
-  | "admin.manage";
+  | "admin.manage"
+  | "staff.manage";
+
+/** Roles that may be assigned through the staff invitation flow. */
+export const INVITABLE_STAFF_ROLES = [
+  "administrator",
+  "credit_manager",
+  "final_approver",
+  "loan_officer",
+  "kyc_officer",
+  "finance",
+  "collections",
+  "support",
+] as const;
+
+const ADMINISTRATOR_PERMISSIONS: readonly Permission[] = [
+  "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
+  "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage", "admin.manage",
+];
 
 // Least privilege is deliberate here:
-// - field officers never receive global KYC-review/document permissions;
-// - managers may review credit/KYC and approve loans, but cannot manufacture
-//   verified credit evidence or configure/reconcile payment destinations;
-// - treasury/evidence administration remains an admin-only control plane.
+// - field/loan officers never receive global KYC-review/document permissions;
+// - credit managers may review credit/KYC and approve loans, but cannot
+//   manufacture verified credit evidence or reconcile payment destinations;
+// - final approvers only release loans already reviewed upstream;
+// - finance handles reconciliation, never loan decisions;
+// - treasury/evidence administration remains an administrator control plane;
+// - only the super admin may invite or deactivate staff.
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  admin: [
+  super_admin: [...ADMINISTRATOR_PERMISSIONS, "staff.manage"],
+  administrator: ADMINISTRATOR_PERMISSIONS,
+  credit_manager: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
-    "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage", "admin.manage",
+    "customer.view", "support.manage",
   ],
+  final_approver: ["loan.review", "loan.approve", "report.view", "customer.view"],
+  loan_officer: ["loan.review", "customer.view", "support.manage"],
+  kyc_officer: ["kyc.review", "kyc.document.view", "customer.view"],
+  finance: ["reconciliation.manage", "report.view", "customer.view"],
+  collections: ["loan.review", "customer.view", "support.manage"],
+  support: ["customer.view", "support.manage"],
+  admin: ADMINISTRATOR_PERMISSIONS,
   manager: [
     "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
     "customer.view", "support.manage",
@@ -43,6 +89,26 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   customer: [],
   user: [],
 };
+
+/** Every role whose accounts sign in through the staff portal with MFA. */
+export const STAFF_ROLES: ReadonlySet<string> = new Set([
+  "super_admin",
+  "administrator",
+  "credit_manager",
+  "final_approver",
+  "loan_officer",
+  "kyc_officer",
+  "finance",
+  "collections",
+  "support",
+  "admin",
+  "manager",
+  "officer",
+] satisfies UserRole[]);
+
+export function isStaffRole(role: string | null | undefined): boolean {
+  return STAFF_ROLES.has((role || "").toLowerCase().trim());
+}
 
 export interface JwtPayload {
   userId: string;
@@ -199,13 +265,13 @@ export function requirePermissions(...permissions: Permission[]) {
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  return requireRoles("admin")(req, res, next);
+  return requireRoles("admin", "super_admin", "administrator")(req, res, next);
 }
 
 export function normalizeRole(role: string | null | undefined): UserRole {
   const value = (role || "").toLowerCase().trim();
   if (value === "user") return "customer";
-  if (["admin", "manager", "officer", "customer"].includes(value)) {
+  if (STAFF_ROLES.has(value) || value === "customer") {
     return value as UserRole;
   }
   throw new AppError("Invalid user role", 403);

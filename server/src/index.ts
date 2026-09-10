@@ -24,6 +24,7 @@ import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
 import ussdRoutes from "./routes/ussd.js";
 import adminRoutes from "./routes/admin.js";
+import staffRoutes from "./routes/staff.js";
 import adminKycRoutes from "./routes/admin-kyc.js";
 import adminCreditDataRoutes from "./routes/admin-credit-data.js";
 import adminReconciliationRoutes from "./routes/admin-reconciliation.js";
@@ -51,8 +52,8 @@ if (isProduction) {
   requiredEnvVars.push(
     "OTP_PEPPER",
     "SMS_PROVIDER",
-    "AFRICASTALKING_USERNAME",
-    "AFRICASTALKING_API_KEY",
+    "EGOSMS_USERNAME",
+    "EGOSMS_PASSWORD",
     "CORS_ORIGINS",
     "KYC_STORAGE_PROVIDER",
     "KYC_S3_BUCKET",
@@ -74,8 +75,8 @@ if (missing.length > 0) {
   console.error(`Missing required environment variables: ${missing.join(", ")}`);
   process.exit(1);
 }
-if (isProduction && process.env.SMS_PROVIDER?.trim().toLowerCase() !== "africastalking") {
-  console.error("SMS_PROVIDER must be africastalking in production");
+if (isProduction && process.env.SMS_PROVIDER?.trim().toLowerCase() !== "egosms") {
+  console.error("SMS_PROVIDER must be egosms in production");
   process.exit(1);
 }
 if (isProduction && (process.env.TEST_OTP_CODE || process.env.ALLOW_LOCAL_DEV_OTP === "true")) {
@@ -209,6 +210,7 @@ app.use("/api/admin/partner-financing", adminPartnerFinancingRoutes);
 app.use("/api/admin/kyc", adminKycRoutes);
 app.use("/api/admin/credit-data", adminCreditDataRoutes);
 app.use("/api/admin/reconciliation", adminReconciliationRoutes);
+app.use("/api/staff", staffRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/kyc", kycRoutes);
 

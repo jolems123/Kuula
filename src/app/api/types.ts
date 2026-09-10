@@ -19,6 +19,42 @@ export interface AdminMfaPayload {
   destination: string;
 }
 
+export type StaffRole =
+  | "administrator"
+  | "credit_manager"
+  | "final_approver"
+  | "loan_officer"
+  | "kyc_officer"
+  | "finance"
+  | "collections"
+  | "support"
+  | "super_admin"
+  | "admin"
+  | "manager"
+  | "officer";
+
+export interface StaffMember {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  role: StaffRole;
+  phoneVerified: boolean;
+  createdAt: string;
+  deletedAt: string | null;
+  status: "active" | "invited" | "deactivated";
+}
+
+export interface DocumentVerificationSession {
+  submissionId: string;
+  jobId: string;
+  token: string;
+  environment: "sandbox" | "production";
+  callbackUrl: string;
+  partnerId: string;
+  privacyPolicyUrl: string;
+}
+
 export interface LoanApplication {
   id: string;
   applicantId: string;

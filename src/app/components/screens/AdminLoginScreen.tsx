@@ -15,7 +15,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const { login } = useAppContext();
   useTranslation();
   const [show, setShow] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [pw, setPw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,8 +35,8 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
   const resetPw = async () => {
     setError(""); setNotice("");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Enter your email above, then tap Forgot Password."); return; }
-    try { await api.resetPassword(email); setNotice("If that account is eligible, a reset code will be sent to its verified phone."); }
+    if (!identifier.trim()) { setError("Enter your staff phone number above, then tap Forgot Password."); return; }
+    try { await api.resetPassword(identifier.trim()); setNotice("If that account is eligible, a reset code will be sent to its verified phone."); }
     catch (e) { setError(e instanceof ApiError ? e.message : "Could not request a reset."); }
   };
 
@@ -53,7 +53,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     if (env.USE_API) {
       setLoading(true);
       try {
-        const result = await api.adminLogin(email, pw);
+        const result = await api.adminLogin(identifier.trim(), pw);
         adminLoginLimiter.reset();
         if ("requiresMfa" in result && result.requiresMfa) {
           setAdminMfaChallenge({ challengeToken: result.challengeToken, destination: result.destination });
@@ -69,7 +69,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     }
 
     // Screen-review/demo mode is explicitly non-production and never persists tokens.
-    const adminUser = mockData.testUsers.find((u) => u.role === "admin" && u.email === email.trim().toLowerCase());
+    const adminUser = mockData.testUsers.find((u) => u.role === "admin" && u.email === identifier.trim().toLowerCase());
     if (!adminUser || pw.length < 4) { setError("Invalid demo credentials."); return; }
     const userProfile: UserProfile = { id: adminUser.id, role: "admin", initials: adminUser.initials, fullName: adminUser.fullName, phone: adminUser.phone, email: adminUser.email, nationalId: adminUser.nationalId, dateOfBirth: adminUser.dateOfBirth, district: adminUser.district, occupation: adminUser.occupation, memberSince: adminUser.memberSince, verified: adminUser.verified, avatarUrl: adminUser.avatarUrl };
     login("demo-token", userProfile, null, null, "admin");
@@ -89,14 +89,17 @@ export function AdminLoginScreen({ onNavigate }: Props) {
         <div style={{ marginTop: 26, background: "white", borderRadius: 24, padding: 26, boxShadow: "0 24px 70px rgba(0,0,0,.28)" }}>
           <h2 style={{ margin: 0, fontSize: 22, color: "#13251C" }}>Welcome back</h2>
           <p style={{ margin: "5px 0 22px", color: "#68766F", fontSize: 13 }}>Enter your staff credentials to continue</p>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 7 }}>Email address</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="username" placeholder="you@kuula.ug" style={{ width: "100%", height: 50, padding: "0 14px" }} />
+          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 7 }}>Staff phone number</label>
+          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="tel" autoComplete="username" placeholder="+256 7XX XXX XXX" style={{ width: "100%", height: 50, padding: "0 14px" }} />
           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", margin: "16px 0 7px" }}>Password</label>
           <div style={{ position: "relative" }}>
             <input value={pw} onChange={(e) => setPw(e.target.value)} type={show ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" style={{ width: "100%", height: 50, padding: "0 46px 0 14px" }} />
             <button onClick={() => setShow(!show)} aria-label="Show password" style={{ position: "absolute", right: 10, top: 9, width: 32, height: 32, border: 0, background: "transparent" }}>{show ? <EyeOff size={17} color="#68766F" /> : <Eye size={17} color="#68766F" />}</button>
           </div>
-          <button onClick={resetPw} style={{ display: "block", margin: "11px 0 0 auto", border: 0, background: "transparent", color: "#0B5E3A", fontWeight: 700, fontSize: 12 }}>Forgot Password?</button>
+          <div style={{ display: "flex", justifyContent: "space-between", margin: "11px 0 0" }}>
+            <button onClick={() => onNavigate("admin-activate")} style={{ border: 0, background: "transparent", color: "#0B5E3A", fontWeight: 700, fontSize: 12, padding: 0 }}>First time? Activate account</button>
+            <button onClick={resetPw} style={{ border: 0, background: "transparent", color: "#0B5E3A", fontWeight: 700, fontSize: 12, padding: 0 }}>Forgot Password?</button>
+          </div>
           {notice && <p style={{ fontSize: 12, color: "#15864E", textAlign: "center" }}>{notice}</p>}
           {error && <p style={{ fontSize: 12, color: "#DC4C4C", textAlign: "center" }}>{error}</p>}
           <button onClick={submit} disabled={loading || lockoutRemaining > 0} className="kuula-primary" style={{ width: "100%", height: 52, marginTop: 18 }}>

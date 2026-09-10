@@ -16,6 +16,8 @@ import {
   type GrowthLine,
   type KuulaMarket,
   type PartnerFinancingRequestInput,
+  type StaffMember,
+  type DocumentVerificationSession,
 } from "./types";
 import type { AdminStats, InvestorReport, CustomerRow, AppNotification } from "./types-compat";
 
@@ -76,9 +78,15 @@ const query = (values: Record<string, string | undefined>) => {
 const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
-  adminLogin: (email: string, password: string) => request<SessionPayload | AdminMfaPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
+  adminLogin: (identifier: string, password: string) => request<SessionPayload | AdminMfaPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
   verifyAdminMfa: (challengeToken: string, code: string) => request<SessionPayload>("/api/auth/admin-login/verify", { method: "POST", body: JSON.stringify({ challengeToken, code }) }),
   resendAdminMfa: (challengeToken: string) => request<{ ok: boolean }>("/api/auth/admin-login/resend", { method: "POST", body: JSON.stringify({ challengeToken }) }),
+  activateStaffInvite: (phone: string, code: string, password: string) => request<SessionPayload>("/api/auth/staff-invite/activate", { method: "POST", body: JSON.stringify({ phone, code, password }) }),
+  resendStaffInvite: (phone: string) => request<{ ok: boolean; message?: string }>("/api/auth/staff-invite/resend", { method: "POST", body: JSON.stringify({ phone }) }),
+  listStaff: (token: string) => request<{ staff: StaffMember[] }>("/api/staff", { headers: auth(token) }),
+  inviteStaff: (token: string, input: { fullName: string; phone: string; role: string }) => request<{ ok: boolean; staff: StaffMember }>("/api/staff/invite", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
+  deactivateStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/deactivate`, { method: "POST", headers: auth(token) }),
   refresh: (refreshToken: string) => request<{ token: string; refreshToken: string; accessExpiresInSeconds: number }>("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) }),
   signUp: (input: { name: string; phone: string; email?: string; password: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) => request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", { method: "POST", body: JSON.stringify(input) }),
   signOut: (token: string) => request<{ ok: boolean }>("/api/auth/signout", { method: "POST", headers: auth(token) }),
@@ -97,7 +105,7 @@ const nodeApi = {
   partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
   partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
   submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
-  submitKyc: (token: string, body: { nationalId: string; secondaryIdNumber: string; fullName: string; dob: string; documentType?: string; documentFront: string; documentBack: string }) => request<{ ok: boolean; kyc: Record<string, unknown> }>("/api/kyc/submit", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  startDocumentVerification: (token: string, body: { nationalId: string; fullName: string; dob: string }) => request<{ ok: boolean; verification: DocumentVerificationSession }>("/api/kyc/document-verification/start", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),
   getMessages: (token: string) => request<{ messages: Message[] }>("/api/messages", { headers: auth(token) }),
   postMessage: (token: string, content: string, receiverId?: string) => request<{ message: Message }>("/api/messages", { method: "POST", headers: auth(token), body: JSON.stringify({ content, receiverId }) }),

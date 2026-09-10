@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
+import type { StaffMember } from "../../api/types";
 import type { InvestorReport } from "../../api/types-compat";
 import { formatUGX, downloadPdf } from "../../lib/export";
 import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportCsv } from "../../lib/investorReport";
@@ -492,39 +493,148 @@ export function AdminNotifTemplatesScreen({ onNavigate }: Props) {
 }
 
 // A9.8
+const INVITABLE_ROLES: Array<{ value: string; label: string }> = [
+  { value: "administrator", label: "Administrator" },
+  { value: "loan_officer", label: "Loan Officer" },
+  { value: "credit_manager", label: "Credit Manager" },
+  { value: "final_approver", label: "Final Approver" },
+  { value: "kyc_officer", label: "KYC / Compliance Officer" },
+  { value: "finance", label: "Finance / Reconciliation" },
+  { value: "collections", label: "Collections Officer" },
+  { value: "support", label: "Customer Support" },
+];
+
+const STAFF_ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  ...Object.fromEntries(INVITABLE_ROLES.map((r) => [r.value, r.label])),
+  admin: "Administrator",
+  manager: "Manager",
+  officer: "Officer",
+};
+
 export function AdminStaffManagementScreen({ onNavigate }: Props) {
-  const STAFF = [
-    { name:"Alice Kabanda",role:"Senior Loan Officer",email:"alice@kuula.ug",status:"Active",lastLogin:"2 hours ago" },
-    { name:"Brian Ssali",role:"Credit Analyst",email:"brian@kuula.ug",status:"Active",lastLogin:"1 day ago" },
-    { name:"Christine Ajok",role:"Admin Manager",email:"christine@kuula.ug",status:"Active",lastLogin:"Just now" },
-    { name:"Daniel Muwonge",role:"Support Agent",email:"daniel@kuula.ug",status:"Inactive",lastLogin:"5 days ago" },
-  ];
+  const { state } = useAppContext();
+  const token = state.session.token;
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
+  const [inviteRole, setInviteRole] = useState("loan_officer");
+  const [inviting, setInviting] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    if (!token) return;
+    setLoading(true); setError("");
+    try {
+      const r = await api.listStaff(token);
+      setStaff(r.staff);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load staff accounts.");
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, [token]);
+
+  const invite = async () => {
+    if (!token) return;
+    setError(""); setNotice("");
+    if (inviteName.trim().length < 2) { setError("Enter the staff member's full name."); return; }
+    if (!invitePhone.trim()) { setError("Enter the staff member's phone number."); return; }
+    setInviting(true);
+    try {
+      await api.inviteStaff(token, { fullName: inviteName.trim(), phone: invitePhone.trim(), role: inviteRole });
+      setNotice(`Invitation sent to ${invitePhone.trim()}. They activate it from the staff sign-in screen.`);
+      setInviteName(""); setInvitePhone(""); setInviteRole("loan_officer"); setShowInvite(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send the invitation.");
+    } finally { setInviting(false); }
+  };
+
+  const deactivate = async (member: StaffMember) => {
+    if (!token) return;
+    if (!window.confirm(`Deactivate ${member.fullName}? Their sessions end immediately.`)) return;
+    setBusyId(member.id); setError(""); setNotice("");
+    try {
+      await api.deactivateStaff(token, member.id);
+      setNotice(`${member.fullName} has been deactivated.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not deactivate this account.");
+    } finally { setBusyId(null); }
+  };
+
+  const statusStyle = (status: StaffMember["status"]) => status === "active"
+    ? { color: "#178654", background: "#F0FDF4" }
+    : status === "invited"
+      ? { color: "#9B7410", background: "#FFF7D8" }
+      : { color: "#9CA3AF", background: "#F3F4F6" };
+
   return (
     <AdminLayout activeScreen="admin-staff" onNavigate={onNavigate} title="Staff Management">
-      <AdminPageHeader title="Staff Management" subtitle="4 staff members"
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add Staff</button>}
+      <AdminPageHeader title="Staff Management" subtitle={`${staff.length} staff account${staff.length === 1 ? "" : "s"}`}
+        action={<button onClick={() => setShowInvite((v) => !v)} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Invite Staff</button>}
       />
-      <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-        {STAFF.map((s)=>(
-          <AdminCard key={s.name}>
-            <div style={{ display:"flex",alignItems:"center",gap:14 }}>
-              <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                <span style={{ fontSize:16,fontWeight:700,color:"white" }}>{s.name.split(" ").map(n=>n[0]).join("")}</span>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14,fontWeight:700,color:"#0F172A",margin:0 }}>{s.name}</p>
-                <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>{s.role} · {s.email}</p>
-                <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>Last login: {s.lastLogin}</p>
-              </div>
-              <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                <span style={{ fontSize:11,fontWeight:700,color:s.status==="Active"?"#178654":"#9CA3AF",background:s.status==="Active"?"#F0FDF4":"#F3F4F6",padding:"3px 10px",borderRadius:20 }}>{s.status}</span>
-                <button style={{ padding:"6px 12px",borderRadius:8,background:"#F3FAF7",color:"#0B5E3A",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
-                <button style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Remove</button>
-              </div>
+      {showInvite && (
+        <AdminCard style={{ marginBottom: 14 }}>
+          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 6px" }}>Invite a staff member</h3>
+          <p style={{ fontSize:12,color:"#64748B",margin:"0 0 14px" }}>They receive an SMS activation code on this phone number and choose their own password. The phone number becomes their sign-in.</p>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12 }}>
+            <div>
+              <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Full name</label>
+              <input value={inviteName} onChange={(e)=>setInviteName(e.target.value)} placeholder="e.g. Alice Kabanda" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
             </div>
-          </AdminCard>
-        ))}
-      </div>
+            <div>
+              <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Phone number</label>
+              <input value={invitePhone} onChange={(e)=>setInvitePhone(e.target.value)} type="tel" placeholder="+256 7XX XXX XXX" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
+            </div>
+            <div>
+              <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Role</label>
+              <select value={inviteRole} onChange={(e)=>setInviteRole(e.target.value)} style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8",background:"white" }}>
+                {INVITABLE_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <button onClick={invite} disabled={inviting} style={{ marginTop:14,padding:"10px 18px",borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+            {inviting ? "Sending invitation…" : "Send SMS Invitation"}
+          </button>
+        </AdminCard>
+      )}
+      {notice && <p style={{ fontSize:12,color:"#15864E",margin:"0 0 12px" }}>{notice}</p>}
+      {error && <p style={{ fontSize:12,color:"#DC4C4C",margin:"0 0 12px" }}>{error}</p>}
+      {loading ? (
+        <AdminCard><p style={{ fontSize:13,color:"#64748B",margin:0 }}>Loading staff accounts…</p></AdminCard>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          {staff.map((s)=>(
+            <AdminCard key={s.id}>
+              <div style={{ display:"flex",alignItems:"center",gap:14 }}>
+                <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <span style={{ fontSize:16,fontWeight:700,color:"white" }}>{(s.fullName || "KU").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14,fontWeight:700,color:"#0F172A",margin:0 }}>{s.fullName}</p>
+                  <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>{STAFF_ROLE_LABELS[s.role] ?? s.role} · {s.phone || s.email || "—"}</p>
+                  <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>Added {new Date(s.createdAt).toLocaleDateString("en-UG", { month:"short", day:"numeric", year:"numeric" })}</p>
+                </div>
+                <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                  <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status}</span>
+                  {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
+                    <button onClick={() => void deactivate(s)} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
+                      <Trash2 size={12}/>{busyId === s.id ? "Working…" : "Deactivate"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </AdminCard>
+          ))}
+          {staff.length === 0 && <AdminCard><p style={{ fontSize:13,color:"#64748B",margin:0 }}>No staff accounts yet. Invite your team by phone number.</p></AdminCard>}
+        </div>
+      )}
     </AdminLayout>
   );
 }

@@ -7,7 +7,7 @@ import {
   useNavigate,
   useLocation,
 } from "react-router";
-import { useAppContext } from "./context/AppContext";
+import { isStaffRole, staffUiTier, useAppContext, type Role } from "./context/AppContext";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
 import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
@@ -78,14 +78,15 @@ const ADMIN_ONLY_SCREENS = new Set([
   "admin-auto-approve-settings",
 ]);
 
-function staffHome(role: string | null): string {
-  return role === "officer" ? "/admin-officer-dashboard" : "/admin-dashboard";
+function staffHome(role: Role | null): string {
+  return staffUiTier(role) === "officer" ? "/admin-officer-dashboard" : "/admin-dashboard";
 }
 
-function staffCanOpenScreen(screenId: string, role: string | null): boolean {
-  if (role === "admin") return true;
-  if (role === "officer") return OFFICER_SCREEN_ALLOWLIST.has(screenId);
-  if (role === "manager") return !ADMIN_ONLY_SCREENS.has(screenId);
+function staffCanOpenScreen(screenId: string, role: Role | null): boolean {
+  const tier = staffUiTier(role);
+  if (tier === "admin") return true;
+  if (tier === "officer") return OFFICER_SCREEN_ALLOWLIST.has(screenId);
+  if (tier === "manager") return !ADMIN_ONLY_SCREENS.has(screenId);
   return false;
 }
 
@@ -152,7 +153,7 @@ function ScreenLoader() {
 function Guard({ access, screenId, children }: { access: ScreenAccess; screenId: string; children: React.ReactNode }) {
   const { state } = useAppContext();
   const location = useLocation();
-  const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
+  const isStaff = isStaffRole(state.role);
 
   if (access === "public") return <>{children}</>;
   if (!state.session.isAuthenticated) return <Navigate to="/welcome" replace state={{ from: location }} />;
@@ -177,7 +178,7 @@ function RootRedirect() {
     if (!env.REVIEWER_MODE) return <Navigate to="/onboarding" replace />;
     return <Navigate to="/welcome" replace />;
   }
-  const isStaff = state.role === "admin" || state.role === "manager" || state.role === "officer";
+  const isStaff = isStaffRole(state.role);
   return <Navigate to={isStaff ? staffHome(state.role) : "/home"} replace />;
 }
 

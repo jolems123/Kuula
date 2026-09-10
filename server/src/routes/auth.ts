@@ -6,6 +6,7 @@ import {
   authenticateToken,
   generateAdminChallenge,
   generateToken,
+  isStaffRole,
   normalizeRole,
   verifyAdminChallenge,
 } from "../middleware/auth.js";
@@ -21,20 +22,17 @@ import {
   rotateRefreshSession,
 } from "../lib/sessions.js";
 import {
-  generateOtpCode,
-  hashOtp,
-  otpExpiry,
   otpLockExpiry,
   OTP_POLICY,
   validateNewPassword,
   verifyOtpHash,
   type OtpPurpose,
 } from "../lib/otp.js";
-import { sendOtpSms, smsConfigured } from "../lib/sms.js";
+import { issueOtpForUser } from "../lib/otp-service.js";
+import { smsConfigured } from "../lib/sms.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
-const STAFF_ROLES = new Set(["admin", "manager", "officer"]);
 
 function normalizedPhone(value: unknown): string {
   try {
@@ -70,58 +68,9 @@ function tokenFor(user: Pick<User, "id" | "role" | "authVersion">, sessionId: st
   });
 }
 
-function cooldownSeconds(lastSentAt: Date | null, now = new Date()): number {
-  if (!lastSentAt) return 0;
-  const elapsed = now.getTime() - lastSentAt.getTime();
-  return Math.max(0, Math.ceil((OTP_POLICY.resendCooldownSeconds * 1000 - elapsed) / 1000));
-}
-
-async function issueOtp(user: User, purpose: OtpPurpose): Promise<void> {
-  if (!smsConfigured()) throw new AppError("SMS verification is temporarily unavailable", 503);
-
-  const now = new Date();
-  if (user.otpLockedUntil && user.otpLockedUntil > now) {
-    const seconds = Math.ceil((user.otpLockedUntil.getTime() - now.getTime()) / 1000);
-    throw new AppError(`Verification is locked. Try again in ${seconds} seconds.`, 429);
-  }
-
-  const retryAfter = cooldownSeconds(user.otpLastSentAt, now);
-  if (retryAfter > 0) throw new AppError(`Wait ${retryAfter} seconds before requesting another code.`, 429);
-  if (!user.phone) throw new AppError("A verified staff phone number is required for verification", 422);
-
-  const code = generateOtpCode();
-  const otpHash = hashOtp(user.id, purpose, code);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpHash,
-      otpPurpose: purpose,
-      otpExpiresAt: otpExpiry(now),
-      otpAttempts: 0,
-      otpLastSentAt: now,
-      otpLockedUntil: null,
-    },
-  });
-
-  try {
-    const result = await sendOtpSms(user.phone, code, purpose);
-    if (!result.accepted) throw new Error(result.detail || "SMS provider rejected the message");
-  } catch (error) {
-    await prisma.user.updateMany({
-      where: { id: user.id, otpHash },
-      // A provider failure must not start the resend cooldown. The customer
-      // should be able to retry as soon as delivery is available again.
-      data: { otpHash: null, otpPurpose: null, otpExpiresAt: null, otpLastSentAt: null },
-    });
-    console.error(JSON.stringify({
-      event: "otp.delivery_failed",
-      userId: user.id,
-      purpose,
-      error: error instanceof Error ? error.message : "Unknown SMS provider error",
-    }));
-    throw new AppError("Could not send the verification message. Try again later.", 503);
-  }
-}
+// OTP issuance lives in lib/otp-service so the staff invitation router shares
+// the exact same delivery, cooldown, and failure-rollback behaviour.
+const issueOtp = issueOtpForUser;
 
 async function assertOtp(user: User, purpose: OtpPurpose, code: unknown): Promise<void> {
   const supplied = typeof code === "string" ? code.trim() : "";
@@ -163,7 +112,7 @@ const clearOtp = {
 
 async function buildSession(user: any) {
   const role = normalizeRole(user.role);
-  const isStaff = STAFF_ROLES.has(role);
+  const isStaff = isStaffRole(role);
   const evidence = isStaff ? null : await effectiveCreditEvidence(user.id);
   const credit = isStaff ? null : computeCreditScore({
     momoMonths: evidence?.momoMonths ?? 0,
@@ -310,20 +259,42 @@ router.post("/login", async (req: Request, res: Response) => {
   res.json(await sessionResponse(user, req));
 });
 
-router.post("/admin-login", async (req: Request, res: Response) => {
-  const email = normalizedEmail(req.body.email);
-  const supplied = typeof req.body.password === "string" ? req.body.password : "";
-  if (!email || !supplied) throw new AppError("Email and password are required", 400);
+/**
+ * Staff sign-in is phone-first: every staff account is invited and verified
+ * against its Uganda phone number. An email address is still accepted for
+ * legacy staff accounts created before phone-based sign-in.
+ */
+async function findStaffByIdentifier(req: Request): Promise<User | null> {
+  const identifier = String(req.body.identifier ?? req.body.phone ?? req.body.email ?? "").trim();
+  if (!identifier) throw new AppError("Phone number and password are required", 400);
+  if (identifier.includes("@")) {
+    return prisma.user.findUnique({ where: { email: normalizedEmail(identifier)! } });
+  }
+  return prisma.user.findUnique({ where: { phone: normalizedPhone(identifier) } });
+}
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !user.passwordHash || !STAFF_ROLES.has(user.role) || user.deletedAt) throw new AppError("Invalid credentials", 401);
+router.post("/admin-login", async (req: Request, res: Response) => {
+  const supplied = typeof req.body.password === "string" ? req.body.password : "";
+  if (!supplied) throw new AppError("Phone number and password are required", 400);
+
+  const user = await findStaffByIdentifier(req);
+  if (!user || !isStaffRole(user.role) || user.deletedAt) throw new AppError("Invalid credentials", 401);
+  if (!user.passwordHash) {
+    // Invited but never activated: resend the invite code instead of leaking
+    // the account state with a different error.
+    if (user.phone && !user.phoneVerified) {
+      await issueOtp(user, "staff_invite");
+      throw new AppError("This staff account is not activated yet. We sent a new activation code to its phone — open “First time? Activate account”.", 409);
+    }
+    throw new AppError("Invalid credentials", 401);
+  }
   if (!await bcrypt.compare(supplied, user.passwordHash)) throw new AppError("Invalid credentials", 401);
 
   if (process.env.NODE_ENV === "test") {
     res.json(await sessionResponse(user, req));
     return;
   }
-  if (!user.phone || !user.phoneVerified) throw new AppError("Staff MFA requires a verified phone number", 403);
+  if (!user.phone || !user.phoneVerified) throw new AppError("Staff sign-in requires a verified phone number. Ask the Super Admin to re-invite this account.", 403);
 
   await issueOtp(user, "admin_login");
   const challengeToken = generateAdminChallenge({ userId: user.id, authVersion: user.authVersion });
@@ -339,7 +310,7 @@ router.post("/admin-login/verify", async (req: Request, res: Response) => {
   const challengeToken = typeof req.body.challengeToken === "string" ? req.body.challengeToken : "";
   const challenge = verifyAdminChallenge(challengeToken);
   const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
-  if (!user || user.deletedAt || !STAFF_ROLES.has(user.role) || user.authVersion !== challenge.authVersion) {
+  if (!user || user.deletedAt || !isStaffRole(user.role) || user.authVersion !== challenge.authVersion) {
     throw new AppError("Admin verification challenge is no longer valid", 401);
   }
   await assertOtp(user, "admin_login", req.body.code);
@@ -352,11 +323,54 @@ router.post("/admin-login/resend", async (req: Request, res: Response) => {
   const challengeToken = typeof req.body.challengeToken === "string" ? req.body.challengeToken : "";
   const challenge = verifyAdminChallenge(challengeToken);
   const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
-  if (!user || user.deletedAt || !STAFF_ROLES.has(user.role) || user.authVersion !== challenge.authVersion) {
+  if (!user || user.deletedAt || !isStaffRole(user.role) || user.authVersion !== challenge.authVersion) {
     throw new AppError("Admin verification challenge is no longer valid", 401);
   }
   await issueOtp(user, "admin_login");
   res.json({ ok: true });
+});
+
+// ── Staff invitation acceptance ─────────────────────────────────────────────
+// The Super Admin invites staff by phone number (see /api/staff/invite). The
+// invitee activates the account here with the SMS code and a password of their
+// choice; afterwards the normal staff sign-in (phone + password + SMS code)
+// applies. Responses stay generic so the endpoint cannot enumerate which
+// phone numbers hold pending staff invitations.
+
+const GENERIC_INVITE_RESPONSE = {
+  ok: true,
+  message: "If that number has a pending staff invitation, a new activation code has been sent.",
+};
+
+router.post("/staff-invite/activate", async (req: Request, res: Response) => {
+  const phone = normalizedPhone(req.body.phone);
+  const user = await prisma.user.findUnique({ where: { phone } });
+  if (!user || user.deletedAt || !isStaffRole(user.role) || user.passwordHash || user.phoneVerified) {
+    throw new AppError("Invalid or expired activation code", 401);
+  }
+
+  const newPassword = password(req.body.password);
+  await assertOtp(user, "staff_invite", req.body.code);
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: await bcrypt.hash(newPassword, 12),
+      phoneVerified: true,
+      authVersion: { increment: 1 },
+      ...clearOtp,
+    },
+  });
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_invite_activated", resourceType: "user", resourceId: user.id });
+  res.json(await sessionResponse(updated, req));
+});
+
+router.post("/staff-invite/resend", async (req: Request, res: Response) => {
+  const phone = normalizedPhone(req.body.phone);
+  const user = await prisma.user.findUnique({ where: { phone } });
+  if (user && !user.deletedAt && isStaffRole(user.role) && !user.passwordHash && !user.phoneVerified) {
+    await issueOtp(user, "staff_invite");
+  }
+  res.json(GENERIC_INVITE_RESPONSE);
 });
 
 router.post("/verify-phone", async (req: Request, res: Response) => {

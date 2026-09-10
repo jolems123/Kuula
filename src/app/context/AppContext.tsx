@@ -4,7 +4,48 @@ import { clearSelectionState } from "../lib/selection";
 import { clearServiceCache } from "../api/types-compat";
 import { clearSessionTokens } from "../lib/session-vault";
 
-export type Role = "user" | "customer" | "admin" | "manager" | "officer";
+export type Role =
+  | "user"
+  | "customer"
+  | "admin"
+  | "manager"
+  | "officer"
+  | "super_admin"
+  | "administrator"
+  | "credit_manager"
+  | "final_approver"
+  | "loan_officer"
+  | "kyc_officer"
+  | "finance"
+  | "collections"
+  | "support";
+
+/** Legacy three-tier staff UI grouping the current dashboards are built around. */
+export type StaffUiTier = "admin" | "manager" | "officer";
+
+const STAFF_UI_TIERS: Record<string, StaffUiTier> = {
+  super_admin: "admin",
+  administrator: "admin",
+  admin: "admin",
+  credit_manager: "manager",
+  final_approver: "manager",
+  kyc_officer: "manager",
+  finance: "manager",
+  manager: "manager",
+  loan_officer: "officer",
+  collections: "officer",
+  support: "officer",
+  officer: "officer",
+};
+
+export function isStaffRole(role: Role | null | undefined): boolean {
+  return !!role && role in STAFF_UI_TIERS;
+}
+
+/** Maps any staff role onto the dashboard tier it should land on. */
+export function staffUiTier(role: Role | null | undefined): StaffUiTier | null {
+  return role ? STAFF_UI_TIERS[role] ?? null : null;
+}
 
 export interface Message {
   id: string;

@@ -93,6 +93,7 @@ const SCREENS: Record<string, ScreenEntry> = {
   "customer-privacy-policy": { access: "public", load: () => import("../components/screens/ExtraCriticalScreens").then((m) => ({ default: m.CustomerPrivacyPolicyScreen })) },
   "customer-terms": { access: "public", load: () => import("../components/screens/ExtraCriticalScreens").then((m) => ({ default: m.CustomerTermsScreen })) },
   "admin-login": { access: "public", load: () => import("../components/screens/AdminLoginScreen").then((m) => ({ default: m.AdminLoginScreen })) },
+  "admin-activate": { access: "public", load: () => import("../components/screens/AdminActivateScreen").then((m) => ({ default: m.AdminActivateScreen })) },
   "admin-otp": { access: "public", load: () => import("../components/screens/AdminOTPScreen").then((m) => ({ default: m.AdminOTPScreen })) },
   "admin-dashboard": { access: "admin", load: () => import("../components/screens/AdminDashboardScreen").then((m) => ({ default: m.AdminDashboardScreen })) },
   "admin-quick-stats": { access: "admin", load: () => import("../components/screens/AdminQuickStatsScreen").then((m) => ({ default: m.AdminQuickStatsScreen })) },

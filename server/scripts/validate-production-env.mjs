@@ -5,8 +5,8 @@ const required = [
   "JWT_SECRET",
   "OTP_PEPPER",
   "SMS_PROVIDER",
-  "AFRICASTALKING_USERNAME",
-  "AFRICASTALKING_API_KEY",
+  "EGOSMS_USERNAME",
+  "EGOSMS_PASSWORD",
   "CORS_ORIGINS",
   "KYC_STORAGE_PROVIDER",
   "KYC_S3_BUCKET",
@@ -73,8 +73,16 @@ if (String(process.env.EMAIL_FROM ?? "").trim().toLowerCase() !== "notifications
   problems.push("EMAIL_FROM must be notifications@kuulapp.com for the Kuula production sender");
 }
 
-if (String(process.env.SMS_PROVIDER ?? "").trim().toLowerCase() !== "africastalking") {
-  problems.push("SMS_PROVIDER must be africastalking in production");
+if (String(process.env.SMS_PROVIDER ?? "").trim().toLowerCase() !== "egosms") {
+  problems.push("SMS_PROVIDER must be egosms in production");
+}
+const egosmsApiUrl = String(process.env.EGOSMS_API_URL ?? "").trim();
+if (egosmsApiUrl) {
+  try {
+    if (new URL(egosmsApiUrl).protocol !== "https:") problems.push("EGOSMS_API_URL must use https");
+  } catch {
+    problems.push("EGOSMS_API_URL must be a valid absolute URL");
+  }
 }
 if (String(process.env.KYC_STORAGE_PROVIDER ?? "").trim().toLowerCase() !== "s3") {
   problems.push("KYC_STORAGE_PROVIDER must be s3 in production");

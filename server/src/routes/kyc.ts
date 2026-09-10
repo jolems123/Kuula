@@ -4,8 +4,13 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { isValidUgandaNin, normalizeNin } from "../lib/nin.js";
-import { verifyNinWithSmileId } from "../lib/smile-id.js";
-import { deleteKycDocument, saveKycImage } from "../lib/storage.js";
+import {
+  mintDocumentVerificationToken,
+  smileIdConfigured,
+  verifyWebhookSignature,
+  type DocumentVerificationWebhook,
+} from "../lib/smile-id.js";
+import { saveKycImage } from "../lib/storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -52,25 +57,35 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
   });
 });
 
-router.post("/submit", authenticateToken, async (req: Request, res: Response) => {
+/**
+ * Start document-based KYC.
+ *
+ * The customer states their NIN, name, and birth date; the server opens a
+ * pending submission and mints a short-lived Smile ID token. The hosted Smile
+ * capture then photographs the national ID (front/back), a selfie, and a
+ * liveness sequence. Smile ID authenticates the document, OCRs the printed
+ * NIN, and matches the portrait against the live selfie; the verdict arrives
+ * at /smile-webhook and settles the submission. The stated NIN must match the
+ * NIN read from the document, so a customer cannot verify against a borrowed
+ * number.
+ */
+router.post("/document-verification/start", authenticateToken, async (req: Request, res: Response) => {
+  if (!smileIdConfigured()) throw new AppError("Identity verification is temporarily unavailable", 503);
+
   const userId = req.user!.userId;
   const nationalId = normalizeNin(normalizeString(req.body?.nationalId));
-  const secondaryIdNumber = normalizeString(req.body?.secondaryIdNumber).toUpperCase();
   const fullName = normalizeString(req.body?.fullName);
   const dobRaw = normalizeString(req.body?.dob);
-  const documentFront = normalizeString(req.body?.documentFront);
-  const documentBack = normalizeString(req.body?.documentBack);
 
   if (!isValidUgandaNin(nationalId)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
-  if (!/^[A-Z0-9]{9}$/.test(secondaryIdNumber)) throw new AppError("A valid 9-character National ID card number is required", 400);
   if (!fullName || fullName.length < 2) throw new AppError("Valid full name is required", 400);
   const dobDate = parseDateOnly(dobRaw);
   if (!dobDate) throw new AppError("Valid date of birth is required (YYYY-MM-DD)", 400);
-  if (!documentFront || !documentBack) throw new AppError("Both front and back ID images are required", 400);
 
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (!existing || existing.deletedAt) throw new AppError("User not found", 404);
   if (existing.kycVerified) throw new AppError("Identity is already verified", 409);
+  if (!existing.phone) throw new AppError("A verified phone number is required before identity verification", 422);
 
   const duplicateNin = await prisma.user.findFirst({
     where: { nationalId, id: { not: userId }, deletedAt: null },
@@ -81,105 +96,213 @@ router.post("/submit", authenticateToken, async (req: Request, res: Response) =>
   const latest = await prisma.kycSubmission.findFirst({
     where: { userId },
     orderBy: { version: "desc" },
-    select: { version: true, status: true },
+    select: { version: true, status: true, providerReference: true },
   });
-  if (latest?.status === "pending") throw new AppError("Your current KYC submission is still under review", 409);
+  if (latest?.status === "pending") {
+    throw new AppError("Your identity verification is already in progress. We will notify you when it completes.", 409);
+  }
   const nextVersion = (latest?.version ?? 0) + 1;
 
-  let front: Awaited<ReturnType<typeof saveKycImage>> | null = null;
-  let back: Awaited<ReturnType<typeof saveKycImage>> | null = null;
+  const jobId = `docv-${userId}-${Date.now()}`;
+  let minted;
   try {
-    front = await saveKycImage({ userId, side: "front", dataUrl: documentFront });
-    back = await saveKycImage({ userId, side: "back", dataUrl: documentBack });
-    const verification = await verifyNinWithSmileId({ nationalId, secondaryIdNumber, fullName, dob: dobRaw, userId });
-    const status = verification.verified ? "verified" : "pending";
+    minted = await mintDocumentVerificationToken({ userId, jobId, fullName, phone: existing.phone });
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : "Could not start identity verification", 502);
+  }
 
-    const submission = await prisma.$transaction(async (tx) => {
-      const created = await tx.kycSubmission.create({
-        data: {
-          userId,
-          version: nextVersion,
-          status,
-          fullName,
-          nationalId,
-          dateOfBirth: dobDate,
-          frontRef: front!.key,
-          backRef: back!.key,
-          frontMime: front!.mime,
-          backMime: back!.mime,
-          provider: verification.provider,
-          providerReference: verification.reference ?? null,
-          providerStatus: verification.status,
-          providerDetail: verification.detail?.slice(0, 1000) ?? null,
-          reviewedAt: verification.verified ? new Date() : null,
-          decisionReason: verification.verified ? "Identity verified by configured identity provider" : null,
-        },
-      });
-
-      await tx.kycAuditEvent.create({
-        data: {
-          submissionId: created.id,
-          actorId: userId,
-          action: "submitted",
-          details: {
-            provider: verification.provider,
-            providerStatus: verification.status,
-            autoVerified: verification.verified,
-          } as Prisma.InputJsonValue,
-        },
-      });
-
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          fullName,
-          nationalId,
-          dateOfBirth: dobDate,
-          kycVerified: verification.verified,
-          verified: verification.verified ? true : existing.verified,
-          kycDocFrontRef: front!.key,
-          kycDocBackRef: back!.key,
-          kycProvider: verification.provider,
-          kycReference: verification.reference ?? null,
-          kycSubmittedAt: new Date(),
-        },
-      });
-      return created;
-    });
-
-    await writeAuditEvent({
-      actorId: userId,
-      subjectUserId: userId,
-      action: "kyc.submitted",
-      resourceType: "kyc_submission",
-      resourceId: submission.id,
-      metadata: { version: submission.version, status: submission.status },
-    });
-
-    res.json({
-      ok: true,
-      kyc: {
-        submissionId: submission.id,
-        version: submission.version,
-        status: submission.status,
-        verified: submission.status === "verified",
-        documents: { front: "received", back: "received" },
-        verificationProvider: submission.provider,
-        verificationReference: submission.providerReference,
-        submittedAt: submission.submittedAt,
+  const submission = await prisma.$transaction(async (tx) => {
+    const created = await tx.kycSubmission.create({
+      data: {
+        userId,
+        version: nextVersion,
+        status: "pending",
+        fullName,
+        nationalId,
+        dateOfBirth: dobDate,
+        // The document images are captured inside Smile ID's hosted flow and
+        // pulled into Kuula storage when the verdict webhook arrives.
+        frontRef: "smile:capture-pending",
+        backRef: "smile:capture-pending",
+        frontMime: "image/jpeg",
+        backMime: "image/jpeg",
+        provider: "smile-id",
+        providerReference: jobId,
+        providerStatus: "capture_started",
       },
     });
-  } catch (error) {
-    await Promise.allSettled([
-      ...(front ? [deleteKycDocument(front.key)] : []),
-      ...(back ? [deleteKycDocument(back.key)] : []),
-    ]);
-    if (error instanceof AppError) throw error;
-    if ((error as { code?: string })?.code === "P2002") {
-      throw new AppError("This NIN or KYC version is already registered", 409);
-    }
-    throw new AppError(error instanceof Error ? error.message : "Could not submit KYC", 400);
+    await tx.kycAuditEvent.create({
+      data: {
+        submissionId: created.id,
+        actorId: userId,
+        action: "submitted",
+        details: { provider: "smile-id", method: "document_verification" } as Prisma.InputJsonValue,
+      },
+    });
+    return created;
+  });
+
+  await writeAuditEvent({
+    actorId: userId,
+    subjectUserId: userId,
+    action: "kyc.document_verification_started",
+    resourceType: "kyc_submission",
+    resourceId: submission.id,
+    metadata: { version: submission.version },
+  });
+
+  res.json({
+    ok: true,
+    verification: {
+      submissionId: submission.id,
+      jobId,
+      token: minted.token,
+      environment: minted.environment,
+      callbackUrl: minted.callbackUrl,
+      partnerId: minted.partnerId,
+      privacyPolicyUrl: minted.privacyPolicyUrl,
+    },
+  });
+});
+
+/** Persist a Smile-hosted image into Kuula KYC storage. Best-effort. */
+async function persistHostedImage(userId: string, side: "front" | "back", url: string | undefined) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) return null;
+    const mime = response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+    if (!/^image\/(jpeg|png)$/.test(mime)) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) return null;
+    return await saveKycImage({ userId, side, dataUrl: `data:${mime};base64,${buffer.toString("base64")}` });
+  } catch {
+    return null;
   }
+}
+
+/**
+ * Smile ID delivers the document-verification verdict here. Authenticity is
+ * the HMAC signature over the Response-Timestamp header; delivery may be
+ * replayed, so settling is idempotent.
+ */
+router.post("/smile-webhook", async (req: Request, res: Response) => {
+  const timestamp = String(req.headers["response-timestamp"] ?? "");
+  const signature = String(req.headers["response-signature"] ?? "");
+  if (!verifyWebhookSignature(timestamp, signature)) {
+    res.status(401).json({ error: "Invalid webhook signature" });
+    return;
+  }
+
+  const payload = req.body as DocumentVerificationWebhook;
+  if (payload.product !== "document_verification") {
+    res.json({ ok: true });
+    return;
+  }
+  const jobId = payload.partner_params?.job_id;
+  if (!jobId) {
+    res.status(400).json({ error: "Missing job reference" });
+    return;
+  }
+
+  const submission = await prisma.kycSubmission.findFirst({
+    where: { providerReference: jobId, provider: "smile-id" },
+  });
+  if (!submission) {
+    // Unknown job — acknowledge so Smile ID does not keep retrying.
+    res.json({ ok: true });
+    return;
+  }
+  if (submission.status !== "pending") {
+    res.json({ ok: true });
+    return;
+  }
+
+  // Best-effort: move the document images into Kuula storage for staff review.
+  const front = await persistHostedImage(submission.userId, "front", payload.image_links?.id_card_image);
+  const back = await persistHostedImage(submission.userId, "back", payload.image_links?.id_card_back_image);
+
+  const status = payload.status;
+  const documentNin = normalizeNin(payload.id_fields?.id_number ?? "");
+  const ninMatches = status === "clear" && documentNin === submission.nationalId;
+
+  let nextStatus: string;
+  let decisionReason: string | null;
+  if (status === "clear" && ninMatches) {
+    nextStatus = "verified";
+    decisionReason = "Document authenticated and matched by Smile ID";
+  } else if (status === "clear" && !ninMatches) {
+    nextStatus = "rejected";
+    decisionReason = "The NIN on the document does not match the NIN on this account";
+  } else if (status === "attention") {
+    // Readable document with a reviewable condition — staff decide.
+    nextStatus = "pending";
+    decisionReason = null;
+  } else {
+    nextStatus = "rejected";
+    decisionReason = (payload.message || `Verification ${status}`).slice(0, 500);
+  }
+
+  const providerDetail = JSON.stringify({
+    message: payload.message ?? null,
+    reason: payload.reason ?? null,
+    receipt: payload.kyc_receipt ?? null,
+    documentType: payload.id_fields?.id_type ?? null,
+    documentNin: payload.id_fields?.id_number ?? null,
+  }).slice(0, 1000);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.kycSubmission.update({
+      where: { id: submission.id },
+      data: {
+        status: nextStatus,
+        providerStatus: status,
+        providerDetail,
+        ...(front ? { frontRef: front.key, frontMime: front.mime } : {}),
+        ...(back ? { backRef: back.key, backMime: back.mime } : {}),
+        ...(nextStatus !== "pending" ? { reviewedAt: new Date(), decisionReason } : {}),
+      },
+    });
+    await tx.kycAuditEvent.create({
+      data: {
+        submissionId: submission.id,
+        action: "provider_verdict",
+        details: {
+          provider: "smile-id",
+          status,
+          reason: payload.reason ?? null,
+          ninMatches,
+          imagesPersisted: { front: !!front, back: !!back },
+        } as Prisma.InputJsonValue,
+      },
+    });
+    if (nextStatus === "verified") {
+      const documentDob = parseDateOnly(payload.id_fields?.date_of_birth ?? "");
+      await tx.user.update({
+        where: { id: submission.userId },
+        data: {
+          kycVerified: true,
+          verified: true,
+          kycProvider: "smile-id",
+          kycReference: jobId,
+          kycSubmittedAt: new Date(),
+          ...(front ? { kycDocFrontRef: front.key } : {}),
+          ...(back ? { kycDocBackRef: back.key } : {}),
+          ...(documentDob ? { dateOfBirth: documentDob } : {}),
+        },
+      });
+    }
+  });
+
+  await writeAuditEvent({
+    subjectUserId: submission.userId,
+    action: `kyc.document_verification_${nextStatus}`,
+    resourceType: "kyc_submission",
+    resourceId: submission.id,
+    metadata: { providerStatus: status, reason: payload.reason ?? null },
+  });
+
+  res.json({ ok: true });
 });
 
 export default router;
