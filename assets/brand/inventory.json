@@ -1,0 +1,50 @@
+{
+  "canonical": {
+    "logo": {
+      "path": "assets/kuula-logo-dark.png",
+      "sha256": "429a74d38a82ee565c938e989cc353f8d1116619f02cda4cc49594941b392609"
+    },
+    "icon": {
+      "path": "assets/kuula-icon-1024.png",
+      "sha256": "e82c24df8c36cd1f4955400fcb6673c24052bc1aa72e4c73e8bb5c21190d0614"
+    }
+  },
+  "deprecatedFilenames": [
+    "Logo.pdf",
+    "kuula-tile-1024.png"
+  ],
+  "assets": [
+    {
+      "path": "assets/kuula-logo-dark.png",
+      "classification": "CANONICAL"
+    },
+    {
+      "path": "assets/kuula-icon-1024.png",
+      "classification": "CANONICAL"
+    },
+    {
+      "path": "assets/kuula-logo-light.png",
+      "classification": "DERIVATIVE"
+    },
+    {
+      "path": "assets/kuula-icon-512.png",
+      "classification": "DERIVATIVE"
+    },
+    {
+      "path": "assets/favicon-256.png",
+      "classification": "DERIVATIVE"
+    },
+    {
+      "path": "assets/kuula-splash-coral.png",
+      "classification": "DERIVATIVE"
+    },
+    {
+      "path": "assets/kuula-splash-cream.png",
+      "classification": "DERIVATIVE"
+    },
+    {
+      "path": "assets/kuula-splash-ink.png",
+      "classification": "DERIVATIVE"
+    }
+  ]
+}

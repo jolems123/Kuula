@@ -5,7 +5,7 @@ import {
   Bell, LogOut, Search, Menu, ArrowLeft, type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import kuulaLogo from "../../imports/kuula-tile-1024.png";
+import kuulaLogo from "/kuula-icon.svg";
 
 interface NavItem {
   id: string;

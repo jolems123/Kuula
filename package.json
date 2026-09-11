@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "sweep": "node scripts/route-sweep.mjs",
     "check:pricing": "node scripts/check-pricing-compliance.mjs",
+    "check:brand": "node scripts/check-brand.mjs",
     "check:pricing-parity": "tsx scripts/check-pricing-parity.ts",
     "cap:sync": "npm run build && cap sync",
     "cap:android": "npm run cap:sync && cap open android",
