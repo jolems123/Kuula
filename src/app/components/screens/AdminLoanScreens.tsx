@@ -77,7 +77,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E2E8F0", background: filter === f ? "#F4612B" : "white", color: filter === f ? "white" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E2E8F0", background: filter === f ? "var(--brand-primary)" : "white", color: filter === f ? "white" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             {f}
           </button>
         ))}
@@ -236,7 +236,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-active-loans", ["Customer", "Loan ID", "Amount (UGX)", "Applied", "Status"], apps.map((a) => [a.applicantName || "—", a.id, a.amount, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export CSV</button>}
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="#F4612B" icon={<></>} />
+        <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="var(--brand-primary)" icon={<></>} />
         <StatCard label="Total Amount" value={loading ? "…" : `UGX ${(apps.reduce((s, a) => s + a.amount, 0) / 1000000).toFixed(1)}M`} color="#12B984" icon={<></>} />
         <StatCard label="Pending Decisions" value={loading ? "…" : String(apps.filter(a => a.status === "pending").length)} color="#F59E0B" icon={<></>} />
       </div>
@@ -301,7 +301,7 @@ export function AdminRepaymentTrackingScreen({ onNavigate }: Props) {
             <XAxis dataKey="month" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
             <Tooltip contentStyle={{ borderRadius:8,border:"none",boxShadow:"0 4px 12px rgba(0,0,0,.1)" }}/>
-            <Bar dataKey="loans" fill="#F4612B" radius={[4,4,0,0]} name="Applications"/>
+            <Bar dataKey="loans" fill="var(--brand-primary)" radius={[4,4,0,0]} name="Applications"/>
           </BarChart>
         </ResponsiveContainer>
       </AdminCard>
@@ -368,7 +368,7 @@ export function AdminOverdueLoanDetailScreen({ onNavigate }: Props) {
           <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
             {[
               { Icon:Phone,label:"Call customer",color:"#12B984",bg:"#F0FDF4" },
-              { Icon:MessageSquare,label:"Send SMS Reminder",color:"#F4612B",bg:"#FFF6EF" },
+              { Icon:MessageSquare,label:"Send SMS Reminder",color:"var(--brand-primary)",bg:"var(--brand-light)" },
             ].map(({ Icon,label,color,bg })=>(
               <button key={label} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:bg,border:"none",cursor:"pointer",textAlign:"left" }}>
                 <Icon size={18} color={color}/><span style={{ fontSize:13,fontWeight:600,color }}>{label}</span>

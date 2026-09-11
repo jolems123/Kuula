@@ -59,15 +59,15 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         title="Good morning, Admin 👋"
         subtitle="Here's what's happening with Kuula today."
         action={
-          <button onClick={generateReport} disabled={generating} style={{ padding: "8px 16px", borderRadius: 8, background: "#F4612B", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: generating ? "default" : "pointer", opacity: generating ? 0.7 : 1 }}>
+          <button onClick={generateReport} disabled={generating} style={{ padding: "8px 16px", borderRadius: 8, background: "var(--brand-primary)", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: generating ? "default" : "pointer", opacity: generating ? 0.7 : 1 }}>
             {generating ? "Generating…" : "Generate Report"}
           </button>
         }
       />
 
       <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-        <StatCard label="Registered Customers" value={loading ? "…" : stats.totalCustomers.toLocaleString()} sub="Total users" color="#F4612B"
-          icon={<Users size={18} color="#F4612B" />} />
+        <StatCard label="Registered Customers" value={loading ? "…" : stats.totalCustomers.toLocaleString()} sub="Total users" color="var(--brand-primary)"
+          icon={<Users size={18} color="var(--brand-primary)" />} />
         <StatCard label="Pending Approvals" value={loading ? "…" : String(stats.pendingApprovals)} sub="Awaiting review" color="#F59E0B"
           icon={<FileText size={18} color="#F59E0B" />} />
         <StatCard label="Overdue Loans" value={loading ? "…" : String(stats.overdueLoans)} sub="Require follow-up" color="#EF4444"
@@ -93,7 +93,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-              <Bar dataKey="loans" fill="#F4612B" radius={[4, 4, 0, 0]} name="Applications" />
+              <Bar dataKey="loans" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} name="Applications" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -101,7 +101,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         <div style={{ background: "white", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F1F5F9" }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: "0 0 16px" }}>Quick Stats</h3>
           {[
-            { label: "Total Customers", value: loading ? "…" : stats.totalCustomers.toLocaleString(), change: "From user profiles", color: "#F4612B" },
+            { label: "Total Customers", value: loading ? "…" : stats.totalCustomers.toLocaleString(), change: "From user profiles", color: "var(--brand-primary)" },
             { label: "Pending Applications", value: loading ? "…" : String(stats.pendingApprovals), change: "Awaiting admin decision", color: "#F59E0B" },
             { label: "Overdue Loans", value: loading ? "…" : String(stats.overdueLoans), change: "Past due date", color: "#EF4444" },
             { label: "Recent Applications", value: loading ? "…" : String(stats.recentApplications.length), change: "Last 5 submissions", color: "#8B5CF6" },
@@ -120,7 +120,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
       <div style={{ marginBottom: 4 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: 0 }}>Recent Loan Applications</h3>
-          <button onClick={() => onNavigate("admin-loan-apps")} style={{ fontSize: 12, color: "#F4612B", fontWeight: 700, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={() => onNavigate("admin-loan-apps")} style={{ fontSize: 12, color: "var(--brand-primary)", fontWeight: 700, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             View All <ArrowUpRight size={12} />
           </button>
         </div>

@@ -30,14 +30,14 @@ export function BiometricSetupScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 20px", gap: 20, flex: 1 }}>
         {/* Hero */}
-        <div style={{ width: 96, height: 96, borderRadius: 48, background: done ? "#F0FDF4" : "#FFF6EF", border: `2px solid ${done ? "#12B984" : "#FFDCC8"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 96, height: 96, borderRadius: 48, background: done ? "#F0FDF4" : "var(--brand-light)", border: `2px solid ${done ? "#12B984" : "var(--brand-border)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {done
             ? <ShieldCheck size={48} color="#12B984" strokeWidth={1.5} />
             : scanning
-            ? <div style={{ width: 44, height: 44, border: "3px solid #FFDCC8", borderTopColor: "#F4612B", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+            ? <div style={{ width: 44, height: 44, border: "3px solid var(--brand-border)", borderTopColor: "var(--brand-primary)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
             : selected === "face"
-            ? <Scan size={48} color="#F4612B" strokeWidth={1.5} />
-            : <Fingerprint size={48} color={selected ? "#F4612B" : "#9CA3AF"} strokeWidth={1.5} />
+            ? <Scan size={48} color="var(--brand-primary)" strokeWidth={1.5} />
+            : <Fingerprint size={48} color={selected ? "var(--brand-primary)" : "#9CA3AF"} strokeWidth={1.5} />
           }
         </div>
 
@@ -61,17 +61,17 @@ export function BiometricSetupScreen({ onNavigate }: Props) {
                 onClick={() => setSelected(id)}
                 style={{
                   display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14,
-                  background: selected === id ? "#FFF6EF" : "#F9FAFB",
-                  border: `2px solid ${selected === id ? "#F4612B" : "#E5E7EB"}`,
+                  background: selected === id ? "var(--brand-light)" : "#F9FAFB",
+                  border: `2px solid ${selected === id ? "var(--brand-primary)" : "#E5E7EB"}`,
                   cursor: "pointer", textAlign: "left",
                 }}
               >
-                <Icon size={28} color={selected === id ? "#F4612B" : "#9CA3AF"} />
+                <Icon size={28} color={selected === id ? "var(--brand-primary)" : "#9CA3AF"} />
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: selected === id ? "#374151" : "#1F2937", margin: 0 }}>{label}</p>
                   <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>{sub}</p>
                 </div>
-                <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === id ? "#F4612B" : "#D1D5DB"}`, background: selected === id ? "#F4612B" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 20, height: 20, borderRadius: 10, border: `2px solid ${selected === id ? "var(--brand-primary)" : "#D1D5DB"}`, background: selected === id ? "var(--brand-primary)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {selected === id && <div style={{ width: 8, height: 8, borderRadius: 4, background: "white" }} />}
                 </div>
               </button>
@@ -93,7 +93,7 @@ export function BiometricSetupScreen({ onNavigate }: Props) {
           </button>
         ) : (
           <>
-            <button onClick={scan} disabled={!selected || scanning} style={{ width: "100%", height: 52, borderRadius: 14, background: selected && !scanning ? "linear-gradient(135deg, #F4612B, #D9531F)" : "#E5E7EB", color: selected && !scanning ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none", cursor: selected ? "pointer" : "not-allowed" }}>
+            <button onClick={scan} disabled={!selected || scanning} style={{ width: "100%", height: 52, borderRadius: 14, background: selected && !scanning ? "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" : "#E5E7EB", color: selected && !scanning ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none", cursor: selected ? "pointer" : "not-allowed" }}>
               {scanning ? t("biometricSetup.scanning") : t("biometricSetup.setUp")}
             </button>
             <button onClick={() => onNavigate("home")} style={{ width: "100%", height: 44, borderRadius: 12, background: "transparent", color: "#6B7280", fontSize: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>

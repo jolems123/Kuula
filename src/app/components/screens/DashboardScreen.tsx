@@ -64,7 +64,7 @@ export function DashboardScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", paddingTop: 0 }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)", padding: "16px 16px 0" }}>
+      <div style={{ background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", padding: "16px 16px 0" }}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
           <button
             onClick={() => onNavigate("home")}
@@ -85,7 +85,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                 flex: 1, height: 36, borderRadius: "8px 8px 0 0",
                 background: tab === tabItem.id ? "white" : "rgba(255,255,255,0.12)",
                 border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
-                color: tab === tabItem.id ? "#D9531F" : "rgba(255,255,255,0.8)",
+                color: tab === tabItem.id ? "var(--brand-primary-dark)" : "rgba(255,255,255,0.8)",
                 transition: "all 0.15s",
               }}
             >
@@ -106,9 +106,9 @@ export function DashboardScreen({ onNavigate }: Props) {
               {[
                 {
                   label: t("dashboard.availableCredit"),
-                  icon: <Wallet size={15} color="#F4612B" />,
-                  bg: "#FFF6EF",
-                  value: <AnimatedStat value={(loan?.availableCredit ?? 0) / 1000} prefix="UGX " suffix="K" decimals={0} style={{ fontSize: 17, fontWeight: 800, color: "#D9531F" }} />,
+                  icon: <Wallet size={15} color="var(--brand-primary)" />,
+                  bg: "var(--brand-light)",
+                  value: <AnimatedStat value={(loan?.availableCredit ?? 0) / 1000} prefix="UGX " suffix="K" decimals={0} style={{ fontSize: 17, fontWeight: 800, color: "var(--brand-primary-dark)" }} />,
                   sub: loan?.creditIncreaseFromLastMonth
                     ? <span style={{ fontSize: 9, color: "#12B984", fontWeight: 600 }}>+{(loan.creditIncreaseFromLastMonth / 1000).toFixed(0)}K ↑</span>
                     : null,
@@ -168,9 +168,9 @@ export function DashboardScreen({ onNavigate }: Props) {
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       width: "100%", height: 40, borderRadius: 10, marginTop: 12,
-                      background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white",
+                      background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white",
                       fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer",
-                      boxShadow: "0 3px 10px rgba(255,107,53,0.3)",
+                      boxShadow: "0 3px 10px rgba(11,107,58,0.3)",
                     }}
                   >
                     <PlusCircle size={16} />
@@ -208,10 +208,10 @@ export function DashboardScreen({ onNavigate }: Props) {
             {/* Quick actions */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
-                { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "#F4612B", bg: "linear-gradient(135deg, #F4612B, #D9531F)", border: "none" },
+                { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "var(--brand-primary)", bg: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", border: "none" },
                 { label: t("dashboard.makePayment"), screen: "make-payment", color: "white", bg: "linear-gradient(135deg, #12B984, #059669)", border: "none" },
-                { label: t("dashboard.viewSavings"), screen: "goals", color: "#F4612B", bg: "white", border: "1.5px solid #FFDCC8" },
-                { label: t("dashboard.creditReport"), screen: "credit-dashboard", color: "#F4612B", bg: "white", border: "1.5px solid #FFDCC8" },
+                { label: t("dashboard.viewSavings"), screen: "goals", color: "var(--brand-primary)", bg: "white", border: "1.5px solid var(--brand-border)" },
+                { label: t("dashboard.creditReport"), screen: "credit-dashboard", color: "var(--brand-primary)", bg: "white", border: "1.5px solid var(--brand-border)" },
               ].map((a) => (
                 <button
                   key={a.label}
@@ -256,7 +256,7 @@ export function DashboardScreen({ onNavigate }: Props) {
 
             <button
               onClick={() => onNavigate("improve-credit")}
-              style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(255,107,53,0.3)" }}
+              style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(11,107,58,0.3)" }}
             >
               {t("dashboard.improveScore")}
             </button>
@@ -305,7 +305,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                     onChange={(e) => { setTopUpAmount(Number(e.target.value)); setTopUpError(""); }}
                     min={20000}
                     step={10000}
-                    style={{ width: "100%", height: 50, borderRadius: 12, border: "1.5px solid #E5E7EB", padding: "0 16px", fontSize: 18, fontWeight: 800, color: "#F4612B", background: "#F9FAFB", outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "100%", height: 50, borderRadius: 12, border: "1.5px solid #E5E7EB", padding: "0 16px", fontSize: 18, fontWeight: 800, color: "var(--brand-primary)", background: "#F9FAFB", outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
 
@@ -318,7 +318,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                       style={{
                         flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer",
                         fontSize: 11, fontWeight: 600, textAlign: "center",
-                        background: topUpAmount === a ? "#F4612B" : "#F3F4F6",
+                        background: topUpAmount === a ? "var(--brand-primary)" : "#F3F4F6",
                         color: topUpAmount === a ? "white" : "#374151",
                       }}
                     >
@@ -334,7 +334,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                   disabled={topUpLoading || topUpAmount < 20000}
                   style={{
                     width: "100%", height: 50, borderRadius: 14,
-                    background: (topUpLoading || topUpAmount < 20000) ? "#F5B89A" : "linear-gradient(135deg, #F4612B, #D9531F)",
+                    background: (topUpLoading || topUpAmount < 20000) ? "#F5B89A" : "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
                     color: "white", fontSize: 15, fontWeight: 700, border: "none",
                     cursor: (topUpLoading || topUpAmount < 20000) ? "wait" : "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

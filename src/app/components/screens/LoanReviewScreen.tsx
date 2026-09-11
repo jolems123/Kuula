@@ -56,13 +56,13 @@ export function LoanReviewScreen({ onNavigate }: Props) {
   const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #F3F4F6" }}>
       <span style={{ fontSize: 13, color: "#6B7280" }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: bold ? 800 : 600, color: bold ? "#D9531F" : "#1F2937" }}>{value}</span>
+      <span style={{ fontSize: 13, fontWeight: bold ? 800 : 600, color: bold ? "var(--brand-primary-dark)" : "#1F2937" }}>{value}</span>
     </div>
   );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}>
         <button onClick={() => onNavigate("loan-disbursement")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -74,9 +74,9 @@ export function LoanReviewScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 130px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Loan summary */}
-        <div style={{ background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
+        <div style={{ background: "linear-gradient(135deg, var(--brand-light), var(--brand-border))", borderRadius: 16, padding: "16px", border: "1px solid var(--brand-border)" }}>
           <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Loan Amount</p>
-          <p style={{ fontSize: 34, fontWeight: 900, color: "#D9531F", margin: 0, letterSpacing: -1 }}>{ugx(amount)}</p>
+          <p style={{ fontSize: 34, fontWeight: 900, color: "var(--brand-primary-dark)", margin: 0, letterSpacing: -1 }}>{ugx(amount)}</p>
           <p style={{ fontSize: 12, color: "#6B7280", margin: "4px 0 0" }}>{term}-day term · Business purpose · MTN MoMo</p>
         </div>
 
@@ -91,7 +91,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           )}
           <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#1F2937" }}>Total Repayment</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: "#D9531F" }}>{ugx(total)}</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: "var(--brand-primary-dark)" }}>{ugx(total)}</span>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
             {agreed && <CheckCircle size={14} color="white" />}
           </div>
           <p style={{ fontSize: 12, color: "#374151", margin: 0, lineHeight: 1.6 }}>
-            I have read and agree to the <span style={{ color: "#F4612B", fontWeight: 700 }}>Kuula Loan Agreement</span>, confirm all details above are correct, and authorise Kuula to disburse this loan to my MTN MoMo account.
+            I have read and agree to the <span style={{ color: "var(--brand-primary)", fontWeight: 700 }}>Kuula Loan Agreement</span>, confirm all details above are correct, and authorise Kuula to disburse this loan to my MTN MoMo account.
           </p>
         </button>
       </div>
@@ -129,7 +129,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           disabled={!agreed || loading}
           style={{
             width: "100%", height: 52, borderRadius: 14, cursor: agreed && !loading ? "pointer" : "not-allowed",
-            background: agreed ? "linear-gradient(135deg, #F4612B, #D9531F)" : "#E5E7EB",
+            background: agreed ? "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" : "#E5E7EB",
             color: agreed ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}

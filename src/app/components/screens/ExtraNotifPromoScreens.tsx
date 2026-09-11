@@ -26,7 +26,7 @@ export function AdminNotifTriggersScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-notif-triggers" onNavigate={onNavigate} title="Notification Triggers">
       <AdminPageHeader title="Notification Trigger Settings" subtitle="Configure when notifications are sent automatically"
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add Trigger</button>}
+        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"var(--brand-primary)",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add Trigger</button>}
       />
       <div style={{ background:"white",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
         {list.map((t, i) => (
@@ -35,7 +35,7 @@ export function AdminNotifTriggersScreen({ onNavigate }: Props) {
               <p style={{ fontSize:13,fontWeight:700,color:"#0F172A",margin:0 }}>{t.event}</p>
               <p style={{ fontSize:11,color:"#64748B",margin:"2px 0 0" }}>Sent {t.timing} · via {t.channel}</p>
             </div>
-            <button onClick={()=>setList(l=>l.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:46,height:26,borderRadius:13,background:t.enabled?"#F4612B":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:t.enabled?"flex-end":"flex-start",padding:3 }}>
+            <button onClick={()=>setList(l=>l.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:46,height:26,borderRadius:13,background:t.enabled?"var(--brand-primary)":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:t.enabled?"flex-end":"flex-start",padding:3 }}>
               <div style={{ width:20,height:20,borderRadius:10,background:"white" }}/>
             </button>
           </div>
@@ -53,11 +53,11 @@ export function AdminCampaignsListScreen({ onNavigate }: Props) {
   return (
     <AdminLayout activeScreen="admin-campaigns-list" onNavigate={onNavigate} title="Campaigns">
       <AdminPageHeader title="Promotional Campaigns" subtitle="3 active · 2 scheduled · 8 completed"
-        action={<button onClick={()=>onNavigate("admin-create-campaign")} style={{ padding:"8px 14px",borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>New Campaign</button>}
+        action={<button onClick={()=>onNavigate("admin-create-campaign")} style={{ padding:"8px 14px",borderRadius:8,background:"var(--brand-primary)",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>New Campaign</button>}
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Active Campaigns" value="3" color="#12B984" icon={<></>}/>
-        <StatCard label="Reached This Month" value="2,341" color="#F4612B" icon={<></>}/>
+        <StatCard label="Reached This Month" value="2,341" color="var(--brand-primary)" icon={<></>}/>
         <StatCard label="Conversion Rate" value="18.4%" color="#F59E0B" icon={<></>}/>
         <StatCard label="Revenue Attributed" value="UGX 12M" color="#8B5CF6" icon={<></>}/>
       </div>
@@ -92,7 +92,7 @@ export function AdminCreateCampaignScreen({ onNavigate }: Props) {
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Promotion Type</label>
               <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                 {[{id:"rate",l:"Interest Rate Discount"},{id:"limit",l:"Credit Limit Increase"},{id:"fee",l:"Fee Waiver"},{id:"cashback",l:"Cash Back"},{id:"referral",l:"Referral Bonus"}].map(t=>(
-                  <button key={t.id} onClick={()=>setType(t.id)} style={{ padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:type===t.id?"#F4612B":"#F3F4F6",color:type===t.id?"white":"#6B7280" }}>{t.l}</button>
+                  <button key={t.id} onClick={()=>setType(t.id)} style={{ padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:type===t.id?"var(--brand-primary)":"#F3F4F6",color:type===t.id?"white":"#6B7280" }}>{t.l}</button>
                 ))}
               </div>
             </div>
@@ -119,7 +119,7 @@ export function AdminCreateCampaignScreen({ onNavigate }: Props) {
               <textarea rows={3} placeholder="Describe the promotion terms..." style={{ width:"100%",borderRadius:8,border:"1.5px solid #E5E7EB",padding:"10px 12px",fontSize:13,outline:"none",boxSizing:"border-box" as "border-box",resize:"none" }}/>
             </div>
             <div style={{ display:"flex",gap:10 }}>
-              <button onClick={()=>onNavigate("admin-campaign-targeting")} style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Next: Set Targeting →</button>
+              <button onClick={()=>onNavigate("admin-campaign-targeting")} style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Next: Set Targeting →</button>
               <button style={{ flex:1,height:46,borderRadius:10,background:"#F3F4F6",color:"#64748B",border:"none",fontSize:14,fontWeight:600,cursor:"pointer" }}>Save Draft</button>
             </div>
           </div>
@@ -146,8 +146,8 @@ export function AdminCampaignTargetingScreen({ onNavigate }: Props) {
             {id:"savings",l:"Customers with active savings"},
             {id:"all",l:"All customers"},
           ].map(a=>(
-            <button key={a.id} onClick={()=>setAudience(a.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`2px solid ${audience===a.id?"#F4612B":"#E5E7EB"}`,background:audience===a.id?"#FFF6EF":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
-              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${audience===a.id?"#F4612B":"#D1D5DB"}`,background:audience===a.id?"#F4612B":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <button key={a.id} onClick={()=>setAudience(a.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:10,border:`2px solid ${audience===a.id?"var(--brand-primary)":"#E5E7EB"}`,background:audience===a.id?"var(--brand-light)":"white",cursor:"pointer",marginBottom:8,textAlign:"left" }}>
+              <div style={{ width:16,height:16,borderRadius:8,border:`2px solid ${audience===a.id?"var(--brand-primary)":"#D1D5DB"}`,background:audience===a.id?"var(--brand-primary)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                 {audience===a.id&&<div style={{ width:6,height:6,borderRadius:3,background:"white" }}/>}
               </div>
               <span style={{ fontSize:13,color:"#374151" }}>{a.l}</span>
@@ -156,14 +156,14 @@ export function AdminCampaignTargetingScreen({ onNavigate }: Props) {
           {audience==="score" && (
             <div style={{ marginTop:10 }}>
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:6 }}>Minimum Credit Score</label>
-              <input type="number" value={minScore} onChange={e=>setMinScore(e.target.value)} style={{ width:120,height:42,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:16,fontWeight:700,color:"#F4612B",outline:"none" }}/>
+              <input type="number" value={minScore} onChange={e=>setMinScore(e.target.value)} style={{ width:120,height:42,borderRadius:8,border:"1.5px solid #E5E7EB",padding:"0 12px",fontSize:16,fontWeight:700,color:"var(--brand-primary)",outline:"none" }}/>
             </div>
           )}
-          <div style={{ marginTop:16,padding:"10px 14px",borderRadius:10,background:"#FFF6EF",border:"1px solid #FFDCC8" }}>
+          <div style={{ marginTop:16,padding:"10px 14px",borderRadius:10,background:"var(--brand-light)",border:"1px solid var(--brand-border)" }}>
             <p style={{ fontSize:12,color:"#374151",margin:0 }}>📊 Estimated reach: <strong>1,200 customers</strong> match this criteria</p>
           </div>
         </AdminCard>
-        <button onClick={()=>onNavigate("admin-campaigns-list")} style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>
+        <button onClick={()=>onNavigate("admin-campaigns-list")} style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>
           Save & Launch Campaign
         </button>
       </div>
@@ -177,7 +177,7 @@ export function AdminCampaignDashboardScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-campaign-dashboard" onNavigate={onNavigate} title="Campaign Dashboard">
       <AdminPageHeader title="Campaign Dashboard — First Loan Discount" subtitle="5% interest rate discount · Jun 1 – Aug 31, 2026"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Total Reached" value="1,200" color="#F4612B" icon={<></>}/>
+        <StatCard label="Total Reached" value="1,200" color="var(--brand-primary)" icon={<></>}/>
         <StatCard label="Claimed" value="220" sub="18.3% conversion" color="#12B984" icon={<></>}/>
         <StatCard label="Loans Generated" value="198" color="#8B5CF6" icon={<></>}/>
         <StatCard label="Revenue Attributed" value="UGX 4.2M" color="#F59E0B" icon={<></>}/>
@@ -195,7 +195,7 @@ export function AdminCampaignDashboardScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Daily Claims</h3>
           <div style={{ display:"flex",alignItems:"flex-end",gap:4,height:80 }}>
             {[4,8,12,7,15,18,10,22,19,14,11,8,5].map((v,i)=>(
-              <div key={i} style={{ flex:1,borderRadius:"3px 3px 0 0",background:i===12?"#12B984":"#FFDCC8",height:`${(v/22)*80}px` }}/>
+              <div key={i} style={{ flex:1,borderRadius:"3px 3px 0 0",background:i===12?"#12B984":"var(--brand-border)",height:`${(v/22)*80}px` }}/>
             ))}
           </div>
           <div style={{ display:"flex",gap:14,marginTop:16 }}>
@@ -219,7 +219,7 @@ export function CustomerNotifHistoryScreen({ onNavigate }: Props) {
   ];
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 16px 14px",background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))" }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <button onClick={()=>onNavigate("home")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
             <ArrowLeft size={18} color="white"/>
@@ -230,14 +230,14 @@ export function CustomerNotifHistoryScreen({ onNavigate }: Props) {
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"12px 16px 90px",display:"flex",flexDirection:"column",gap:10 }}>
         {items.map((n,i)=>(
-          <div key={i} style={{ background:n.read?"#F9FAFB":"white",borderRadius:14,padding:"14px 16px",border:n.read?"1px solid #F3F4F6":"1px solid #FFDCC8",boxShadow:n.read?"none":"0 2px 8px rgba(255,107,53,0.07)",display:"flex",gap:12 }}>
+          <div key={i} style={{ background:n.read?"#F9FAFB":"white",borderRadius:14,padding:"14px 16px",border:n.read?"1px solid #F3F4F6":"1px solid var(--brand-border)",boxShadow:n.read?"none":"0 2px 8px rgba(11,107,58,0.07)",display:"flex",gap:12 }}>
             <span style={{ fontSize:24,flexShrink:0 }}>{n.icon}</span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:13,fontWeight:n.read?600:700,color:"#1F2937",margin:0 }}>{n.title}</p>
               <p style={{ fontSize:12,color:"#6B7280",margin:"3px 0",lineHeight:1.4 }}>{n.body}</p>
               <span style={{ fontSize:10,color:"#9CA3AF" }}>{n.time}</span>
             </div>
-            {!n.read && <div style={{ width:8,height:8,borderRadius:4,background:"#F4612B",flexShrink:0,marginTop:4 }}/>}
+            {!n.read && <div style={{ width:8,height:8,borderRadius:4,background:"var(--brand-primary)",flexShrink:0,marginTop:4 }}/>}
           </div>
         ))}
       </div>
@@ -261,7 +261,7 @@ export function AdminBulkNotifScreen({ onNavigate }: Props) {
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Channel</label>
               <div style={{ display:"flex",gap:8 }}>
                 {[{id:"sms",l:"📱 SMS"},{id:"push",l:"🔔 Push"},{id:"email",l:"📧 Email"},{id:"all",l:"All Channels"}].map(c=>(
-                  <button key={c.id} onClick={()=>setChannel(c.id)} style={{ flex:1,height:40,borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:channel===c.id?"#F4612B":"#F3F4F6",color:channel===c.id?"white":"#6B7280" }}>{c.l}</button>
+                  <button key={c.id} onClick={()=>setChannel(c.id)} style={{ flex:1,height:40,borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:channel===c.id?"var(--brand-primary)":"#F3F4F6",color:channel===c.id?"white":"#6B7280" }}>{c.l}</button>
                 ))}
               </div>
             </div>
@@ -269,7 +269,7 @@ export function AdminBulkNotifScreen({ onNavigate }: Props) {
               <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Audience</label>
               <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                 {[{id:"all",l:"All (3,847)"},{id:"active",l:"Active Borrowers (1,203)"},{id:"overdue",l:"Overdue (18)"},{id:"savings",l:"Savers (2,341)"}].map(a=>(
-                  <button key={a.id} onClick={()=>setAudience(a.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:audience===a.id?"#F4612B":"#F3F4F6",color:audience===a.id?"white":"#6B7280" }}>{a.l}</button>
+                  <button key={a.id} onClick={()=>setAudience(a.id)} style={{ padding:"7px 12px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:audience===a.id?"var(--brand-primary)":"#F3F4F6",color:audience===a.id?"white":"#6B7280" }}>{a.l}</button>
                 ))}
               </div>
             </div>
@@ -279,7 +279,7 @@ export function AdminBulkNotifScreen({ onNavigate }: Props) {
               <span style={{ fontSize:11,color:"#94A3B8" }}>{msg.length}/160 characters</span>
             </div>
             <div style={{ display:"flex",gap:10 }}>
-              <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+              <button style={{ flex:1,height:46,borderRadius:10,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
                 <Send size={16}/> Send Now
               </button>
               <button style={{ flex:1,height:46,borderRadius:10,background:"#F3F4F6",color:"#374151",border:"none",fontSize:14,fontWeight:600,cursor:"pointer" }}>Schedule</button>
@@ -307,20 +307,20 @@ export function AdminPaymentReminderSettingsScreen({ onNavigate }: Props) {
           {reminders.map((r,i)=>(
             <div key={i} style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderBottom:i<reminders.length-1?"1px solid #F8FAFC":"none" }}>
               <div style={{ width:56,height:38,borderRadius:8,border:"1.5px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                <input type="number" value={r.days} onChange={e=>setReminders(rs=>rs.map((x,j)=>j===i?{...x,days:e.target.value}:x))} style={{ width:"100%",border:"none",outline:"none",fontSize:16,fontWeight:800,color:"#F4612B",textAlign:"center",background:"transparent" }}/>
+                <input type="number" value={r.days} onChange={e=>setReminders(rs=>rs.map((x,j)=>j===i?{...x,days:e.target.value}:x))} style={{ width:"100%",border:"none",outline:"none",fontSize:16,fontWeight:800,color:"var(--brand-primary)",textAlign:"center",background:"transparent" }}/>
               </div>
               <span style={{ fontSize:13,color:"#374151" }}>days before via {r.channel}</span>
               <div style={{ flex:1 }}/>
-              <button onClick={()=>setReminders(rs=>rs.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:44,height:24,borderRadius:12,background:r.enabled?"#F4612B":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:r.enabled?"flex-end":"flex-start",padding:2 }}>
+              <button onClick={()=>setReminders(rs=>rs.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:44,height:24,borderRadius:12,background:r.enabled?"var(--brand-primary)":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:r.enabled?"flex-end":"flex-start",padding:2 }}>
                 <div style={{ width:20,height:20,borderRadius:10,background:"white" }}/>
               </button>
             </div>
           ))}
-          <button style={{ display:"flex",alignItems:"center",gap:6,marginTop:14,padding:"8px 14px",borderRadius:8,background:"#FFF6EF",border:"none",color:"#F4612B",fontSize:12,fontWeight:600,cursor:"pointer" }}>
+          <button style={{ display:"flex",alignItems:"center",gap:6,marginTop:14,padding:"8px 14px",borderRadius:8,background:"var(--brand-light)",border:"none",color:"var(--brand-primary)",fontSize:12,fontWeight:600,cursor:"pointer" }}>
             <Plus size={14}/> Add Reminder
           </button>
         </AdminCard>
-        <button style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Reminder Settings</button>
+        <button style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Reminder Settings</button>
       </div>
     </AdminLayout>
   );
@@ -341,14 +341,14 @@ export function AdminOverdueNotifSettingsScreen({ onNavigate }: Props) {
           <AdminCard key={i} style={{ marginBottom:14 }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
               <span style={{ fontSize:13,fontWeight:700,color:s.day>=30?"#EF4444":s.day>=7?"#F59E0B":"#374151" }}>Day {s.day} Overdue</span>
-              <button onClick={()=>setSteps(ss=>ss.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:44,height:24,borderRadius:12,background:s.enabled?"#F4612B":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:s.enabled?"flex-end":"flex-start",padding:2 }}>
+              <button onClick={()=>setSteps(ss=>ss.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} style={{ width:44,height:24,borderRadius:12,background:s.enabled?"var(--brand-primary)":"#D1D5DB",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:s.enabled?"flex-end":"flex-start",padding:2 }}>
                 <div style={{ width:20,height:20,borderRadius:10,background:"white" }}/>
               </button>
             </div>
             <textarea defaultValue={s.msg} rows={2} style={{ width:"100%",borderRadius:8,border:"1.5px solid #E5E7EB",padding:"8px 12px",fontSize:12,outline:"none",boxSizing:"border-box" as "border-box",resize:"none",color:"#374151" }}/>
           </AdminCard>
         ))}
-        <button style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Overdue Settings</button>
+        <button style={{ width:"100%",height:46,borderRadius:12,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",border:"none",fontSize:14,fontWeight:700,cursor:"pointer" }}>Save Overdue Settings</button>
       </div>
     </AdminLayout>
   );
@@ -362,19 +362,19 @@ export function AdminCreditMilestoneScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:600 }}>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
           {[
-            { score:600,label:"Good",reward:"Access to UGX 500K loans",color:"#D9531F" },
+            { score:600,label:"Good",reward:"Access to UGX 500K loans",color:"var(--brand-primary-dark)" },
             { score:700,label:"Very Good",reward:"Access to UGX 1M loans",color:"#8B5CF6" },
             { score:750,label:"Excellent",reward:"0.5% lower interest rate",color:"#12B984" },
             { score:800,label:"Elite",reward:"1% lower interest + higher limit",color:"#F59E0B" },
           ].map(m=>(
             <AdminCard key={m.score}>
               <div style={{ display:"flex",alignItems:"center",gap:14 }}>
-                <div style={{ width:48,height:48,borderRadius:14,background:m.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:m.color }}>{m.score}</div>
+                <div style={{ width:48,height:48,borderRadius:14,background:`color-mix(in srgb, ${m.color} 8%, transparent)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:m.color }}>{m.score}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:14,fontWeight:700,color:"#0F172A",margin:0 }}>{m.label} Milestone</p>
                   <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>Reward: {m.reward}</p>
                 </div>
-                <button style={{ padding:"6px 12px",borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
+                <button style={{ padding:"6px 12px",borderRadius:8,background:"var(--brand-light)",color:"var(--brand-primary)",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Edit</button>
               </div>
             </AdminCard>
           ))}
@@ -392,8 +392,8 @@ export function AdminPromotionExpiryScreen({ onNavigate }: Props) {
       <AdminTable
         columns={["Campaign","End Date","Days Left","Claims","Action"]}
         rows={[
-          ["First Loan Discount","Aug 31, 2026",81,"220/500",<button style={{ padding:"4px 10px",borderRadius:6,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Extend</button>],
-          ["High Score Reward","Jul 15, 2026",34,"91/200",<button style={{ padding:"4px 10px",borderRadius:6,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Extend</button>],
+          ["First Loan Discount","Aug 31, 2026",81,"220/500",<button style={{ padding:"4px 10px",borderRadius:6,background:"var(--brand-light)",color:"var(--brand-primary)",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Extend</button>],
+          ["High Score Reward","Jul 15, 2026",34,"91/200",<button style={{ padding:"4px 10px",borderRadius:6,background:"var(--brand-light)",color:"var(--brand-primary)",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>Extend</button>],
           ["Referral Bonus","Jun 30, 2026",19,"314/1000",<button style={{ padding:"4px 10px",borderRadius:6,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer" }}>End Early</button>],
         ]}
       />
@@ -405,7 +405,7 @@ export function AdminPromotionExpiryScreen({ onNavigate }: Props) {
 export function CustomerAvailablePromotionsScreen({ onNavigate }: Props) {
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))" }}>
         <button onClick={()=>onNavigate("home")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -423,7 +423,7 @@ export function CustomerAvailablePromotionsScreen({ onNavigate }: Props) {
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                   <p style={{ fontSize:15,fontWeight:800,color:"#1F2937",margin:0 }}>{p.title}</p>
-                  <span style={{ fontSize:10,fontWeight:700,color:p.color,background:p.color+"15",padding:"2px 8px",borderRadius:20 }}>{p.badge}</span>
+                  <span style={{ fontSize:10,fontWeight:700,color:p.color,background:`color-mix(in srgb, ${p.color} 8%, transparent)`,padding:"2px 8px",borderRadius:20 }}>{p.badge}</span>
                 </div>
                 <p style={{ fontSize:12,color:"#6B7280",margin:"4px 0 0",lineHeight:1.5 }}>{p.desc}</p>
               </div>
@@ -447,7 +447,7 @@ export function CustomerClaimPromotionScreen({ onNavigate }: Props) {
   const [claimed, setClaimed] = useState(false);
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
-      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#F4612B,#D9531F)" }}>
+      <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))" }}>
         <button onClick={()=>onNavigate("customer-available-promotions")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
           <ArrowLeft size={18} color="white"/>
         </button>
@@ -463,7 +463,7 @@ export function CustomerClaimPromotionScreen({ onNavigate }: Props) {
               <h2 style={{ fontSize:22,fontWeight:800,color:"#1F2937",margin:0 }}>Promotion Claimed! 🎉</h2>
               <p style={{ fontSize:13,color:"#6B7280",marginTop:8,lineHeight:1.6 }}>Your 5% discount has been applied to your account. It will be used automatically on your next loan application.</p>
             </div>
-            <button onClick={()=>onNavigate("loan-apply")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,#F4612B,#D9531F)",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Apply for Loan Now</button>
+            <button onClick={()=>onNavigate("loan-apply")} style={{ width:"100%",height:52,borderRadius:14,background:"linear-gradient(135deg,var(--brand-primary),var(--brand-primary-dark))",color:"white",fontSize:16,fontWeight:700,border:"none",cursor:"pointer" }}>Apply for Loan Now</button>
           </>
         ) : (
           <>
@@ -498,7 +498,7 @@ export function AdminNotifAnalyticsScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Notification Analytics" subtitle="Track open rates, click rates, and delivery stats"/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="SMS Delivery Rate" value="98.3%" sub="12,847 sent" color="#12B984" icon={<></>}/>
-        <StatCard label="Push Open Rate" value="67.2%" sub="8,241 sent" color="#F4612B" icon={<></>}/>
+        <StatCard label="Push Open Rate" value="67.2%" sub="8,241 sent" color="var(--brand-primary)" icon={<></>}/>
         <StatCard label="Email Open Rate" value="42.8%" sub="4,103 sent" color="#8B5CF6" icon={<></>}/>
         <StatCard label="Opt-Out Rate" value="1.2%" sub="48 this month" color="#EF4444" icon={<></>}/>
       </div>

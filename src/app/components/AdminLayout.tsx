@@ -5,7 +5,7 @@ import {
   Bell, LogOut, Search, Menu, ArrowLeft, type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import kuulaLogo from "../../imports/kuula-tile-1024.png";
+import kuulaLogo from "/kuula-logo-dark.png";
 
 interface NavItem {
   id: string;
@@ -108,7 +108,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
         style={{
           width: sidebarOpen ? 220 : 0,
           minWidth: sidebarOpen ? 220 : 0,
-          background: "#0F172A",
+          background: "var(--brand-primary-dark)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -143,12 +143,12 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                   }}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 9,
-                    padding: "9px 14px", background: isActive && !item.children ? "rgba(255,107,53,0.15)" : "transparent",
+                    padding: "9px 14px", background: isActive && !item.children ? "rgba(11,107,58,0.15)" : "transparent",
                     border: "none", cursor: "pointer", textAlign: "left",
-                    borderLeft: isActive && !item.children ? "2px solid #F4612B" : "2px solid transparent",
+                    borderLeft: isActive && !item.children ? "2px solid var(--brand-primary)" : "2px solid transparent",
                   }}
                 >
-                  <Icon size={15} color={isActive ? "#F4612B" : "#475569"} />
+                  <Icon size={15} color={isActive ? "var(--brand-primary)" : "#475569"} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? "#E2E8F0" : "#64748B", flex: 1, whiteSpace: "nowrap" }}>
                     {item.label}
                   </span>
@@ -168,7 +168,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                           width: "100%", display: "block", padding: "7px 14px 7px 0",
                           background: "transparent", border: "none", cursor: "pointer", textAlign: "left",
                           fontSize: 11, fontWeight: activeScreen === child.id ? 600 : 400,
-                          color: activeScreen === child.id ? "#F4612B" : "#475569",
+                          color: activeScreen === child.id ? "var(--brand-primary)" : "#475569",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -224,7 +224,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
             <Bell size={17} color="#64748B" />
             <div style={{ width: 7, height: 7, borderRadius: 4, background: "#EF4444", position: "absolute", top: 0, right: 0 }} />
           </button>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #F4612B, #D9531F)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "white" }}>AK</span>
           </div>
         </div>
@@ -241,7 +241,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
 // ── Shared admin components ───────────────────────────────────────────────────
 
 export function StatCard({
-  label, value, sub, color = "#F4612B", icon,
+  label, value, sub, color = "var(--brand-primary)", icon,
 }: {
   label: string; value: string; sub?: string; color?: string; icon: React.ReactNode;
 }) {
@@ -249,7 +249,7 @@ export function StatCard({
     <div style={{ background: "white", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #F1F5F9", flex: 1, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</span>
-        <div style={{ width: 32, height: 32, borderRadius: 9, background: color + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
+        <div style={{ width: 32, height: 32, borderRadius: 9, background: `color-mix(in srgb, ${color} 8%, transparent)`, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
       </div>
       <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", letterSpacing: -0.5 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>{sub}</div>}
@@ -301,7 +301,7 @@ export function StatusBadge({ status }: { status: string }) {
     active:    { bg: "#F0FDF4", color: "#12B984" },
     approved:  { bg: "#F0FDF4", color: "#12B984" },
     verified:  { bg: "#F0FDF4", color: "#12B984" },
-    completed: { bg: "#FFF6EF", color: "#F4612B" },
+    completed: { bg: "var(--brand-light)", color: "var(--brand-primary)" },
     paid:      { bg: "#F0FDF4", color: "#12B984" },
     pending:   { bg: "#FFF7ED", color: "#F59E0B" },
     offered:   { bg: "#F5F3FF", color: "#8B5CF6" },

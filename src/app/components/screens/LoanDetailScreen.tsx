@@ -79,7 +79,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
   const header = (
     <div
       className="flex items-center justify-between px-4 pt-4 pb-4"
-      style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}
     >
       <div className="flex items-center gap-3">
         <button
@@ -226,7 +226,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 flex gap-3" style={{ background: "white", borderTop: "1px solid #F3F4F6" }}>
         <button
           onClick={() => onNavigate("confirm")}
-          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(255,107,53,0.3)" }}
+          style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 15, fontWeight: 700, border: "none", boxShadow: "0 4px 12px rgba(11,107,58,0.3)" }}
         >
           {t("loanDetail.makePayment")}
         </button>

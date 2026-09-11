@@ -109,14 +109,14 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100%", background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ position: "relative", minHeight: "100%", background: "linear-gradient(135deg, var(--brand-primary-dark), var(--brand-primary))", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <button onClick={() => onNavigate("welcome")} aria-label="Go back" title="Go back" style={{ position: "absolute", top: 16, left: 16, width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         <ArrowLeft size={18} color="white" />
       </button>
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 24 }}>
         {/* Logo */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 190, maxWidth: "70%" }}>
+          <div style={{ width: 170, maxWidth: "65%", padding: 10, borderRadius: 18, background: "white" }}>
             <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "auto", objectFit: "contain" }} />
           </div>
           <div style={{ textAlign: "center" }}>
@@ -148,7 +148,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
                 </button>
               </div>
             </div>
-            <button onClick={resetPw} style={{ fontSize: 12, color: "#F4612B", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
+            <button onClick={resetPw} style={{ fontSize: 12, color: "var(--brand-primary)", border: "none", background: "none", cursor: "pointer", textAlign: "right", fontWeight: 600 }}>Forgot Password?</button>
           </div>
 
           {notice && (
@@ -158,12 +158,12 @@ export function AdminLoginScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 12, color: "#EF4444", margin: "-6px 0 0", textAlign: "center" }}>{error}</p>
           )}
 
-          <button onClick={submit} disabled={loading || lockoutRemaining > 0} style={{ width: "100%", height: 48, borderRadius: 12, background: (loading || lockoutRemaining > 0) ? "#9CA3AF" : "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: (loading || lockoutRemaining > 0) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(255,107,53,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={submit} disabled={loading || lockoutRemaining > 0} style={{ width: "100%", height: 48, borderRadius: 12, background: (loading || lockoutRemaining > 0) ? "#9CA3AF" : "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: (loading || lockoutRemaining > 0) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(11,107,58,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {loading ? <><div style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Signing in...</> : lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : "Sign In to Admin"}
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#FFF6EF", border: "1px solid #FFDCC8" }}>
-            <Shield size={14} color="#F4612B" />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "var(--brand-light)", border: "1px solid var(--brand-border)" }}>
+            <Shield size={14} color="var(--brand-primary)" />
             <span style={{ fontSize: 11, color: "#374151" }}>Two-factor authentication required for all staff accounts</span>
           </div>
         </div>

@@ -17,7 +17,7 @@ export interface ReceiptData {
   footerNote?: string;
 }
 
-const BRAND = { r: 255, g: 107, b: 53 };
+const BRAND = { r: 11, g: 107, b: 58 };
 
 /** Render a single-page A5 receipt PDF and download it. */
 export function downloadReceiptPdf(data: ReceiptData): void {

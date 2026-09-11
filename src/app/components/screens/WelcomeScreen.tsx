@@ -167,17 +167,17 @@ export function WelcomeScreen({ onNavigate }: Props) {
         className="absolute top-0 left-0 right-0"
         style={{
           height: 340,
-          background: "linear-gradient(165deg, #0F172A 0%, #166534 52%, #ECFDF5 100%)",
+          background: "linear-gradient(165deg, var(--brand-primary-dark) 0%, var(--brand-primary) 52%, var(--brand-light) 100%)",
         }}
       />
 
       {/* Logo area */}
       <div className="relative flex flex-col items-center pt-14 pb-8">
-        <div style={{ width: 224, maxWidth: "72%", marginBottom: 14 }}>
+        <div style={{ width: 190, maxWidth: "64%", marginBottom: 14, padding: 10, borderRadius: 18, background: "rgba(255,255,255,0.96)", boxShadow: "0 10px 28px rgba(2,6,23,0.16)" }}>
           <ImageWithFallback
             src={kuulaLogo}
             alt="Kuula"
-            style={{ width: "100%", height: "auto", objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(2,6,23,0.4))" }}
+            style={{ width: "100%", height: "auto", objectFit: "contain" }}
           />
         </div>
         <p style={{ fontSize: 14, color: "#DCFCE7", textAlign: "center", maxWidth: 240 }}>
@@ -190,13 +190,13 @@ export function WelcomeScreen({ onNavigate }: Props) {
         <button
           onClick={() => onNavigate("language")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "rgba(255,255,255,0.95)", border: "1px solid #BBF7D0", cursor: "pointer", boxShadow: "0 10px 26px rgba(22,101,52,0.16)" }}
+          style={{ background: "rgba(255,255,255,0.95)", border: "1px solid var(--brand-border)", cursor: "pointer", boxShadow: "0 10px 26px rgba(22,101,52,0.16)" }}
         >
-          <Globe size={13} color="#166534" />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#166534" }}>
+          <Globe size={13} color="var(--brand-primary)" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-primary)" }}>
             {i18n.language === "en" ? "English" : i18n.language === "lg" ? "Oluganda" : i18n.language === "sw" ? "Kiswahili" : i18n.language}
           </span>
-          <ChevronRight size={12} color="#166534" />
+          <ChevronRight size={12} color="var(--brand-primary)" />
         </button>
       </div>
 
@@ -208,7 +208,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
             color: "white",
             fontSize: 16,
             fontWeight: 600,
@@ -228,11 +228,11 @@ export function WelcomeScreen({ onNavigate }: Props) {
             style={{
               height: 52,
               borderRadius: 16,
-              background: "#ECFDF5",
-              color: "#166534",
+              background: "var(--brand-light)",
+              color: "var(--brand-primary)",
               fontSize: 15,
               fontWeight: 600,
-              border: "1.5px solid #BBF7D0",
+              border: "1.5px solid var(--brand-border)",
               cursor: "pointer",
             }}
           >
@@ -253,11 +253,11 @@ export function WelcomeScreen({ onNavigate }: Props) {
                   flex: 1,
                   height: 52,
                   borderRadius: 14,
-                  background: isAdmin ? "#FEF2F2" : "#ECFDF5",
-                  color: isAdmin ? "#B91C1C" : "#166534",
+                  background: isAdmin ? "#FEF2F2" : "var(--brand-light)",
+                  color: isAdmin ? "#B91C1C" : "var(--brand-primary)",
                   fontSize: 13,
                   fontWeight: 700,
-                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid #BBF7D0",
+                  border: isAdmin ? "1.5px solid #FECACA" : "1.5px solid var(--brand-border)",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -282,7 +282,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
           <button
             type="button"
             onClick={() => onNavigate("customer-terms")}
-            style={{ border: "none", background: "none", padding: 0, color: "#166534", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
+            style={{ border: "none", background: "none", padding: 0, color: "var(--brand-primary)", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
           >
             {t("welcome.termsLink")}
           </button>{" "}
@@ -290,7 +290,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
           <button
             type="button"
             onClick={() => onNavigate("customer-privacy-policy")}
-            style={{ border: "none", background: "none", padding: 0, color: "#166534", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
+            style={{ border: "none", background: "none", padding: 0, color: "var(--brand-primary)", fontWeight: 700, fontSize: 12, textDecoration: "underline", cursor: "pointer" }}
           >
             {t("welcome.privacyLink")}
           </button>
@@ -346,7 +346,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
             <button
               onClick={handleApiLogin}
               disabled={apiLoading}
-              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#86EFAC" : "linear-gradient(135deg, #166534, #15803D)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
+              style={{ width: "100%", height: 48, borderRadius: 14, background: apiLoading ? "#86EFAC" : "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: apiLoading ? "wait" : "pointer" }}
             >
               {apiLoading ? t("common.signingIn") : t("welcome.signIn")}
             </button>
@@ -428,7 +428,7 @@ export function WelcomeScreen({ onNavigate }: Props) {
                 width: "100%",
                 height: 48,
                 borderRadius: 14,
-                background: "linear-gradient(135deg, #F4612B, #D9531F)",
+                background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
                 color: "white",
                 fontSize: 15,
                 fontWeight: 700,

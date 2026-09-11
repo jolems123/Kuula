@@ -8,7 +8,7 @@ interface Props {
 
 function scoreLabel(s: number) {
   if (s >= 750) return { text: "Excellent", color: "#12B984" };
-  if (s >= 700) return { text: "Good", color: "#D9531F" };
+  if (s >= 700) return { text: "Good", color: "var(--brand-primary-dark)" };
   if (s >= 650) return { text: "Fair", color: "#F59E0B" };
   if (s >= 580) return { text: "Poor", color: "#EF4444" };
   return { text: "Very Poor", color: "#DC2626" };
@@ -153,7 +153,7 @@ export function CreditScoreGauge({ score, size = 180, showLabel = true }: Props)
               color,
               padding: "2px 12px",
               borderRadius: 20,
-              background: color + "18",
+              background: `color-mix(in srgb, ${color} 9%, transparent)`,
               border: `1px solid ${color}40`,
             }}
           >

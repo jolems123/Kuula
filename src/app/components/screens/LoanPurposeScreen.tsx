@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 interface Props { onNavigate: (s: string) => void; }
 
 const PURPOSES = [
-  { id: "business", Icon: Briefcase, label: "Business", sub: "Stock, supplies, equipment", color: "#F4612B" },
+  { id: "business", Icon: Briefcase, label: "Business", sub: "Stock, supplies, equipment", color: "var(--brand-primary)" },
   { id: "emergency", Icon: Zap, label: "Emergency", sub: "Urgent unexpected needs", color: "#EF4444" },
   { id: "medical", Icon: Stethoscope, label: "Medical", sub: "Hospital, medicine, tests", color: "#12B984" },
   { id: "school", Icon: GraduationCap, label: "School Fees", sub: "Tuition, books, uniforms", color: "#8B5CF6" },
@@ -21,7 +21,7 @@ export function LoanPurposeScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}>
         <button onClick={() => onNavigate("loan-apply")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -42,15 +42,15 @@ export function LoanPurposeScreen({ onNavigate }: Props) {
                 key={id}
                 onClick={() => setSelected(id)}
                 style={{
-                  background: active ? "#FFF6EF" : "white",
+                  background: active ? "var(--brand-light)" : "white",
                   borderRadius: 16, padding: "16px 12px",
-                  border: `2px solid ${active ? "#F4612B" : "#F3F4F6"}`,
+                  border: `2px solid ${active ? "var(--brand-primary)" : "#F3F4F6"}`,
                   boxShadow: "0 2px 6px rgba(0,0,0,0.04)", cursor: "pointer",
                   display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, textAlign: "left",
                 }}
               >
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: color + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon size={20} color={active ? "#F4612B" : color} />
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: `color-mix(in srgb, ${color} 8%, transparent)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon size={20} color={active ? "var(--brand-primary)" : color} />
                 </div>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 700, color: active ? "#374151" : "#1F2937", margin: 0 }}>{label}</p>
@@ -76,7 +76,7 @@ export function LoanPurposeScreen({ onNavigate }: Props) {
           onClick={() => { if (selected) onNavigate("loan-disbursement"); }}
           style={{
             width: "100%", height: 52, borderRadius: 14, cursor: selected ? "pointer" : "not-allowed",
-            background: selected ? "linear-gradient(135deg, #F4612B, #D9531F)" : "#E5E7EB",
+            background: selected ? "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" : "#E5E7EB",
             color: selected ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
           }}
         >

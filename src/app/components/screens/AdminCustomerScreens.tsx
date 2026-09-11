@@ -59,7 +59,7 @@ export function AdminCustomerListScreen({ onNavigate }: Props) {
         }
       />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Total Customers" value={loading ? "…" : String(customers.length)} color="#F4612B" icon={<></>}/>
+        <StatCard label="Total Customers" value={loading ? "…" : String(customers.length)} color="var(--brand-primary)" icon={<></>}/>
         <StatCard label="Verified (KYC)" value={loading ? "…" : String(verifiedCount)} sub={customers.length > 0 ? `${Math.round(verifiedCount / customers.length * 100)}%` : "—"} color="#12B984" icon={<></>}/>
         <StatCard label="Total Loans Taken" value={loading ? "…" : String(customers.reduce((s, c) => s + (c.loans_total ?? 0), 0))} color="#F59E0B" icon={<></>}/>
       </div>
@@ -93,7 +93,7 @@ export function AdminCustomerDetailScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Customer Detail" subtitle="Select a customer from the list to view their profile"
         action={
           <div style={{ display:"flex",gap:8 }}>
-            <button onClick={()=>onNavigate("admin-customer-kyc")} style={{ padding:"8px 14px",borderRadius:8,background:"#FFF6EF",color:"#F4612B",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View KYC</button>
+            <button onClick={()=>onNavigate("admin-customer-kyc")} style={{ padding:"8px 14px",borderRadius:8,background:"var(--brand-light)",color:"var(--brand-primary)",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>View KYC</button>
             <button onClick={()=>onNavigate("admin-block-customer")} style={{ padding:"8px 14px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Block</button>
           </div>
         }
@@ -160,7 +160,7 @@ export function AdminCustomerRiskScreen({ onNavigate }: Props) {
           <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Risk Score Breakdown</h3>
           {[
             { label:"Payment History",score:92,color:"#12B984" },
-            { label:"Credit Utilization",score:68,color:"#D9531F" },
+            { label:"Credit Utilization",score:68,color:"var(--brand-primary-dark)" },
             { label:"Income Stability",score:75,color:"#F59E0B" },
             { label:"Identity Verification",score:100,color:"#12B984" },
             { label:"Loan-to-Income Ratio",score:80,color:"#8B5CF6" },
@@ -187,7 +187,7 @@ export function AdminCustomerRiskScreen({ onNavigate }: Props) {
               <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:600,color:"#0F172A" }}>{v}</span>
             </div>
           ))}
-          <button style={{ width:"100%",height:40,marginTop:16,borderRadius:8,background:"#F4612B",color:"white",border:"none",fontSize:13,fontWeight:600,cursor:"pointer" }}>Increase Credit Limit</button>
+          <button style={{ width:"100%",height:40,marginTop:16,borderRadius:8,background:"var(--brand-primary)",color:"white",border:"none",fontSize:13,fontWeight:600,cursor:"pointer" }}>Increase Credit Limit</button>
         </AdminCard>
       </div>
     </AdminLayout>
@@ -204,8 +204,8 @@ export function AdminBlockCustomerScreen({ onNavigate }: Props) {
       <div style={{ maxWidth:560 }}>
         <AdminCard>
           <div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:20 }}>
-            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"#FFF6EF",border:`2px solid ${blocked?"#FECACA":"#FFDCC8"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
-              {blocked ? <Lock size={28} color="#EF4444"/> : <Unlock size={28} color="#F4612B"/>}
+            <div style={{ width:56,height:56,borderRadius:28,background:blocked?"#FEF2F2":"var(--brand-light)",border:`2px solid ${blocked?"#FECACA":"var(--brand-border)"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+              {blocked ? <Lock size={28} color="#EF4444"/> : <Unlock size={28} color="var(--brand-primary)"/>}
             </div>
             <div>
               <p style={{ fontSize:16,fontWeight:800,color:"#0F172A",margin:0 }}>Customer Account</p>

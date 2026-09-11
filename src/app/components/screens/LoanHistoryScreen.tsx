@@ -13,8 +13,8 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   pending:  { color: "#F59E0B", bg: "#FFF7ED" },
   approved: { color: "#12B984", bg: "#F0FDF4" },
   active:   { color: "#12B984", bg: "#F0FDF4" },
-  completed:{ color: "#F4612B", bg: "#FFF6EF" },
-  paid:     { color: "#F4612B", bg: "#FFF6EF" },
+  completed:{ color: "var(--brand-primary)", bg: "var(--brand-light)" },
+  paid:     { color: "var(--brand-primary)", bg: "var(--brand-light)" },
   rejected: { color: "#EF4444", bg: "#FEF2F2" },
   overdue:  { color: "#EF4444", bg: "#FEF2F2" },
 };
@@ -64,7 +64,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}>
         <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
@@ -92,7 +92,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
             onClick={() => setFilter(f)}
             style={{
               padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-              background: filter === f ? "#F4612B" : "#F3F4F6",
+              background: filter === f ? "var(--brand-primary)" : "#F3F4F6",
               color: filter === f ? "white" : "#6B7280",
             }}
           >

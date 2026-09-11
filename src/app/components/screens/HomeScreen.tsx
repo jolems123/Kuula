@@ -81,7 +81,7 @@ export function HomeScreen({ onNavigate }: Props) {
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 pt-4 pb-4"
-        style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)" }}
+        style={{ background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}
       >
         <div className="flex items-center gap-3">
           <div
@@ -111,7 +111,7 @@ export function HomeScreen({ onNavigate }: Props) {
         >
           <Bell size={20} color="white" />
           {unread > 0 && (
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#EF4444", position: "absolute", top: 8, right: 8, border: "1.5px solid #D9531F" }} />
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#EF4444", position: "absolute", top: 8, right: 8, border: "1.5px solid var(--brand-primary-dark)" }} />
           )}
         </button>
       </div>
@@ -122,15 +122,15 @@ export function HomeScreen({ onNavigate }: Props) {
         <div
           className="p-5 rounded-2xl"
           style={{
-            background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)",
-            border: "1px solid #FFDCC8",
-            boxShadow: "0 2px 12px rgba(255,107,53,0.1)",
+            background: "linear-gradient(135deg, var(--brand-light), var(--brand-border))",
+            border: "1px solid var(--brand-border)",
+            boxShadow: "0 2px 12px rgba(11,107,58,0.1)",
           }}
         >
           <div className="flex items-start justify-between mb-3">
             <div>
               <p style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{t("home.availableCredit")}</p>
-              <p style={{ fontSize: 30, fontWeight: 800, color: "#D9531F", letterSpacing: -1, marginTop: 2 }}>
+              <p style={{ fontSize: 30, fontWeight: 800, color: "var(--brand-primary-dark)", letterSpacing: -1, marginTop: 2 }}>
                 {formatUGX(loan?.availableCredit ?? 0)}
               </p>
             </div>
@@ -163,7 +163,7 @@ export function HomeScreen({ onNavigate }: Props) {
             </div>
             <button
               onClick={() => onNavigate("dashboard")}
-              style={{ fontSize: 11, fontWeight: 700, color: "#F4612B", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
             >
               {t("home.dashboard")} →
             </button>
@@ -218,12 +218,12 @@ export function HomeScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
             color: "white",
             fontSize: 17,
             fontWeight: 700,
             border: "none",
-            boxShadow: "0 6px 20px rgba(255,107,53,0.35)",
+            boxShadow: "0 6px 20px rgba(11,107,58,0.35)",
           }}
         >
           + {t("home.applyLoan")}
@@ -283,7 +283,7 @@ export function HomeScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937" }}>{t("home.recentActivity")}</p>
             <button
               onClick={() => onNavigate("loan-history")}
-              style={{ fontSize: 12, color: "#F4612B", fontWeight: 600, border: "none", background: "none" }}
+              style={{ fontSize: 12, color: "var(--brand-primary)", fontWeight: 600, border: "none", background: "none" }}
             >
               {t("common.viewAll")}
             </button>

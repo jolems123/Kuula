@@ -157,10 +157,14 @@ def main():
     public = os.path.join(ROOT, "public")
     # PWA tile / icon
     shutil.copy2(ICON_MASTER, os.path.join(public, "kuula-tile-green-1024.png"))
+    shutil.copy2(ICON_MASTER, os.path.join(public, "kuula-icon-1024.png"))
+    resize(icon, 512).save(os.path.join(public, "kuula-icon-512.png"))
+    resize(icon, 192).save(os.path.join(public, "kuula-icon-192.png"))
+    resize(icon, 180).save(os.path.join(public, "apple-touch-icon.png"))
     # Favicon
     shutil.copy2(FAVICON, os.path.join(public, "favicon-256.png"))
-    # Also copy logos for use in web app
-    # (already in assets/ from download, just copy to src/imports for figma:asset/)
+    shutil.copy2(LOGO_LIGHT, os.path.join(public, "kuula-logo-light.png"))
+    shutil.copy2(LOGO_DARK, os.path.join(public, "kuula-logo-dark.png"))
     # Copy to src/imports for in-app use via figma:asset/
     imports = os.path.join(ROOT, "src", "imports")
     ensure_dir(imports)

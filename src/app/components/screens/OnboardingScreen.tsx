@@ -87,11 +87,11 @@ export function OnboardingScreen({ onNavigate }: Props) {
             width: 132,
             height: 132,
             borderRadius: 36,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 16px 36px rgba(255,107,53,0.28)",
+            boxShadow: "0 16px 36px rgba(11,107,58,0.28)",
             marginBottom: 40,
             position: "relative",
           }}
@@ -120,7 +120,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
               border: "none",
               padding: 0,
               cursor: "pointer",
-              background: i === index ? "#F4612B" : "#D1D5DB",
+              background: i === index ? "var(--brand-primary)" : "#D1D5DB",
               transition: "width 0.25s, background 0.25s",
             }}
           />
@@ -135,13 +135,13 @@ export function OnboardingScreen({ onNavigate }: Props) {
           style={{
             height: 56,
             borderRadius: 16,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
             color: "white",
             fontSize: 16,
             fontWeight: 700,
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(255,107,53,0.3)",
+            boxShadow: "0 6px 20px rgba(11,107,58,0.3)",
           }}
         >
           {isLast ? t("onboarding.getStarted") : t("onboarding.next")}
@@ -152,7 +152,7 @@ export function OnboardingScreen({ onNavigate }: Props) {
           {t("onboarding.haveAccount")}{" "}
           <button
             onClick={finish}
-            style={{ background: "none", border: "none", color: "#F4612B", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "var(--brand-primary)", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}
           >
             {t("onboarding.logIn")}
           </button>

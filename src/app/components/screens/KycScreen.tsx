@@ -125,7 +125,7 @@ export function KycScreen({ onNavigate }: Props) {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  background: step >= s.n ? "#F4612B" : "#F3F4F6",
+                  background: step >= s.n ? "var(--brand-primary)" : "#F3F4F6",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -139,7 +139,7 @@ export function KycScreen({ onNavigate }: Props) {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 10, color: step >= s.n ? "#F4612B" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
+              <span style={{ fontSize: 10, color: step >= s.n ? "var(--brand-primary)" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
                 {s.label}
               </span>
             </div>
@@ -148,7 +148,7 @@ export function KycScreen({ onNavigate }: Props) {
                 style={{
                   flex: 1,
                   height: 2,
-                  background: step > s.n ? "#F4612B" : "#E5E7EB",
+                  background: step > s.n ? "var(--brand-primary)" : "#E5E7EB",
                   margin: "0 8px",
                   marginBottom: 20,
                 }}
@@ -164,12 +164,12 @@ export function KycScreen({ onNavigate }: Props) {
           <>
             <div
               className="p-4 rounded-xl flex items-start gap-3"
-              style={{ background: "#FFF6EF", border: "1px solid #FFDCC8" }}
+              style={{ background: "var(--brand-light)", border: "1px solid var(--brand-border)" }}
             >
-              <User size={18} color="#F4612B" style={{ marginTop: 2 }} />
+              <User size={18} color="var(--brand-primary)" style={{ marginTop: 2 }} />
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{t("kyc.ninRequired")}</p>
-                <p style={{ fontSize: 12, color: "#D9531F", marginTop: 2 }}>
+                <p style={{ fontSize: 12, color: "var(--brand-primary-dark)", marginTop: 2 }}>
                   {t("kyc.niraVerification")}
                 </p>
               </div>
@@ -461,12 +461,12 @@ export function KycScreen({ onNavigate }: Props) {
             width: "100%",
             height: 52,
             borderRadius: 14,
-            background: "linear-gradient(135deg, #F4612B, #D9531F)",
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
             color: "white",
             fontSize: 16,
             fontWeight: 600,
             border: "none",
-            boxShadow: "0 4px 16px rgba(255,107,53,0.3)",
+            boxShadow: "0 4px 16px rgba(11,107,58,0.3)",
           }}
         >
           {isSubmitting ? "Submitting..." : step < 3 ? t("common.continue") : t("common.goToDashboard")}

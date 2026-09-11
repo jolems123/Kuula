@@ -59,7 +59,7 @@ function useSessionBootstrap(): boolean {
 /** Full-screen loading state shown while a lazy screen chunk loads. */
 function ScreenLoader() {
   return (
-    <div
+    <div role="status" aria-label="Loading Kuula"
       style={{
         height: "100%",
         display: "flex",
@@ -73,7 +73,7 @@ function ScreenLoader() {
           width: 28,
           height: 28,
           border: "3px solid #E5E7EB",
-          borderTopColor: "#F4612B",
+          borderTopColor: "var(--brand-primary)",
           borderRadius: "50%",
           animation: "kuula-spin 0.7s linear infinite",
         }}
@@ -161,8 +161,9 @@ function Shell() {
         // screen and the backdrop is never visible.
         background: isAdminScreen
           ? "#F8FAFC"
-          : "radial-gradient(1200px 600px at 50% -10%, #FFDCC8 0%, #E2E8F0 55%, #F1F5F9 100%)",
+          : "radial-gradient(1200px 600px at 50% -10%, var(--brand-border) 0%, #E2E8F0 55%, #F1F5F9 100%)",
         fontFamily: "system-ui, -apple-system, sans-serif",
+        fontVariantNumeric: "tabular-nums",
         overflow: "hidden",
       }}
     >

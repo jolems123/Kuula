@@ -7,7 +7,7 @@ export function NotificationDetailScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #F4612B, #D9531F)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("notifications")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -47,7 +47,7 @@ export function NotificationDetailScreen({ onNavigate }: Props) {
 
         {/* Actions */}
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>View Loan</button>
+          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 48, borderRadius: 12, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>View Loan</button>
           <button onClick={() => onNavigate("notifications")} style={{ flex: 1, height: 48, borderRadius: 12, background: "#F3F4F6", color: "#374151", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer" }}>Back</button>
         </div>
       </div>

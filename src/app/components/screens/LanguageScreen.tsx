@@ -38,7 +38,7 @@ export function LanguageScreen({ onNavigate }: Props) {
           alignItems: "center",
           gap: 12,
           padding: "16px 16px 14px",
-          background: "linear-gradient(135deg, #F4612B, #D9531F)",
+          background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))",
         }}
       >
         <button
@@ -70,15 +70,15 @@ export function LanguageScreen({ onNavigate }: Props) {
               width: 56,
               height: 56,
               borderRadius: 28,
-              background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)",
+              background: "linear-gradient(135deg, var(--brand-light), var(--brand-border))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               margin: "0 auto 12px",
-              border: "2px solid #FFDCC8",
+              border: "2px solid var(--brand-border)",
             }}
           >
-            <Globe size={28} color="#F4612B" />
+            <Globe size={28} color="var(--brand-primary)" />
           </div>
           <p style={{ fontSize: 14, color: "#1F2937", fontWeight: 600, margin: "0 0 4px" }}>
             {t("language.subtitle")}
@@ -105,7 +105,7 @@ export function LanguageScreen({ onNavigate }: Props) {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 14,
-                  background: isActive ? "linear-gradient(135deg, #F4612B, #D9531F)" : "white",
+                  background: isActive ? "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))" : "white",
                   border: isActive ? "none" : "1.5px solid #E5E7EB",
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -160,8 +160,8 @@ export function LanguageScreen({ onNavigate }: Props) {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 14,
-                  background: isActive ? "#FFF6EF" : "white",
-                  border: isActive ? "1.5px solid #FFDCC8" : "1.5px solid #E5E7EB",
+                  background: isActive ? "var(--brand-light)" : "white",
+                  border: isActive ? "1.5px solid var(--brand-border)" : "1.5px solid #E5E7EB",
                   cursor: "pointer",
                   opacity: 0.7,
                   boxShadow: "0 1px 4px rgba(0,0,0,0.05)",

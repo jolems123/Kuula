@@ -98,9 +98,9 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       {/* Details */}
       <div style={{ width: "100%", flex: 1, overflowY: "auto", padding: "20px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
         {status === "approved" && (
-          <div style={{ background: "linear-gradient(135deg, #FFF6EF, #FFDCC8)", borderRadius: 16, padding: "16px", border: "1px solid #FFDCC8" }}>
+          <div style={{ background: "linear-gradient(135deg, var(--brand-light), var(--brand-border))", borderRadius: 16, padding: "16px", border: "1px solid var(--brand-border)" }}>
             <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Amount Disbursed</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#D9531F", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "var(--brand-primary-dark)", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
             <p style={{ fontSize: 12, color: "#6B7280", margin: "4px 0 0" }}>{phone ? `Sent to your mobile money ${phone}` : "Sent to your mobile money"}</p>
           </div>
         )}
@@ -147,12 +147,12 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
           </button>
         )}
         {status === "approved" && (
-          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <FileText size={16} /> View Loan
           </button>
         )}
         {status === "rejected" && (
-          <button onClick={() => onNavigate("loan-apply")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, #F4612B, #D9531F)", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+          <button onClick={() => onNavigate("loan-apply")} style={{ flex: 1, height: 50, borderRadius: 14, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
             Try Again
           </button>
         )}

@@ -27,6 +27,7 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
           return (
             <button
               key={id}
+              aria-current={isActive ? "page" : undefined}
               onClick={() => {
                 if (id === "home") onNavigate("home");
                 else if (id === "goals") onNavigate("goals");
@@ -34,17 +35,18 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
                 else if (id === "loans") onNavigate("loan-history");
                 else onNavigate(id);
               }}
-              className="flex flex-col items-center gap-0.5 px-3 py-1"
+              className="flex flex-col items-center gap-0.5 px-1 py-1"
+              style={{ flex: 1, minWidth: 0, minHeight: 44 }}
             >
               <Icon
                 size={22}
-                color={isActive ? "#F4612B" : "#9CA3AF"}
+                color={isActive ? "var(--brand-primary)" : "var(--text-secondary)"}
                 strokeWidth={isActive ? 2.2 : 1.8}
               />
               <span
                 style={{
                   fontSize: 10,
-                  color: isActive ? "#F4612B" : "#9CA3AF",
+                  color: isActive ? "var(--brand-primary)" : "var(--text-secondary)",
                   fontWeight: isActive ? 600 : 400,
                 }}
               >

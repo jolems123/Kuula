@@ -82,7 +82,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
-      <div style={{ background: "linear-gradient(135deg, #F4612B, #D9531F)", padding: "16px 16px 14px" }}>
+      <div style={{ background: "linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark))", padding: "16px 16px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={() => onNavigate("wallet")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
@@ -97,7 +97,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
 
       <div style={{ display: "flex", gap: 8, padding: "10px 16px", background: "white", borderBottom: "1px solid #F3F4F6", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["all", "loans", "savings", "payments"] as Filter[]).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "#F4612B" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "var(--brand-primary)" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
         ))}
       </div>
 
