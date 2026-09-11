@@ -240,10 +240,12 @@ export function WelcomeScreen({ onNavigate }: Props) {
           </button>
         )}
 
-        {/* Quick login demo accounts — development builds only */}
+        {/* Quick login demo accounts — development builds only. The admin
+            portal is API-only (no demo identity), so only customer demo
+            accounts are offered here. */}
         {DEMO_LOGIN_ENABLED && (
         <div style={{ display: "flex", gap: 8 }}>
-          {mockData.testUsers.map((u) => {
+          {mockData.testUsers.filter((u) => u.role !== "admin").map((u) => {
             const isAdmin = u.role === "admin";
             return (
               <button

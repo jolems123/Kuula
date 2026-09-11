@@ -47,10 +47,10 @@ export const config = {
 
   // ── SMS / OTP ─────────────────────────────────────────────────────────────
   sms: {
-    /** "africastalking" | "marzpay" | "log" */
+    /** "egosms" | "log" */
     provider: env("SMS_PROVIDER", IS_PRODUCTION ? "" : "log"),
-    apiKey: env("SMS_API_KEY"),
     username: env("SMS_USERNAME"),
+    password: env("SMS_PASSWORD"),
     senderId: env("SMS_SENDER_ID", "KUULA"),
     baseUrl: env("SMS_BASE_URL"),
     timeoutMs: Number(env("SMS_TIMEOUT_MS", "15000")),
@@ -88,8 +88,7 @@ export function paymentsConfigured(): boolean {
 export function smsConfigured(): boolean {
   const p = config.sms.provider;
   if (!p || p === "log") return false;
-  if (p === "africastalking") return Boolean(config.sms.apiKey && config.sms.username);
-  if (p === "marzpay") return paymentsConfigured();
+  if (p === "egosms") return Boolean(config.sms.username && config.sms.password);
   return false;
 }
 

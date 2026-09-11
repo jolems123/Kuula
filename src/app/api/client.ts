@@ -13,10 +13,22 @@ import {
   type SessionPayload, type LoanApplication, type LoanQuote,
   type CreditScore, type Compliance,
 } from "./types";
-import type { AdminStats, InvestorReport, CustomerRow, SavingsGoal, AppNotification } from "./types-compat";
+import type { SavingsGoal, AppNotification } from "./types-compat";
+import type * as A from "./admin-types";
 
 export { ApiError };
 export type { SessionPayload, LoanApplication, LoanQuote, CreditScore, Compliance };
+
+function auth(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
+}
+
+/** Builds a query string, skipping empty values. */
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  if (entries.length === 0) return "";
+  return "?" + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString();
+}
 
 function platformHeaders(): Record<string, string> {
   // Tells the server to return the refresh token in the body (for the OS
@@ -166,8 +178,15 @@ const nodeApi = {
     }),
 
   getMessages: (token: string) =>
-    request<{ messages: Message[] }>("/api/messages", {
+    request<{ messages: Message[]; participants?: Array<{ id: string; fullName: string; phone: string | null; role: string; active: boolean }> }>("/api/messages", {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  markThreadRead: (token: string, fromUserId: string) =>
+    request<{ ok: boolean; updated: number }>("/api/messages/read", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ fromUserId }),
     }),
 
   postMessage: (token: string, content: string, receiverId?: string) =>
@@ -349,23 +368,108 @@ const nodeApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  // ── Admin stats ────────────────────────────────────────────────────────────
-  getAdminStats: (token: string) =>
-    request<AdminStats>("/api/admin/stats", {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-  getCustomers: (token: string) =>
-    request<{ customers: CustomerRow[] }>("/api/admin/customers", {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-  getSavingsOverview: (token: string) =>
-    request<{ accounts: { user_id: string; full_name: string; balance: number }[]; total: number }>("/api/admin/savings-overview", {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-  getInvestorReport: (token: string) =>
-    request<InvestorReport>("/api/admin/investor-report", {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-};
+  // ── Admin ──────────────────────────────────────────────────────────────────
+  admin: {
+    stats: (token: string) => request<A.AdminStats>("/api/admin/stats", { headers: auth(token) }),
+    report: (token: string, params: { range?: A.ReportPreset; from?: string; to?: string } = {}) =>
+      request<A.AdminReport>(`/api/admin/report${qs(params)}`, { headers: auth(token) }),
+    investorReport: (token: string) => request<A.AdminReport>("/api/admin/investor-report", { headers: auth(token) }),
+    config: (token: string) => request<A.AdminConfig>("/api/admin/config", { headers: auth(token) }),
+    audit: (token: string, params: { page?: number; pageSize?: number; action?: string; entityType?: string; entityId?: string } = {}) =>
+      request<A.Paged<A.AdminAuditEvent>>(`/api/admin/audit${qs(params)}`, { headers: auth(token) }),
+
+    customers: (token: string, params: { q?: string; status?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminCustomer>>(`/api/admin/customers${qs(params)}`, { headers: auth(token) }),
+    customer: (token: string, id: string) =>
+      request<A.AdminCustomerDetail>(`/api/admin/customers/${id}`, { headers: auth(token) }),
+    updateCustomer: (token: string, id: string, patch: { fullName?: string; email?: string; district?: string; occupation?: string }) =>
+      request<{ ok: boolean; customer: A.AdminCustomer; changed: string[] }>(`/api/admin/customers/${id}`, {
+        method: "PATCH", headers: auth(token), body: JSON.stringify(patch),
+      }),
+    deactivateCustomer: (token: string, id: string, reason: string) =>
+      request<{ ok: boolean; customer: A.AdminCustomer }>(`/api/admin/customers/${id}/deactivate`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ reason }),
+      }),
+    reactivateCustomer: (token: string, id: string, notes?: string) =>
+      request<{ ok: boolean; customer: A.AdminCustomer }>(`/api/admin/customers/${id}/reactivate`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ notes }),
+      }),
+
+    loans: (token: string, params: { q?: string; status?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminLoanRow>>(`/api/admin/loans${qs(params)}`, { headers: auth(token) }),
+    loanSummary: (token: string) => request<A.AdminLoanSummary>("/api/admin/loans/summary", { headers: auth(token) }),
+    loan: (token: string, id: string) => request<A.AdminLoanDetail>(`/api/admin/loans/${id}`, { headers: auth(token) }),
+    approveLoan: (token: string, id: string, decisionNotes = "") =>
+      request<{ ok: boolean; application: A.AdminLoan }>(`/api/admin/loans/${id}/approve`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ decisionNotes }),
+      }),
+    rejectLoan: (token: string, id: string, decisionNotes: string) =>
+      request<{ ok: boolean; application: A.AdminLoan }>(`/api/admin/loans/${id}/reject`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ decisionNotes }),
+      }),
+    withdrawOffer: (token: string, id: string, decisionNotes: string) =>
+      request<{ ok: boolean; application: A.AdminLoan }>(`/api/admin/loans/${id}/withdraw`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ decisionNotes }),
+      }),
+
+    kycSummary: (token: string) =>
+      request<{ pending: number; approved: number; rejected: number; notSubmitted: number }>("/api/admin/kyc/summary", { headers: auth(token) }),
+    kycQueue: (token: string, params: { status?: string; q?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminKycRow>>(`/api/admin/kyc${qs(params)}`, { headers: auth(token) }),
+    kyc: (token: string, userId: string) => request<A.AdminKycDetail>(`/api/admin/kyc/${userId}`, { headers: auth(token) }),
+    kycDocuments: (token: string, userId: string) =>
+      request<A.AdminKycDocuments>(`/api/admin/kyc/${userId}/documents`, { headers: auth(token) }),
+    approveKyc: (token: string, userId: string, notes = "") =>
+      request<{ ok: boolean; kyc: A.AdminKycRow }>(`/api/admin/kyc/${userId}/approve`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ notes }),
+      }),
+    rejectKyc: (token: string, userId: string, notes: string) =>
+      request<{ ok: boolean; kyc: A.AdminKycRow }>(`/api/admin/kyc/${userId}/reject`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ notes }),
+      }),
+
+    transactions: (token: string, params: { q?: string; type?: string; status?: string; range?: string; from?: string; to?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminTransaction> & { totals: Record<string, { count: number; amount: number }>; range: { preset: string; label: string } }>(
+        `/api/admin/transactions${qs(params)}`, { headers: auth(token) }),
+    transaction: (token: string, id: string) =>
+      request<{
+        transaction: A.AdminTransaction;
+        customer: { id: string; fullName: string; phone: string | null; email: string | null };
+        loan: A.AdminLoan | null;
+        repayment: A.AdminRepayment | null;
+        webhookEvents: Array<{ id: string; eventType: string | null; status: string; result: string | null; receivedAt: string; processedAt: string | null }>;
+      }>(`/api/admin/transactions/${id}`, { headers: auth(token) }),
+
+    savingsAccounts: (token: string, params: { q?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminSavingsAccount> & { totalBalance: number; accounts: number }>(`/api/admin/savings/accounts${qs(params)}`, { headers: auth(token) }),
+    savingsTransactions: (token: string, params: { q?: string; type?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminTransaction> & { totals: Record<string, number> }>(`/api/admin/savings/transactions${qs(params)}`, { headers: auth(token) }),
+
+    ticketSummary: (token: string) =>
+      request<{ counts: Record<string, number>; openTotal: number }>("/api/admin/tickets/summary", { headers: auth(token) }),
+    tickets: (token: string, params: { status?: string; q?: string; priority?: string; assignee?: string; page?: number; pageSize?: number } = {}) =>
+      request<A.Paged<A.AdminTicket>>(`/api/admin/tickets${qs(params)}`, { headers: auth(token) }),
+    ticket: (token: string, id: string) => request<A.AdminTicketDetail>(`/api/admin/tickets/${id}`, { headers: auth(token) }),
+    createTicket: (token: string, body: { customerId: string; subject: string; category: string; priority: string; body?: string }) =>
+      request<{ ok: boolean; ticket: A.AdminTicket }>("/api/admin/tickets", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+    replyTicket: (token: string, id: string, body: string) =>
+      request<{ ok: boolean; message: A.AdminTicketMessage; ticket: A.AdminTicket }>(`/api/admin/tickets/${id}/messages`, {
+        method: "POST", headers: auth(token), body: JSON.stringify({ body }),
+      }),
+    updateTicket: (token: string, id: string, patch: { status?: string; priority?: string; category?: string; subject?: string; assigneeId?: string | null }) =>
+      request<{ ok: boolean; ticket: A.AdminTicket; changed: string[] }>(`/api/admin/tickets/${id}`, {
+        method: "PATCH", headers: auth(token), body: JSON.stringify(patch),
+      }),
+
+    staff: (token: string) => request<{ staff: A.AdminStaff[] }>("/api/admin/staff", { headers: auth(token) }),
+    createStaff: (token: string, body: { fullName: string; email: string; password: string }) =>
+      request<{ ok: boolean; staff: A.AdminStaff }>("/api/admin/staff", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+    updateStaff: (token: string, id: string, body: { fullName: string }) =>
+      request<{ ok: boolean; staff: A.AdminStaff }>(`/api/admin/staff/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(body) }),
+    deactivateStaff: (token: string, id: string, reason?: string) =>
+      request<{ ok: boolean; staff: A.AdminStaff }>(`/api/admin/staff/${id}/deactivate`, { method: "POST", headers: auth(token), body: JSON.stringify({ reason }) }),
+    reactivateStaff: (token: string, id: string) =>
+      request<{ ok: boolean; staff: A.AdminStaff }>(`/api/admin/staff/${id}/reactivate`, { method: "POST", headers: auth(token), body: JSON.stringify({}) }),
+  },};
 
 export const api = nodeApi;

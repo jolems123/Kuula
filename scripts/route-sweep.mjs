@@ -64,12 +64,15 @@ await page.addInitScript(() => {
 await page.goto(BASE + "/", { waitUntil: "networkidle" });
 await page.waitForURL(/#\/welcome$/, { timeout: 15_000 });
 
-// Log in via the demo admin account — an authenticated admin session passes
-// every route guard.
-await page.getByRole("button", { name: /ADMIN/i }).click();
+// Log in via the demo CUSTOMER account. The admin portal has no demo identity
+// (it is API-only), so admin routes are expected to redirect to /home here —
+// which exercises the route guard rather than the admin screens themselves.
+// Admin screens are covered by server/src/routes/admin.test.ts and the
+// authenticated admin smoke in scripts/admin-smoke.mjs.
+await page.getByRole("button", { name: /USER/i }).first().click();
 await page.getByPlaceholder("Enter your PIN").fill("1234");
 await page.getByRole("button", { name: "Log In", exact: true }).click();
-await page.waitForURL(/#\/admin-dashboard$/, { timeout: 15_000 });
+await page.waitForURL(/#\/home$/, { timeout: 15_000 });
 
 const blank = [];
 for (const id of ids) {

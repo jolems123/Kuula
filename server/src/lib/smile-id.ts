@@ -52,6 +52,15 @@ function readConfig(): SmileConfig | null {
   return { partnerId, apiKey, baseUrl };
 }
 
+/** True only when Smile ID credentials are present (read-only status for admin). */
+export function smileIdConfigured(): { configured: boolean; environment: "production" | "sandbox" } {
+  const cfg = readConfig();
+  return {
+    configured: cfg !== null,
+    environment: cfg?.baseUrl === PRODUCTION_URL ? "production" : "sandbox",
+  };
+}
+
 /**
  * Smile ID v2 request signature:
  *   base64( HMAC-SHA256( timestamp + partner_id + "sid_request", api_key ) )

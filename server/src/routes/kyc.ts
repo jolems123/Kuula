@@ -27,6 +27,9 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
       fullName: true,
       nationalId: true,
       kycVerified: true,
+      kycSubmittedAt: true,
+      kycReviewStatus: true,
+      kycReviewNotes: true,
       verified: true,
       updatedAt: true,
     },
@@ -34,14 +37,24 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
 
   if (!user) throw new AppError("User not found", 404);
 
+  // Mirrors the admin portal's derived state so both surfaces agree.
+  const status = user.kycVerified
+    ? "verified"
+    : user.kycReviewStatus === "rejected"
+      ? "rejected"
+      : user.kycSubmittedAt
+        ? "pending"
+        : "not_submitted";
+
   res.json({
     kyc: {
       userId: user.id,
       fullName: user.fullName ?? "",
       nationalId: user.nationalId ?? "",
-      status: user.kycVerified ? "verified" : "pending",
+      status,
       verified: !!user.kycVerified,
       profileVerified: !!user.verified,
+      reviewNotes: status === "rejected" ? user.kycReviewNotes ?? null : null,
       updatedAt: user.updatedAt,
     },
   });
@@ -101,6 +114,11 @@ router.post("/submit", authenticateToken, async (req: Request, res: Response) =>
       kycProvider: verification.provider,
       kycReference: verification.reference ?? null,
       kycSubmittedAt: new Date(),
+      // A fresh submission supersedes any earlier manual rejection.
+      kycReviewStatus: verification.verified ? "approved" : null,
+      kycReviewNotes: null,
+      kycReviewedAt: verification.verified ? new Date() : null,
+      kycReviewedBy: null,
       updatedAt: new Date(),
     },
     select: {

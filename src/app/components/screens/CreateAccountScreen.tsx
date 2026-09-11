@@ -62,8 +62,8 @@ export function CreateAccountScreen({ onNavigate }: Props) {
     if (!form.phone.trim()) e.phone = t("createAccount.errorPhoneRequired");
     else if (!/^\d{9}$/.test(form.phone.replace(/\s/g, "")))
       e.phone = t("createAccount.errorPhoneInvalid");
-    if (!form.email.trim()) e.email = t("createAccount.errorEmailRequired");
-    else if (!emailValid(form.email)) e.email = t("createAccount.errorEmailInvalid");
+    if (form.email.trim() && !emailValid(form.email.trim()))
+      e.email = t("createAccount.errorEmailInvalid");
     if (!form.nin.trim()) e.nin = t("createAccount.errorNinRequired");
     else if (!isValidUgandaNin(form.nin)) e.nin = t("createAccount.errorNinInvalid");
     if (!form.password.trim()) e.password = t("createAccount.errorPasswordRequired");
@@ -85,7 +85,7 @@ export function CreateAccountScreen({ onNavigate }: Props) {
       setSubmitting(true);
       try {
         const phone = "+256" + form.phone.replace(/\s/g, "");
-        await api.signUp({ name: form.name, phone, email: form.email, password: form.password, nationalId: normalizeNin(form.nin), acceptedTerms: true, termsVersion: TERMS_VERSION });
+        await api.signUp({ name: form.name.trim(), phone, email: form.email.trim(), password: form.password, nationalId: normalizeNin(form.nin), acceptedTerms: true, termsVersion: TERMS_VERSION });
         // Verify the phone next; that step establishes the auth session (token)
         // that KYC and the rest of the app require.
         setPendingPhone(phone);

@@ -1,23 +1,23 @@
 /**
- * Turns a real InvestorReport (all metrics computed from Postgres rows) into
+ * Turns a real AdminReport (all metrics computed from Postgres rows) into
  * downloadable PDF / Excel / CSV files. Shared by the admin dashboard and the
  * admin reports screens so the same numbers export everywhere.
  */
-import type { InvestorReport } from "../api/types-compat";
+import type { AdminReport } from "../api/admin-types";
 import { downloadPdf, downloadExcel, downloadCsv, formatUGX } from "./export";
 
-function kpiRows(r: InvestorReport): [string, string][] {
+function kpiRows(r: AdminReport): [string, string][] {
   return [
     ["Total customers", r.customers.total.toLocaleString()],
     ["Verified customers", r.customers.verified.toLocaleString()],
-    ["New customers this month", r.customers.newThisMonth.toLocaleString()],
-    ["Total loans", r.loans.total.toLocaleString()],
+    ["New customers (period)", r.customers.newInPeriod.toLocaleString()],
+    ["Loan applications (period)", r.loans.applications.toLocaleString()],
     ["Pending loans", r.loans.pending.toLocaleString()],
     ["Active loans", r.loans.active.toLocaleString()],
     ["Paid loans", r.loans.paid.toLocaleString()],
     ["Overdue loans", r.loans.overdue.toLocaleString()],
     ["Rejected loans", r.loans.rejected.toLocaleString()],
-    ["Principal disbursed", formatUGX(r.loans.disbursedPrincipal)],
+    ["Principal approved (period)", formatUGX(r.loans.approvedPrincipal)],
     ["Outstanding balance", formatUGX(r.loans.outstanding)],
     ["Total disbursed (cash out)", formatUGX(r.revenue.totalDisbursed)],
     ["Total collected (cash in)", formatUGX(r.revenue.totalCollected)],
@@ -33,15 +33,15 @@ function kpiRows(r: InvestorReport): [string, string][] {
   ];
 }
 
-function monthlyRows(r: InvestorReport): (string | number)[][] {
+function monthlyRows(r: AdminReport): (string | number)[][] {
   return r.monthly.map((m) => [m.month, m.disbursed, m.collected, m.newCustomers]);
 }
 
-function subtitle(r: InvestorReport): string {
-  return `Investor report · generated ${new Date(r.generatedAt).toLocaleString("en-GB")}`;
+function subtitle(r: AdminReport): string {
+  return `${r.period.label} · generated ${new Date(r.generatedAt).toLocaleString("en-GB")}`;
 }
 
-export function exportInvestorReportPdf(r: InvestorReport): void {
+export function exportInvestorReportPdf(r: AdminReport): void {
   downloadPdf({
     title: "Investor Report",
     subtitle: subtitle(r),
@@ -60,7 +60,7 @@ export function exportInvestorReportPdf(r: InvestorReport): void {
   });
 }
 
-export function exportInvestorReportExcel(r: InvestorReport): void {
+export function exportInvestorReportExcel(r: AdminReport): void {
   downloadExcel("kuula-investor-report", [
     { name: "KPIs", rows: [["Metric", "Value"], ...kpiRows(r)] },
     {
@@ -73,7 +73,7 @@ export function exportInvestorReportExcel(r: InvestorReport): void {
   ]);
 }
 
-export function exportInvestorReportCsv(r: InvestorReport): void {
+export function exportInvestorReportCsv(r: AdminReport): void {
   downloadCsv("kuula-investor-report", ["Metric", "Value"], kpiRows(r));
 }
 

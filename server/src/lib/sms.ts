@@ -3,10 +3,9 @@
  *
  * Replaces `console.log("[DEV] OTP for …")` with a real provider.
  *
- * Africa's Talking is the default driver — it is the standard aggregator for
- * Uganda and reaches MTN and Airtel subscribers directly. The driver interface
- * is deliberately thin so a different aggregator can be dropped in without
- * touching the OTP logic.
+ * EgoSMS is the default driver — a Ugandan aggregator that reaches MTN and
+ * Airtel subscribers directly. The driver interface is deliberately thin so a
+ * different aggregator can be dropped in without touching the OTP logic.
  *
  * The `log` driver exists ONLY for local development and automated tests. It is
  * rejected at boot in production by `configErrors()`, so a production build can
@@ -42,39 +41,37 @@ export function toE164(input: string): string {
   return "+" + d;
 }
 
-async function sendViaAfricasTalking(to: string, body: string): Promise<SmsResult> {
-  const base = config.sms.baseUrl || "https://api.africastalking.com/version1";
+async function sendViaEgoSms(to: string, body: string): Promise<SmsResult> {
+  const base = config.sms.baseUrl || "https://comms.egosms.co/api/v1/json/";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.sms.timeoutMs);
 
   try {
-    const res = await fetch(`${base}/messaging`, {
+    const res = await fetch(base, {
       method: "POST",
-      headers: {
-        apiKey: config.sms.apiKey,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body: new URLSearchParams({
-        username: config.sms.username,
-        to,
-        message: body,
-        ...(config.sms.senderId ? { from: config.sms.senderId } : {}),
-      }).toString(),
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        method: "SendSms",
+        userdata: { username: config.sms.username, password: config.sms.password },
+        // EgoSMS wants the international number without the leading "+".
+        msgdata: [{ number: to.replace(/^\+/, ""), message: body, senderid: config.sms.senderId || undefined, priority: 0 }],
+      }),
       signal: controller.signal,
     });
 
+    // EgoSMS answers HTTP 200 even on failure; only `Status` is authoritative.
     const data = (await res.json().catch(() => ({}))) as {
-      SMSMessageData?: { Recipients?: Array<{ status?: string; messageId?: string; statusCode?: number }> };
+      Status?: string;
+      Message?: string;
+      MsgFollowUpUniqueCode?: string;
     };
-    const recipient = data?.SMSMessageData?.Recipients?.[0];
-    const ok = res.ok && /success/i.test(recipient?.status ?? "");
+    const ok = res.ok && data?.Status === "OK";
 
     return {
       ok,
-      ref: recipient?.messageId ?? null,
+      ref: data?.MsgFollowUpUniqueCode ?? null,
       // Never include the message body in the error — it contains the OTP.
-      error: ok ? undefined : `provider status ${recipient?.status ?? res.status}`,
+      error: ok ? undefined : `provider status ${data?.Status ?? res.status}${data?.Message ? `: ${data.Message}` : ""}`,
     };
   } catch (err) {
     return { ok: false, ref: null, error: `sms provider unreachable: ${(err as Error).message}` };
@@ -93,8 +90,8 @@ export async function sendSms(rawTo: string, body: string): Promise<SmsResult> {
   const to = toE164(rawTo);
   const provider = config.sms.provider;
 
-  if (provider === "africastalking") {
-    return sendViaAfricasTalking(to, body);
+  if (provider === "egosms") {
+    return sendViaEgoSms(to, body);
   }
 
   if (!IS_PRODUCTION) {

@@ -19,6 +19,20 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
     orderBy: { createdAt: "asc" },
   });
 
+  // Staff need to know who they are talking to; customers only see their own
+  // thread and already know the counterpart.
+  let participants: Array<{ id: string; fullName: string; phone: string | null; role: string; active: boolean }> = [];
+  if (isAdmin) {
+    const ids = Array.from(new Set(messages.flatMap((m) => [m.senderId, m.receiverId])));
+    if (ids.length) {
+      const users = await prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, fullName: true, phone: true, role: true, deletedAt: true },
+      });
+      participants = users.map((u) => ({ id: u.id, fullName: u.fullName, phone: u.phone, role: u.role, active: !u.deletedAt }));
+    }
+  }
+
   res.json({
     messages: messages.map((m) => ({
       id: m.id,
@@ -28,7 +42,21 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
       createdAt: m.createdAt,
       isRead: m.isRead,
     })),
+    ...(isAdmin ? { participants } : {}),
   });
+});
+
+// POST /api/messages/read — mark everything received from `fromUserId` as read.
+router.post("/read", authenticateToken, async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+  const fromUserId = typeof req.body?.fromUserId === "string" ? req.body.fromUserId : "";
+  if (!fromUserId) throw new AppError("fromUserId is required", 400);
+
+  const result = await prisma.message.updateMany({
+    where: { receiverId: userId, senderId: fromUserId, isRead: false },
+    data: { isRead: true },
+  });
+  res.json({ ok: true, updated: result.count });
 });
 
 // POST /api/messages

@@ -74,7 +74,8 @@ export async function issueOtp(args: {
 
   // ── Resend cooldown ─────────────────────────────────────────────────────
   const latest = await prisma.otpChallenge.findFirst({
-    where: { phone, purpose: args.purpose },
+    // A provider failure must not lock the customer out of an immediate retry.
+    where: { phone, purpose: args.purpose, deliveryState: "sent" },
     orderBy: { createdAt: "desc" },
   });
   if (latest) {
@@ -90,7 +91,8 @@ export async function issueOtp(args: {
 
   // ── Hourly request cap ──────────────────────────────────────────────────
   const recentCount = await prisma.otpChallenge.count({
-    where: { phone, purpose: args.purpose, createdAt: { gte: new Date(now.getTime() - 3_600_000) } },
+    // Count billable/successful sends. Failed provider attempts may be retried.
+    where: { phone, purpose: args.purpose, deliveryState: "sent", createdAt: { gte: new Date(now.getTime() - 3_600_000) } },
   });
   if (recentCount >= config.otp.maxPerHour) {
     return { ok: false, reason: "rate-limited", retryAfterSec: 3600 };

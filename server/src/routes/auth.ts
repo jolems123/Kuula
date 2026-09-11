@@ -184,29 +184,49 @@ function deviceLabel(req: Request): string {
 // ── Sign-up ────────────────────────────────────────────────────────────────
 router.post("/signup", async (req: Request, res: Response) => {
   const { name, phone, email, password, nationalId, acceptedTerms, termsVersion } = req.body;
-  if (!name?.trim() || !phone?.trim() || !password) {
-    throw new AppError("Name, phone, and password are required", 400);
+  if (!name?.trim() || !phone?.trim() || !password || !nationalId?.trim()) {
+    throw new AppError("Name, phone, NIN, and password are required", 400);
   }
   if (!acceptedTerms) throw new AppError("You must accept the Terms of Service and Privacy Policy", 400);
+  if (String(password).length < 8) throw new AppError("Password must be at least 8 characters", 400);
 
-  const normalizedNin = nationalId ? normalizeNin(String(nationalId)) : "";
-  if (normalizedNin && !isValidUgandaNin(normalizedNin)) {
+  const normalizedNin = normalizeNin(String(nationalId));
+  if (!isValidUgandaNin(normalizedNin)) {
     throw new AppError("A valid 14-character Uganda NIN is required", 400);
   }
 
   const normalizedPhone = normalizePhone(phone);
-  const existing = await prisma.user.findFirst({
-    where: { OR: [{ phone: normalizedPhone }, ...(email ? [{ email }] : [])] },
-  });
+  if (!/^\+256\d{9}$/.test(normalizedPhone)) {
+    throw new AppError("A valid Uganda phone number is required", 400);
+  }
+
+  const normalizedEmail = typeof email === "string" && email.trim() ? email.trim().toLowerCase() : null;
+  if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new AppError("A valid email address is required when email is provided", 400);
+  }
+
+  const existing = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
 
   if (!existing) {
+    const conflictingIdentity = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { nationalId: normalizedNin },
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
+      },
+    });
+    if (conflictingIdentity) {
+      throw new AppError("An account already exists with these details. Please sign in or reset your password.", 409);
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: {
-        fullName: name,
+        fullName: name.trim(),
         phone: normalizedPhone,
-        email: email || null,
-        nationalId: normalizedNin || null,
+        email: normalizedEmail,
+        nationalId: normalizedNin,
         passwordHash,
         role: "user",
         phoneVerified: false,
@@ -215,12 +235,26 @@ router.post("/signup", async (req: Request, res: Response) => {
         savingsAccount: { create: { balance: 0 } },
       },
     });
-    await issueOtp({ phone: normalizedPhone, purpose: "phone_verification", userId: user.id });
+    const issued = await issueOtp({ phone: normalizedPhone, purpose: "phone_verification", userId: user.id });
+    if (!issued.ok) {
+      const retryable = issued.reason === "cooldown" || issued.reason === "rate-limited";
+      throw new AppError(
+        retryable ? "Please wait before requesting another verification code." : "We could not send the verification SMS. Please try again.",
+        retryable ? 429 : 503
+      );
+    }
   } else {
     // The number is taken. Answering "already registered" here would confirm
     // which numbers have Kuula accounts to anyone who asks, so we send a code
     // to the real owner instead and return the same shape either way.
-    await issueOtp({ phone: normalizedPhone, purpose: "phone_verification", userId: existing.id });
+    const issued = await issueOtp({ phone: normalizedPhone, purpose: "phone_verification", userId: existing.id });
+    if (!issued.ok) {
+      const retryable = issued.reason === "cooldown" || issued.reason === "rate-limited";
+      throw new AppError(
+        retryable ? "Please wait before requesting another verification code." : "We could not send the verification SMS. Please try again.",
+        retryable ? 429 : 503
+      );
+    }
   }
 
   res.json({ ...GENERIC_OTP_RESPONSE, needsConfirmation: true });
