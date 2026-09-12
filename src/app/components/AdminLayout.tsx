@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  LayoutDashboard, ClipboardCheck, FileText, Users, Building2,
+  LayoutDashboard, ClipboardCheck, FileText, Users, Building2, Landmark,
   BarChart3, Settings, MessageSquare, ChevronDown, ChevronRight,
   Bell, LogOut, Search, Menu, ArrowLeft, type LucideIcon,
 } from "lucide-react";
@@ -44,6 +44,7 @@ const NAV: NavItem[] = [
   },
   { id: "admin-partner-financing", label: "Partner Financing", icon: Building2 },
   { id: "admin-reports", label: "Reports", icon: BarChart3 },
+  { id: "admin-reconciliation", label: "Reconciliation", icon: Landmark },
   {
     id: "admin-settings", label: "Settings", icon: Settings,
     children: [
@@ -73,14 +74,21 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
   const toggle = (id: string) => setExpanded((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const role = state.role;
   const can = (item: NavItem) => {
-    if (item.id === "admin-dashboard") return true;
-    if (item.id === "admin-credit-operations" || item.id === "admin-loans") return ["super_admin", "administrator", "credit_manager", "final_approver", "loan_officer", "collections", "admin", "manager", "officer"].includes(role || "");
-    if (item.id === "admin-customers") return role !== "finance";
+    if (item.id === "admin-dashboard") return ["super_admin", "administrator", "admin"].includes(role || "");
+    if (item.id === "admin-credit-operations") return ["super_admin", "administrator", "credit_manager", "final_approver", "loan_officer", "admin", "manager", "officer"].includes(role || "");
+    if (item.id === "admin-loans") return ["super_admin", "administrator", "credit_manager", "final_approver", "loan_officer", "collections", "admin", "manager", "officer"].includes(role || "");
+    if (item.id === "admin-customers") return true;
     if (item.id === "admin-partner-financing") return ["super_admin", "administrator", "admin"].includes(role || "");
     if (item.id === "admin-reports") return ["super_admin", "administrator", "credit_manager", "final_approver", "finance", "admin", "manager"].includes(role || "");
+    if (item.id === "admin-reconciliation") return ["super_admin", "administrator", "finance", "admin"].includes(role || "");
     if (item.id === "admin-settings") return role === "super_admin";
     if (item.id === "admin-support") return ["super_admin", "administrator", "credit_manager", "loan_officer", "collections", "support", "admin", "manager", "officer"].includes(role || "");
     return false;
+  };
+  const canChild = (id: string) => {
+    if (id === "admin-customer-kyc") return ["super_admin","administrator","admin","credit_manager","manager","kyc_officer"].includes(role || "");
+    if (id === "admin-officer-assignment" || id === "admin-approval-workflow") return ["super_admin","administrator","admin","credit_manager","manager"].includes(role || "");
+    return true;
   };
   const visibleNav = NAV.filter(can);
 
@@ -105,7 +113,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                   <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? "white" : "#B8D1C5", flex: 1, whiteSpace: "nowrap" }}>{item.label}</span>
                   {item.children && (open ? <ChevronDown size={12} color="#8FB5A4" /> : <ChevronRight size={12} color="#8FB5A4" />)}
                 </button>
-                {item.children && open && <div style={{ paddingLeft: 38 }}>{item.children.map((child) => <button key={child.id} onClick={() => onNavigate(child.id)} style={{ width: "100%", display: "block", padding: "7px 14px 7px 0", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 11, fontWeight: activeScreen === child.id ? 700 : 400, color: activeScreen === child.id ? "#F2C94C" : "#8FB5A4", whiteSpace: "nowrap" }}>{child.label}</button>)}</div>}
+                {item.children && open && <div style={{ paddingLeft: 38 }}>{item.children.filter(child => canChild(child.id)).map((child) => <button key={child.id} onClick={() => onNavigate(child.id)} style={{ width: "100%", display: "block", padding: "7px 14px 7px 0", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 11, fontWeight: activeScreen === child.id ? 700 : 400, color: activeScreen === child.id ? "#F2C94C" : "#8FB5A4", whiteSpace: "nowrap" }}>{child.label}</button>)}</div>}
               </div>
             );
           })}
@@ -118,7 +126,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ border: "none", background: "none", cursor: "pointer", padding: 4 }}><Menu size={17} color="#64748B" /></button>
           {activeScreen !== "admin-dashboard" && <button onClick={() => { const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0; if (idx > 0) navigate(-1); else onNavigate("admin-dashboard"); }} aria-label="Go back" style={{ border: "none", background: "#F1F5F9", borderRadius: 8, cursor: "pointer", padding: 6, display: "flex" }}><ArrowLeft size={17} color="#334155" /></button>}
           <h1 style={{ fontSize: 15, fontWeight: 700, color: "#062D1C", flex: 1, margin: 0 }}>{title}</h1>
-          <button onClick={() => onNavigate("admin-officer-contact")} style={{ display: "flex", alignItems: "center", gap: 7, background: "#F1F5F9", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: "#475569", fontSize: 12 }}><Search size={13} /> Search customers</button>
+          {["super_admin","administrator","admin","credit_manager","final_approver","loan_officer","manager","officer"].includes(role || "") && <button onClick={() => onNavigate("admin-officer-contact")} style={{ display: "flex", alignItems: "center", gap: 7, background: "#F1F5F9", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: "#475569", fontSize: 12 }}><Search size={13} /> Search customers</button>}
           <button style={{ border: "none", background: "none", cursor: "pointer" }} aria-label="Notifications"><Bell size={17} color="#64748B" /></button>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>{children}</div>

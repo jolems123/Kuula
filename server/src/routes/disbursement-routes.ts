@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { authenticateToken, requirePermissions } from "../middleware/auth.js";
+import { authenticateToken, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting } from "../lib/underwriting.js";
@@ -168,7 +168,7 @@ router.get("/:id/disbursement", authenticateToken, async (req: Request, res: Res
     select: { id: true, applicantId: true, status: true },
   });
   if (!application) throw new AppError("Loan application not found", 404);
-  const isStaff = ["admin", "manager", "officer"].includes(req.user!.role);
+  const isStaff = isStaffRole(req.user!.role);
   if (!isStaff && application.applicantId !== req.user!.userId) throw new AppError("Loan application not found", 404);
   const batch = await disbursementBatchForApplication(application.id);
   res.json({ applicationStatus: application.status, disbursement: compatibleBatch(batch) });

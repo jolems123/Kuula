@@ -8,9 +8,9 @@ const router = Router();
 router.use(authenticateToken, requirePermissions("customer.view"));
 
 function roleLevel(role: string): number {
-  if (role === "officer") return 1;
-  if (role === "manager") return 2;
-  if (role === "admin") return 3;
+  if (["officer", "loan_officer"].includes(role)) return 1;
+  if (["manager", "credit_manager"].includes(role)) return 2;
+  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
   return 0;
 }
 
@@ -159,7 +159,7 @@ router.get("/dashboard", async (req: Request, res: Response) => {
       AND aa.status = 'active'
     WHERE c.current_level = ${level}
       AND c.status NOT IN ('completed','rejected')
-      AND (${req.user!.role === "admin"}::boolean OR aa.assignee_id = ${userId}::uuid)
+      AND (${["admin", "administrator", "super_admin"].includes(req.user!.role)}::boolean OR aa.assignee_id = ${userId}::uuid)
     ORDER BY c.updated_at ASC
     LIMIT 200
   `);
@@ -194,7 +194,7 @@ router.post("/applications/:id/decision", async (req: Request, _res: Response, n
   `);
   const current = cases[0];
   if (!current) throw new AppError("Credit case not found", 404);
-  if (req.user!.role === "admin" && current.current_level === 3) {
+  if (["admin", "administrator", "super_admin"].includes(req.user!.role) && current.current_level === 3) {
     next();
     return;
   }

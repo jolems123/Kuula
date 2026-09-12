@@ -5,7 +5,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import type { AdminStats } from "../../api/types-compat";
-import { exportInvestorReportPdf } from "../../lib/investorReport";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -26,20 +25,6 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-
-  const generateReport = async () => {
-    if (!token || generating) return;
-    setGenerating(true);
-    try {
-      const report = await api.getInvestorReport(token);
-      exportInvestorReportPdf(report);
-    } catch {
-      // No fake fallback — leave the button ready to retry.
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
@@ -61,8 +46,8 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         action={
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => onNavigate("admin-partner-financing")} style={{ padding: "8px 14px", borderRadius: 8, background: "#0B5E3A", color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><Building2 size={14}/> Partner Verification</button>
-            <button onClick={generateReport} disabled={generating} style={{ padding: "8px 16px", borderRadius: 8, background: "#0B5E3A", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: generating ? "default" : "pointer", opacity: generating ? 0.7 : 1 }}>
-              {generating ? "Generating…" : "Generate Report"}
+            <button onClick={() => onNavigate("admin-reports")} style={{ padding: "8px 16px", borderRadius: 8, background: "#0B5E3A", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Generate Report
             </button>
           </div>
         }
@@ -141,7 +126,6 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
               fmtDate(a.createdAt),
               <StatusBadge key={a.id} status={a.status} />,
             ])}
-            onRowClick={() => onNavigate("admin-loan-app-detail")}
           />
         )}
       </div>

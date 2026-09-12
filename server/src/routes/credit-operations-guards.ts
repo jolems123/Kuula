@@ -16,9 +16,9 @@ function uuid(value: unknown, label: string): string {
 }
 
 function levelForRole(role: string): number {
-  if (role === "officer") return 1;
-  if (role === "manager") return 2;
-  if (role === "admin") return 3;
+  if (["officer", "loan_officer"].includes(role)) return 1;
+  if (["manager", "credit_manager"].includes(role)) return 2;
+  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
   return 0;
 }
 

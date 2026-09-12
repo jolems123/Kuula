@@ -219,6 +219,12 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
     res.json({ ok: true });
     return;
   }
+  if (submission.providerStatus === normalized.status) {
+    // Smile ID retries callbacks. A repeated pending/manual-review verdict must
+    // not duplicate audit entries or repeat document persistence.
+    res.json({ ok: true });
+    return;
+  }
 
   // Best-effort: move the document images into Kuula storage for staff review.
   const front = await persistHostedImage(submission.userId, "front", payload.image_links?.id_card_image);

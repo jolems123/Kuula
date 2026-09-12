@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { Router, Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, hasPermission } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { parseMarzPayWebhook, secureTokenEquals, verifyMarzPayWebhookSignature } from "../lib/marzpay.js";
 
@@ -20,7 +20,7 @@ function header(req: Request, name: string): string {
 }
 
 async function requireCaseScope(applicationId: string, userId: string, role: string): Promise<void> {
-  if (role === "admin") return;
+  if (["admin", "administrator", "super_admin"].includes(role)) return;
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT id
     FROM approval_assignments
@@ -130,7 +130,7 @@ router.use("/operations/applications/:id/messages", authenticateToken, async (re
   next();
 });
 router.get("/operations/evidence/:evidenceId/access", authenticateToken, async (req: Request, _res: Response, next: NextFunction) => {
-  if (req.user!.role === "admin") return next();
+  if (["admin", "administrator", "super_admin"].includes(req.user!.role)) return next();
   const rows = await prisma.$queryRaw<Array<{ application_id: string }>>(Prisma.sql`
     SELECT application_id FROM evaluation_evidence WHERE id=${String(req.params.evidenceId)}::uuid LIMIT 1
   `);
@@ -140,7 +140,7 @@ router.get("/operations/evidence/:evidenceId/access", authenticateToken, async (
 });
 
 router.use("/admin/kyc", authenticateToken, (req: Request, res: Response, next: NextFunction) => {
-  if (req.user!.role === "officer") {
+  if (["officer", "loan_officer"].includes(req.user!.role)) {
     res.status(403).json({ error: "KYC review requires an independent KYC reviewer" });
     return;
   }
@@ -157,7 +157,7 @@ router.post("/messages", authenticateToken, (req: Request, _res: Response, next:
 });
 
 router.get("/transactions", authenticateToken, async (req: Request, res: Response) => {
-  const where = req.user!.role === "admin" ? {} : { userId: req.user!.userId };
+  const where = hasPermission(req.user!.role, "reconciliation.manage") ? {} : { userId: req.user!.userId };
   const transactions = await prisma.transaction.findMany({
     where,
     orderBy: { createdAt: "desc" },

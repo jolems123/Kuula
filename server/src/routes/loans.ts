@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { authenticateToken, requirePermissions } from "../middleware/auth.js";
+import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
@@ -20,7 +20,6 @@ import {
 
 const router = Router();
 const OPEN_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
-const STAFF_ROLES = new Set(["admin", "manager", "officer"]);
 const AGREEMENT_VERSION = "2026-08-01";
 
 function quoteForRequest(amount: unknown, termDays: unknown): LoanQuote {
@@ -123,7 +122,9 @@ async function persistAssessment(applicationId: string, actorId: string | null, 
 }
 
 router.get("/applications", authenticateToken, async (req: Request, res: Response) => {
-  const where = STAFF_ROLES.has(req.user!.role) ? {} : { applicantId: req.user!.userId };
+  const staff = isStaffRole(req.user!.role);
+  if (staff && !hasPermission(req.user!.role, "loan.review")) throw new AppError("Insufficient permissions", 403);
+  const where = staff ? {} : { applicantId: req.user!.userId };
   const applications = await prisma.loanApplication.findMany({
     where,
     include: { underwriting: true },

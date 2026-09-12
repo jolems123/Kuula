@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, hasPermission, isStaffRole } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 
 const router = Router();
@@ -134,8 +134,9 @@ async function applicationScope(req: Request) {
   const role = req.user!.role;
   const userId = req.user!.userId;
 
-  if (role === "admin") return {};
-  if (role === "officer" || role === "manager") {
+  if (isStaffRole(role) && !hasPermission(role, "loan.review")) throw new AppError("Insufficient permissions", 403);
+  if (["admin", "administrator", "super_admin"].includes(role)) return {};
+  if (["officer", "loan_officer", "manager", "credit_manager", "final_approver"].includes(role)) {
     const rows = await prisma.$queryRaw<Array<{ application_id: string }>>`
       SELECT DISTINCT c.application_id
       FROM credit_cases c
@@ -206,6 +207,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
         decidedAt: application.decidedAt ?? null,
         decisionNotes: application.decisionNotes ?? null,
         offerExpiresAt: application.offerExpiresAt ?? null,
+        dueDate: application.dueDate ?? null,
         underwritingStatus: application.underwriting?.status ?? null,
         employmentStatus: details?.employment_status ?? null,
         occupationOrBusiness: details?.occupation_or_business ?? null,

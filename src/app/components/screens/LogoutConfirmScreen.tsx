@@ -14,7 +14,7 @@ export function LogoutConfirmScreen({ onNavigate }: Props) {
     if (busy) return;
     setBusy(true);
     try {
-      if (state.session.token && state.session.token !== "demo-token") {
+      if (state.session.token) {
         await authRecoveryApi.revokeSession(state.session.token);
       }
     } catch {

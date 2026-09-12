@@ -61,7 +61,7 @@ export function ProfileScreen({ onNavigate }: Props) {
         </div>
 
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Stats from mockData */}
+          {/* Account statistics from authenticated application state. */}
           <div style={{ display: "flex", gap: 10 }}>
             {[
               { label: t("profile.creditScore"), value: String(creditProfile?.score ?? "—"), sub: creditProfile?.tier ?? "—", color: "#178654", Icon: Star },
@@ -77,7 +77,7 @@ export function ProfileScreen({ onNavigate }: Props) {
             ))}
           </div>
 
-          {/* Personal info from mockData */}
+          {/* Personal information from the authenticated profile. */}
           <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>{t("profile.personalInfo")}</p>
             {rows.map((r, i) => (

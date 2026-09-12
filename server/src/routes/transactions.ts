@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, hasPermission } from "../middleware/auth.js";
 
 const router = Router();
 const ACTIVE_TRANSACTION_TYPES = ["loan_disbursement", "loan_disbursement_leg", "loan_payment"];
@@ -8,7 +8,7 @@ const ACTIVE_TRANSACTION_TYPES = ["loan_disbursement", "loan_disbursement_leg", 
 // GET /api/transactions
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = hasPermission(req.user!.role, "reconciliation.manage");
 
   const where = {
     ...(isAdmin ? {} : { userId }),

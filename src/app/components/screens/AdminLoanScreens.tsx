@@ -111,7 +111,6 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
               <span key={a.id + "-done"} style={{ fontSize: 11, color: "#94A3B8" }}>{a.decidedAt ? fmtDate(a.decidedAt) : "—"}</span>
             ),
           ])}
-          onRowClick={() => onNavigate("admin-loan-app-detail")}
         />
       )}
     </AdminLayout>
@@ -254,7 +253,6 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
             fmtDate(a.createdAt),
             <StatusBadge key={a.id} status={a.status} />,
           ])}
-          onRowClick={() => onNavigate("admin-active-loan-detail")}
         />
       )}
     </AdminLayout>
@@ -326,9 +324,7 @@ export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
 
   return (
     <AdminLayout activeScreen="admin-overdue-loans" onNavigate={onNavigate} title="Overdue Loans">
-      <AdminPageHeader title="Overdue Loans" subtitle={loading ? "Loading…" : `${apps.length} loans past due date`}
-        action={<button style={{ padding:"8px 14px",borderRadius:8,background:"#EF4444",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer" }}>Send Bulk Reminder</button>}
-      />
+      <AdminPageHeader title="Overdue Loans" subtitle={loading ? "Loading…" : `${apps.length} loans past due date`} />
       {apps.length > 0 && (
         <div style={{ padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",marginBottom:16 }}>
           <p style={{ fontSize:12,color:"#991B1B",margin:0 }}>⚠ {apps.length} loan{apps.length !== 1 ? "s are" : " is"} overdue. Contact customers immediately.</p>
@@ -340,14 +336,14 @@ export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>No overdue loans 🎉</div>
       ) : (
         <AdminTable
-          columns={["Customer", "Amount", "Applied", "Status"]}
+          columns={["Customer", "Amount due", "Due date", "Days past due", "Status"]}
           rows={apps.map((a) => [
             a.applicantName || "—",
-            ugx(a.amount),
-            fmtDate(a.createdAt),
+            ugx(a.total),
+            a.dueDate ? fmtDate(a.dueDate) : "—",
+            a.dueDate ? String(Math.max(0, Math.floor((Date.now() - new Date(a.dueDate).getTime()) / 86_400_000))) : "—",
             <StatusBadge key={a.id} status={a.status} />,
           ])}
-          onRowClick={() => onNavigate("admin-overdue-detail")}
         />
       )}
     </AdminLayout>
@@ -415,7 +411,6 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
             fmtDate(a.createdAt),
             <StatusBadge key={a.id} status={a.status} />,
           ])}
-          onRowClick={() => onNavigate("admin-active-loan-detail")}
         />
       )}
     </AdminLayout>

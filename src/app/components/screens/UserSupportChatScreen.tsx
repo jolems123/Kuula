@@ -2,15 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { useAppContext, type Message } from "../../context/AppContext";
 import { api } from "../../api/client";
-import { env } from "../../config/env";
 
 interface Props { onNavigate: (s: string) => void; }
 
 export function UserSupportChatScreen({ onNavigate }: Props) {
-  const { state, sendMessage } = useAppContext();
+  const { state } = useAppContext();
   const userId = state.user?.id ?? "";
   const token = state.session.token;
-  const useServer = env.USE_API && !!token;
   const [inputText, setInputText] = useState("");
   const [serverMsgs, setServerMsgs] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
@@ -18,7 +16,7 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
-    if (!useServer || !token) return;
+    if (!token) return;
     try {
       const { messages } = await api.getMessages(token);
       setServerMsgs(messages);
@@ -26,16 +24,15 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not refresh support messages");
     }
-  }, [useServer, token]);
+  }, [token]);
 
   useEffect(() => {
-    if (!useServer) return;
     void refresh();
     const timer = setInterval(() => { void refresh(); }, 5000);
     return () => clearInterval(timer);
-  }, [useServer, refresh]);
+  }, [refresh]);
 
-  const source = useServer ? serverMsgs : state.messages;
+  const source = serverMsgs;
   // The server already ownership-scopes customer message reads. Do not filter
   // against a hardcoded admin ID because production staff IDs are UUIDs.
   const thread = source.filter((m) => m.senderId === userId || m.receiverId === userId);
@@ -54,7 +51,7 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
 
     setInputText("");
     setError("");
-    if (useServer && token) {
+    if (token) {
       const optimistic: Message = {
         id: `tmp-${Date.now()}`,
         senderId: userId,
@@ -77,15 +74,6 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
       }
       return;
     }
-
-    sendMessage({
-      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      senderId: userId,
-      receiverId: "local-support",
-      content: text,
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    });
   };
 
   const fmt = (iso: string) =>

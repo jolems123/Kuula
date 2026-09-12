@@ -7,7 +7,8 @@ import {
   useNavigate,
   useLocation,
 } from "react-router";
-import { isStaffRole, staffUiTier, useAppContext, type Role } from "./context/AppContext";
+import { isStaffRole, useAppContext } from "./context/AppContext";
+import { staffCanOpenScreen, staffHome } from "./lib/staff-routing";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
 import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
@@ -26,7 +27,7 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
   "loan-schedule": "loan-detail",
-  "wallet": "home",
+  "wallet": "partner-network",
   "add-payment-method": "home",
   "payment-methods-list": "home",
   "notification-detail": "notifications",
@@ -46,49 +47,6 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-repayment-offer": "make-payment",
   "customer-accept-plan": "make-payment",
 };
-
-const OFFICER_SCREEN_ALLOWLIST = new Set([
-  "admin-officer-dashboard",
-  "admin-loan-apps",
-  "admin-loan-app-detail",
-  "admin-customer-list",
-  "admin-customer-detail",
-  "admin-support-inbox",
-  "admin-tickets",
-  "admin-ticket-detail",
-  "admin-ticket-reply",
-  "admin-support-staff-dashboard",
-]);
-
-const ADMIN_ONLY_SCREENS = new Set([
-  "admin-partner-financing",
-  "admin-all-transactions",
-  "admin-transaction-detail",
-  "admin-payment-processing",
-  "admin-failed-transactions",
-  "admin-settings",
-  "admin-loan-products",
-  "admin-interest-settings",
-  "admin-service-fee",
-  "admin-mtn-api",
-  "admin-airtel-api",
-  "admin-notif-templates",
-  "admin-staff",
-  "admin-staff-permissions",
-  "admin-auto-approve-settings",
-]);
-
-function staffHome(role: Role | null): string {
-  return staffUiTier(role) === "officer" ? "/admin-officer-dashboard" : "/admin-dashboard";
-}
-
-function staffCanOpenScreen(screenId: string, role: Role | null): boolean {
-  const tier = staffUiTier(role);
-  if (tier === "admin") return true;
-  if (tier === "officer") return OFFICER_SCREEN_ALLOWLIST.has(screenId);
-  if (tier === "manager") return !ADMIN_ONLY_SCREENS.has(screenId);
-  return false;
-}
 
 function useSessionBootstrap(): boolean {
   const { state, login } = useAppContext();

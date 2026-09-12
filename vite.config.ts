@@ -54,6 +54,9 @@ export default defineConfig({
 
   build: {
     target: 'es2020',
+    // Compressed-size reporting duplicates every output chunk in memory and can
+    // exhaust constrained CI/Windows runners. It does not affect built assets.
+    reportCompressedSize: false,
     // No source maps in the shipped bundle — keeps the fintech app's source
     // out of the public/native APK and reduces asset size.
     sourcemap: false,

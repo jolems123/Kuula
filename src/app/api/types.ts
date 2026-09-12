@@ -77,7 +77,8 @@ export interface LoanApplication {
   createdAt: string;
   decidedAt: string | null;
   decisionNotes: string | null;
-  offerExpiresAt?: string | null;
+    offerExpiresAt?: string | null;
+    dueDate?: string | null;
   underwritingStatus?: string | null;
   partnerFinancingRequestId?: string | null;
   partnerName?: string | null;

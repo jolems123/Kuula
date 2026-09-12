@@ -74,6 +74,7 @@ const SCREENS: Record<string, ScreenEntry> = {
   "admin-customer-list": { access: "admin", load: () => import("../components/screens/AdminCustomerScreens").then((m) => ({ default: m.AdminCustomerListScreen })) },
   "admin-customer-kyc": { access: "admin", load: () => import("../components/screens/AdminKycQueueScreen").then((m) => ({ default: m.AdminKycQueueScreen })) },
   "admin-reports": { access: "admin", load: () => import("../components/screens/AdminReportsSettingsSupportScreens").then((m) => ({ default: m.AdminReportsDashboardScreen })) },
+  "admin-reconciliation": { access: "admin", load: () => import("../components/screens/AdminReconciliationScreen").then((m) => ({ default: m.AdminReconciliationScreen })) },
   "admin-staff": { access: "admin", load: () => import("../components/screens/AdminReportsSettingsSupportScreens").then((m) => ({ default: m.AdminStaffManagementScreen })) },
   "admin-support-inbox": { access: "admin", load: () => import("../components/screens/AdminSupportInboxScreen").then((m) => ({ default: m.AdminSupportInboxScreen })) },
   "admin-approval-workflow": { access: "admin", load: () => import("../components/screens/ExtraApprovalOfficerScreens").then((m) => ({ default: m.AdminApprovalWorkflowScreen })) },
@@ -82,7 +83,6 @@ const SCREENS: Record<string, ScreenEntry> = {
   "admin-officer-dashboard": { access: "admin", load: () => import("../components/screens/ExtraApprovalOfficerScreens").then((m) => ({ default: m.AdminOfficerDashboardScreen })) },
   "admin-approval-history": { access: "admin", load: () => import("../components/screens/ExtraApprovalOfficerScreens").then((m) => ({ default: m.AdminApprovalHistoryScreen })) },
   "admin-officer-contact": { access: "admin", load: () => import("../components/screens/ExtraApprovalOfficerScreens").then((m) => ({ default: m.AdminOfficerContactScreen })) },
-  "admin-partner-financing": { access: "admin", load: () => import("../components/screens/AdminPartnerFinancingScreen").then((m) => ({ default: m.AdminPartnerFinancingScreen })) },
 };
 
 export interface RegisteredScreen {

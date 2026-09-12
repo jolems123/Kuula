@@ -34,10 +34,10 @@ function numberOrNull(value: unknown): number | null {
   if (!Number.isFinite(n)) throw new AppError("Numeric value is invalid", 400);
   return n;
 }
-function roleLevel(role: string): number {
-  if (role === "officer") return 1;
-  if (role === "manager") return 2;
-  if (role === "admin") return 3;
+export function roleLevel(role: string): number {
+  if (["officer", "loan_officer"].includes(role)) return 1;
+  if (["manager", "credit_manager"].includes(role)) return 2;
+  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
   return 0;
 }
 
@@ -60,7 +60,7 @@ async function caseRow(applicationId: string) {
 }
 
 async function assertAssigned(applicationId: string, userId: string, level: number, role: string) {
-  if (role === "admin" && level === 3) return;
+  if (["admin", "administrator", "super_admin"].includes(role) && level === 3) return;
   const rows = await prisma.$queryRaw<any[]>(Prisma.sql`
     SELECT id FROM approval_assignments
     WHERE application_id = ${applicationId}::uuid
@@ -96,7 +96,7 @@ router.get("/dashboard", async (req: Request, res: Response) => {
       AND aa.level = c.current_level AND aa.status = 'active'
     WHERE c.current_level = ${level}
       AND c.status NOT IN ('completed','rejected')
-      AND (${req.user!.role === "admin"}::boolean OR aa.assignee_id = ${userId}::uuid)
+      AND (${["admin", "administrator", "super_admin"].includes(req.user!.role)}::boolean OR aa.assignee_id = ${userId}::uuid)
     ORDER BY c.updated_at ASC
     LIMIT 200
   `);
@@ -172,7 +172,7 @@ router.post("/applications/:id/evaluation", async (req: Request, res: Response) 
   const c = await caseRow(applicationId);
   if (!c || c.current_level !== 1) throw new AppError("Application is not in field evaluation", 409);
   await assertAssigned(applicationId, req.user!.userId, 1, req.user!.role);
-  if (req.user!.role !== "officer" && req.user!.role !== "admin") throw new AppError("Only the assigned field officer can edit the field evaluation", 403);
+  if (!["officer", "loan_officer", "admin", "administrator", "super_admin"].includes(req.user!.role)) throw new AppError("Only the assigned field officer can edit the field evaluation", 403);
 
   const existing = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT id, version FROM credit_evaluations WHERE application_id = ${applicationId}::uuid ORDER BY version DESC LIMIT 1`);
   const evaluationId = existing[0]?.id || crypto.randomUUID();
@@ -355,7 +355,6 @@ router.post("/applications/:id/messages", async (req: Request, res: Response) =>
   if (!content) throw new AppError("Message is required", 400);
   const recipientId = req.body?.recipientId ? asId(req.body.recipientId, "Recipient ID") : null;
   const messageType = req.body?.messageType === "customer" ? "customer" : "internal";
-  if (messageType === "customer" && !["admin", "manager", "officer"].includes(req.user!.role)) throw new AppError("Staff role required", 403);
   const id = crypto.randomUUID();
   await prisma.$executeRaw(Prisma.sql`INSERT INTO application_messages (id, application_id, sender_id, recipient_id, message_type, content) VALUES (${id}::uuid, ${applicationId}::uuid, ${req.user!.userId}::uuid, ${recipientId}::uuid, ${messageType}, ${content})`);
   await event(applicationId, req.user!.userId, "message.posted", null, null, { messageId: id, messageType, recipientId });
