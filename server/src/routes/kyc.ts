@@ -8,6 +8,7 @@ import {
   mintDocumentVerificationToken,
   smileIdConfigured,
   verifyWebhookSignature,
+  normalizeDocumentVerificationWebhook,
   type DocumentVerificationWebhook,
 } from "../lib/smile-id.js";
 import { saveKycImage } from "../lib/storage.js";
@@ -195,11 +196,12 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
   }
 
   const payload = req.body as DocumentVerificationWebhook;
-  if (payload.product !== "document_verification") {
+  if (payload.product && !["document_verification", "doc_verification"].includes(payload.product)) {
     res.json({ ok: true });
     return;
   }
-  const jobId = payload.partner_params?.job_id;
+  const normalized = normalizeDocumentVerificationWebhook(payload);
+  const jobId = normalized.jobId;
   if (!jobId) {
     res.status(400).json({ error: "Missing job reference" });
     return;
@@ -222,7 +224,7 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
   const front = await persistHostedImage(submission.userId, "front", payload.image_links?.id_card_image);
   const back = await persistHostedImage(submission.userId, "back", payload.image_links?.id_card_back_image);
 
-  const status = payload.status;
+  const status = normalized.status;
   const documentNin = normalizeNin(payload.id_fields?.id_number ?? "");
   const ninMatches = status === "clear" && documentNin === submission.nationalId;
 
@@ -240,7 +242,7 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
     decisionReason = null;
   } else {
     nextStatus = "rejected";
-    decisionReason = (payload.message || `Verification ${status}`).slice(0, 500);
+    decisionReason = normalized.message.slice(0, 500);
   }
 
   const providerDetail = JSON.stringify({

@@ -78,7 +78,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
                 ? "pending"
                 : "failed";
             return {
-              id: String(tx.id ?? tx.reference ?? Math.random()),
+              id: String(tx.id ?? tx.reference ?? `${tx.createdAt ?? "transaction"}-${tx.amount ?? 0}`),
               date: fmtDate(tx.createdAt),
               amount: Math.abs(Number(tx.amount ?? 0)),
               status,

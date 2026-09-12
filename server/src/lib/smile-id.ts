@@ -113,7 +113,8 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
 
   const { first, last } = splitName(input.fullName);
   const form = new FormData();
-  form.set("product", "document_verification");
+  // Smile ID's Web Integration product identifier is `doc_verification`.
+  form.set("product", "doc_verification");
   form.set("user_id", input.userId);
   form.set("partner_params", JSON.stringify({ job_id: input.jobId, user_id: input.userId, job_type: "6" }));
   form.set("payload", JSON.stringify({
@@ -160,12 +161,16 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
 
 /** Shape of the document-verification webhook payload we consume. */
 export interface DocumentVerificationWebhook {
-  status: DocumentVerificationStatus;
+  status?: DocumentVerificationStatus;
+  ResultCode?: string;
+  ResultText?: string;
+  SmileJobID?: string;
   message?: string;
   reason?: string | null;
   product?: string;
   completed_at?: string;
   partner_params?: { job_id?: string; user_id?: string };
+  PartnerParams?: { job_id?: string; user_id?: string; job_type?: string | number };
   id_fields?: {
     full_name?: string | null;
     id_number?: string | null;
@@ -179,4 +184,15 @@ export interface DocumentVerificationWebhook {
     id_card_back_image?: string;
   } | null;
   kyc_receipt?: string | null;
+}
+
+export function normalizeDocumentVerificationWebhook(payload: DocumentVerificationWebhook) {
+  const jobId = payload.partner_params?.job_id || payload.PartnerParams?.job_id || "";
+  const status = payload.status
+    || (payload.ResultCode === "0810" ? "clear" : payload.ResultCode ? "block" : "error");
+  return {
+    jobId,
+    status,
+    message: payload.message || payload.ResultText || payload.reason || `Verification ${status}`,
+  } as const;
 }

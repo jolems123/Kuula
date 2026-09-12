@@ -38,3 +38,19 @@ test("smileIdConfigured fails closed without credentials or callback URL", async
   const { smileIdConfigured } = await import("./smile-id.js");
   assert.equal(smileIdConfigured(), false);
 });
+
+test("normalizes current and legacy document-verification callbacks", async () => {
+  const { normalizeDocumentVerificationWebhook } = await import("./smile-id.js");
+  assert.deepEqual(
+    normalizeDocumentVerificationWebhook({ status: "attention", partner_params: { job_id: "job-new" } }),
+    { jobId: "job-new", status: "attention", message: "Verification attention" },
+  );
+  assert.deepEqual(
+    normalizeDocumentVerificationWebhook({ ResultCode: "0810", ResultText: "Document Verified", PartnerParams: { job_id: "job-classic" } }),
+    { jobId: "job-classic", status: "clear", message: "Document Verified" },
+  );
+  assert.equal(
+    normalizeDocumentVerificationWebhook({ ResultCode: "0813", ResultText: "Document verification failed", PartnerParams: { job_id: "failed" } }).status,
+    "block",
+  );
+});

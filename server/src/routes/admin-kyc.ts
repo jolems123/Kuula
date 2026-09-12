@@ -49,6 +49,9 @@ router.post("/:id/decision", requirePermissions("kyc.review"), async (req: Reque
 
   const latest = await prisma.kycSubmission.findFirst({ where: { userId: current.userId }, orderBy: { version: "desc" } });
   if (!latest || latest.id !== current.id) throw new AppError("Only the latest KYC submission can be reviewed", 409);
+  if (decision === "verified" && current.provider === "smile-id" && current.providerStatus !== "attention") {
+    throw new AppError("Smile ID verification may only be manually approved when the provider requested human review", 409);
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     const submission = await tx.kycSubmission.update({

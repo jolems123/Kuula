@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import {
-  LayoutDashboard, ClipboardCheck, FileText, Users, Star, CreditCard,
+  LayoutDashboard, ClipboardCheck, FileText, Users, Building2,
   BarChart3, Settings, MessageSquare, ChevronDown, ChevronRight,
   Bell, LogOut, Search, Menu, ArrowLeft, type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import kuulaLogo from "/kuula-icon.svg";
+import { useAppContext } from "../context/AppContext";
 
 interface NavItem {
   id: string;
@@ -39,48 +40,20 @@ const NAV: NavItem[] = [
     children: [
       { id: "admin-customer-list", label: "All Customers" },
       { id: "admin-customer-kyc", label: "KYC Verification" },
-      { id: "admin-customer-risk", label: "Risk Profiles" },
     ],
   },
-  { id: "admin-credit-scores", label: "Credit Scoring", icon: Star },
-  {
-    id: "admin-payments", label: "Payments", icon: CreditCard,
-    children: [
-      { id: "admin-all-transactions", label: "All Transactions" },
-      { id: "admin-failed-transactions", label: "Failed" },
-      { id: "admin-payment-processing", label: "Payment Processing" },
-    ],
-  },
-  {
-    id: "admin-reports", label: "Reports", icon: BarChart3,
-    children: [
-      { id: "admin-daily-report", label: "Daily" },
-      { id: "admin-weekly-report", label: "Weekly" },
-      { id: "admin-monthly-report", label: "Monthly" },
-      { id: "admin-export-report", label: "Export" },
-    ],
-  },
+  { id: "admin-partner-financing", label: "Partner Financing", icon: Building2 },
+  { id: "admin-reports", label: "Reports", icon: BarChart3 },
   {
     id: "admin-settings", label: "Settings", icon: Settings,
     children: [
-      { id: "admin-loan-products", label: "Credit Products" },
-      { id: "admin-interest-settings", label: "Pricing" },
-      { id: "admin-service-fee", label: "Fees" },
-      { id: "admin-mtn-api", label: "MTN MoMo API" },
-      { id: "admin-airtel-api", label: "Airtel API" },
-      { id: "admin-notif-templates", label: "Notification Templates" },
       { id: "admin-staff", label: "Staff Management" },
-      { id: "admin-staff-permissions", label: "Permissions" },
-      { id: "admin-compliance", label: "Compliance" },
     ],
   },
   {
     id: "admin-support", label: "Support", icon: MessageSquare,
     children: [
       { id: "admin-support-inbox", label: "Support Inbox" },
-      { id: "admin-tickets", label: "Tickets" },
-      { id: "admin-bulk-sms", label: "Bulk SMS" },
-      { id: "admin-bulk-email", label: "Bulk Email" },
     ],
   },
 ];
@@ -94,9 +67,22 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, activeScreen, onNavigate, title }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const { state, logout } = useAppContext();
   const [expanded, setExpanded] = useState<string[]>(["admin-credit-operations"]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const toggle = (id: string) => setExpanded((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const role = state.role;
+  const can = (item: NavItem) => {
+    if (item.id === "admin-dashboard") return true;
+    if (item.id === "admin-credit-operations" || item.id === "admin-loans") return ["super_admin", "administrator", "credit_manager", "final_approver", "loan_officer", "collections", "admin", "manager", "officer"].includes(role || "");
+    if (item.id === "admin-customers") return role !== "finance";
+    if (item.id === "admin-partner-financing") return ["super_admin", "administrator", "admin"].includes(role || "");
+    if (item.id === "admin-reports") return ["super_admin", "administrator", "credit_manager", "final_approver", "finance", "admin", "manager"].includes(role || "");
+    if (item.id === "admin-settings") return role === "super_admin";
+    if (item.id === "admin-support") return ["super_admin", "administrator", "credit_manager", "loan_officer", "collections", "support", "admin", "manager", "officer"].includes(role || "");
+    return false;
+  };
+  const visibleNav = NAV.filter(can);
 
   return (
     <div style={{ display: "flex", height: "100%", background: "#F8FAF9", fontFamily: "Poppins, system-ui, -apple-system, sans-serif" }}>
@@ -108,7 +94,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "7px 0" }}>
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const active = activeScreen === item.id || item.children?.some((c) => c.id === activeScreen);
             const open = expanded.includes(item.id);
@@ -124,7 +110,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
             );
           })}
         </div>
-        <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,.08)" }}><button onClick={() => onNavigate("welcome")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "7px 0", background: "transparent", border: "none", cursor: "pointer" }}><LogOut size={14} color="#FCA5A5" /><span style={{ fontSize: 11, color: "#FCA5A5", fontWeight: 600 }}>Log Out</span></button></div>
+        <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,.08)" }}><button onClick={() => { logout(); navigate("/admin-login", { replace: true }); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "7px 0", background: "transparent", border: "none", cursor: "pointer" }}><LogOut size={14} color="#FCA5A5" /><span style={{ fontSize: 11, color: "#FCA5A5", fontWeight: 600 }}>Log Out</span></button></div>
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>

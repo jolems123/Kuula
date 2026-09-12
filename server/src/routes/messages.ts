@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, hasPermission } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 
 const router = Router();
@@ -10,7 +10,7 @@ const MAX_MESSAGE_LENGTH = 2_000;
 // GET /api/messages
 router.get("/", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
-  const isAdmin = req.user!.role === "admin";
+  const isAdmin = hasPermission(req.user!.role, "support.manage");
 
   const where = isAdmin
     ? {}
@@ -46,7 +46,7 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
     // Customer support messages are always routed server-side to an active admin.
     // Never trust a caller-supplied receiverId: that would allow customer-to-customer messaging.
     const admin = await prisma.user.findFirst({
-      where: { role: "admin", deletedAt: null },
+      where: { role: { in: ["support", "administrator", "admin", "super_admin"] }, deletedAt: null },
       select: { id: true },
       orderBy: { createdAt: "asc" },
     });
@@ -69,7 +69,7 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
     return;
   }
 
-  if (req.user!.role !== "admin") {
+  if (!hasPermission(req.user!.role, "support.manage")) {
     throw new AppError("Use the assigned credit-case communication channel for staff messages", 403);
   }
 

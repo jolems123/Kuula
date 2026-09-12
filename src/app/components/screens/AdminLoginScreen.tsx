@@ -1,9 +1,7 @@
 import { Eye, EyeOff, Shield, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { useAppContext, type UserProfile } from "../../context/AppContext";
-import mockData from "../../data/mockData.json";
+import { useAppContext } from "../../context/AppContext";
 import { api, ApiError } from "../../api/client";
-import { env } from "../../config/env";
 import { useTranslation } from "react-i18next";
 import { adminLoginLimiter } from "../../lib/rate-limiter";
 import { setAdminMfaChallenge } from "../../lib/selection";
@@ -50,31 +48,19 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     setError(""); setNotice("");
     const rateCheck = adminLoginLimiter.check();
     if (!rateCheck.allowed) { setLockoutRemaining(rateCheck.retryAfterMs); setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`); return; }
-    if (env.USE_API) {
-      setLoading(true);
-      try {
-        const result = await api.adminLogin(identifier.trim(), pw);
-        adminLoginLimiter.reset();
-        if ("requiresMfa" in result && result.requiresMfa) {
-          setAdminMfaChallenge({ challengeToken: result.challengeToken, destination: result.destination });
-          onNavigate("admin-otp");
-        } else {
-          // Test-only API mode can return a session directly; production never does.
-          finishSession(result);
-          onNavigate("admin-dashboard");
-        }
-      } catch (e) { setError(e instanceof ApiError ? e.message : "Sign in failed. Try again."); }
-      finally { setLoading(false); }
-      return;
-    }
-
-    // Screen-review/demo mode is explicitly non-production and never persists tokens.
-    const adminUser = mockData.testUsers.find((u) => u.role === "admin" && u.email === identifier.trim().toLowerCase());
-    if (!adminUser || pw.length < 4) { setError("Invalid demo credentials."); return; }
-    const userProfile: UserProfile = { id: adminUser.id, role: "admin", initials: adminUser.initials, fullName: adminUser.fullName, phone: adminUser.phone, email: adminUser.email, nationalId: adminUser.nationalId, dateOfBirth: adminUser.dateOfBirth, district: adminUser.district, occupation: adminUser.occupation, memberSince: adminUser.memberSince, verified: adminUser.verified, avatarUrl: adminUser.avatarUrl };
-    login("demo-token", userProfile, null, null, "admin");
-    setAdminMfaChallenge({ challengeToken: "demo-only", destination: "demo mode" });
-    onNavigate("admin-otp");
+    setLoading(true);
+    try {
+      const result = await api.adminLogin(identifier.trim(), pw);
+      adminLoginLimiter.reset();
+      if ("requiresMfa" in result && result.requiresMfa) {
+        setAdminMfaChallenge({ challengeToken: result.challengeToken, destination: result.destination });
+        onNavigate("admin-otp");
+      } else {
+        finishSession(result);
+        onNavigate("admin-dashboard");
+      }
+    } catch (e) { setError(e instanceof ApiError ? e.message : "Sign in failed. Try again."); }
+    finally { setLoading(false); }
   };
 
   return (
