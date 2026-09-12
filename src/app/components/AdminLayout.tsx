@@ -88,6 +88,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
   const canChild = (id: string) => {
     if (id === "admin-customer-kyc") return ["super_admin","administrator","admin","credit_manager","manager","kyc_officer"].includes(role || "");
     if (id === "admin-officer-assignment" || id === "admin-approval-workflow") return ["super_admin","administrator","admin","credit_manager","manager"].includes(role || "");
+    if (id === "admin-overdue-loans") return ["super_admin","administrator","admin","credit_manager","manager","collections"].includes(role || "");
     return true;
   };
   const visibleNav = NAV.filter(can);

@@ -15,6 +15,8 @@ describe("staff dashboard routing", () => {
     expect(staffCanOpenScreen("admin-loan-apps", "finance")).toBe(false);
     expect(staffCanOpenScreen("admin-customer-kyc", "support")).toBe(false);
     expect(staffCanOpenScreen("admin-reports", "collections")).toBe(false);
+    expect(staffCanOpenScreen("admin-overdue-loans", "collections")).toBe(true);
+    expect(staffCanOpenScreen("admin-overdue-loans", "final_approver")).toBe(false);
     expect(staffCanOpenScreen("admin-staff", "administrator")).toBe(false);
     expect(staffCanOpenScreen("admin-staff", "super_admin")).toBe(true);
   });

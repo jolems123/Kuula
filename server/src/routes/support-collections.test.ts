@@ -9,6 +9,7 @@ test("collections access excludes unrelated staff roles", async () => {
   assert.equal(collectionRoles.has("collections"), true);
   assert.equal(collectionRoles.has("administrator"), true);
   assert.equal(collectionRoles.has("loan_officer"), false);
+  assert.equal(collectionRoles.has("final_approver"), false);
   assert.equal(collectionRoles.has("finance"), false);
   assert.equal(collectionRoles.has("support"), false);
   assert.equal(collectionRoles.has("kyc_officer"), false);

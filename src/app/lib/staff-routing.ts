@@ -19,7 +19,7 @@ export function staffCanOpenScreen(screenId: string, role: Role | null): boolean
     collections: new Set(["admin-overdue-loans", "admin-loan-history", "admin-customer-list", "admin-support-inbox"]),
     loan_officer: new Set(["admin-officer-dashboard", "admin-loan-apps", "admin-customer-list", "admin-support-inbox", "admin-approval-history", "admin-officer-contact"]),
     credit_manager: new Set(["admin-officer-dashboard", "admin-loan-apps", "admin-active-loans", "admin-overdue-loans", "admin-loan-history", "admin-customer-list", "admin-customer-kyc", "admin-reports", "admin-support-inbox", "admin-approval-workflow", "admin-approval-history", "admin-officer-contact"]),
-    final_approver: new Set(["admin-officer-dashboard", "admin-loan-apps", "admin-active-loans", "admin-overdue-loans", "admin-loan-history", "admin-customer-list", "admin-reports", "admin-approval-history", "admin-officer-contact"]),
+    final_approver: new Set(["admin-officer-dashboard", "admin-loan-apps", "admin-active-loans", "admin-loan-history", "admin-customer-list", "admin-reports", "admin-approval-history", "admin-officer-contact"]),
   };
   if (exact[role]) return exact[role]!.has(screenId);
   if (["super_admin", "administrator", "admin"].includes(role)) return true;
