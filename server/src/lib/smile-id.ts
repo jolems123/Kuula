@@ -113,8 +113,8 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
 
   const { first, last } = splitName(input.fullName);
   const form = new FormData();
-  // Smile ID's Web Integration product identifier is `doc_verification`.
-  form.set("product", "doc_verification");
+  // The v3 token endpoint currently accepts `document_verification`.
+  form.set("product", "document_verification");
   form.set("user_id", input.userId);
   form.set("partner_params", JSON.stringify({ job_id: input.jobId, user_id: input.userId, job_type: "6" }));
   form.set("payload", JSON.stringify({
