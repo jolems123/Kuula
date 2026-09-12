@@ -311,40 +311,57 @@ export function AdminRepaymentTrackingScreen({ onNavigate }: Props) {
 export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
-  const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [accounts, setAccounts] = useState<Array<Record<string, unknown>>>([]);
+  const [activities, setActivities] = useState<Array<Record<string, unknown>>>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [activityType, setActivityType] = useState("contact");
+  const [promiseAmount, setPromiseAmount] = useState("");
+  const [promiseDate, setPromiseDate] = useState("");
+  const [promiseStatus, setPromiseStatus] = useState("kept");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refresh = () => {
     if (!token) { setLoading(false); return; }
-    api.getApplications(token)
-      .then(({ applications }) => setApps(applications.filter((a) => a.status === "overdue")))
-      .catch(() => {})
+    api.getCollections(token)
+      .then((result) => { setAccounts(result.accounts); setActivities(result.activities); setError(""); })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to load overdue accounts"))
       .finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    refresh();
   }, [token]);
+
+  async function addActivity() {
+    if (!token || !selected || !note.trim()) return;
+    try {
+      await api.addCollectionActivity(token, selected, { activityType, note:note.trim(), ...(activityType==="promise_to_pay"?{promiseAmount:Number(promiseAmount),promiseDate}: {}), ...(activityType==="promise_update"?{promiseStatus}:{}), ...(activityType==="assignment"?{assignedTo:state.user?.id}: {}) });
+      setNote(""); setPromiseAmount(""); setPromiseDate(""); refresh();
+    } catch(cause) { setError(cause instanceof Error ? cause.message : "Activity could not be saved"); }
+  }
 
   return (
     <AdminLayout activeScreen="admin-overdue-loans" onNavigate={onNavigate} title="Overdue Loans">
-      <AdminPageHeader title="Overdue Loans" subtitle={loading ? "Loading…" : `${apps.length} loans past due date`} />
-      {apps.length > 0 && (
+      <AdminPageHeader title="Overdue Loans" subtitle={loading ? "Loading…" : `${accounts.length} loans past due date`} />
+      {error&&<p role="alert" style={{color:"#991B1B"}}>{error}</p>}
+      {accounts.length > 0 && (
         <div style={{ padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA",marginBottom:16 }}>
-          <p style={{ fontSize:12,color:"#991B1B",margin:0 }}>⚠ {apps.length} loan{apps.length !== 1 ? "s are" : " is"} overdue. Contact customers immediately.</p>
+          <p style={{ fontSize:12,color:"#991B1B",margin:0 }}>⚠ {accounts.length} loan{accounts.length !== 1 ? "s are" : " is"} overdue. Contact customers immediately.</p>
         </div>
       )}
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>
-      ) : apps.length === 0 ? (
+      ) : accounts.length === 0 ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>No overdue loans 🎉</div>
       ) : (
-        <AdminTable
-          columns={["Customer", "Amount due", "Due date", "Days past due", "Status"]}
-          rows={apps.map((a) => [
-            a.applicantName || "—",
-            ugx(a.total),
-            a.dueDate ? fmtDate(a.dueDate) : "—",
-            a.dueDate ? String(Math.max(0, Math.floor((Date.now() - new Date(a.dueDate).getTime()) / 86_400_000))) : "—",
-            <StatusBadge key={a.id} status={a.status} />,
-          ])}
-        />
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><AdminTable
+          columns={["Customer", "Amount due", "Days past due", "Status"]}
+          rows={accounts.map((a) => [
+            <button key={String(a.repayment_id)} onClick={()=>setSelected(String(a.repayment_id))}>{String(a.full_name||"—")}</button>,
+            ugx(Number(a.total||0)-Number(a.amount_paid||0)),
+            String(a.days_past_due||0), <StatusBadge key={String(a.repayment_id)} status="overdue" />,
+          ])}/><AdminCard>{!selected?<p>Select an account to record recovery work.</p>:<><h3>Collection activity</h3><select value={activityType} onChange={e=>setActivityType(e.target.value)}><option value="contact">Contact</option><option value="note">Note</option><option value="assignment">Assign to me</option><option value="promise_to_pay">Promise to pay</option><option value="promise_update">Update promise status</option></select>{activityType==="promise_to_pay"&&<div><input aria-label="Promise amount" type="number" min="1" value={promiseAmount} onChange={e=>setPromiseAmount(e.target.value)}/><input aria-label="Promise date" type="date" value={promiseDate} onChange={e=>setPromiseDate(e.target.value)}/></div>}{activityType==="promise_update"&&<select aria-label="Promise status" value={promiseStatus} onChange={e=>setPromiseStatus(e.target.value)}><option value="kept">Kept</option><option value="broken">Broken</option><option value="cancelled">Cancelled</option></select>}<textarea aria-label="Collection note" maxLength={2000} value={note} onChange={e=>setNote(e.target.value)}/><button onClick={()=>void addActivity()}>Save activity</button><h4>History</h4>{activities.filter(a=>a.repayment_id===selected).map(a=><div key={String(a.id)}><strong>{String(a.activity_type).replaceAll("_"," ")}</strong>{a.promise_status?` (${String(a.promise_status)})`:""} — {String(a.note)}<small> {new Date(String(a.created_at)).toLocaleString()}</small></div>)}</>}</AdminCard></div>
       )}
     </AdminLayout>
   );

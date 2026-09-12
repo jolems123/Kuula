@@ -20,6 +20,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const staffId = state.user?.id ?? "";
   const [messages, setMessages] = useState<Message[]>([]);
+  const [tickets, setTickets] = useState<Array<Record<string, unknown>>>([]);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [reply, setReply] = useState("");
@@ -31,9 +32,10 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
   const refresh = useCallback(async () => {
     if (!token) return;
     try {
-      const [messageResult, customerResult] = await Promise.all([api.getMessages(token), api.getCustomers(token)]);
+      const [messageResult, customerResult, ticketResult] = await Promise.all([api.getMessages(token), api.getCustomers(token), api.getSupportTickets(token)]);
       setMessages(messageResult.messages);
       setCustomers(customerResult.customers);
+      setTickets(ticketResult.tickets);
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load the support inbox");
@@ -56,6 +58,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
       .sort((a, b) => new Date(b.last.createdAt).getTime() - new Date(a.last.createdAt).getTime());
   }, [messages, staffId]);
   const conversation = selected ? threads.find((thread) => thread.customerId === selected)?.items ?? [] : [];
+  const ticket = selected ? tickets.find((item) => item.customer_id === selected && item.status !== "closed") ?? tickets.find((item) => item.customer_id === selected) : undefined;
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [conversation.length]);
 
@@ -75,6 +78,14 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
     }
   }
 
+  async function updateTicket(update: Record<string, unknown>) {
+    if (!token || !ticket) return;
+    try {
+      await api.updateSupportTicket(token, String(ticket.id), update);
+      await refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Ticket could not be updated"); }
+  }
+
   const nameFor = (id: string) => customerNames.get(id) ?? `Customer ${id.slice(0, 8)}`;
 
   return <AdminLayout activeScreen="admin-support-inbox" onNavigate={onNavigate} title="Support Inbox">
@@ -88,7 +99,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
             <div style={{ color: "#64748B", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{thread.last.content}</div>
           </button>)}</div>}
       </> : <div style={{ display: "flex", flexDirection: "column", minHeight: 520 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}><button aria-label="Back to inbox" onClick={() => setSelected(null)} style={{ border: 0, borderRadius: 8, padding: 9, cursor: "pointer" }}><ArrowLeft size={18} /></button><strong>{nameFor(selected)}</strong></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}><button aria-label="Back to inbox" onClick={() => setSelected(null)} style={{ border: 0, borderRadius: 8, padding: 9, cursor: "pointer" }}><ArrowLeft size={18} /></button><strong>{nameFor(selected)}</strong>{ticket&&<><select aria-label="Ticket category" value={String(ticket.category)} onChange={e=>void updateTicket({category:e.target.value})}>{["general","account","kyc","loan","repayment","technical"].map(v=><option key={v}>{v}</option>)}</select><select aria-label="Ticket priority" value={String(ticket.priority)} onChange={e=>void updateTicket({priority:e.target.value})}>{["low","normal","high","urgent"].map(v=><option key={v}>{v}</option>)}</select><button onClick={()=>void updateTicket({assignedTo:staffId,status:"in_progress"})}>Assign to me</button><button onClick={()=>void updateTicket({status:ticket.status==="closed"?"open":"closed"})}>{ticket.status==="closed"?"Reopen":"Close"}</button></>}</div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>{conversation.map((message) => {
           const fromStaff = message.senderId === staffId;
           return <div key={message.id} style={{ alignSelf: fromStaff ? "flex-end" : "flex-start", maxWidth: "72%" }}><div style={{ padding: "10px 14px", borderRadius: 14, background: fromStaff ? "#0B5E3A" : "#F1F5F9", color: fromStaff ? "white" : "#172033" }}>{message.content}</div><small style={{ color: "#64748B" }}>{new Date(message.createdAt).toLocaleString()}</small></div>;

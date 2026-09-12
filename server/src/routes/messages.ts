@@ -1,4 +1,6 @@
+import crypto from "node:crypto";
 import { Router, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
@@ -52,9 +54,14 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
     });
     if (!admin) throw new AppError("Kuula support is temporarily unavailable", 503);
 
+    const tickets = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM support_tickets WHERE customer_id=${userId}::uuid AND status<>'closed' ORDER BY updated_at DESC LIMIT 1`);
+    const ticketId = tickets[0]?.id ?? crypto.randomUUID();
+    if (!tickets[0]) await prisma.$executeRaw(Prisma.sql`INSERT INTO support_tickets(id,customer_id,assigned_to) VALUES(${ticketId}::uuid,${userId}::uuid,${admin.id}::uuid)`);
     const message = await prisma.message.create({
       data: { senderId: userId, receiverId: admin.id, content },
     });
+    await prisma.$executeRaw(Prisma.sql`UPDATE messages SET ticket_id=${ticketId}::uuid WHERE id=${message.id}::uuid`);
+    await prisma.$executeRaw(Prisma.sql`UPDATE support_tickets SET updated_at=CURRENT_TIMESTAMP,status=CASE WHEN status='closed' THEN 'open' ELSE status END,closed_at=NULL WHERE id=${ticketId}::uuid`);
 
     res.json({
       message: {
@@ -77,9 +84,13 @@ router.post("/", authenticateToken, async (req: Request, res: Response) => {
   const receiver = await prisma.user.findFirst({ where: { id: receiverId, deletedAt: null }, select: { id: true } });
   if (!receiver) throw new AppError("Receiver not found", 404);
 
+  const tickets = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM support_tickets WHERE customer_id=${receiver.id}::uuid AND status<>'closed' ORDER BY updated_at DESC LIMIT 1`);
+  if (!tickets[0]) throw new AppError("Open ticket not found for customer", 409);
   const message = await prisma.message.create({
     data: { senderId: userId, receiverId: receiver.id, content },
   });
+  await prisma.$executeRaw(Prisma.sql`UPDATE messages SET ticket_id=${tickets[0].id}::uuid WHERE id=${message.id}::uuid`);
+  await prisma.$executeRaw(Prisma.sql`UPDATE support_tickets SET updated_at=CURRENT_TIMESTAMP,status='in_progress' WHERE id=${tickets[0].id}::uuid`);
 
   res.json({
     message: {

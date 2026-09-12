@@ -20,6 +20,8 @@ import paymentProviderLimitRoutes from "./routes/payment-provider-limits.js";
 import partnerFinancingRoutes from "./routes/partner-financing-routes.js";
 import partnerOfferGuardRoutes from "./routes/partner-offer-guard.js";
 import messageRoutes from "./routes/messages.js";
+import supportTicketRoutes from "./routes/support-tickets.js";
+import collectionRoutes from "./routes/collections.js";
 import transactionRoutes from "./routes/transactions.js";
 import notificationRoutes from "./routes/notifications.js";
 import ussdRoutes from "./routes/ussd.js";
@@ -165,6 +167,8 @@ app.get("/api/ready", async (_req, res) => {
         CASE WHEN to_regclass('public.disbursement_batches') IS NULL THEN 'disbursement_batches' END,
         CASE WHEN to_regclass('public.disbursement_legs') IS NULL THEN 'disbursement_legs' END,
         CASE WHEN to_regclass('public.journals') IS NULL THEN 'journals' END
+        ,CASE WHEN to_regclass('public.support_tickets') IS NULL THEN 'support_tickets' END
+        ,CASE WHEN to_regclass('public.collection_activities') IS NULL THEN 'collection_activities' END
       ], NULL) AS missing_tables
     `;
     if (schema.missing_tables.length) {
@@ -199,6 +203,8 @@ app.use("/api/payments", disbursementReconciliationGuardRoutes);
 app.use("/api/payments", disbursementWebhookRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/admin/support-tickets", supportTicketRoutes);
+app.use("/api/admin/collections", collectionRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/customer", customerCreditMessagesRoutes);

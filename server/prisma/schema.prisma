@@ -63,6 +63,10 @@ model User {
   growthLine               GrowthLine?
   creditPassSnapshots      CreditPassSnapshot[]
   partnerFinancingRequests PartnerFinancingRequest[]
+  supportTickets           SupportTicket[] @relation("ticketCustomer")
+  assignedSupportTickets   SupportTicket[] @relation("ticketAssignee")
+  collectionActivities     CollectionActivity[] @relation("collectionActor")
+  assignedCollections      CollectionActivity[] @relation("collectionAssignee")
 
   @@map("users")
 }
@@ -172,10 +176,30 @@ model Message {
   content    String
   isRead     Boolean  @default(false) @map("is_read")
   createdAt  DateTime @default(now()) @map("created_at")
+  ticketId   String?  @map("ticket_id") @db.Uuid
   sender   User @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  ticket SupportTicket? @relation(fields: [ticketId], references: [id], onDelete: Restrict)
   @@index([senderId, receiverId, createdAt])
   @@map("messages")
+}
+
+model SupportTicket {
+  id         String    @id @db.Uuid
+  customerId String    @map("customer_id") @db.Uuid
+  assignedTo String?   @map("assigned_to") @db.Uuid
+  category   String    @default("general")
+  priority   String    @default("normal")
+  status     String    @default("open")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  closedAt   DateTime? @map("closed_at")
+  customer User @relation("ticketCustomer", fields:[customerId], references:[id], onDelete:Restrict)
+  assignee User? @relation("ticketAssignee", fields:[assignedTo], references:[id], onDelete:SetNull)
+  messages Message[]
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([customerId, updatedAt(sort: Desc)])
+  @@map("support_tickets")
 }
 
 model LoanApplication {
@@ -265,11 +289,30 @@ model Repayment {
   attempts             Json     @default("[]")
   createdAt            DateTime @default(now()) @map("created_at")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionActivities CollectionActivity[]
   @@index([userId])
   @@index([loanId])
   @@index([status])
   @@index([userId, status, dueDate])
   @@map("repayments")
+}
+
+model CollectionActivity {
+  id            String    @id @db.Uuid
+  repaymentId   String    @map("repayment_id") @db.Uuid
+  actorId       String    @map("actor_id") @db.Uuid
+  assignedTo    String?   @map("assigned_to") @db.Uuid
+  activityType  String    @map("activity_type")
+  note          String
+  promiseAmount BigInt?   @map("promise_amount")
+  promiseDate   DateTime? @map("promise_date")
+  promiseStatus String?   @map("promise_status")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  repayment Repayment @relation(fields:[repaymentId], references:[id], onDelete:Restrict)
+  actor User @relation("collectionActor", fields:[actorId], references:[id], onDelete:Restrict)
+  assignee User? @relation("collectionAssignee", fields:[assignedTo], references:[id], onDelete:SetNull)
+  @@index([repaymentId, createdAt(sort: Desc)])
+  @@map("collection_activities")
 }
 
 model Transaction {
