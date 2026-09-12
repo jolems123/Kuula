@@ -3,21 +3,21 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Download, Send, Plus, Trash2, Check } from "lucide-react";
+import { Download, Send, Plus, Trash2, Check, Pencil, RotateCcw } from "lucide-react";
 import { AdminLayout, AdminPageHeader, AdminCard, StatCard } from "../AdminLayout";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
 import type { StaffMember } from "../../api/types";
 import type { InvestorReport } from "../../api/types-compat";
-import { formatUGX, downloadPdf } from "../../lib/export";
-import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportCsv } from "../../lib/investorReport";
+import { formatUGX } from "../../lib/export";
+import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportWord } from "../../lib/investorReport";
 
 interface Props { onNavigate: (s: string) => void; }
 
 // Shared loader for the live investor report (all figures computed from Postgres).
-function useInvestorReport() {
+function useInvestorReport(range?: { start?: string; end?: string }) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [report, setReport] = useState<InvestorReport | null>(null);
@@ -25,27 +25,55 @@ function useInvestorReport() {
   const [error, setError] = useState(false);
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-    api.getInvestorReport(token)
+    api.getInvestorReport(token, range)
       .then((r) => setReport(r))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, range?.start, range?.end]);
   return { report, loading, error };
+}
+
+type ReportPeriod = "today" | "week" | "month" | "quarter" | "year" | "all" | "custom";
+function selectedRange(period: ReportPeriod, customStart: string, customEnd: string) {
+  if (period === "all") return {};
+  if (period === "custom") return { start: customStart || undefined, end: customEnd || undefined };
+  const now = new Date(); const end = now.toISOString().slice(0, 10); const start = new Date(now);
+  if (period === "today") return { start: end, end };
+  if (period === "week") start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  if (period === "month") start.setDate(1);
+  if (period === "quarter") { start.setMonth(Math.floor(now.getMonth() / 3) * 3, 1); }
+  if (period === "year") start.setMonth(0, 1);
+  return { start: start.toISOString().slice(0, 10), end };
 }
 
 // A8.1
 export function AdminReportsDashboardScreen({ onNavigate }: Props) {
-  const { report, loading, error } = useInvestorReport();
+  const [period, setPeriod] = useState<ReportPeriod>("month");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [format, setFormat] = useState<"pdf" | "xlsx" | "docx">("pdf");
+  const range = selectedRange(period, customStart, customEnd);
+  const invalidRange = Boolean(range.start && range.end && range.start > range.end);
+  const { report, loading, error } = useInvestorReport(invalidRange ? { start: "invalid", end: "invalid" } : range);
+  const generate = async () => {
+    if (!report || invalidRange) return;
+    if (format === "pdf") await exportInvestorReportPdf(report);
+    else if (format === "xlsx") exportInvestorReportExcel(report);
+    else await exportInvestorReportWord(report);
+  };
   const chart = (report?.monthly ?? []).map((m) => ({ m: m.month, disbursed: Math.round(m.disbursed / 1_000_000), collected: Math.round(m.collected / 1_000_000) }));
   return (
     <AdminLayout activeScreen="admin-reports" onNavigate={onNavigate} title="Financial Reports">
-      <AdminPageHeader title="Financial Reports Dashboard" subtitle="Live financial performance from Kuula's ledger"
-        action={<div style={{ display:"flex",gap:8 }}>
-          {["Daily","Weekly","Monthly","Export"].map((l,i)=>(
-            <button key={l} onClick={()=>onNavigate(["admin-daily-report","admin-weekly-report","admin-monthly-report","admin-export-report"][i])} style={{ padding:"7px 14px",borderRadius:8,background:i===2?"#0B5E3A":"white",color:i===2?"white":"#374151",border:"1px solid #E2E8F0",fontSize:12,fontWeight:600,cursor:"pointer" }}>{l}</button>
-          ))}
-        </div>}
-      />
+      <AdminPageHeader title="Financial Reports" subtitle="Live financial performance from Kuula's ledger" />
+      <AdminCard style={{ marginBottom: 16 }}>
+        <div style={{ display:"flex",gap:10,alignItems:"end",flexWrap:"wrap" }}>
+          <label style={{ fontSize:12,fontWeight:600 }}>Period<select value={period} onChange={event=>setPeriod(event.target.value as ReportPeriod)} style={{ display:"block",marginTop:5,height:38,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 10px" }}>{[["today","Today"],["week","This week"],["month","This month"],["quarter","This quarter"],["year","This year"],["all","All time"],["custom","Custom range"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          {period === "custom" && <><label style={{ fontSize:12,fontWeight:600 }}>Start<input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{ display:"block",marginTop:5,height:36,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 8px" }}/></label><label style={{ fontSize:12,fontWeight:600 }}>End<input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{ display:"block",marginTop:5,height:36,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 8px" }}/></label></>}
+          <label style={{ fontSize:12,fontWeight:600 }}>Format<select value={format} onChange={event=>setFormat(event.target.value as typeof format)} style={{ display:"block",marginTop:5,height:38,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 10px" }}><option value="pdf">PDF</option><option value="xlsx">Excel (.xlsx)</option><option value="docx">Word (.docx)</option></select></label>
+          <button onClick={()=>void generate()} disabled={loading || !report || invalidRange} style={{ height:38,padding:"0 16px",border:0,borderRadius:8,background:"#0B5E3A",color:"white",fontWeight:700,cursor:"pointer" }}><Download size={14} style={{ verticalAlign:"middle",marginRight:6 }}/>Generate Report</button>
+        </div>
+        {invalidRange && <p role="alert" style={{ color:"#B91C1C",fontSize:12 }}>Start date must be on or before end date.</p>}
+      </AdminCard>
       {loading ? (
         <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading live figures…</div>
       ) : error || !report ? (
@@ -84,199 +112,6 @@ export function AdminReportsDashboardScreen({ onNavigate }: Props) {
       </div>
       </>
       )}
-    </AdminLayout>
-  );
-}
-
-// A8.2
-export function AdminDailyReportScreen({ onNavigate }: Props) {
-  const { report, loading, error } = useInvestorReport();
-  const t = report?.today;
-  const dateLabel = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-
-  const exportPdf = () => {
-    if (!t) return;
-    downloadPdf({
-      title: "Daily Report",
-      subtitle: dateLabel,
-      tables: [{ title: "Today's Activity", head: ["Metric", "Value"], rows: [
-        ["Applications received", String(t.applications)],
-        ["Approved", String(t.approved)],
-        ["Rejected", String(t.rejected)],
-        ["Amount disbursed", formatUGX(t.disbursed)],
-        ["Repayments collected", formatUGX(t.collected)],
-      ] }],
-    });
-  };
-
-  return (
-    <AdminLayout activeScreen="admin-daily-report" onNavigate={onNavigate} title="Daily Report">
-      <AdminPageHeader title={`Daily Report — ${dateLabel}`} subtitle="Today's operational summary"
-        action={<button onClick={exportPdf} disabled={!t} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:t?"pointer":"default",opacity:t?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
-      />
-      {loading ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading today's figures…</div>
-      ) : error || !t ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Today's report is unavailable right now.</div>
-      ) : (
-      <>
-      <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Applications Today" value={String(t.applications)} color="#F59E0B" icon={<></>}/>
-        <StatCard label="Approved Today" value={String(t.approved)} color="#178654" icon={<></>}/>
-        <StatCard label="Amount Disbursed" value={formatUGX(t.disbursed)} color="#0B5E3A" icon={<></>}/>
-        <StatCard label="Repayments Collected" value={formatUGX(t.collected)} color="#8B5CF6" icon={<></>}/>
-      </div>
-      <AdminCard>
-        <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Today's Loan Decisions</h3>
-        {[["Applications Received",String(t.applications)],["Approved",String(t.approved)],["Rejected",String(t.rejected)],["Amount Disbursed",formatUGX(t.disbursed)],["Repayments Collected",formatUGX(t.collected)]].map(([l,v])=>(
-          <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #F8FAFC" }}>
-            <span style={{ fontSize:12,color:"#64748B" }}>{l}</span><span style={{ fontSize:12,fontWeight:700,color:"#0F172A" }}>{v}</span>
-          </div>
-        ))}
-      </AdminCard>
-      </>
-      )}
-    </AdminLayout>
-  );
-}
-
-// A8.3
-export function AdminWeeklyReportScreen({ onNavigate }: Props) {
-  const { report, loading, error } = useInvestorReport();
-  const days = report?.daily ?? [];
-  const weeklyApps = days.reduce((s, d) => s + d.applications, 0);
-  const weeklyApproved = days.reduce((s, d) => s + d.approved, 0);
-  const weeklyDisbursed = days.reduce((s, d) => s + d.disbursed, 0);
-  const weeklyCollected = days.reduce((s, d) => s + d.collected, 0);
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - 6);
-  const rangeLabel = `${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
-
-  const exportPdf = () => {
-    if (!report) return;
-    downloadPdf({
-      title: "Weekly Report",
-      subtitle: rangeLabel,
-      tables: [
-        { title: "7-Day Breakdown", head: ["Day", "Applications", "Approved", "Disbursed", "Collected"], rows: days.map((d) => [d.day, d.applications, d.approved, formatUGX(d.disbursed), formatUGX(d.collected)]) },
-        { title: "Weekly Totals", head: ["Metric", "Value"], rows: [
-          ["Applications", String(weeklyApps)],
-          ["Approved", String(weeklyApproved)],
-          ["Disbursed", formatUGX(weeklyDisbursed)],
-          ["Collected", formatUGX(weeklyCollected)],
-        ] },
-      ],
-    });
-  };
-
-  return (
-    <AdminLayout activeScreen="admin-weekly-report" onNavigate={onNavigate} title="Weekly Report">
-      <AdminPageHeader title={`Weekly Report — ${rangeLabel}`} subtitle="7-day operational summary"
-        action={<button onClick={exportPdf} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
-      />
-      {loading ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading this week…</div>
-      ) : error || !report ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>This week's report is unavailable right now.</div>
-      ) : (
-      <>
-      <div style={{ display:"flex",gap:14,marginBottom:20 }}>
-        <StatCard label="Weekly Applications" value={String(weeklyApps)} color="#0B5E3A" icon={<></>}/>
-        <StatCard label="Approved" value={String(weeklyApproved)} color="#8B5CF6" icon={<></>}/>
-        <StatCard label="Disbursed" value={formatUGX(weeklyDisbursed)} color="#178654" icon={<></>}/>
-        <StatCard label="Collected" value={formatUGX(weeklyCollected)} color="#F59E0B" icon={<></>}/>
-      </div>
-      <AdminCard>
-        <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>Daily Breakdown This Week</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={days}>
-            <XAxis dataKey="day" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
-            <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
-            <Tooltip contentStyle={{ borderRadius:8,border:"none" }}/>
-            <Bar key="applications" dataKey="applications" fill="#DFF2E9" radius={[4,4,0,0]} name="Applications"/>
-            <Bar key="approved" dataKey="approved" fill="#0B5E3A" radius={[4,4,0,0]} name="Approved"/>
-          </BarChart>
-        </ResponsiveContainer>
-      </AdminCard>
-      </>
-      )}
-    </AdminLayout>
-  );
-}
-
-// A8.4
-export function AdminMonthlyReportScreen({ onNavigate }: Props) {
-  const { report, loading, error } = useInvestorReport();
-  const monthLabel = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-  const line = (report?.monthly ?? []).map((m) => ({ m: m.month, revenue: Math.round(m.collected / 1_000_000) }));
-  return (
-    <AdminLayout activeScreen="admin-monthly-report" onNavigate={onNavigate} title="Monthly Report">
-      <AdminPageHeader title={`Monthly Report — ${monthLabel}`}
-        action={<button onClick={()=>report&&exportInvestorReportPdf(report)} disabled={!report} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:report?"pointer":"default",opacity:report?1:0.6,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export PDF</button>}
-      />
-      {loading ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Loading…</div>
-      ) : error || !report ? (
-        <div style={{ textAlign:"center",padding:"48px 0",color:"#9CA3AF",fontSize:13 }}>Report unavailable.</div>
-      ) : (
-      <div style={{ display:"grid",gridTemplateColumns:"2fr 1fr",gap:16 }}>
-        <AdminCard>
-          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>12-Month Collections Trend (UGX Millions)</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={line}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-              <XAxis dataKey="m" tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
-              <YAxis tick={{ fontSize:11,fill:"#94A3B8" }} axisLine={false} tickLine={false}/>
-              <Tooltip contentStyle={{ borderRadius:8,border:"none" }}/>
-              <Line key="revenue" type="monotone" dataKey="revenue" stroke="#178654" strokeWidth={2.5} dot={{ fill:"#178654",r:4 }} name="Collected"/>
-            </LineChart>
-          </ResponsiveContainer>
-        </AdminCard>
-        <AdminCard>
-          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 12px" }}>Portfolio Summary</h3>
-          {[["Total Loans",String(report.loans.total)],["Active",String(report.loans.active)],["Paid",String(report.loans.paid)],["Rejected",String(report.loans.rejected)],["Disbursed",formatUGX(report.revenue.totalDisbursed)],["Collected",formatUGX(report.revenue.totalCollected)],["Outstanding",formatUGX(report.loans.outstanding)],["Default Rate",`${report.ratios.defaultRatePct}%`]].map(([l,v])=>(
-            <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #F8FAFC" }}>
-              <span style={{ fontSize:11,color:"#64748B" }}>{l}</span><span style={{ fontSize:11,fontWeight:700,color:"#0F172A" }}>{v}</span>
-            </div>
-          ))}
-        </AdminCard>
-      </div>
-      )}
-    </AdminLayout>
-  );
-}
-
-// A8.5
-export function AdminExportReportScreen({ onNavigate }: Props) {
-  const { report, loading, error } = useInvestorReport();
-  const [fmt, setFmt] = useState("pdf");
-  const generate = () => {
-    if (!report) return;
-    if (fmt === "pdf") exportInvestorReportPdf(report);
-    else if (fmt === "excel") exportInvestorReportExcel(report);
-    else exportInvestorReportCsv(report);
-  };
-  return (
-    <AdminLayout activeScreen="admin-export-report" onNavigate={onNavigate} title="Export Report">
-      <AdminPageHeader title="Export Report" subtitle="Download the live investor report in your preferred format"/>
-      <div style={{ maxWidth:560 }}>
-        <AdminCard style={{ marginBottom:16 }}>
-          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 16px" }}>Export Settings</h3>
-          <div style={{ marginBottom:20 }}>
-            <label style={{ fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:8 }}>Format</label>
-            <div style={{ display:"flex",gap:8 }}>
-              {["pdf","excel","csv"].map((f)=>(
-                <button key={f} onClick={()=>setFmt(f)} style={{ flex:1,height:44,borderRadius:8,border:`2px solid ${fmt===f?"#0B5E3A":"#E2E8F0"}`,cursor:"pointer",fontSize:13,fontWeight:600,background:fmt===f?"#F3FAF7":"white",color:fmt===f?"#0B5E3A":"#374151",textTransform:"uppercase" }}>{f}</button>
-              ))}
-            </div>
-          </div>
-          {error && <p style={{ fontSize:12,color:"#EF4444",marginBottom:12 }}>The report could not be loaded.</p>}
-          <button onClick={generate} disabled={loading || !report} style={{ width:"100%",height:48,borderRadius:12,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",fontSize:15,fontWeight:700,border:"none",cursor:loading||!report?"default":"pointer",opacity:loading||!report?0.6:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-            <Download size={18}/> {loading ? "Loading live data…" : "Generate & Download Report"}
-          </button>
-        </AdminCard>
-      </div>
     </AdminLayout>
   );
 }
@@ -525,6 +360,10 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [inviteRole, setInviteRole] = useState("loan_officer");
   const [inviting, setInviting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("loan_officer");
 
   const load = async () => {
     if (!token) return;
@@ -568,6 +407,22 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     } finally { setBusyId(null); }
   };
 
+  const beginEdit = (member: StaffMember) => { setEditing(member); setEditName(member.fullName); setEditEmail(member.email || ""); setEditRole(member.role); };
+  const saveEdit = async () => {
+    if (!token || !editing) return;
+    setBusyId(editing.id); setError(""); setNotice("");
+    try { await api.updateStaff(token, editing.id, { fullName: editName.trim(), email: editEmail.trim(), role: editRole }); setNotice(`${editName.trim()} has been updated.`); setEditing(null); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not update this account."); }
+    finally { setBusyId(null); }
+  };
+  const reactivate = async (member: StaffMember) => {
+    if (!token || !window.confirm(`Reactivate ${member.fullName}? They will regain staff sign-in access.`)) return;
+    setBusyId(member.id); setError(""); setNotice("");
+    try { await api.reactivateStaff(token, member.id); setNotice(`${member.fullName} has been reactivated.`); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not reactivate this account."); }
+    finally { setBusyId(null); }
+  };
+
   const statusStyle = (status: StaffMember["status"]) => status === "active"
     ? { color: "#178654", background: "#F0FDF4" }
     : status === "invited"
@@ -604,6 +459,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
           </button>
         </AdminCard>
       )}
+      {editing && <AdminCard style={{ marginBottom:14 }}><h3 style={{ marginTop:0 }}>Edit staff profile</h3><div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12 }}><input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} /><input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /><select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></div><div style={{ display:"flex",gap:8,marginTop:12 }}><button onClick={()=>void saveEdit()} disabled={busyId===editing.id}>Save changes</button><button onClick={()=>setEditing(null)}>Cancel</button></div></AdminCard>}
       {notice && <p style={{ fontSize:12,color:"#15864E",margin:"0 0 12px" }}>{notice}</p>}
       {error && <p style={{ fontSize:12,color:"#DC4C4C",margin:"0 0 12px" }}>{error}</p>}
       {loading ? (
@@ -623,6 +479,8 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                 </div>
                 <div style={{ display:"flex",gap:8,alignItems:"center" }}>
                   <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status}</span>
+                  {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
+                  {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>void reactivate(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
                   {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
                     <button onClick={() => void deactivate(s)} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
                       <Trash2 size={12}/>{busyId === s.id ? "Working…" : "Deactivate"}

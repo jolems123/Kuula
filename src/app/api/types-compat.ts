@@ -42,7 +42,9 @@ export type AdminStats = {
 };
 
 export type InvestorReport = {
-  generatedAt: string;
+    generatedAt: string;
+    generatedBy: string | null;
+    period: { start?: string; end?: string; label: string };
   customers: {
     total: number;
     verified: number;
@@ -84,14 +86,16 @@ export type InvestorReport = {
     disbursed: number;
     collected: number;
   };
-  daily: Array<{
+    daily: Array<{
     day: string;
     applications: number;
     approved: number;
     disbursed: number;
     collected: number;
-  }>;
-};
+    }>;
+    rows: Array<{ id: string; customer: string; date: string; amount: number; interest: number; status: string }>;
+    transactions: Array<{ id: string; date: string; type: string; amount: number; status: string }>;
+  };
 
 export function clearServiceCache(): void {
   // Node backend mode: no Supabase client cache to clear.

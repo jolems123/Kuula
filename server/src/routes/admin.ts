@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
+import { AppError } from "../middleware/error-handler.js";
 
 const router = Router();
 const CUSTOMER_ROLES = ["user", "customer"];
@@ -83,12 +84,23 @@ router.get("/customers", authenticateToken, requirePermissions("customer.view"),
   });
 });
 
-async function buildInvestorReportPayload() {
+export function reportRange(req: Request): { start?: Date; end?: Date; label: string } {
+  const rawStart = typeof req.query.start === "string" ? req.query.start : "";
+  const rawEnd = typeof req.query.end === "string" ? req.query.end : "";
+  const start = rawStart ? new Date(`${rawStart}T00:00:00.000Z`) : undefined;
+  const end = rawEnd ? new Date(`${rawEnd}T23:59:59.999Z`) : undefined;
+  if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) throw new AppError("Invalid report date", 400);
+  if (start && end && start > end) throw new AppError("Report start date must be on or before end date", 400);
+  return { start, end, label: start || end ? `${rawStart || "Beginning"} to ${rawEnd || "Today"}` : "All time" };
+}
+
+async function buildInvestorReportPayload(range: { start?: Date; end?: Date; label: string }) {
+  const dateFilter = range.start || range.end ? { gte: range.start, lte: range.end } : undefined;
   const [transactions, applications, repayments, profiles] = await Promise.all([
-    prisma.transaction.findMany({ select: { type: true, amount: true, status: true, createdAt: true } }),
-    prisma.loanApplication.findMany({ select: { amount: true, interest: true, status: true, createdAt: true } }),
+    prisma.transaction.findMany({ where: dateFilter ? { createdAt: dateFilter } : undefined, select: { id: true, type: true, amount: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } }),
+    prisma.loanApplication.findMany({ where: dateFilter ? { createdAt: dateFilter } : undefined, select: { id: true, applicantName: true, amount: true, interest: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } }),
     prisma.repayment.findMany({ select: { total: true, amountPaid: true, status: true } }),
-    prisma.user.findMany({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null }, select: { verified: true, createdAt: true } }),
+    prisma.user.findMany({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null, ...(dateFilter ? { createdAt: dateFilter } : {}) }, select: { verified: true, createdAt: true } }),
   ]);
 
   const number = (value: any) => Number(value) || 0;
@@ -161,6 +173,8 @@ async function buildInvestorReportPayload() {
 
   return {
     generatedAt: new Date().toISOString(),
+    period: range,
+    generatedBy: null,
     customers: { total: profiles.length, verified: profiles.filter((profile) => profile.verified).length, newThisMonth: profiles.filter((profile) => new Date(profile.createdAt).getTime() >= new Date(now.getFullYear(), now.getMonth(), 1).getTime()).length },
     loans: { total: applications.length, pending, offered, disbursing, active, paid, overdue, rejected, disbursedPrincipal, outstanding },
     revenue: { totalDisbursed, totalCollected, realizedInterest, expectedInterest },
@@ -174,16 +188,16 @@ async function buildInvestorReportPayload() {
       collected: transactionsToday.filter((transaction) => transaction.type === "loan_payment").reduce((sum, transaction) => sum + number(transaction.amount), 0),
     },
     daily: dayBuckets.map((bucket) => ({ day: bucket.day, applications: bucket.applications, approved: bucket.approved, disbursed: bucket.disbursed, collected: bucket.collected })),
+    rows: applications.map((application) => ({ id: application.id, customer: application.applicantName, date: application.createdAt, amount: number(application.amount), interest: number(application.interest), status: application.status })),
+    transactions: transactions.map((transaction) => ({ id: transaction.id, date: transaction.createdAt, type: transaction.type, amount: number(transaction.amount), status: transaction.status })),
   };
 }
 
-router.get("/investor-report", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
-  res.json(await buildInvestorReportPayload());
+router.get("/investor-report", authenticateToken, requirePermissions("report.view"), async (req: Request, res: Response) => {
+  const report = await buildInvestorReportPayload(reportRange(req));
+  const staff = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { fullName: true } });
+  res.json({ ...report, generatedBy: staff?.fullName || "Kuula staff" });
 });
-router.get("/report", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
-  res.json(await buildInvestorReportPayload());
-});
-
 function legacyDecisionRemoved(_req: Request, res: Response): void {
   res.status(410).json({
     error: "This legacy decision route is disabled. Use the canonical underwriting decision API.",

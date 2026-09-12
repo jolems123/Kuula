@@ -43,10 +43,10 @@ export interface PdfDocOptions {
   filename?: string;
 }
 
-const BRAND = { r: 255, g: 107, b: 53 }; // Kuula coral
+const BRAND = { r: 11, g: 94, b: 58 };
 
 /** Build a branded multi-table PDF and download it. */
-export function downloadPdf(opts: PdfDocOptions): void {
+export async function downloadPdf(opts: PdfDocOptions): Promise<void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginX = 40;
@@ -55,10 +55,14 @@ export function downloadPdf(opts: PdfDocOptions): void {
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
   doc.rect(0, 0, pageWidth, 8, "F");
 
+  try {
+    const logo = await fetch("/kuula-icon-192.png").then((response) => response.arrayBuffer());
+    doc.addImage(new Uint8Array(logo), "PNG", marginX, 20, 34, 34);
+  } catch { /* The brand name remains when an offline asset cannot load. */ }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.text("Kuula", marginX, y);
+  doc.text("Kuula Microfinance Limited", marginX + 42, y);
   doc.setTextColor(40, 40, 40);
   doc.setFontSize(14);
   y += 22;
@@ -111,13 +115,20 @@ export function downloadPdf(opts: PdfDocOptions): void {
   }
 
   const filename = opts.filename ?? `kuula-${opts.title.toLowerCase().replace(/\s+/g, "-")}-${tsStamp()}.pdf`;
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Page ${page} of ${pageCount}`, pageWidth - marginX, doc.internal.pageSize.getHeight() - 20, { align: "right" });
+  }
   doc.save(filename);
 }
 
 export interface ExcelSheet {
   name: string;
   /** First row is treated as the header. */
-  rows: (string | number)[][];
+  rows: (string | number | Date)[][];
 }
 
 /** Build a multi-sheet .xlsx workbook and download it. */
@@ -125,6 +136,9 @@ export function downloadExcel(filename: string, sheets: ExcelSheet[]): void {
   const wb = XLSX.utils.book_new();
   for (const sheet of sheets) {
     const ws = XLSX.utils.aoa_to_sheet(sheet.rows);
+    const columnCount = Math.max(1, ...sheet.rows.map((row) => row.length));
+    ws["!cols"] = Array.from({ length: columnCount }, (_, index) => ({ wch: Math.min(42, Math.max(12, ...sheet.rows.map((row) => String(row[index] ?? "").length + 2))) }));
+    if (sheet.rows.length > 1) ws["!autofilter"] = { ref: ws["!ref"] || `A1:A${sheet.rows.length}` };
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
   }
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });

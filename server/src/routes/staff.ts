@@ -131,4 +131,31 @@ router.post("/:id/deactivate", async (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+router.patch("/:id", async (req: Request, res: Response) => {
+  const targetId = String(req.params.id ?? "");
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target || !isStaffRole(target.role)) throw new AppError("Staff account not found", 404);
+  if (target.role === "super_admin") throw new AppError("The Super Admin profile is protected", 400);
+  if (target.id === req.user!.userId && req.body.role && req.body.role !== target.role) throw new AppError("You cannot change your own role", 400);
+  const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : target.fullName;
+  const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() || null : target.email;
+  const role = typeof req.body.role === "string" ? req.body.role.trim().toLowerCase() : target.role;
+  if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the staff member's full name", 400);
+  if (!(INVITABLE_STAFF_ROLES as readonly string[]).includes(role)) throw new AppError(`Role must be one of: ${INVITABLE_STAFF_ROLES.join(", ")}`, 400);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("Enter a valid email address", 400);
+  const updated = await prisma.user.update({ where: { id: target.id }, data: { fullName, email, role }, select: STAFF_SELECT });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.updated", resourceType: "user", resourceId: target.id, metadata: { previousRole: target.role, role } });
+  res.json({ staff: { ...updated, status: updated.deletedAt ? "deactivated" : updated.phoneVerified ? "active" : "invited" } });
+});
+
+router.post("/:id/reactivate", async (req: Request, res: Response) => {
+  const targetId = String(req.params.id ?? "");
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target || !target.deletedAt || !isStaffRole(target.role)) throw new AppError("Deactivated staff account not found", 404);
+  if (target.role === "super_admin") throw new AppError("The Super Admin profile is protected", 400);
+  const updated = await prisma.user.update({ where: { id: target.id }, data: { deletedAt: null, authVersion: { increment: 1 } }, select: STAFF_SELECT });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.reactivated", resourceType: "user", resourceId: target.id });
+  res.json({ ok: true, staff: { ...updated, status: updated.phoneVerified ? "active" : "invited" } });
+});
+
 export default router;
