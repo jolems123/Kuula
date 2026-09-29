@@ -137,7 +137,7 @@ export function CreditScoreGauge({ score, size = 180, showLabel = true }: Props)
             fontSize={size * 0.22}
             fontWeight={800}
             fill="#1F2937"
-            fontFamily="system-ui, -apple-system, sans-serif"
+            fontFamily="inherit"
           >
             {animated}
           </text>

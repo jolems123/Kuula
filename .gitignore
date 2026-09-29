@@ -60,3 +60,17 @@ supabase/.temp/
 
 # ── KYC document uploads — NEVER commit users' ID images ──────────────────────
 server/uploads/
+
+.superpowers/
+
+# Local scratch and deployment helpers: never commit. The _*.ps1 scripts carry a
+# Railway API token, and the dotted folders are throwaway copies of the repo.
+/_*.ps1
+/_inspect/
+/.review-pr57/
+/.deploy-fix/
+/.pr57-fix/
+/.full-role/
+/.tmp/
+/.ci-log-pr57.txt
+/.final-prod-smoke.mjs

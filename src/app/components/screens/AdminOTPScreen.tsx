@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
-import { Shield, ArrowLeft } from "lucide-react";
+import { useState, useRef, type ClipboardEvent, type FormEvent } from "react";
+import { MessageSquareText, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { useAppContext } from "../../context/AppContext";
 import { getAdminMfaChallenge, setAdminMfaChallenge } from "../../lib/selection";
 import { storeSessionTokens } from "../../lib/session-vault";
+import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -25,10 +26,19 @@ export function AdminOTPScreen({ onNavigate }: Props) {
     if (val && i < 5) refs.current[i + 1]?.focus();
   };
 
+  const paste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!digits) return;
+    e.preventDefault();
+    setOtp(Array.from({ length: 6 }, (_, i) => digits[i] ?? ""));
+    refs.current[Math.min(digits.length, 5)]?.focus();
+  };
+
   const code = otp.join("");
   const filled = code.length === 6;
 
-  const verify = async () => {
+  const verify = async (event?: FormEvent) => {
+    event?.preventDefault();
     if (!filled || busy) return;
     setError(""); setNotice("");
     if (!challenge) { setError("Your verification challenge has expired. Sign in again."); return; }
@@ -56,39 +66,53 @@ export function AdminOTPScreen({ onNavigate }: Props) {
     setBusy(true); setError(""); setNotice("");
     try {
       await api.resendAdminMfa(challenge.challengeToken);
-      setNotice("A new verification code was requested.");
+      setNotice("A new verification code is on its way.");
     } catch (e) { setError(e instanceof ApiError ? e.message : "Could not resend the code."); }
     finally { setBusy(false); }
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100%", background: "linear-gradient(135deg, #0B5E3A 0%, #04351F 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <button onClick={() => { setAdminMfaChallenge(null); onNavigate("admin-login"); }} aria-label="Go back" title="Go back" style={{ position: "absolute", top: 16, left: 16, width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-        <ArrowLeft size={18} color="white" />
-      </button>
-      <div style={{ width: "100%", maxWidth: 400, background: "white", borderRadius: 20, padding: 36, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 36, background: "#EDF8F2", border: "2px solid #B7DEC9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Shield size={36} color="#0B5E3A" strokeWidth={1.5} />
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", margin: 0 }}>Two-Factor Verification</h2>
-          <p style={{ fontSize: 13, color: "#64748B", marginTop: 8, lineHeight: 1.6 }}>Enter the 6-digit code sent to<br /><strong style={{ color: "#1F2937" }}>{challenge?.destination ?? "your verified staff phone"}</strong></p>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
+    <AuthLayout logoSubtitle="Staff portal" onBack={() => { setAdminMfaChallenge(null); onNavigate("admin-login"); }} backLabel="Back to sign in">
+      <div className="kx-auth-head">
+        <div className="kx-auth-head__icon"><MessageSquareText size={22} /></div>
+        <h2>Check your phone</h2>
+        <p>Enter the 6-digit code we sent to <strong>{challenge?.destination ?? "your staff phone"}</strong>.</p>
+      </div>
+
+      <form onSubmit={verify} noValidate>
+        <div className="kx-otp" role="group" aria-label="Verification code">
           {otp.map((d, i) => (
-            <input key={i} ref={(el) => { refs.current[i] = el; }} type="text" inputMode="numeric" autoComplete={i === 0 ? "one-time-code" : "off"} maxLength={1} value={d}
+            <input
+              key={i}
+              ref={(el) => { refs.current[i] = el; }}
+              className={`kx-otp__cell${d ? " is-filled" : ""}`}
+              type="text"
+              inputMode="numeric"
+              autoComplete={i === 0 ? "one-time-code" : "off"}
+              aria-label={`Digit ${i + 1}`}
+              maxLength={1}
+              value={d}
+              autoFocus={i === 0}
               onChange={(e) => handle(i, e.target.value)}
+              onPaste={paste}
               onKeyDown={(e) => { if (e.key === "Backspace" && !d && i > 0) refs.current[i - 1]?.focus(); }}
-              style={{ width: 48, height: 58, borderRadius: 12, textAlign: "center", fontSize: 24, fontWeight: 800, color: "#1F2937", background: d ? "#EDF8F2" : "#F9FAFB", border: `2px solid ${d ? "#0B5E3A" : "#E5E7EB"}`, outline: "none" }} />
+            />
           ))}
         </div>
-        {error && <p style={{ margin: 0, fontSize: 12, color: "#B91C1C", textAlign: "center" }}>{error}</p>}
-        {notice && <p style={{ margin: 0, fontSize: 12, color: "#0B5E3A", textAlign: "center" }}>{notice}</p>}
-        <button onClick={verify} disabled={!filled || busy || !challenge} style={{ width: "100%", height: 50, borderRadius: 12, background: filled && challenge && !busy ? "linear-gradient(135deg, #0B5E3A, #087148)" : "#E5E7EB", color: filled && challenge && !busy ? "white" : "#9CA3AF", fontSize: 15, fontWeight: 700, border: "none", cursor: filled && challenge && !busy ? "pointer" : "not-allowed" }}>
-          {busy ? "Verifying…" : "Verify & Continue"}
-        </button>
-        <button onClick={resend} disabled={busy || !challenge} style={{ fontSize: 13, color: "#0B5E3A", border: "none", background: "none", cursor: "pointer", fontWeight: 600 }}>Resend Code</button>
+
+        <div className="kx-auth-stack" style={{ marginTop: 22 }}>
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>}
+          {notice && <div className="kx-alert kx-alert--success" role="status"><CheckCircle2 size={16} />{notice}</div>}
+          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={!filled || busy || !challenge}>
+            {busy ? <><span className="kx-spinner" />Verifying…</> : "Verify and sign in"}
+          </button>
+        </div>
+      </form>
+
+      <div className="kx-auth-foot" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <span>Didn't get a code?</span>
+        <button type="button" className="kx-link" onClick={resend} disabled={busy || !challenge}>Send a new code</button>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

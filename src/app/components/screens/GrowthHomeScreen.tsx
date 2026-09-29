@@ -1,14 +1,33 @@
 import { useEffect, useState } from "react";
-import { Bell, BriefcaseBusiness, HeartPulse, Sprout, GraduationCap, Home, ShieldCheck, CalendarDays, ChevronRight, RefreshCw } from "lucide-react";
+import {
+  Bell, BriefcaseBusiness, HeartPulse, Sprout, GraduationCap, House, ShieldCheck, CalendarClock,
+  ChevronRight, RefreshCw, ArrowUpRight, Building2, AlertCircle, type LucideIcon,
+} from "lucide-react";
 import { BottomNav } from "../BottomNav";
 import { api, type CreditProduct, type NetworkOverview } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { setCreditUseSelection } from "../../lib/selection";
 
 interface Props { onNavigate: (screen: string) => void; }
-const ICONS: Record<string, typeof BriefcaseBusiness> = { business: BriefcaseBusiness, health: HeartPulse, agriculture: Sprout, education: GraduationCap, essentials: Home };
+
+const ICONS: Record<string, LucideIcon> = { business: BriefcaseBusiness, health: HeartPulse, agriculture: Sprout, education: GraduationCap, essentials: House };
 const money = (value: number, currency = "UGX") => `${currency} ${Math.round(value).toLocaleString("en-UG")}`;
-const copy = (status: string) => status === "available" ? "Ready to use" : status === "in_use" ? "Your current facility is using this line" : status === "identity_required" ? "Complete identity verification to unlock credit" : status === "data_required" ? "Refresh verified credit data to unlock credit" : "Keep building your Credit Pass";
+const STATUS_COPY: Record<string, string> = {
+  available: "Ready to use",
+  in_use: "Your current facility is using this line",
+  identity_required: "Verify your identity to unlock credit",
+  data_required: "Refresh your credit data to unlock credit",
+};
+const statusCopy = (status: string) => STATUS_COPY[status] ?? "Keep building your Credit Pass";
+
+function greeting(now = new Date()) {
+  const hour = now.getHours();
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+function formatDue(iso: string) {
+  return new Date(iso).toLocaleDateString("en-UG", { day: "numeric", month: "short" });
+}
 
 export function GrowthHomeScreen({ onNavigate }: Props) {
   const { state, markNotificationsRead } = useAppContext();
@@ -33,41 +52,119 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
 
   const currency = overview?.market.currency ?? "UGX";
   const firstName = state.user?.fullName?.split(/\s+/)[0] || "there";
+  const line = overview?.growthLine;
+  const available = line?.availableLimit ?? 0;
+  const total = line?.totalLimit ?? 0;
+  const availableShare = total > 0 ? Math.min(100, Math.max(0, (available / total) * 100)) : 0;
+  const ready = line?.status === "available";
+  const pass = overview?.creditPass;
+  const products = (overview?.products ?? []).slice(0, 4);
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F5F8F6" }}>
-      <header style={{ padding: "18px 18px 25px", color: "white", background: "linear-gradient(155deg,#063C27,#0B5E3A 60%,#137548)", borderRadius: "0 0 28px 28px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div><div style={{ fontSize: 10.5, opacity: .72, fontWeight: 800 }}>KUULA · CREDIT FOR EVERYDAY GROWTH</div><h1 style={{ margin: "5px 0 0", fontSize: 23 }}>Hello, {firstName}</h1></div>
-          <button aria-label="Notifications" onClick={() => { markNotificationsRead(); onNavigate("notifications"); }} style={{ width: 42, height: 42, borderRadius: 14, border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.12)", color: "white", position: "relative" }}><Bell size={20} />{state.unreadNotifications > 0 && <span style={{ position: "absolute", width: 8, height: 8, background: "#F2C94C", borderRadius: 99, right: 8, top: 8 }} />}</button>
+    <div className="kx kx-app">
+      <div className="kx-app__scroll">
+        <div className="kx-home__hero">
+          <div className="kx-home__bar">
+            <div>
+              <p className="kx-home__hello">{greeting()},</p>
+              <h1 className="kx-home__name">{firstName}</h1>
+            </div>
+            <button type="button" className="kx-icon-btn kx-icon-btn--on-dark" aria-label="Notifications" onClick={() => { markNotificationsRead(); onNavigate("notifications"); }}>
+              <Bell size={20} strokeWidth={1.75} />
+              {state.unreadNotifications > 0 && <span className="kx-icon-btn__dot" />}
+            </button>
+          </div>
+
+          <section className="kx-line" aria-label="Your Kuula Growth Line">
+            <span className="kx-line__label">Available to use</span>
+            <div className="kx-line__amount">{loading ? <span className="kx-skeleton" style={{ width: 170, height: 34 }} /> : money(available, currency)}</div>
+            <p className={`kx-line__status${ready ? " is-ready" : ""}`}>{loading ? "Checking your line…" : line ? statusCopy(line.status) : "Unavailable right now"}</p>
+            <div className="kx-line__meter" aria-hidden="true"><span style={{ width: `${availableShare}%` }} /></div>
+            <div className="kx-line__meta">
+              <span>Growth Line total</span>
+              <strong>{money(total, currency)}</strong>
+            </div>
+            {line?.status === "identity_required" ? (
+              <button type="button" className="kx-btn kx-btn--gold kx-btn--lg kx-btn--block" onClick={() => onNavigate("kyc")}>
+                Verify my identity <ArrowUpRight size={18} strokeWidth={2} />
+              </button>
+            ) : (
+              <button type="button" className="kx-btn kx-btn--gold kx-btn--lg kx-btn--block" onClick={() => onNavigate("quick-actions")} disabled={!ready}>
+                Use my Growth Line <ArrowUpRight size={18} strokeWidth={2} />
+              </button>
+            )}
+          </section>
         </div>
-        <div style={{ marginTop: 20, borderRadius: 21, padding: 18, background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.16)" }}>
-          <div style={{ fontSize: 11, opacity: .72, fontWeight: 800 }}>YOUR KUULA GROWTH LINE</div>
-          <div style={{ marginTop: 5, fontSize: 31, fontWeight: 950 }}>{loading ? "—" : money(overview?.growthLine.availableLimit ?? 0, currency)}</div>
-          <div style={{ fontSize: 11.5, opacity: .76, marginTop: 4 }}>{overview ? copy(overview.growthLine.status) : "Loading your capacity…"}</div>
-          <div style={{ height: 1, background: "rgba(255,255,255,.16)", margin: "15px 0 11px" }} />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}><span style={{ opacity: .7 }}>Total line</span><strong>{money(overview?.growthLine.totalLimit ?? 0, currency)}</strong></div>
-          <button onClick={() => onNavigate("quick-actions")} disabled={overview?.growthLine.status !== "available"} style={{ width: "100%", height: 48, marginTop: 15, border: 0, borderRadius: 14, background: overview?.growthLine.status === "available" ? "#F2C94C" : "rgba(255,255,255,.18)", color: overview?.growthLine.status === "available" ? "#173323" : "rgba(255,255,255,.7)", fontWeight: 900 }}>Use my Growth Line</button>
+
+        <div className="kx-app__body kx-home__body">
+          {error && (
+            <div className="kx-alert kx-alert--error" role="alert">
+              <AlertCircle size={16} />
+              <span style={{ flex: 1 }}>{error}</span>
+              <button type="button" className="kx-link" onClick={() => void load()} aria-label="Try again"><RefreshCw size={16} /></button>
+            </div>
+          )}
+
+          <section>
+            <div className="kx-section-head">
+              <div>
+                <h2>What are you growing?</h2>
+                <p>Choose a real-life use for your credit.</p>
+              </div>
+              <button type="button" className="kx-link" onClick={() => onNavigate("quick-actions")}>See all</button>
+            </div>
+            <div className="kx-uses">
+              {loading && products.length === 0 && [0, 1, 2, 3].map((i) => <div key={i} className="kx-use kx-use--loading"><span className="kx-skeleton" style={{ width: 36, height: 36 }} /><span className="kx-skeleton" style={{ width: "70%", height: 14 }} /><span className="kx-skeleton" style={{ width: "50%", height: 12 }} /></div>)}
+              {products.map((product) => {
+                const Icon = ICONS[product.category] ?? BriefcaseBusiness;
+                return (
+                  <button key={product.id} type="button" className="kx-use" onClick={() => select(product)}>
+                    <span className="kx-use__icon"><Icon size={20} strokeWidth={1.75} /></span>
+                    <ChevronRight className="kx-use__go" size={16} strokeWidth={1.75} />
+                    <strong>{String(product.metadata?.label ?? product.name)}</strong>
+                    <span>Up to {money(product.customerLimit, currency)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {overview?.nextPayment && (
+            <section className="kx-card kx-due">
+              <span className="kx-tile-icon kx-tile-icon--gold"><CalendarClock size={20} strokeWidth={1.75} /></span>
+              <div className="kx-due__text">
+                <span className="kx-overline">Next payment · {formatDue(overview.nextPayment.dueDate)}</span>
+                <strong>{money(overview.nextPayment.amount, currency)}</strong>
+              </div>
+              <button type="button" className="kx-btn kx-btn--primary kx-btn--sm" onClick={() => onNavigate("make-payment")}>Pay now</button>
+            </section>
+          )}
+
+          <button type="button" className="kx-card kx-row" onClick={() => onNavigate("credit-dashboard")}>
+            <span className="kx-tile-icon"><ShieldCheck size={20} strokeWidth={1.75} /></span>
+            <div className="kx-row__text">
+              <span className="kx-overline">Kuula Credit Pass</span>
+              <div className="kx-pass">
+                <strong>{pass ? pass.score : "—"}</strong>
+                {pass && <span>/ {pass.maxScore}</span>}
+                {pass?.tier && <span className="kx-pill kx-pill--soft">{pass.tier}</span>}
+              </div>
+              {pass && <div className="kx-pass__meter" aria-hidden="true"><span style={{ width: `${Math.min(100, (pass.score / Math.max(1, pass.maxScore)) * 100)}%` }} /></div>}
+            </div>
+            <ChevronRight size={18} strokeWidth={1.75} className="kx-row__chevron" />
+          </button>
+
+          <button type="button" className="kx-card kx-row kx-row--quiet" onClick={() => onNavigate("quick-actions")}>
+            <span className="kx-tile-icon"><Building2 size={20} strokeWidth={1.75} /></span>
+            <div className="kx-row__text">
+              <strong className="kx-row__title">Pay partners directly</strong>
+              <span className="kx-row__sub">Hospitals, schools, agro-dealers and suppliers can receive approved financing for you.</span>
+            </div>
+            <ChevronRight size={18} strokeWidth={1.75} className="kx-row__chevron" />
+          </button>
         </div>
-      </header>
+      </div>
 
-      <main style={{ flex: 1, overflowY: "auto", padding: "17px 16px 96px" }}>
-        {error && <div role="alert" style={{ padding: 12, borderRadius: 13, background: "#FFF1F1", color: "#9D3737", fontSize: 12, display: "flex", justifyContent: "space-between" }}><span>{error}</span><button onClick={() => void load()} style={{ border: 0, background: "transparent", color: "#9D3737" }}><RefreshCw size={17} /></button></div>}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", marginTop: error ? 14 : 0 }}><div><h2 style={{ margin: 0, fontSize: 18, color: "#17281E" }}>What are you growing?</h2><p style={{ margin: "4px 0 0", color: "#76837B", fontSize: 11.5 }}>Choose a real-life use for your credit.</p></div><button onClick={() => onNavigate("quick-actions")} style={{ border: 0, background: "transparent", color: "#0B5E3A", fontWeight: 800, fontSize: 11.5 }}>See all</button></div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-          {(overview?.products ?? []).slice(0, 4).map((product) => { const Icon = ICONS[product.category] ?? BriefcaseBusiness; return <button key={product.id} onClick={() => select(product)} style={{ minHeight: 125, textAlign: "left", background: "white", border: "1px solid #E0E9E4", borderRadius: 17, padding: 14 }}><span style={{ width: 38, height: 38, display: "grid", placeItems: "center", background: "#EAF5EF", color: "#0B5E3A", borderRadius: 12 }}><Icon size={20} /></span><strong style={{ display: "block", marginTop: 10, color: "#182A20", fontSize: 12.5 }}>{String(product.metadata?.label ?? product.name)}</strong><span style={{ display: "block", marginTop: 5, color: "#7A867E", fontSize: 10.5 }}>Up to {money(product.customerLimit, currency)}</span></button>; })}
-        </div>
-
-        <button onClick={() => onNavigate("credit-dashboard")} style={{ width: "100%", marginTop: 15, background: "white", border: "1px solid #E0E9E4", borderRadius: 18, padding: 15, textAlign: "left", display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ width: 44, height: 44, borderRadius: 14, background: "#FFF7D7", color: "#826716", display: "grid", placeItems: "center" }}><ShieldCheck size={22} /></span>
-          <div style={{ flex: 1 }}><div style={{ color: "#78837C", fontSize: 10.5, fontWeight: 800 }}>KUULA CREDIT PASS</div><div style={{ fontSize: 20, fontWeight: 950, color: "#16271D" }}>{overview?.creditPass.score ?? "—"} <span style={{ fontSize: 11.5, color: "#5A6B60" }}>{overview?.creditPass.tier ?? ""}</span></div></div><ChevronRight size={18} color="#829087" />
-        </button>
-
-        {overview?.nextPayment && <div style={{ marginTop: 13, padding: 14, borderRadius: 17, border: "1px solid #EFE0A0", background: "#FFFDF4", display: "flex", gap: 11, alignItems: "center" }}><span style={{ width: 41, height: 41, borderRadius: 13, background: "#F2C94C", display: "grid", placeItems: "center" }}><CalendarDays size={19} /></span><div style={{ flex: 1 }}><div style={{ fontSize: 10.5, color: "#7B6A2F", fontWeight: 800 }}>NEXT PAYMENT</div><strong style={{ color: "#32321F" }}>{money(overview.nextPayment.amount, currency)}</strong></div><button onClick={() => onNavigate("make-payment")} style={{ border: 0, background: "#0B5E3A", color: "white", borderRadius: 11, padding: "9px 12px", fontWeight: 800 }}>Pay</button></div>}
-
-        <button onClick={() => onNavigate("quick-actions")} style={{ width: "100%", marginTop: 13, border: 0, borderRadius: 18, background: "#EAF5EF", textAlign: "left", padding: 16 }}><div style={{ color: "#547162", fontSize: 10.5, fontWeight: 800 }}>KUULA PARTNERS</div><strong style={{ display: "block", marginTop: 3, color: "#0A4C30", fontSize: 16 }}>Credit where everyday growth happens</strong><span style={{ display: "block", marginTop: 5, color: "#5B7164", fontSize: 11.5, lineHeight: 1.45 }}>Hospitals, agro-dealers, schools, suppliers and merchants can receive approved financing directly.</span></button>
-      </main>
       <BottomNav active="home" onNavigate={onNavigate} />
     </div>
   );

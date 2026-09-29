@@ -1,9 +1,10 @@
-import { ArrowLeft, MessageSquare } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageSquareText, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, type ClipboardEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { otpLimiter } from "../../lib/rate-limiter";
+import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -44,13 +45,23 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
     if (val && i < 5) refs.current[i + 1]?.focus();
   };
 
+  const paste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!digits) return;
+    e.preventDefault();
+    setOtp(Array.from({ length: 6 }, (_, i) => digits[i] ?? ""));
+    refs.current[Math.min(digits.length, 5)]?.focus();
+  };
+
   const onKey = (i: number, key: string) => {
     if (key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
   };
 
   const filled = otp.every((d) => d !== "");
+  const locked = lockoutRemaining > 0;
 
-  const verify = async () => {
+  const verify = async (event?: FormEvent) => {
+    event?.preventDefault();
     if (!filled || verifying) return;
     if (!pendingPhone) { setError("Start sign-up again to receive a code."); return; }
 
@@ -76,7 +87,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
   };
 
   const resend = async () => {
-    if (lockoutRemaining > 0) return;
+    if (locked) return;
     setError("");
     try {
       await api.resendOtp(pendingPhone);
@@ -87,77 +98,47 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#fff", paddingTop: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 12px", borderBottom: "1px solid #F3F4F6" }}>
-        <button onClick={() => onNavigate("create-account")} style={{ width: 36, height: 36, borderRadius: 10, background: "#F3F4F6", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-          <ArrowLeft size={18} color="#374151" />
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "#1F2937", marginLeft: 12 }}>{t("phoneVerify.title")}</span>
+    <AuthLayout onBack={() => onNavigate("create-account")}>
+      <div className="kx-auth-head">
+        <div className="kx-auth-head__icon"><MessageSquareText size={22} /></div>
+        <h2>{t("phoneVerify.enterCode")}</h2>
+        <p>{t("phoneVerify.sentTo")} <strong>{pendingPhone || "your phone"}</strong>. {t("phoneVerify.expiresIn")} {t("phoneVerify.tenMinutes")}.</p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px", gap: 24 }}>
-        {/* Icon */}
-        <div style={{ width: 80, height: 80, borderRadius: 40, background: "#F3FAF7", border: "2px solid #DFF2E9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <MessageSquare size={36} color="#0B5E3A" strokeWidth={1.5} />
-        </div>
-
-        <div style={{ textAlign: "center" }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1F2937", margin: 0 }}>{t("phoneVerify.enterOtp")}</h2>
-          <p style={{ fontSize: 13, color: "#6B7280", marginTop: 8, lineHeight: 1.6 }}>
-            {t("phoneVerify.sentTo")}<br />
-            <strong style={{ color: "#1F2937" }}>{pendingPhone || "your phone"}</strong>
-          </p>
-        </div>
-
-        {/* OTP boxes */}
-        <div style={{ display: "flex", gap: 10 }}>
+      <form onSubmit={verify} noValidate>
+        <div className="kx-otp" role="group" aria-label="Verification code">
           {otp.map((digit, i) => (
             <input
               key={i}
               ref={(el) => { refs.current[i] = el; }}
+              className={`kx-otp__cell${digit ? " is-filled" : ""}`}
               type="text"
               inputMode="numeric"
+              autoComplete={i === 0 ? "one-time-code" : "off"}
+              aria-label={`Digit ${i + 1}`}
               maxLength={1}
               value={digit}
+              autoFocus={i === 0}
               onChange={(e) => handle(i, e.target.value)}
+              onPaste={paste}
               onKeyDown={(e) => onKey(i, e.key)}
-              style={{
-                width: 46, height: 56, borderRadius: 12, textAlign: "center", fontSize: 24, fontWeight: 800,
-                color: "#1F2937", background: digit ? "#F3FAF7" : "#F9FAFB",
-                border: `2px solid ${digit ? "#0B5E3A" : "#E5E7EB"}`, outline: "none",
-              }}
             />
           ))}
         </div>
 
-        <p style={{ fontSize: 13, color: "#6B7280" }}>
-          {t("phoneVerify.didntReceive")}{" "}
-          {resent
-            ? <span style={{ color: "#178654", fontWeight: 600 }}>{t("phoneVerify.codeResent")}</span>
-            : <button onClick={resend} style={{ color: "#0B5E3A", fontWeight: 700, border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>{t("phoneVerify.resendCode")}</button>
-          }
-        </p>
-
-        <div style={{ padding: "12px 14px", borderRadius: 10, background: "#FFF7ED", border: "1px solid #FED7AA", width: "100%", boxSizing: "border-box" }}>
-          <p style={{ fontSize: 12, color: "#92400E", textAlign: "center", margin: 0 }}>⏱ {t("phoneVerify.expiresIn")} <strong>{t("phoneVerify.tenMinutes")}</strong></p>
+        <div className="kx-auth-stack" style={{ marginTop: 22 }}>
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>}
+          {resent && !error && <div className="kx-alert kx-alert--success" role="status"><CheckCircle2 size={16} />{t("phoneVerify.codeResent")}</div>}
+          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={!filled || verifying || locked}>
+            {locked ? `Locked · ${formatLockout(lockoutRemaining)}` : verifying ? <><span className="kx-spinner" />Verifying…</> : t("phoneVerify.verifyAndContinue")}
+          </button>
         </div>
-      </div>
+      </form>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 20px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}>
-        {error && <p style={{ fontSize: 12, color: "#EF4444", textAlign: "center", marginBottom: 8 }}>{error}</p>}
-        <button
-          onClick={verify}
-          disabled={!filled || verifying || lockoutRemaining > 0}
-          style={{
-            width: "100%", height: 52, borderRadius: 14, cursor: filled && !verifying && lockoutRemaining <= 0 ? "pointer" : "not-allowed",
-            background: filled && lockoutRemaining <= 0 ? "linear-gradient(135deg, #0B5E3A, #064A2E)" : "#E5E7EB",
-            color: filled && lockoutRemaining <= 0 ? "white" : "#9CA3AF", fontSize: 16, fontWeight: 700, border: "none",
-            boxShadow: filled && lockoutRemaining <= 0 ? "0 4px 16px rgba(11,94,58,0.3)" : "none",
-          }}
-        >
-          {lockoutRemaining > 0 ? `Locked — ${formatLockout(lockoutRemaining)}` : verifying ? "Verifying…" : t("phoneVerify.verifyAndContinue")}
-        </button>
+      <div className="kx-auth-foot">
+        <span>{t("phoneVerify.didntReceive")}</span>
+        <button type="button" className="kx-link" onClick={resend} disabled={locked}>{t("phoneVerify.resendCode")}</button>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

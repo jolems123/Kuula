@@ -1,5 +1,8 @@
+/* One typeface for the whole app. Inter is bundled locally (the CSP blocks font CDNs). */
+@import "@fontsource-variable/inter";
+
 :root {
-  --font-kuula: "Poppins", "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-kuula: "Inter Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html,

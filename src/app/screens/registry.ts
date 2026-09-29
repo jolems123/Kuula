@@ -1,9 +1,17 @@
 /**
  * Screen registry — maps every screen id to a lazily-loaded component and an
- * access level used by the router guards.
+ * access level used by the router guards. The sign-in style screens are bundled
+ * eagerly instead: they share one photo backdrop and must swap without a loader.
  */
-import type { ComponentType, LazyExoticComponent } from "react";
+import type { ComponentType } from "react";
 import { lazy } from "react";
+import { LandingScreen } from "../components/screens/LandingScreen";
+import { LoginScreen } from "../components/screens/LoginScreen";
+import { SignUpScreen } from "../components/screens/SignUpScreen";
+import { PhoneVerifyScreen } from "../components/screens/PhoneVerifyScreen";
+import { AdminLoginScreen } from "../components/screens/AdminLoginScreen";
+import { AdminOTPScreen } from "../components/screens/AdminOTPScreen";
+import { AdminActivateScreen } from "../components/screens/AdminActivateScreen";
 
 export type ScreenAccess = "public" | "customer" | "admin";
 
@@ -11,18 +19,17 @@ export interface ScreenProps {
   onNavigate: (screenId: string) => void;
 }
 
-interface ScreenEntry {
-  access: ScreenAccess;
-  load: () => Promise<{ default: ComponentType<ScreenProps> }>;
-}
+type ScreenEntry =
+  | { access: ScreenAccess; load: () => Promise<{ default: ComponentType<ScreenProps> }> }
+  | { access: ScreenAccess; component: ComponentType<ScreenProps> };
 
 const SCREENS: Record<string, ScreenEntry> = {
   "language": { access: "public", load: () => import("../components/screens/LanguageScreen").then((m) => ({ default: m.LanguageScreen })) },
-  "onboarding": { access: "public", load: () => import("../components/screens/OnboardingScreen").then((m) => ({ default: m.OnboardingScreen })) },
-  "welcome": { access: "public", load: () => import("../components/screens/WelcomeScreen").then((m) => ({ default: m.WelcomeScreen })) },
-  "create-account": { access: "public", load: () => import("../components/screens/CreateAccountScreen").then((m) => ({ default: m.CreateAccountScreen })) },
+  "welcome": { access: "public", component: LandingScreen },
+  "login": { access: "public", component: LoginScreen },
+  "create-account": { access: "public", component: SignUpScreen },
   "kyc": { access: "public", load: () => import("../components/screens/KycScreen").then((m) => ({ default: m.KycScreen })) },
-  "phone-verify": { access: "public", load: () => import("../components/screens/PhoneVerifyScreen").then((m) => ({ default: m.PhoneVerifyScreen })) },
+  "phone-verify": { access: "public", component: PhoneVerifyScreen },
   "biometric-setup": { access: "public", load: () => import("../components/screens/BiometricSetupScreen").then((m) => ({ default: m.BiometricSetupScreen })) },
   "home": { access: "customer", load: () => import("../components/screens/HomeScreen").then((m) => ({ default: m.HomeScreen })) },
   "dashboard": { access: "customer", load: () => import("../components/screens/DashboardScreen").then((m) => ({ default: m.DashboardScreen })) },
@@ -63,9 +70,9 @@ const SCREENS: Record<string, ScreenEntry> = {
   "user-support-chat": { access: "customer", load: () => import("../components/screens/UserSupportChatScreen").then((m) => ({ default: m.UserSupportChatScreen })) },
   "customer-privacy-policy": { access: "public", load: () => import("../components/screens/ExtraCriticalScreens").then((m) => ({ default: m.CustomerPrivacyPolicyScreen })) },
   "customer-terms": { access: "public", load: () => import("../components/screens/ExtraCriticalScreens").then((m) => ({ default: m.CustomerTermsScreen })) },
-  "admin-login": { access: "public", load: () => import("../components/screens/AdminLoginScreen").then((m) => ({ default: m.AdminLoginScreen })) },
-  "admin-activate": { access: "public", load: () => import("../components/screens/AdminActivateScreen").then((m) => ({ default: m.AdminActivateScreen })) },
-  "admin-otp": { access: "public", load: () => import("../components/screens/AdminOTPScreen").then((m) => ({ default: m.AdminOTPScreen })) },
+  "admin-login": { access: "public", component: AdminLoginScreen },
+  "admin-activate": { access: "public", component: AdminActivateScreen },
+  "admin-otp": { access: "public", component: AdminOTPScreen },
   "admin-dashboard": { access: "admin", load: () => import("../components/screens/AdminDashboardScreen").then((m) => ({ default: m.AdminDashboardScreen })) },
   "admin-loan-apps": { access: "admin", load: () => import("../components/screens/AdminLoanScreens").then((m) => ({ default: m.AdminLoanAppsListScreen })) },
   "admin-active-loans": { access: "admin", load: () => import("../components/screens/AdminLoanScreens").then((m) => ({ default: m.AdminActiveLoansListScreen })) },
@@ -88,9 +95,9 @@ const SCREENS: Record<string, ScreenEntry> = {
 export interface RegisteredScreen {
   id: string;
   access: ScreenAccess;
-  Component: LazyExoticComponent<ComponentType<ScreenProps>>;
+  Component: ComponentType<ScreenProps>;
 }
 
 export const REGISTERED_SCREENS: RegisteredScreen[] = Object.entries(SCREENS).map(
-  ([id, { access, load }]) => ({ id, access, Component: lazy(load) })
+  ([id, entry]) => ({ id, access: entry.access, Component: "component" in entry ? entry.component : lazy(entry.load) })
 );

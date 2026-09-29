@@ -35,7 +35,7 @@ function FullScreenMessage({
         padding: 24,
         boxSizing: "border-box",
         background: "#F1F5F9",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--font-kuula)",
         color: "#475569",
       }}
     >

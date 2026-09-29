@@ -10,10 +10,10 @@ import {
 import { isStaffRole, useAppContext } from "./context/AppContext";
 import { staffCanOpenScreen, staffHome } from "./lib/staff-routing";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
+import { PhotoBackdrop } from "./components/auth/PhotoBackdrop";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
 import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
 import { PartnerFinancingScreen } from "./components/screens/PartnerFinancingScreen";
-import { env } from "./config/env";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
@@ -93,19 +93,9 @@ function useSessionBootstrap(): boolean {
   return checking;
 }
 
-function ScreenLoader() {
-  return (
-    <div className="kuula-loader-screen">
-      <div className="kuula-loader-brand" aria-label="Kuula Microfinance Limited">
-        <img src="/kuula-icon.svg" alt="" className="kuula-loader-mark" />
-        <strong>Kuula</strong>
-        <span>MICROFINANCE LIMITED</span>
-        <small>Access <b>•</b> Grow <b>•</b> Prosper</small>
-      </div>
-      <div className="kuula-loader-track"><span /></div>
-      <p>Building your brighter future</p>
-    </div>
-  );
+/** Shown while a lazily-loaded screen downloads: a thin bar, not a full-screen splash. */
+function PageLoader() {
+  return <div className="kx-page-loader" role="progressbar" aria-label="Loading" />;
 }
 
 function Guard({ access, screenId, children }: { access: ScreenAccess; screenId: string; children: React.ReactNode }) {
@@ -128,14 +118,13 @@ function ScreenRoute({ Component }: { Component: React.ComponentType<{ onNavigat
   return <Component onNavigate={(id) => navigate(`/${id}`)} />;
 }
 
+/** Screens drawn over the shared photo backdrop instead of the app chrome. */
+const AUTH_SCREENS = new Set(["welcome", "login", "create-account", "phone-verify", "admin-login", "admin-otp", "admin-activate"]);
+
 function RootRedirect() {
   const { state } = useAppContext();
-  if (!state.session.isAuthenticated) {
-    // Start every fresh app launch with the pre-welcome experience. Returning
-    // customers can still use Skip / Log in to move straight to sign-in.
-    if (!env.REVIEWER_MODE) return <Navigate to="/onboarding" replace />;
-    return <Navigate to="/welcome" replace />;
-  }
+  // Signed-out visitors start on the landing page, which offers sign up or log in.
+  if (!state.session.isAuthenticated) return <Navigate to="/welcome" replace />;
   const isStaff = isStaffRole(state.role);
   return <Navigate to={isStaff ? staffHome(state.role) : "/home"} replace />;
 }
@@ -148,34 +137,34 @@ function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
 function Shell() {
   const location = useLocation();
   const restoringSession = useSessionBootstrap();
-  const [showLaunchSplash, setShowLaunchSplash] = useState(true);
   useNativeChrome();
   useRealtimeSubscriptions();
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setShowLaunchSplash(false), 1800);
-    return () => window.clearTimeout(timer);
-  }, []);
-
   const screenId = location.pathname.replace(/^\//, "") || "root";
-  const isAdminScreen = screenId.startsWith("admin-");
-  const isPublicScreen = ["welcome", "language", "onboarding", "create-account", "phone-verify", "biometric-setup", "admin-login", "admin-otp"].includes(screenId);
+  const isAuthScreen = AUTH_SCREENS.has(screenId);
+  const isAdminScreen = screenId.startsWith("admin-") && !isAuthScreen;
+  const isPublicScreen = isAuthScreen || ["language", "biometric-setup"].includes(screenId);
+  const shellClass = isAuthScreen ? "kuula-auth-shell" : isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell";
 
-  if (restoringSession || showLaunchSplash) {
+  // While a saved session is checked, show the same photo backdrop the landing
+  // page uses, so signed-out visitors see one continuous screen instead of a splash.
+  if (restoringSession) {
     return (
-      <div className="kuula-app-shell kuula-mobile-shell" data-screen="splash" data-surface="public">
-        <div className="kuula-device-frame"><ScreenLoader /></div>
+      <div className="kuula-app-shell kuula-auth-shell" data-screen="starting" data-surface="public">
+        <div className="kuula-device-frame"><PhotoBackdrop /></div>
       </div>
     );
   }
 
   return (
-    <div className={`kuula-app-shell ${isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell"}`} data-screen={screenId} data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}>
+    <div className={`kuula-app-shell ${shellClass}`} data-screen={screenId} data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}>
       <div className="kuula-device-frame">
+        {isAuthScreen && <PhotoBackdrop />}
         <main className="kuula-route-viewport">
-          <Suspense fallback={<ScreenLoader />}>
+          <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<RootRedirect />} />
+              <Route path="/onboarding" element={<Navigate to="/welcome" replace />} />
               <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
               <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><ScreenRoute Component={PartnerNetworkScreen} /></Guard>} />
               <Route path="/partner-financing" element={<Guard access="customer" screenId="partner-financing"><ScreenRoute Component={PartnerFinancingScreen} /></Guard>} />
