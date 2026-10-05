@@ -97,9 +97,13 @@ router.post("/document-verification/start", authenticateToken, async (req: Reque
   const latest = await prisma.kycSubmission.findFirst({
     where: { userId },
     orderBy: { version: "desc" },
-    select: { version: true, status: true, providerReference: true },
+    select: { id: true, version: true, status: true, providerReference: true, providerStatus: true },
   });
-  if (latest?.status === "pending") {
+  // A capture that was started but never produced a verdict (cancelled, closed,
+  // or failed to load) must not lock the customer out: restart it on the same
+  // submission. Only a submission Smile ID has already answered stays in review.
+  const resumable = latest?.status === "pending" && latest.providerStatus === "capture_started" ? latest : null;
+  if (latest?.status === "pending" && !resumable) {
     throw new AppError("Your identity verification is already in progress. We will notify you when it completes.", 409);
   }
   const nextVersion = (latest?.version ?? 0) + 1;
@@ -113,6 +117,21 @@ router.post("/document-verification/start", authenticateToken, async (req: Reque
   }
 
   const submission = await prisma.$transaction(async (tx) => {
+    if (resumable) {
+      const restarted = await tx.kycSubmission.update({
+        where: { id: resumable.id },
+        data: { fullName, nationalId, dateOfBirth: dobDate, providerReference: jobId },
+      });
+      await tx.kycAuditEvent.create({
+        data: {
+          submissionId: restarted.id,
+          actorId: userId,
+          action: "capture_restarted",
+          details: { provider: "smile-id", method: "document_verification" } as Prisma.InputJsonValue,
+        },
+      });
+      return restarted;
+    }
     const created = await tx.kycSubmission.create({
       data: {
         userId,

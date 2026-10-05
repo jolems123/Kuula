@@ -93,6 +93,30 @@ function useSessionBootstrap(): boolean {
   return checking;
 }
 
+/** Access tokens last 15 minutes; rotate shortly before expiry so an open app stays signed in. */
+function useSessionRefresh(): void {
+  const { state, updateToken } = useAppContext();
+  const { isAuthenticated, expiresAt } = state.session;
+
+  useEffect(() => {
+    if (!isAuthenticated || !expiresAt) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      const stored = readSessionTokens();
+      if (!stored?.refreshToken) return;
+      try {
+        const refreshed = await api.refresh(stored.refreshToken);
+        const nextExpiresAt = Date.now() + refreshed.accessExpiresInSeconds * 1000;
+        storeSessionTokens({ accessToken: refreshed.token, refreshToken: refreshed.refreshToken, accessExpiresAt: nextExpiresAt });
+        if (active) updateToken(refreshed.token, nextExpiresAt);
+      } catch {
+        // The next request surfaces the expired session; nothing to recover here.
+      }
+    }, Math.max(expiresAt - Date.now() - 60_000, 0));
+    return () => { active = false; clearTimeout(timer); };
+  }, [isAuthenticated, expiresAt, updateToken]);
+}
+
 /** Shown while a lazily-loaded screen downloads: a thin bar, not a full-screen splash. */
 function PageLoader() {
   return <div className="kx-page-loader" role="progressbar" aria-label="Loading" />;
@@ -137,6 +161,7 @@ function releaseAccess(id: string, registered: ScreenAccess): ScreenAccess {
 function Shell() {
   const location = useLocation();
   const restoringSession = useSessionBootstrap();
+  useSessionRefresh();
   useNativeChrome();
   useRealtimeSubscriptions();
 

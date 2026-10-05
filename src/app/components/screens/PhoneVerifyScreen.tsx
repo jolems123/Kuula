@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { otpLimiter } from "../../lib/rate-limiter";
+import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -77,7 +78,9 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
     try {
       const s = await api.verifyPhone(pendingPhone, otp.join(""));
       otpLimiter.reset();
-      login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications);
+      const expiresAt = Date.now() + (s.accessExpiresInSeconds ?? 900) * 1000;
+      if (s.refreshToken) storeSessionTokens({ accessToken: s.token, refreshToken: s.refreshToken, accessExpiresAt: expiresAt });
+      login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
       onNavigate("kyc");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Verification failed. Try again.");
