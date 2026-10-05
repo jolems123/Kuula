@@ -276,7 +276,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       res.status(201).json({ ok: true, needsConfirmation: true });
       return;
     }
-    throw new AppError("Phone, email, or NIN already registered", 409);
+    throw new AppError("This phone number or NIN is already registered. Log in instead.", 409);
   }
 
   const user = await prisma.user.create({
