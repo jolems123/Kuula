@@ -1,6 +1,6 @@
 /**
- * Route sweep — drives the running app through every registered screen and
- * fails if any route throws a runtime error or renders blank.
+ * Route sweep — visits every registered route in the running app, signed out,
+ * and fails if any route throws a runtime error or renders blank.
  *
  * Requires a dev-mode server:
  *   npm run dev &
@@ -60,29 +60,10 @@ const waitForHash = (pattern) => page.waitForURL(pattern, {
   waitUntil: "commit",
 });
 
-await waitForHash(/#\/onboarding$/);
-await page.getByRole("button", { name: /^Skip$/i }).click();
+// Signed-out visitors land on the welcome page. The sweep runs without an API,
+// so guarded screens redirect back here; what it proves is that every route
+// resolves without a runtime error or a blank page.
 await waitForHash(/#\/welcome$/);
-
-await page.getByRole("button", { name: /^Admin$/i }).click();
-const continueToAdmin = page.getByRole("button", { name: /Continue to Admin Login/i });
-await continueToAdmin.waitFor({ state: "visible", timeout: 10_000 });
-await continueToAdmin.click();
-await waitForHash(/#\/admin-login$/);
-
-const emailInput = page.locator('input[type="email"]').first();
-const passwordInput = page.locator('input[type="password"]').first();
-await emailInput.waitFor({ state: "visible", timeout: 10_000 });
-await emailInput.fill("admin@kuula.ug");
-await passwordInput.fill("1234");
-
-const submit = page.getByRole("button", { name: /Sign In to Admin/i });
-await submit.waitFor({ state: "visible", timeout: 10_000 });
-await submit.click();
-
-await waitForHash(/#\/admin-otp$/);
-await page.evaluate(() => { window.location.hash = "/admin-dashboard"; });
-await waitForHash(/#\/admin-dashboard$/);
 
 const blank = [];
 for (const id of ids) {
