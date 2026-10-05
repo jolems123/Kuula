@@ -140,3 +140,23 @@ docker compose -f deploy/docker-compose.local.yml down -v
 ## Important production boundary
 
 Local success is not production authorization. Production requires real provider credentials, verified production provider/destination limits, production SMS/KYC storage configuration, valid HTTPS URLs and successful release checks. Development seed scripts refuse to run in `NODE_ENV=production`.
+
+## If Docker Desktop cannot start (installed PostgreSQL)
+
+Run from PowerShell in this folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\RUN_KUULA_LOCAL.ps1 -NativePostgres -SkipInstall
+```
+
+Omit `-SkipInstall` on first setup. PostgreSQL's `bin` folder must be on PATH
+(`psql` must be available). This creates a separate development database in
+`.tmp/postgres-local`, listening only on `127.0.0.1:55433`. Existing PostgreSQL
+services and pgAdmin databases are left intact. The demo accounts and local
+OTP above work with this option too. Stop it with `STOP_KUULA_LOCAL.ps1`.
+API and frontend processes run in the background; startup errors are saved in
+`kuula-api-error.log` and `kuula-web-error.log` in this folder.
+
+`npm run dev` alone starts only the web interface. If sign-up reports
+`ERR_CONNECTION_REFUSED` on port 3000, start the API and database using one of
+these launchers. The React DevTools message is informational.

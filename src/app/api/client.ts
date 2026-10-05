@@ -63,7 +63,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (e) {
     if (e instanceof ApiError) throw e;
     if (e instanceof DOMException && e.name === "AbortError") throw new ApiError("Request timed out. Check your connection.", 0);
-    throw new ApiError("Could not reach Kuula servers. Try again.", 0);
+    const isLocalApi = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(apiBaseUrl);
+    throw new ApiError(import.meta.env.DEV && isLocalApi
+      ? "The local Kuula API is not reachable. Run the local launcher described in LOCAL_DEVELOPMENT.md."
+      : "Could not reach Kuula servers. Try again.", 0);
   } finally { clearTimeout(timer); }
 }
 

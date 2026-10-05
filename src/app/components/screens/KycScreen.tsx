@@ -1,9 +1,11 @@
-import { ArrowLeft, CheckCircle, Shield, User } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User } from "lucide-react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
+
+import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -48,9 +50,8 @@ function loadSmileSdk(): Promise<void> {
 export function KycScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const { state } = useAppContext();
-  // Pre-fill from the account created at sign-up so the user doesn't re-enter
-  // their NIN and name. DOB is not captured at sign-up, so it starts empty.
-  const [idNumber, setIdNumber] = useState(state.user?.nationalId ?? "");
+  // Session responses mask the NIN. Never prefill masked text as a valid ID.
+  const [idNumber, setIdNumber] = useState(() => isValidUgandaNin(state.user?.nationalId ?? "") ? state.user!.nationalId : "");
   const [fullName, setFullName] = useState(state.user?.fullName ?? "");
   const [dob, setDob] = useState(state.user?.dateOfBirth ?? "");
 
@@ -147,283 +148,76 @@ export function KycScreen({ onNavigate }: Props) {
     }
   };
 
+  const continueVerification = async (event: FormEvent) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setError("");
+    setSuccess("");
+    if (step === 1) {
+      if (!isValidUgandaNin(idNumber)) { setError("Enter the 14-character NIN from your National ID."); return; }
+      if (fullName.trim().length < 2) { setError("Please enter your full legal name."); return; }
+      if (!dob) { setError("Please select your date of birth."); return; }
+      setStep(2);
+    } else if (step === 2) {
+      await startCapture();
+    } else {
+      onNavigate("home");
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-white" style={{ paddingTop: 0 }}>
-      <div className="flex items-center px-4 pt-4 pb-2">
-        <button
-          onClick={() => {
-            if (step === 1) {
-              onNavigate("create-account");
-              return;
-            }
-            if (step === 2) {
-              setStep(1);
-              return;
-            }
-            onNavigate("welcome");
-          }}
-          className="flex items-center justify-center"
-          style={{ width: 40, height: 40, borderRadius: 12, background: "#F3F4F6", border: "none" }}
-        >
-          <ArrowLeft size={18} color="#374151" />
-        </button>
-        <span style={{ fontSize: 17, fontWeight: 600, color: "#1F2937", marginLeft: 12 }}>
-          {t("kyc.title")}
-        </span>
+    <AuthLayout onBack={() => {
+      if (isSubmitting) return;
+      setError("");
+      setSuccess("");
+      if (step === 2) setStep(1);
+      else onNavigate("home");
+    }} backLabel={step === 2 ? "Back to your ID details" : "Back to dashboard"}>
+      <div className="kx-steps" aria-label={`Step ${step} of 3`}>
+        <div className="kx-steps__bars" aria-hidden="true">
+          {[1, 2, 3].map((n) => <span key={n} className={step >= n ? "is-done" : ""} />)}
+        </div>
+        {step === 1 ? t("kyc.stepId") : step === 2 ? t("kyc.stepPhoto") : t("kyc.stepComplete")} · {step}/3
       </div>
-
-      <div className="flex items-center px-6 py-4">
-        {[{ label: t("kyc.stepId"), n: 1 }, { label: t("kyc.stepPhoto"), n: 2 }, { label: t("kyc.stepComplete"), n: 3 }].map((s, i) => (
-          <div key={s.n} className="flex items-center flex-1">
-            <div className="flex flex-col items-center">
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  background: step >= s.n ? "#0B5E3A" : "#F3F4F6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {step > s.n ? (
-                  <CheckCircle size={16} color="white" />
-                ) : (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: step >= s.n ? "white" : "#9CA3AF" }}>
-                    {s.n}
-                  </span>
-                )}
-              </div>
-              <span style={{ fontSize: 10, color: step >= s.n ? "#0B5E3A" : "#9CA3AF", marginTop: 4, fontWeight: 500 }}>
-                {s.label}
-              </span>
+      <form onSubmit={continueVerification} noValidate aria-busy={isSubmitting}>
+        <div key={step} className="kx-step-enter">
+          <div className="kx-auth-head">
+            <div className="kx-auth-head__icon" aria-hidden="true">
+              {step === 1 ? <User size={22} /> : step === 2 ? <Camera size={22} /> : <CheckCircle size={22} />}
             </div>
-            {i < 2 && (
-              <div
-                style={{
-                  flex: 1,
-                  height: 2,
-                  background: step > s.n ? "#0B5E3A" : "#E5E7EB",
-                  margin: "0 8px",
-                  marginBottom: 20,
-                }}
-              />
-            )}
+            <h2>{step === 1 ? t("kyc.title") : step === 2 ? "Photograph your National ID" : t("kyc.submittedTitle")}</h2>
+            <p>{step === 1 ? "Confirm the details on your National ID to continue." : step === 2 ? "Have your original card ready. We'll guide you through each photo." : t("kyc.submittedMessage")}</p>
           </div>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 gap-5 overflow-y-auto pb-4">
-        {step === 1 && (
-          <>
-            <div
-              className="p-4 rounded-xl flex items-start gap-3"
-              style={{ background: "#F3FAF7", border: "1px solid #DFF2E9" }}
-            >
-              <User size={18} color="#0B5E3A" style={{ marginTop: 2 }} />
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{t("kyc.ninRequired")}</p>
-                <p style={{ fontSize: 12, color: "#064A2E", marginTop: 2 }}>
-                  {t("kyc.niraVerification")}
-                </p>
-              </div>
+          {step === 1 && <>
+            <div className="kx-field">
+              <label className="kx-label" htmlFor="kyc-nin">{t("kyc.nationalIdLabel")}</label>
+              <div className="kx-control"><input id="kyc-nin" className="kx-input" value={idNumber} onChange={(e) => setIdNumber(normalizeNin(e.target.value))} maxLength={14} autoCapitalize="characters" autoComplete="off" placeholder={t("kyc.ninPlaceholder")} aria-describedby="kyc-nin-hint" /></div>
+              <p id="kyc-nin-hint" className="kx-hint">{t("kyc.ninHint")}</p>
             </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>
-                {t("kyc.nationalIdLabel")}
-              </label>
-              <input
-                value={idNumber}
-                onChange={(e) => setIdNumber(e.target.value.toUpperCase())}
-                maxLength={14}
-                placeholder={t("kyc.ninPlaceholder")}
-                style={{
-                  width: "100%",
-                  height: 52,
-                  borderRadius: 12,
-                  border: "1.5px solid #E5E7EB",
-                  padding: "0 16px",
-                  fontSize: 15,
-                  color: "#1F2937",
-                  background: "#F9FAFB",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
-                {t("kyc.ninHint")}
-              </p>
+            <div className="kx-field">
+              <label className="kx-label" htmlFor="kyc-name">{t("kyc.fullNameLabel")}</label>
+              <div className="kx-control"><input id="kyc-name" className="kx-input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" placeholder={t("kyc.fullNamePlaceholder")} /></div>
             </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>
-                {t("kyc.fullNameLabel")}
-              </label>
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder={t("kyc.fullNamePlaceholder")}
-                style={{
-                  width: "100%",
-                  height: 52,
-                  borderRadius: 12,
-                  border: "1.5px solid #E5E7EB",
-                  padding: "0 16px",
-                  fontSize: 15,
-                  color: "#1F2937",
-                  background: "#F9FAFB",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
+            <div className="kx-field">
+              <label className="kx-label" htmlFor="kyc-dob">{t("kyc.dobLabel")}</label>
+              <div className="kx-control"><input id="kyc-dob" className="kx-input" type="date" value={dob} onChange={(e) => setDob(e.target.value)} autoComplete="bday" style={{ colorScheme: "dark" }} /></div>
             </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>
-                {t("kyc.dobLabel")}
-              </label>
-              <input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 52,
-                  borderRadius: 12,
-                  border: "1.5px solid #E5E7EB",
-                  padding: "0 16px",
-                  fontSize: 15,
-                  color: "#1F2937",
-                  background: "#F9FAFB",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <div
-              className="p-4 rounded-xl flex items-start gap-3"
-              style={{ background: "#F3FAF7", border: "1px solid #DFF2E9" }}
-            >
-              <Shield size={18} color="#0B5E3A" style={{ marginTop: 2 }} />
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Photograph your National ID</p>
-                <p style={{ fontSize: 12, color: "#064A2E", marginTop: 2, lineHeight: 1.5 }}>
-                  Our identity partner Smile ID will guide you through photographing the front and back of your
-                  National ID and a short selfie check. The NIN printed on the card must match the NIN above.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="p-3 rounded-xl flex gap-2"
-              style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}
-            >
-              <span style={{ fontSize: 13, color: "#92400E" }}>
-                💡 Use good light, place the card on a dark surface, and make sure all four corners are visible.
-              </span>
-            </div>
-          </>
-        )}
-
-        {step === 3 && (
-          <div className="flex flex-col items-center justify-center flex-1 gap-4 py-8">
-            <div
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                background: "#F0FDF4",
-                border: "2px solid #178654",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckCircle size={40} color="#178654" />
-            </div>
-            <div className="text-center">
-              <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1F2937" }}>{t("kyc.submittedTitle")}</h2>
-              <p style={{ fontSize: 14, color: "#6B7280", marginTop: 8, lineHeight: 1.6 }}>
-                {t("kyc.submittedMessage")}
-              </p>
-            </div>
-            <div
-              className="p-4 rounded-xl w-full"
-              style={{ background: "#F0FDF4", border: "1px solid #A7F3D0" }}
-            >
-              <p style={{ fontSize: 13, color: "#065F46", textAlign: "center" }}>
-                ✓ {t("kyc.smsNotice")}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom button */}
-      <div className="px-6 pb-10 pt-3" style={{ borderTop: "1px solid #F3F4F6" }}>
-        <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", marginBottom: 10 }}>
-          {t("kyc.footerNote")}
-        </p>
-        <button
-          disabled={isSubmitting}
-          onClick={async () => {
-            setError("");
-            setSuccess("");
-
-            if (step === 1) {
-              if (!idNumber.trim() || !isValidUgandaNin(idNumber)) {
-                setError("Please enter a valid 14-character National ID (NIN), e.g. CM8602410E8EWE.");
-                return;
-              }
-              if (!fullName.trim() || fullName.trim().length < 2) {
-                setError("Please enter your full legal name.");
-                return;
-              }
-              if (!dob) {
-                setError("Please select your date of birth.");
-                return;
-              }
-              setStep(2);
-              return;
-            }
-
-            if (step === 2) {
-              await startCapture();
-              return;
-            }
-
-            onNavigate("welcome");
-          }}
-          style={{
-            width: "100%",
-            height: 52,
-            borderRadius: 14,
-            background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
-            color: "white",
-            fontSize: 16,
-            fontWeight: 600,
-            border: "none",
-            boxShadow: "0 4px 16px rgba(11,94,58,0.3)",
-            opacity: isSubmitting ? 0.7 : 1,
-          }}
-        >
-          {isSubmitting ? "Working..." : step === 2 ? "Start ID Capture" : step < 3 ? t("common.continue") : t("common.goToDashboard")}
-        </button>
-        {error ? (
-          <p style={{ fontSize: 12, color: "#DC2626", textAlign: "center", marginTop: 10 }}>{error}</p>
-        ) : null}
-        {success ? (
-          <p style={{ fontSize: 12, color: "#059669", textAlign: "center", marginTop: 10 }}>{success}</p>
-        ) : null}
-      </div>
-    </div>
+          </>}
+          {step === 2 && <div className="kx-auth-stack">
+            <div className="kx-alert kx-alert--info"><Shield size={20} /><span>Smile ID will capture the front and back of your National ID, then a short selfie check. The NIN on the card must match your account.</span></div>
+            <div className="kx-alert kx-alert--info"><Camera size={20} /><span>Use good light, place your card on a dark surface, and keep all four corners visible.</span></div>
+          </div>}
+          {step === 3 && <div className="kx-alert kx-alert--success"><CheckCircle size={20} /><span>{t("kyc.smsNotice")}</span></div>}
+        </div>
+        <div className="kx-auth-stack" style={{ marginTop: 24 }}>
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+          {success && <div className="kx-alert kx-alert--info" role="status"><Shield size={16} /><span>{success}</span></div>}
+          <button type="submit" disabled={isSubmitting} className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block">
+            {isSubmitting ? <><span className="kx-spinner" aria-hidden="true" /> Working...</> : <>{step === 2 ? "Start ID capture" : step === 1 ? t("common.continue") : t("common.goToDashboard")}<ArrowRight size={18} /></>}
+          </button>
+        </div>
+        <div className="kx-auth-foot"><Shield size={16} /><span>{t("kyc.footerNote")}</span></div>
+      </form>
+    </AuthLayout>
   );
 }

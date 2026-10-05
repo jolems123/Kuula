@@ -119,7 +119,7 @@ function ScreenRoute({ Component }: { Component: React.ComponentType<{ onNavigat
 }
 
 /** Screens drawn over the shared photo backdrop instead of the app chrome. */
-const AUTH_SCREENS = new Set(["welcome", "login", "create-account", "phone-verify", "admin-login", "admin-otp", "admin-activate"]);
+const AUTH_SCREENS = new Set(["welcome", "login", "create-account", "phone-verify", "admin-login", "admin-otp", "admin-activate", "kyc"]);
 
 function RootRedirect() {
   const { state } = useAppContext();

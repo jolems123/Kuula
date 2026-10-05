@@ -1,4 +1,4 @@
-$ErrorActionPreference = "SilentlyContinue"
+﻿$ErrorActionPreference = "SilentlyContinue"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $Root "deploy\docker-compose.local.yml"
 
@@ -13,6 +13,12 @@ foreach ($port in 3000, 5173) {
       Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
   }
+}
+
+$nativeData = Join-Path $Root ".tmp\postgres-local"
+if ((Test-Path (Join-Path $nativeData "PG_VERSION")) -and (Get-Command psql -ErrorAction SilentlyContinue)) {
+  $pgBin = Split-Path (Get-Command psql).Source
+  & (Join-Path $pgBin "pg_ctl.exe") -D $nativeData -m fast -w stop | Out-Host
 }
 
 if (Get-Command docker -ErrorAction SilentlyContinue) {

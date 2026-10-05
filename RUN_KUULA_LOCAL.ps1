@@ -1,6 +1,7 @@
-param(
+﻿param(
   [switch]$SkipInstall,
-  [switch]$NoBrowser
+  [switch]$NoBrowser,
+  [switch]$NativePostgres
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,36 +33,68 @@ Write-Host ""
 
 Require-Command "node" "Install Node.js 22 LTS and reopen PowerShell."
 Require-Command "npm" "Install Node.js/npm and reopen PowerShell."
-Require-Command "docker" "Install/start Docker Desktop. The launcher uses PostgreSQL 16 in Docker so it does not disturb your existing pgAdmin databases."
+if (-not $NativePostgres) {
+  Require-Command "docker" "Start Docker Desktop, or use -NativePostgres with an installed PostgreSQL."
+}
 
 Push-Location $Root
 try {
-  docker info *> $null
-  if ($LASTEXITCODE -ne 0) { throw "Docker Desktop is installed but is not running." }
-
-  Write-Host "[1/9] Starting local PostgreSQL 16..." -ForegroundColor Cyan
-  docker compose -f $ComposeFile up -d postgres
-  if ($LASTEXITCODE -ne 0) { throw "Could not start the Kuula PostgreSQL container." }
-
-  $dbReady = $false
-  for ($i = 1; $i -le 40; $i++) {
-    $status = docker inspect -f '{{.State.Health.Status}}' kuula-local-postgres 2>$null
-    if ($status -eq "healthy") { $dbReady = $true; break }
-    Start-Sleep -Seconds 1
+  $databasePort = 5433
+  if ($NativePostgres) {
+    Require-Command "psql" "Add your PostgreSQL bin folder to PATH."
+    $pgBin = Split-Path (Get-Command psql).Source
+    $dataDirectory = Join-Path $Root ".tmp\postgres-local"
+    $databasePort = 55433
+    New-Item -ItemType Directory -Force (Join-Path $Root ".tmp") | Out-Null
+    if (-not (Test-Path (Join-Path $dataDirectory "PG_VERSION"))) {
+      $passwordFile = Join-Path $Root ".tmp\pg-init-password"
+      try {
+        Set-Content -LiteralPath $passwordFile -Value "kuula_local_password" -Encoding Ascii
+        & (Join-Path $pgBin "initdb.exe") -D $dataDirectory -U kuula --auth=scram-sha-256 --pwfile=$passwordFile --encoding=UTF8 --locale=C
+        if ($LASTEXITCODE -ne 0) { throw "Could not initialize the isolated local PostgreSQL database." }
+      } finally { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue }
+    }
+    & (Join-Path $pgBin "pg_ctl.exe") -D $dataDirectory status *> $null
+    if ($LASTEXITCODE -ne 0) {
+      & (Join-Path $pgBin "pg_ctl.exe") -D $dataDirectory -l (Join-Path $Root ".tmp\postgres.log") -o "-p $databasePort -h 127.0.0.1" -w start
+      if ($LASTEXITCODE -ne 0) { throw "Could not start local PostgreSQL. Check .tmp/postgres.log." }
+    }
+    $previousPgPassword = $env:PGPASSWORD
+    try {
+      $env:PGPASSWORD = "kuula_local_password"
+      $exists = & (Join-Path $pgBin "psql.exe") -h 127.0.0.1 -p $databasePort -U kuula -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='kuula_local'"
+      if ($LASTEXITCODE -ne 0) { throw "Local database connection failed." }
+      if ($exists -ne "1") {
+        & (Join-Path $pgBin "createdb.exe") -h 127.0.0.1 -p $databasePort -U kuula kuula_local
+        if ($LASTEXITCODE -ne 0) { throw "Could not create kuula_local." }
+      }
+    } finally { $env:PGPASSWORD = $previousPgPassword }
+  } else {
+    docker info *> $null
+    if ($LASTEXITCODE -ne 0) { throw "Docker is not running. Start Docker Desktop or use -NativePostgres." }
+    Write-Host "[1/9] Starting local PostgreSQL 16..." -ForegroundColor Cyan
+    docker compose -f $ComposeFile up -d postgres
+    if ($LASTEXITCODE -ne 0) { throw "Could not start the Kuula PostgreSQL container." }
+    $dbReady = $false
+    for ($i = 1; $i -le 40; $i++) {
+      $status = docker inspect -f '{{.State.Health.Status}}' kuula-local-postgres 2>$null
+      if ($status -eq "healthy") { $dbReady = $true; break }
+      Start-Sleep -Seconds 1
+    }
+    if (-not $dbReady) { throw "PostgreSQL did not become healthy. Run: docker logs kuula-local-postgres" }
   }
-  if (-not $dbReady) { throw "PostgreSQL did not become healthy. Run: docker logs kuula-local-postgres" }
 
   $env:NODE_ENV = "development"
   $env:REAL_MONEY_ENABLED = "false"
-  $env:DATABASE_URL = "postgresql://kuula:kuula_local_password@localhost:5433/kuula_local?schema=public"
+  $env:DATABASE_URL = "postgresql://kuula:kuula_local_password@127.0.0.1:${databasePort}/kuula_local?schema=public"
   $env:JWT_SECRET = "kuula-local-jwt-secret-2026-only-for-development-change-before-production-123456"
   $env:OTP_PEPPER = "kuula-local-otp-pepper-2026-only-for-development"
   $env:SMS_PROVIDER = "local"
   $env:ALLOW_LOCAL_DEV_OTP = "true"
   $env:LOCAL_DEV_OTP_CODE = "246810"
   $env:PORT = "3000"
-  $env:CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
-  $env:PUBLIC_API_URL = "http://localhost:3000"
+  $env:CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5000,http://127.0.0.1:5000"
+  $env:PUBLIC_API_URL = "http://127.0.0.1:3000"
   $env:ADMIN_EMAIL = "admin-local@kuula.test"
   $env:ADMIN_PHONE = "+256700000001"
   $env:ADMIN_PASSWORD = "LocalAdminPassword2026!"
@@ -70,7 +103,7 @@ try {
 
   $env:VITE_BACKEND = "node"
   $env:VITE_USE_API = "true"
-  $env:VITE_API_BASE_URL = "http://localhost:3000"
+  $env:VITE_API_BASE_URL = "http://127.0.0.1:3000"
   $env:VITE_APP_ENV = "development"
   $env:VITE_APP_VERSION = "local"
   $env:VITE_REVIEWER_MODE = "false"
@@ -130,24 +163,24 @@ try {
 `$env:LOCAL_DEV_OTP_CODE='246810';
 `$env:PORT='3000';
 `$env:CORS_ORIGINS='$env:CORS_ORIGINS';
-`$env:PUBLIC_API_URL='http://localhost:3000';
+`$env:PUBLIC_API_URL='http://127.0.0.1:3000';
 npm run dev
 "@
-  Start-Process powershell -WorkingDirectory $Server -ArgumentList "-NoExit", "-Command", $backendCommand | Out-Null
-  if (-not (Wait-Http "http://localhost:3000/api/health" 60)) { throw "The API did not become healthy at http://localhost:3000/api/health. Check the Kuula API PowerShell window for the exact error." }
+  Start-Process powershell -WindowStyle Hidden -WorkingDirectory $Server -RedirectStandardOutput (Join-Path $Root "kuula-api.log") -RedirectStandardError (Join-Path $Root "kuula-api-error.log") -ArgumentList "-NoProfile", "-Command", $backendCommand | Out-Null
+  if (-not (Wait-Http "http://127.0.0.1:3000/api/health" 60)) { throw "The API did not become healthy at http://127.0.0.1:3000/api/health. Check kuula-api-error.log for the exact error." }
 
   Write-Host "[8/9] Launching Kuula frontend..." -ForegroundColor Cyan
   $frontendCommand = @"
 `$env:VITE_BACKEND='node';
 `$env:VITE_USE_API='true';
-`$env:VITE_API_BASE_URL='http://localhost:3000';
+`$env:VITE_API_BASE_URL='http://127.0.0.1:3000';
 `$env:VITE_APP_ENV='development';
 `$env:VITE_APP_VERSION='local';
 `$env:VITE_REVIEWER_MODE='false';
-npm run dev -- --host 127.0.0.1 --port 5173
+node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort
 "@
-  Start-Process powershell -WorkingDirectory $Root -ArgumentList "-NoExit", "-Command", $frontendCommand | Out-Null
-  if (-not (Wait-Http "http://127.0.0.1:5173" 60)) { throw "The frontend did not become reachable at http://127.0.0.1:5173. Check the Kuula frontend PowerShell window for the exact error." }
+  Start-Process powershell -WindowStyle Hidden -WorkingDirectory $Root -RedirectStandardOutput (Join-Path $Root "kuula-web.log") -RedirectStandardError (Join-Path $Root "kuula-web-error.log") -ArgumentList "-NoProfile", "-Command", $frontendCommand | Out-Null
+  if (-not (Wait-Http "http://127.0.0.1:5173" 60)) { throw "The frontend did not become reachable at http://127.0.0.1:5173. Check kuula-web-error.log for the exact error." }
 
   Write-Host "[9/9] Running authenticated local smoke test..." -ForegroundColor Cyan
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $SmokeTest
@@ -156,8 +189,8 @@ npm run dev -- --host 127.0.0.1 --port 5173
   Write-Host ""
   Write-Host "KUULA IS RUNNING LOCALLY — SMOKE TEST PASSED" -ForegroundColor Green
   Write-Host "App:      http://127.0.0.1:5173" -ForegroundColor White
-  Write-Host "API:      http://localhost:3000/api/health" -ForegroundColor White
-  Write-Host "Database: localhost:5433 / kuula_local" -ForegroundColor White
+  Write-Host "API:      http://127.0.0.1:3000/api/health" -ForegroundColor White
+  Write-Host "Database: 127.0.0.1:$databasePort / kuula_local" -ForegroundColor White
   Write-Host ""
   Write-Host "Customer demo" -ForegroundColor Cyan
   Write-Host "  Phone:    +256700000000"
