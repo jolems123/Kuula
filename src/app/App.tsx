@@ -168,7 +168,7 @@ function Shell() {
   const screenId = location.pathname.replace(/^\//, "") || "root";
   const isAuthScreen = AUTH_SCREENS.has(screenId);
   const isAdminScreen = screenId.startsWith("admin-") && !isAuthScreen;
-  const isPublicScreen = isAuthScreen || ["language", "biometric-setup"].includes(screenId);
+  const isPublicScreen = isAuthScreen || screenId === "language";
   const shellClass = isAuthScreen ? "kuula-auth-shell" : isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell";
 
   // While a saved session is checked, show the same photo backdrop the landing

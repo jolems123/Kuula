@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, User, Wallet, Bell, Shield, LifeBuoy, Info, ChevronRight, LogOut, Globe,
+  ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, LogOut, Globe,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,7 +12,6 @@ interface Props {
 
 const menuItems = [
   { icon: User, label: "Personal Information", subtitle: "Name, ID, date of birth", color: "#0B5E3A", screen: "personal-info" },
-  { icon: Wallet, label: "Payment Methods", subtitle: "MTN MoMo, Airtel Money", color: "#178654", screen: "payment-methods-list" },
   { icon: Bell, label: "Notification Settings", subtitle: "SMS and push alerts", color: "#F59E0B", screen: "notification-settings" },
   { icon: Shield, label: "Privacy & Security", subtitle: "PIN, biometric, 2FA", color: "#8B5CF6", screen: "privacy-security" },
   { icon: LifeBuoy, label: "Help & Support", subtitle: "Chat, call, FAQ", color: "#06B6D4", screen: "help-support" },
@@ -51,7 +50,6 @@ export function SettingsScreen({ onNavigate }: Props) {
 
   const menuItemI18n: Record<string, { label: string; subtitle: string }> = {
     "personal-info": { label: t("settings.personalInfo"), subtitle: t("settings.personalInfoSub") },
-    "payment-methods-list": { label: t("settings.paymentMethods"), subtitle: "MTN MoMo, Airtel Money" },
     "notification-settings": { label: t("settings.notifSettings"), subtitle: t("settings.notifSettingsSub") },
     "privacy-security": { label: t("settings.privacySecurity"), subtitle: t("settings.privacySecuritySub") },
     "help-support": { label: t("settings.helpSupport"), subtitle: t("settings.helpSupportSub") },

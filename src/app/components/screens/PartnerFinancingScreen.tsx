@@ -114,7 +114,7 @@ export function PartnerFinancingScreen({ onNavigate }: Props) {
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F5F8F6" }}>
       <header style={{ background: "#0B5E3A", color: "white", padding: "16px 16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => onNavigate("wallet")} aria-label="Back" style={{ width: 40, height: 40, borderRadius: 13, border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.12)", color: "white" }}><ArrowLeft size={19} /></button>
+          <button onClick={() => onNavigate("partner-network")} aria-label="Back" style={{ width: 40, height: 40, borderRadius: 13, border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.12)", color: "white" }}><ArrowLeft size={19} /></button>
           <div><div style={{ fontSize: 11, opacity: .7, fontWeight: 800 }}>RESTRICTED-PURPOSE CREDIT</div><h1 style={{ margin: "2px 0 0", fontSize: 20 }}>{selected.productName}</h1></div>
         </div>
       </header>
