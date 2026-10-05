@@ -33,10 +33,10 @@ export const authRecoveryApi = {
       body: JSON.stringify({ identifier }),
     }),
 
-  confirmPasswordReset: (identifier: string, code: string, newPassword: string) =>
+  confirmPinReset: (identifier: string, code: string, newPin: string) =>
     request<{ ok: boolean; message: string }>("/api/auth/reset-password/confirm", {
       method: "POST",
-      body: JSON.stringify({ identifier, code, newPassword }),
+      body: JSON.stringify({ identifier, code, newPin }),
     }),
 
   revokeSession: (token: string) =>

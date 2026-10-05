@@ -83,7 +83,8 @@ export function verifyWebhookSignature(timestamp: string, signature: string): bo
 export function splitName(fullName: string): { first: string; last: string } {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return { first: parts[0] ?? "", last: parts[0] ?? "" };
-  return { first: parts[0], last: parts[parts.length - 1] };
+  // Smile ID's `given_names` is every name before the surname, not just the first.
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
 
 export interface MintTokenInput {
@@ -91,6 +92,7 @@ export interface MintTokenInput {
   jobId: string;
   fullName: string;
   phone: string;
+  nationalId: string;
 }
 
 export interface MintedToken {
@@ -116,12 +118,24 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
   // The v3 token endpoint currently accepts `document_verification`.
   form.set("product", "document_verification");
   form.set("user_id", input.userId);
-  form.set("partner_params", JSON.stringify({ job_id: input.jobId, user_id: input.userId, job_type: "6" }));
+  // `kuula_reference` is our own correlation key: Smile ID generates its own
+  // job_id/user_id and may report those under the same names on the webhook.
+  form.set("partner_params", JSON.stringify({ kuula_reference: input.jobId, job_id: input.jobId, user_id: input.userId, job_type: "6" }));
+  // The sandbox only answers for Smile ID's published test identities, matched
+  // on names + email, and echoes the submitted ID number back as the result.
+  // Kuula customers have no email, so derive the test address from the name.
+  const sandboxOnly = config.environment === "sandbox"
+    ? {
+      email: `${first.split(" ")[0]}.${last}@example.com`.toLowerCase(),
+      id_number: input.nationalId,
+    }
+    : {};
   form.set("payload", JSON.stringify({
     country: "UG",
     given_names: first,
     last_name: last,
     phone_number: input.phone,
+    ...sandboxOnly,
     callback_url: config.callbackUrl,
     consent: {
       granted: true,
@@ -169,7 +183,9 @@ export interface DocumentVerificationWebhook {
   reason?: string | null;
   product?: string;
   completed_at?: string;
-  partner_params?: { job_id?: string; user_id?: string };
+  job_id?: string;
+  user_id?: string;
+  partner_params?: { kuula_reference?: string; job_id?: string; user_id?: string };
   PartnerParams?: { job_id?: string; user_id?: string; job_type?: string | number };
   id_fields?: {
     full_name?: string | null;
@@ -186,8 +202,20 @@ export interface DocumentVerificationWebhook {
   kyc_receipt?: string | null;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The Kuula user a webhook is about, when Smile ID reports the user id we bound
+ * into the token. Used to settle a verdict whose job reference was replaced by
+ * Smile ID's own generated id.
+ */
+export function webhookKuulaUserId(payload: DocumentVerificationWebhook): string {
+  const candidates = [payload.partner_params?.user_id, payload.user_id, payload.PartnerParams?.user_id];
+  return candidates.find((value): value is string => typeof value === "string" && UUID_PATTERN.test(value)) ?? "";
+}
+
 export function normalizeDocumentVerificationWebhook(payload: DocumentVerificationWebhook) {
-  const jobId = payload.partner_params?.job_id || payload.PartnerParams?.job_id || "";
+  const jobId = payload.partner_params?.kuula_reference || payload.partner_params?.job_id || payload.PartnerParams?.job_id || "";
   const status = payload.status
     || (payload.ResultCode === "0810" ? "clear" : payload.ResultCode ? "block" : "error");
   return {

@@ -72,6 +72,20 @@ export function otpLockExpiry(from = new Date()): Date {
   return new Date(from.getTime() + OTP_POLICY.lockMinutes * 60_000);
 }
 
+export const LOGIN_PIN_PATTERN = /^\d{6}$/;
+
+/** A customer login PIN: exactly six digits, and not one anybody would guess first. */
+export function validateNewPin(value: unknown): string {
+  const pin = typeof value === "string" ? value.trim() : "";
+  if (!LOGIN_PIN_PATTERN.test(pin)) throw new RangeError("Your PIN must be exactly 6 digits");
+  const ascending = "0123456789012345";
+  const descending = "9876543210987654";
+  if (/^(\d)\1{5}$/.test(pin) || ascending.includes(pin) || descending.includes(pin)) {
+    throw new RangeError("That PIN is too easy to guess. Avoid repeated or counting digits");
+  }
+  return pin;
+}
+
 export function validateNewPassword(value: unknown): string {
   const password = typeof value === "string" ? value : "";
   if (password.length < 8 || password.length > 72) {

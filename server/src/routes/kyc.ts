@@ -9,6 +9,7 @@ import {
   smileIdConfigured,
   verifyWebhookSignature,
   normalizeDocumentVerificationWebhook,
+  webhookKuulaUserId,
   type DocumentVerificationWebhook,
 } from "../lib/smile-id.js";
 import { saveKycImage } from "../lib/storage.js";
@@ -111,7 +112,7 @@ router.post("/document-verification/start", authenticateToken, async (req: Reque
   const jobId = `docv-${userId}-${Date.now()}`;
   let minted;
   try {
-    minted = await mintDocumentVerificationToken({ userId, jobId, fullName, phone: existing.phone });
+    minted = await mintDocumentVerificationToken({ userId, jobId, fullName, phone: existing.phone, nationalId });
   } catch (error) {
     throw new AppError(error instanceof Error ? error.message : "Could not start identity verification", 502);
   }
@@ -221,16 +222,26 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
   }
   const normalized = normalizeDocumentVerificationWebhook(payload);
   const jobId = normalized.jobId;
-  if (!jobId) {
+  const kuulaUserId = webhookKuulaUserId(payload);
+  if (!jobId && !kuulaUserId) {
     res.status(400).json({ error: "Missing job reference" });
     return;
   }
 
-  const submission = await prisma.kycSubmission.findFirst({
-    where: { providerReference: jobId, provider: "smile-id" },
-  });
+  let submission = jobId
+    ? await prisma.kycSubmission.findFirst({ where: { providerReference: jobId, provider: "smile-id" } })
+    : null;
+  if (!submission && kuulaUserId) {
+    // Smile ID reported its own job id instead of ours: settle the customer's
+    // open capture, identified by the user id bound into the token.
+    submission = await prisma.kycSubmission.findFirst({
+      where: { userId: kuulaUserId, provider: "smile-id", status: "pending", providerStatus: "capture_started" },
+      orderBy: { version: "desc" },
+    });
+  }
   if (!submission) {
     // Unknown job — acknowledge so Smile ID does not keep retrying.
+    console.warn(JSON.stringify({ event: "kyc.smile_webhook_unmatched", status: normalized.status, hasJobReference: Boolean(jobId), hasUserReference: Boolean(kuulaUserId) }));
     res.json({ ok: true });
     return;
   }

@@ -33,7 +33,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
           {[
             { Icon: MessageCircle, label: t("support.liveChat"), sub: t("support.avgResponse"), color: "#0B5E3A", bg: "#F3FAF7", screen: "contact-support" },
             { Icon: Phone, label: t("support.callUs"), sub: "0800 123 456 (Free)", color: "#178654", bg: "#F0FDF4", screen: "contact-support" },
-            { Icon: Mail, label: t("support.emailUs"), sub: "support@kuula.ug", color: "#F59E0B", bg: "#FFF7ED", screen: "contact-support" },
+            { Icon: Mail, label: t("support.emailUs"), sub: "support@kuulapp.com", color: "#F59E0B", bg: "#FFF7ED", screen: "contact-support" },
             { Icon: BookOpen, label: t("support.userGuide"), sub: t("support.howToArticles"), color: "#8B5CF6", bg: "#F5F3FF", screen: "about-app" },
           ].map(({ Icon, label, sub, color, bg, screen }) => (
             <button key={label} onClick={() => onNavigate(screen)} style={{ background: "white", borderRadius: 14, padding: "16px 12px", border: "1px solid #F3F4F6", boxShadow: "0 2px 6px rgba(0,0,0,0.04)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>

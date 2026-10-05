@@ -13,7 +13,7 @@ interface Props {
 const menuItems = [
   { icon: User, label: "Personal Information", subtitle: "Name, ID, date of birth", color: "#0B5E3A", screen: "personal-info" },
   { icon: Wallet, label: "Payment Methods", subtitle: "MTN MoMo, Airtel Money", color: "#178654", screen: "payment-methods-list" },
-  { icon: Bell, label: "Notification Settings", subtitle: "SMS, email, push alerts", color: "#F59E0B", screen: "notification-settings" },
+  { icon: Bell, label: "Notification Settings", subtitle: "SMS and push alerts", color: "#F59E0B", screen: "notification-settings" },
   { icon: Shield, label: "Privacy & Security", subtitle: "PIN, biometric, 2FA", color: "#8B5CF6", screen: "privacy-security" },
   { icon: LifeBuoy, label: "Help & Support", subtitle: "Chat, call, FAQ", color: "#06B6D4", screen: "help-support" },
   { icon: Info, label: "About App", subtitle: "Version 2.4.1 · UMRA licensed", color: "#6B7280", screen: "about-app" },
@@ -47,7 +47,7 @@ export function SettingsScreen({ onNavigate }: Props) {
   const credit = state.credit;
   const loan = state.loan;
 
-  const [toggles, setToggles] = useState({ sms: true, push: true, email: false });
+  const [toggles, setToggles] = useState({ sms: true, push: true });
 
   const menuItemI18n: Record<string, { label: string; subtitle: string }> = {
     "personal-info": { label: t("settings.personalInfo"), subtitle: t("settings.personalInfoSub") },
@@ -177,7 +177,6 @@ export function SettingsScreen({ onNavigate }: Props) {
         {[
           { key: "sms" as const, label: t("settings.smsAlerts"), sub: t("settings.smsAlertsSub") },
           { key: "push" as const, label: t("settings.pushNotifs"), sub: t("settings.pushNotifsSub") },
-          { key: "email" as const, label: t("settings.emailDigest"), sub: t("settings.emailDigestSub") },
         ].map(({ key, label, sub }, i, arr) => (
           <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid #F9FAFB" : "none" }}>
             <div>

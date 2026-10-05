@@ -63,6 +63,8 @@ export interface UserProfile {
   fullName: string;
   phone: string;
   email: string | null;
+  hasPin?: boolean;
+  hasPassword?: boolean;
   nationalId: string;
   dateOfBirth: string;
   district: string;

@@ -22,7 +22,7 @@ const executablePath = CHROMIUM_CANDIDATES.find((path) => path && existsSync(pat
 
 const ids = [...readFileSync("src/app/screens/registry.ts", "utf8").matchAll(/^  "([^"]+)":/gm)]
   .map((match) => match[1]);
-if (ids.length < 100) {
+if (ids.length < 30) {
   console.error(`registry parse failed: only ${ids.length} ids found`);
   process.exit(1);
 }

@@ -1,7 +1,7 @@
 import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { api, ApiError } from "../../api/client";
+import { api } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
 
@@ -18,6 +18,29 @@ declare global {
 }
 
 const SMILE_SDK_URL = "https://cdn.usesmileid.com/inline/v12/js/script.min.js";
+
+interface SmileResult {
+  status?: "success" | "failure" | "cancelled";
+  error?: { error_code?: string; message?: string; retryable?: boolean };
+}
+
+/** Smile ID's failure codes, in words a customer can act on. Every one can be retried from this step. */
+function captureFailureMessage(code: string | undefined): string {
+  switch (code) {
+    case "CONSENT_DENIED":
+      return "We need your consent to check your ID. Tap Start ID capture and allow it to continue.";
+    case "DOCUMENTS_REJECTED":
+      return "The photos were not clear enough. Use good light, keep all four corners of your National ID visible, and try again.";
+    case "NOT_PERMITTED":
+      return "That document cannot be used. Please use your original Uganda National ID.";
+    case "SESSION_INIT_FAILED":
+      return "We could not open your camera. Allow camera access for this site, then try again.";
+    case "SUBMISSION_FAILED":
+      return "Your photos could not be sent. Check your connection and try again.";
+    default:
+      return "The ID capture could not be completed. Please try again.";
+  }
+}
 
 let smileSdkPromise: Promise<void> | null = null;
 function loadSmileSdk(): Promise<void> {
@@ -114,6 +137,8 @@ export function KycScreen({ onNavigate }: Props) {
         product: "doc_verification",
         callback_url: verification.callbackUrl,
         environment: verification.environment,
+        // Only the National ID carries the NIN we match against the account.
+        id_selection: { UG: ["IDENTITY_CARD"] },
         partner_details: {
           partner_id: verification.partnerId,
           name: "Kuula Microfinance",
@@ -121,13 +146,14 @@ export function KycScreen({ onNavigate }: Props) {
           policy_url: verification.privacyPolicyUrl,
           theme_color: "#0B5E3A",
         },
-        onResult: async (result: { status?: string }) => {
+        onResult: async (result: SmileResult) => {
           if (result?.status === "cancelled") {
+            // Closing the capture is a choice, not a failure: stay on this step, ready to restart.
             setIsSubmitting(false);
             return;
           }
           if (result?.status !== "success") {
-            setError("The ID capture could not be completed. Please try again in good light.");
+            setError(captureFailureMessage(result?.error?.error_code));
             setIsSubmitting(false);
             return;
           }
@@ -143,7 +169,7 @@ export function KycScreen({ onNavigate }: Props) {
         },
       });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not start identity verification. Please try again.");
+      setError(e instanceof Error && e.message ? e.message : "Could not start identity verification. Please try again.");
       setIsSubmitting(false);
     }
   };
