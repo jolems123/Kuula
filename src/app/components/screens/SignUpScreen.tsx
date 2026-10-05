@@ -14,7 +14,7 @@ export const CURRENT_PUBLIC_TERMS_VERSION = "2026-08-20";
 /**
  * Two short steps instead of one long form. Everything the server requires
  * (name, NIN, phone, PIN, terms) is still collected. Customers sign in with
- * their phone number and a 6-digit PIN; there is no email.
+ * their phone number and a 4-digit PIN; there is no email.
  */
 export function SignUpScreen({ onNavigate }: Props) {
   const { setPendingPhone } = useAppContext();
@@ -117,7 +117,7 @@ export function SignUpScreen({ onNavigate }: Props) {
           <div className="kx-field">
             <label className="kx-label" htmlFor="signup-pin">Create a {PIN_LENGTH}-digit PIN</label>
             <div className="kx-control">
-              <input id="signup-pin" className="kx-input" value={pin} onChange={(e) => setPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="6 digits" style={{ letterSpacing: ".3em" }} />
+              <input id="signup-pin" className="kx-input" value={pin} onChange={(e) => setPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
               <button type="button" className="kx-control__action" onClick={() => setShowPin((v) => !v)} aria-label={showPin ? "Hide PIN" : "Show PIN"}>
                 {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>

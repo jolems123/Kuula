@@ -11,7 +11,7 @@ import { PasswordRecoveryScreen } from "./PasswordRecoveryScreen";
 interface Props { onNavigate: (screen: string) => void; }
 
 /**
- * Customer log in: phone number and 6-digit PIN. The password is a backup for
+ * Customer log in: phone number and 4-digit PIN. The password is a backup for
  * accounts created before PINs, and those accounts are offered a PIN on entry.
  */
 export function LoginScreen({ onNavigate }: Props) {
@@ -96,7 +96,7 @@ export function LoginScreen({ onNavigate }: Props) {
           <div className="kx-field">
             <label className="kx-label" htmlFor="login-new-pin">New {PIN_LENGTH}-digit PIN</label>
             <div className="kx-control">
-              <input id="login-new-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="6 digits" style={{ letterSpacing: ".3em" }} autoFocus />
+              <input id="login-new-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} autoFocus />
               <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={showSecret ? "Hide PIN" : "Show PIN"}>
                 {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -139,7 +139,7 @@ export function LoginScreen({ onNavigate }: Props) {
             {usePassword ? (
               <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(e.target.value)} type={showSecret ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" />
             ) : (
-              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="current-password" placeholder="6 digits" style={{ letterSpacing: ".3em" }} />
+              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="current-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
             )}
             <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={showSecret ? "Hide" : "Show"}>
               {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}

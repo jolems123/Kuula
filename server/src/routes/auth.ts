@@ -72,7 +72,7 @@ function loginPin(value: unknown): string {
 const LOGIN_POLICY = { maxAttempts: 5, lockMinutes: 15 } as const;
 
 /**
- * Check a customer's PIN or backup password. A six-digit PIN is guessable, so
+ * Check a customer's PIN or backup password. A four-digit PIN is guessable, so
  * failures are counted per account and the account pauses after a few misses.
  */
 async function assertLoginSecret(user: User, supplied: string): Promise<void> {
@@ -253,7 +253,7 @@ router.post("/signup", async (req: Request, res: Response) => {
   const email = normalizedEmail(req.body.email);
   const hasPinInput = typeof req.body.pin === "string" && req.body.pin !== "";
   const hasPasswordInput = typeof req.body.password === "string" && req.body.password !== "";
-  if (!hasPinInput && !hasPasswordInput) throw new AppError("Choose a 6-digit PIN for your account", 400);
+  if (!hasPinInput && !hasPasswordInput) throw new AppError("Choose a 4-digit PIN for your account", 400);
   const newPin = hasPinInput ? loginPin(req.body.pin) : null;
   const newPassword = hasPasswordInput ? password(req.body.password) : null;
   const fullName = typeof name === "string" ? name.trim() : "";
@@ -301,7 +301,7 @@ router.post("/signup", async (req: Request, res: Response) => {
 
 router.post("/login", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
-  // `pin` carries the 6-digit PIN; older clients send the backup password in the same field.
+  // `pin` carries the 4-digit PIN; older clients send the backup password in the same field.
   const supplied = typeof req.body.pin === "string" && req.body.pin
     ? req.body.pin
     : typeof req.body.password === "string" ? req.body.password : "";

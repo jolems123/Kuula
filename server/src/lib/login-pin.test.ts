@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateNewPin } from "./otp.js";
 
-test("login PIN must be six digits and not trivially guessable", () => {
-  assert.equal(validateNewPin("482915"), "482915");
-  assert.equal(validateNewPin(" 739104 "), "739104");
-  for (const weak of ["12345", "1234567", "abcdef", "111111", "123456", "654321", "890123", ""]) {
+test("login PIN must be four digits and not trivially guessable", () => {
+  assert.equal(validateNewPin("4829"), "4829");
+  assert.equal(validateNewPin(" 7391 "), "7391");
+  for (const weak of ["123", "12345", "482915", "abcd", "1111", "1234", "4321", "8901", ""]) {
     assert.throws(() => validateNewPin(weak), RangeError, weak);
   }
 });

@@ -103,7 +103,7 @@ export function PasswordRecoveryScreen({ onBack }: Props) {
             <div className="kx-field">
               <label className="kx-label" htmlFor="recover-pin">New {PIN_LENGTH}-digit PIN</label>
               <div className="kx-control">
-                <input id="recover-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="6 digits" style={{ letterSpacing: ".3em" }} />
+                <input id="recover-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
                 <button type="button" className="kx-control__action" onClick={() => setShowPin((v) => !v)} aria-label={showPin ? "Hide PIN" : "Show PIN"}>
                   {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
