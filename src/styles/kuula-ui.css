@@ -585,3 +585,18 @@
 .kx-avatar--soft { background: var(--kx-green-50); color: var(--kx-green-800); border: 1px solid var(--kx-green-100); }
 @media (max-width: 1180px) { .kx-dash-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .kx-kpis { grid-template-columns: 1fr 1fr; gap: 10px; } .kx-kpis > :last-child { grid-column: 1 / -1; } }
+
+/*
+ * Smile ID's capture fills the window and shows a "rotate your device" overlay,
+ * with Start Capture disabled, whenever a touch-capable device is in landscape.
+ * Touchscreen laptops and desktops can never rotate, so on any landscape window
+ * tall enough not to be a sideways phone, keep the capture frame portrait.
+ */
+@media (orientation: landscape) and (min-height: 500px) {
+  #smile-identity-hosted-web-integration {
+    width: min(480px, 75vh) !important;
+    left: 50% !important;
+    transform: translateX(-50%);
+    box-shadow: 0 0 0 100vmax #F9F0E7;
+  }
+}
