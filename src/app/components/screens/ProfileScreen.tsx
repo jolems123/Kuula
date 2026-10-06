@@ -15,7 +15,6 @@ export function ProfileScreen({ onNavigate }: Props) {
   const rows = [
     { label: t("profile.fullName"), value: user?.fullName ?? "—" },
     { label: t("profile.phone"), value: user?.phone ?? "—" },
-    { label: t("profile.email"), value: user?.email || "—" },
     { label: t("profile.nationalId"), value: user?.nationalId ?? "—" },
     { label: t("profile.dateOfBirth"), value: user?.dateOfBirth ?? "—" },
     { label: t("profile.district"), value: user?.district ?? "—" },

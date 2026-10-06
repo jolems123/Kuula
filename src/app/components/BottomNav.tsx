@@ -9,7 +9,7 @@ const TABS = [
   { id: "home", icon: House, label: "Home", screen: "home" },
   { id: "credit", icon: ShieldCheck, label: "Credit Pass", screen: "credit-dashboard" },
   { id: "borrow", icon: HandCoins, label: "Borrow", screen: "quick-actions" },
-  { id: "network", icon: Store, label: "Network", screen: "wallet" },
+  { id: "network", icon: Store, label: "Network", screen: "partner-network" },
   { id: "settings", icon: LayoutGrid, label: "More", screen: "settings" },
 ] as const;
 

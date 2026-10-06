@@ -54,3 +54,19 @@ test("normalizes current and legacy document-verification callbacks", async () =
     "block",
   );
 });
+
+test("given names keep every name before the surname", async () => {
+  const { splitName } = await import("./smile-id.js");
+  assert.deepEqual(splitName("Amina Fatou Clearwater"), { first: "Amina Fatou", last: "Clearwater" });
+  assert.deepEqual(splitName("Nakato"), { first: "Nakato", last: "Nakato" });
+});
+
+test("webhooks correlate on Kuula's own reference and fall back to the bound user id", async () => {
+  const { normalizeDocumentVerificationWebhook, webhookKuulaUserId } = await import("./smile-id.js");
+  const userId = "7c528d8c-a79e-402b-a332-6c962d583c43";
+  // Smile ID may report its own generated ids under job_id/user_id.
+  const payload = { status: "clear" as const, partner_params: { kuula_reference: "docv-ours", job_id: "job_01m326p53pe1ztjdxh2d9jn9ck", user_id: userId } };
+  assert.equal(normalizeDocumentVerificationWebhook(payload).jobId, "docv-ours");
+  assert.equal(webhookKuulaUserId(payload), userId);
+  assert.equal(webhookKuulaUserId({ partner_params: { user_id: "user_01h8x9y2z3a1b5c6d7e8f9g0h1" } }), "");
+});

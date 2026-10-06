@@ -4,6 +4,7 @@ import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
 import { toUgandaPhone } from "../../lib/phone";
+import { digitsOnly, newPinProblem, PIN_LENGTH } from "../../lib/pin";
 import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (screen: string) => void; }
@@ -12,8 +13,8 @@ export const CURRENT_PUBLIC_TERMS_VERSION = "2026-08-20";
 
 /**
  * Two short steps instead of one long form. Everything the server requires
- * (name, NIN, phone, password, terms) is still collected; email is optional on
- * the server and is left for the profile screen.
+ * (name, NIN, phone, PIN, terms) is still collected. Customers sign in with
+ * their phone number and a 4-digit PIN; there is no email.
  */
 export function SignUpScreen({ onNavigate }: Props) {
   const { setPendingPhone } = useAppContext();
@@ -21,9 +22,9 @@ export function SignUpScreen({ onNavigate }: Props) {
   const [name, setName] = useState("");
   const [nin, setNin] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [accepted, setAccepted] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,7 +42,8 @@ export function SignUpScreen({ onNavigate }: Props) {
     setError("");
     const fullPhone = toUgandaPhone(phone);
     if (!/^\+2567\d{8}$/.test(fullPhone)) { setError("Enter a Uganda mobile number, for example 7XX XXX XXX."); return; }
-    if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
+    const pinProblem = newPinProblem(pin);
+    if (pinProblem) { setError(pinProblem); return; }
     if (!accepted) { setError("Accept the Terms of Service and Privacy Notice to continue."); return; }
 
     setBusy(true);
@@ -49,7 +51,7 @@ export function SignUpScreen({ onNavigate }: Props) {
       await api.signUp({
         name: name.trim(),
         phone: fullPhone,
-        password,
+        pin,
         nationalId: normalizeNin(nin),
         acceptedTerms: true,
         termsVersion: CURRENT_PUBLIC_TERMS_VERSION,
@@ -113,14 +115,14 @@ export function SignUpScreen({ onNavigate }: Props) {
             </div>
           </div>
           <div className="kx-field">
-            <label className="kx-label" htmlFor="signup-password">Password</label>
+            <label className="kx-label" htmlFor="signup-pin">Create a {PIN_LENGTH}-digit PIN</label>
             <div className="kx-control">
-              <input id="signup-password" className="kx-input" value={password} onChange={(e) => setPassword(e.target.value)} type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" />
-              <button type="button" className="kx-control__action" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"}>
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              <input id="signup-pin" className="kx-input" value={pin} onChange={(e) => setPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
+              <button type="button" className="kx-control__action" onClick={() => setShowPin((v) => !v)} aria-label={showPin ? "Hide PIN" : "Show PIN"}>
+                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <span className="kx-hint">Don't reuse your Mobile Money PIN.</span>
+            <span className="kx-hint">You'll use this PIN to log in. Don't reuse your Mobile Money PIN.</span>
           </div>
           <label className="kx-terms" style={{ marginTop: 18 }}>
             <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />

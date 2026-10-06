@@ -8,7 +8,7 @@ interface Props { onNavigate: (screen: string) => void; }
 export function PersonalInfoScreen({ onNavigate }: Props) {
   const { state, updateProfile } = useAppContext();
   const user = state.user;
-  const [form, setForm] = useState({ fullName: "", email: "", dateOfBirth: "", district: "", occupation: "", physicalAddress: "" });
+  const [form, setForm] = useState({ fullName: "", dateOfBirth: "", district: "", occupation: "", physicalAddress: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -17,7 +17,6 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
     if (!user) return;
     setForm({
       fullName: user.fullName || "",
-      email: user.email || "",
       dateOfBirth: user.dateOfBirth || "",
       district: user.district || "",
       occupation: user.occupation || "",
@@ -49,7 +48,6 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
   const inputStyle: React.CSSProperties = { width: "100%", height: 46, borderRadius: 10, border: "1.5px solid #E5E7EB", padding: "0 14px", fontSize: 13, color: "#1F2937", background: "white", outline: "none", boxSizing: "border-box" };
   const fields: Array<{ key: keyof typeof form; label: string; type: string; disabled?: boolean }> = [
     { key: "fullName", label: "Full Name", type: "text", disabled: Boolean(user?.verified) },
-    { key: "email", label: "Email Address (optional)", type: "email" },
     { key: "dateOfBirth", label: "Date of Birth", type: "date" },
     { key: "district", label: "District", type: "text" },
     { key: "occupation", label: "Occupation", type: "text" },

@@ -24,7 +24,9 @@ import {
 import {
   otpLockExpiry,
   OTP_POLICY,
+  LOGIN_PIN_PATTERN,
   validateNewPassword,
+  validateNewPin,
   verifyOtpHash,
   type OtpPurpose,
 } from "../lib/otp.js";
@@ -57,6 +59,49 @@ function password(value: unknown): string {
   } catch (error) {
     throw new AppError(error instanceof Error ? error.message : "Invalid password", 400);
   }
+}
+
+function loginPin(value: unknown): string {
+  try {
+    return validateNewPin(value);
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : "Invalid PIN", 400);
+  }
+}
+
+const LOGIN_POLICY = { maxAttempts: 5, lockMinutes: 15 } as const;
+
+/**
+ * Check a customer's PIN or backup password. A four-digit PIN is guessable, so
+ * failures are counted per account and the account pauses after a few misses.
+ */
+async function assertLoginSecret(user: User, supplied: string): Promise<void> {
+  const now = new Date();
+  if (user.loginLockedUntil && user.loginLockedUntil > now) {
+    const minutes = Math.ceil((user.loginLockedUntil.getTime() - now.getTime()) / 60_000);
+    throw new AppError(`Too many wrong attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}, or reset your PIN.`, 429);
+  }
+
+  const asPin = LOGIN_PIN_PATTERN.test(supplied) && !!user.pinHash && await bcrypt.compare(supplied, user.pinHash);
+  const asPassword = !asPin && !!user.passwordHash && await bcrypt.compare(supplied, user.passwordHash);
+  if (asPin || asPassword) {
+    if (user.loginAttempts || user.loginLockedUntil) {
+      await prisma.user.update({ where: { id: user.id }, data: { loginAttempts: 0, loginLockedUntil: null } });
+    }
+    return;
+  }
+
+  const attempts = user.loginAttempts + 1;
+  const locked = attempts >= LOGIN_POLICY.maxAttempts;
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      loginAttempts: locked ? 0 : attempts,
+      loginLockedUntil: locked ? new Date(now.getTime() + LOGIN_POLICY.lockMinutes * 60_000) : null,
+    },
+  });
+  if (locked) throw new AppError(`Too many wrong attempts. Try again in ${LOGIN_POLICY.lockMinutes} minutes, or reset your PIN.`, 429);
+  throw new AppError("Wrong phone number or PIN", 401);
 }
 
 function tokenFor(user: Pick<User, "id" | "role" | "authVersion">, sessionId: string): string {
@@ -151,6 +196,8 @@ async function buildSession(user: any) {
       fullName: user.fullName,
       phone: user.phone ?? "",
       email: user.email,
+      hasPin: !!user.pinHash,
+      hasPassword: !!user.passwordHash,
       nationalId: user.nationalId ?? "",
       dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : "",
       district: user.district ?? "",
@@ -204,7 +251,11 @@ router.post("/signup", async (req: Request, res: Response) => {
   const { name, nationalId, acceptedTerms, termsVersion } = req.body;
   const phone = normalizedPhone(req.body.phone);
   const email = normalizedEmail(req.body.email);
-  const newPassword = password(req.body.password);
+  const hasPinInput = typeof req.body.pin === "string" && req.body.pin !== "";
+  const hasPasswordInput = typeof req.body.password === "string" && req.body.password !== "";
+  if (!hasPinInput && !hasPasswordInput) throw new AppError("Choose a 4-digit PIN for your account", 400);
+  const newPin = hasPinInput ? loginPin(req.body.pin) : null;
+  const newPassword = hasPasswordInput ? password(req.body.password) : null;
   const fullName = typeof name === "string" ? name.trim() : "";
 
   if (!fullName) throw new AppError("Name is required", 400);
@@ -225,7 +276,7 @@ router.post("/signup", async (req: Request, res: Response) => {
       res.status(201).json({ ok: true, needsConfirmation: true });
       return;
     }
-    throw new AppError("Phone, email, or NIN already registered", 409);
+    throw new AppError("This phone number or NIN is already registered. Log in instead.", 409);
   }
 
   const user = await prisma.user.create({
@@ -234,7 +285,8 @@ router.post("/signup", async (req: Request, res: Response) => {
       phone,
       email,
       nationalId: normalizedNin || null,
-      passwordHash: await bcrypt.hash(newPassword, 12),
+      pinHash: newPin ? await bcrypt.hash(newPin, 12) : null,
+      passwordHash: newPassword ? await bcrypt.hash(newPassword, 12) : null,
       role: "user",
       phoneVerified: false,
       termsAcceptedAt: new Date(),
@@ -249,11 +301,14 @@ router.post("/signup", async (req: Request, res: Response) => {
 
 router.post("/login", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
-  const pin = typeof req.body.pin === "string" ? req.body.pin : "";
+  // `pin` carries the 4-digit PIN; older clients send the backup password in the same field.
+  const supplied = typeof req.body.pin === "string" && req.body.pin
+    ? req.body.pin
+    : typeof req.body.password === "string" ? req.body.password : "";
   const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user || !user.passwordHash || user.deletedAt) throw new AppError("Invalid phone number or PIN", 401);
+  if (!user || (!user.pinHash && !user.passwordHash) || user.deletedAt) throw new AppError("Wrong phone number or PIN", 401);
   if (!user.phoneVerified) throw new AppError("Verify your phone before signing in", 403);
-  if (!await bcrypt.compare(pin, user.passwordHash)) throw new AppError("Invalid phone number or PIN", 401);
+  await assertLoginSecret(user, supplied);
 
   await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.login", resourceType: "auth_session" });
   res.json(await sessionResponse(user, req));
@@ -419,16 +474,21 @@ router.post("/reset-password/confirm", async (req: Request, res: Response) => {
     : await prisma.user.findUnique({ where: { phone: normalizedPhone(identifier) } });
   if (!user || user.deletedAt || !user.phoneVerified) throw new AppError("Invalid or expired code", 401);
 
+  // Customers reset their PIN; staff (and customers who prefer it) reset a password.
+  const resetsPin = typeof req.body.newPin === "string" && req.body.newPin !== "";
+  const secret = resetsPin
+    ? { pinHash: await bcrypt.hash(loginPin(req.body.newPin), 12) }
+    : { passwordHash: await bcrypt.hash(password(req.body.newPassword), 12) };
   await assertOtp(user, "password_reset", req.body.code);
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: await bcrypt.hash(password(req.body.newPassword), 12), authVersion: { increment: 1 }, ...clearOtp },
+      data: { ...secret, loginAttempts: 0, loginLockedUntil: null, authVersion: { increment: 1 }, ...clearOtp },
     }),
     prisma.authSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } }),
   ]);
   await writeAuditEvent({ subjectUserId: user.id, action: "auth.password_reset", resourceType: "user", resourceId: user.id });
-  res.json({ ok: true, message: "Password updated. Sign in with your new password." });
+  res.json({ ok: true, message: resetsPin ? "PIN updated. Log in with your new PIN." : "Password updated. Sign in with your new password." });
 });
 
 router.post("/refresh", async (req: Request, res: Response) => {
@@ -482,7 +542,8 @@ router.patch("/me", authenticateToken, async (req: Request, res: Response) => {
     where: { id: current.id },
     data: {
       fullName,
-      email,
+      // Customers have no email; leave a stored one untouched unless it was sent.
+      ...(Object.prototype.hasOwnProperty.call(req.body ?? {}, "email") ? { email } : {}),
       dateOfBirth,
       district: text(req.body.district, current.district, 100),
       occupation: text(req.body.occupation, current.occupation, 120),
@@ -491,6 +552,37 @@ router.patch("/me", authenticateToken, async (req: Request, res: Response) => {
   });
   await writeAuditEvent({ actorId: current.id, subjectUserId: current.id, action: "profile.updated", resourceType: "user", resourceId: current.id });
   res.json({ user: (await buildSession(user)).user });
+});
+
+/**
+ * Set or change the login PIN or the backup password while signed in. The
+ * current PIN or password is required again, so a borrowed unlocked phone
+ * cannot quietly replace the owner's credentials.
+ */
+router.post("/credentials", authenticateToken, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+  if (!user || user.deletedAt) throw new AppError("User not found", 404);
+  const current = typeof req.body.current === "string" ? req.body.current : "";
+  if (!current) throw new AppError("Enter your current PIN or password", 400);
+
+  const setsPin = typeof req.body.newPin === "string" && req.body.newPin !== "";
+  const setsPassword = typeof req.body.newPassword === "string" && req.body.newPassword !== "";
+  if (!setsPin && !setsPassword) throw new AppError("Enter a new PIN or password", 400);
+  const data = {
+    ...(setsPin ? { pinHash: await bcrypt.hash(loginPin(req.body.newPin), 12) } : {}),
+    ...(setsPassword ? { passwordHash: await bcrypt.hash(password(req.body.newPassword), 12) } : {}),
+  };
+
+  await assertLoginSecret(user, current);
+  await prisma.user.update({ where: { id: user.id }, data });
+  await writeAuditEvent({
+    actorId: user.id,
+    subjectUserId: user.id,
+    action: setsPin ? "auth.pin_changed" : "auth.password_changed",
+    resourceType: "user",
+    resourceId: user.id,
+  });
+  res.json({ ok: true, hasPin: setsPin || !!user.pinHash, hasPassword: setsPassword || !!user.passwordHash });
 });
 
 router.post("/signout", authenticateToken, async (req: Request, res: Response) => {
