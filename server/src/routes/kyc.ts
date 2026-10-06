@@ -182,6 +182,7 @@ router.post("/document-verification/start", authenticateToken, async (req: Reque
       callbackUrl: minted.callbackUrl,
       partnerId: minted.partnerId,
       privacyPolicyUrl: minted.privacyPolicyUrl,
+      userDetails: minted.userDetails,
     },
   });
 });

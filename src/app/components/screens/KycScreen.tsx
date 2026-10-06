@@ -139,6 +139,9 @@ export function KycScreen({ onNavigate }: Props) {
         environment: verification.environment,
         // Only the National ID carries the NIN we match against the account.
         id_selection: { UG: ["IDENTITY_CARD"] },
+        // Kuula already holds the customer's name and phone: skip Smile ID's
+        // details form (which would also ask for an email Kuula does not use).
+        ...(verification.userDetails ? { user_details: verification.userDetails } : {}),
         partner_details: {
           partner_id: verification.partnerId,
           name: "Kuula Microfinance",

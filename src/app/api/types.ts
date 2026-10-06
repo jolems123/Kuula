@@ -53,6 +53,7 @@ export interface DocumentVerificationSession {
   callbackUrl: string;
   partnerId: string;
   privacyPolicyUrl: string;
+  userDetails?: { given_names: string; last_name: string; phone_number: string };
 }
 
 export interface LoanApplication {
