@@ -101,6 +101,8 @@ export interface MintedToken {
   callbackUrl: string;
   partnerId: string;
   privacyPolicyUrl: string;
+  /** The same details bound into the token, so the hosted flow can skip its details form. */
+  userDetails: { given_names: string; last_name: string; phone_number: string };
 }
 
 /**
@@ -167,6 +169,7 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
       callbackUrl: config.callbackUrl,
       partnerId: config.partnerId,
       privacyPolicyUrl: config.privacyPolicyUrl,
+      userDetails: { given_names: first, last_name: last, phone_number: input.phone },
     };
   } finally {
     clearTimeout(timeout);
