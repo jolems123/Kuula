@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
@@ -18,6 +18,27 @@ declare global {
 }
 
 const SMILE_SDK_URL = "https://cdn.usesmileid.com/inline/v12/js/script.min.js";
+// The page Smile ID opens for document verification. Loading it early, hidden,
+// makes the browser cache its capture app and face model (about 4 MB) while the
+// customer is still typing, so the camera opens sooner when they start.
+const SMILE_CAPTURE_PAGE = "https://cdn.usesmileid.com/inline/v12/doc-verification.html";
+const WARMUP_FRAME_ID = "kuula-smile-warmup";
+
+function startSmileWarmup(): void {
+  if (document.getElementById(WARMUP_FRAME_ID)) return;
+  const frame = document.createElement("iframe");
+  frame.id = WARMUP_FRAME_ID;
+  frame.src = SMILE_CAPTURE_PAGE;
+  frame.title = "Preparing identity verification";
+  frame.tabIndex = -1;
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;width:1px;height:1px;left:-10px;top:-10px;border:0;opacity:0;pointer-events:none";
+  document.body.appendChild(frame);
+}
+
+function stopSmileWarmup(): void {
+  document.getElementById(WARMUP_FRAME_ID)?.remove();
+}
 
 interface SmileResult {
   status?: "success" | "failure" | "cancelled";
@@ -79,6 +100,14 @@ export function KycScreen({ onNavigate }: Props) {
   const [dob, setDob] = useState(state.user?.dateOfBirth ?? "");
 
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    // Fetch Smile ID's loader and warm its capture files on arrival; failures
+    // here are harmless because the capture loads everything again on start.
+    loadSmileSdk().catch(() => {});
+    startSmileWarmup();
+    return stopSmileWarmup;
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -131,6 +160,8 @@ export function KycScreen({ onNavigate }: Props) {
         dob,
       });
       await loadSmileSdk();
+      // The real capture reuses the cached files; free the hidden copy first.
+      stopSmileWarmup();
 
       window.SmileIdentity!({
         token: verification.token,
