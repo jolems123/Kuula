@@ -10,6 +10,7 @@ import {
   verifyWebhookSignature,
   normalizeDocumentVerificationWebhook,
   webhookKuulaUserId,
+  SmileTokenError,
   type DocumentVerificationWebhook,
 } from "../lib/smile-id.js";
 import { saveKycImage } from "../lib/storage.js";
@@ -114,7 +115,13 @@ router.post("/document-verification/start", authenticateToken, async (req: Reque
   try {
     minted = await mintDocumentVerificationToken({ userId, jobId, fullName, phone: existing.phone, nationalId });
   } catch (error) {
-    throw new AppError(error instanceof Error ? error.message : "Could not start identity verification", 502);
+    // The technical reason is for us; the customer gets something they can act on.
+    console.error(JSON.stringify({
+      event: "kyc.smile_token_failed",
+      reason: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      status: error instanceof SmileTokenError ? error.status : null,
+    }));
+    throw new AppError("The identity check service is not responding right now. Please try again in a minute.", 503);
   }
 
   const submission = await prisma.$transaction(async (tx) => {

@@ -147,32 +147,52 @@ export async function mintDocumentVerificationToken(input: MintTokenInput): Prom
     },
   }));
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const response = await fetch(`${config.baseUrl}/v3/token`, {
-      method: "POST",
-      headers: {
-        "smileid-partner-id": config.partnerId,
-        "smileid-api-key": config.apiKey,
-      },
-      body: form,
-      signal: controller.signal,
-    });
-    const data = (await response.json().catch(() => ({}))) as { token?: string; message?: string };
-    if (!response.ok || !data.token) {
-      throw new Error(data.message || `Smile ID token request failed (HTTP ${response.status})`);
+  // Smile ID's token service is sometimes slow (10 s+) or drops the connection;
+  // one retry turns most of those into a working capture instead of an error.
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= TOKEN_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(`${config.baseUrl}/v3/token`, {
+        method: "POST",
+        headers: {
+          "smileid-partner-id": config.partnerId,
+          "smileid-api-key": config.apiKey,
+        },
+        body: form,
+        signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
+      });
+      const data = (await response.json().catch(() => ({}))) as { token?: string; message?: string };
+      if (!response.ok || !data.token) {
+        const error = new SmileTokenError(data.message || `Smile ID token request failed (HTTP ${response.status})`, response.status);
+        // A rejected request (bad key, invalid field) fails the same way again.
+        if (response.status < 500) throw error;
+        lastError = error;
+        continue;
+      }
+      return {
+        token: data.token,
+        environment: config.environment,
+        callbackUrl: config.callbackUrl,
+        partnerId: config.partnerId,
+        privacyPolicyUrl: config.privacyPolicyUrl,
+        userDetails: { given_names: first, last_name: last, phone_number: input.phone },
+      };
+    } catch (error) {
+      if (error instanceof SmileTokenError && error.status < 500) throw error;
+      lastError = error;
     }
-    return {
-      token: data.token,
-      environment: config.environment,
-      callbackUrl: config.callbackUrl,
-      partnerId: config.partnerId,
-      privacyPolicyUrl: config.privacyPolicyUrl,
-      userDetails: { given_names: first, last_name: last, phone_number: input.phone },
-    };
-  } finally {
-    clearTimeout(timeout);
+  }
+  throw lastError instanceof Error ? lastError : new Error("Smile ID token request failed");
+}
+
+const TOKEN_ATTEMPTS = 2;
+const TOKEN_TIMEOUT_MS = 15_000;
+
+/** A token request Smile ID answered with an error status. */
+export class SmileTokenError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "SmileTokenError";
   }
 }
 

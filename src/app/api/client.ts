@@ -38,6 +38,10 @@ export type {
   PartnerFinancingRequestInput,
 };
 
+// Starting identity verification waits on Smile ID's token service, which can
+// take over 10 seconds; the usual request limit would give up too early.
+const SMILE_START_TIMEOUT_MS = 45_000;
+
 let apiBaseUrl = env.API_BASE_URL;
 let apiTimeoutMs = env.API_TIMEOUT_MS;
 
@@ -48,9 +52,9 @@ export function configureApiClientForContractTest(baseUrl: string, timeoutMs = 5
   apiTimeoutMs = timeoutMs;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = apiTimeoutMs): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), apiTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(apiBaseUrl + path, {
       ...init,
@@ -111,7 +115,7 @@ const nodeApi = {
   partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
   partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
   submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
-  startDocumentVerification: (token: string, body: { nationalId: string; fullName: string; dob: string }) => request<{ ok: boolean; verification: DocumentVerificationSession }>("/api/kyc/document-verification/start", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
+  startDocumentVerification: (token: string, body: { nationalId: string; fullName: string; dob: string }) => request<{ ok: boolean; verification: DocumentVerificationSession }>("/api/kyc/document-verification/start", { method: "POST", headers: auth(token), body: JSON.stringify(body) }, SMILE_START_TIMEOUT_MS),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),
   getAdminKycQueue: (token: string, status = "pending") => request<{ submissions: Array<Record<string, unknown>> }>(`/api/admin/kyc/queue${query({ status })}`, { headers: auth(token) }),
   decideAdminKyc: (token: string, id: string, decision: "verified" | "rejected", reason: string) => request<{ ok: boolean; submission: Record<string, unknown> }>(`/api/admin/kyc/${id}/decision`, { method: "POST", headers: auth(token), body: JSON.stringify({ decision, reason }) }),
