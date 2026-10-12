@@ -113,7 +113,7 @@ const nodeApi = {
   partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
   partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
   submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
-  submitKycDocuments: (token: string, body: { nationalId: string; fullName: string; dob: string; frontImage: string; backImage: string; portraitImage: string }) =>
+  submitKycDocuments: (token: string, body: { nationalId: string; fullName: string; dob: string; frontImage: string; backImage: string; portraitImage: string; photoConsent: true }) =>
     request<{ ok: boolean; kyc: { submissionId: string; status: string; version: number } }>("/api/kyc/submit-documents",
       { method: "POST", headers: auth(token), body: JSON.stringify(body) }, KYC_UPLOAD_TIMEOUT_MS),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),

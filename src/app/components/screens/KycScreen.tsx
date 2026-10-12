@@ -55,6 +55,7 @@ export function KycScreen({ onNavigate }: Props) {
   const [dob, setDob] = useState(state.user?.dateOfBirth?.slice(0, 10) ?? "");
   const [step, setStep] = useState(1);
   const [pictures, setPictures] = useState<Pictures>({ front: null, back: null, portrait: null });
+  const [photoConsent, setPhotoConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
   const [status, setStatus] = useState("");
@@ -104,11 +105,12 @@ export function KycScreen({ onNavigate }: Props) {
     if (step === 3) { onNavigate("home"); return; }
     const { front, back, portrait } = pictures;
     if (!front || !back || !portrait) { setError("Capture the front and back of your National ID and a clear portrait photo."); return; }
+    if (!photoConsent) { setError("Please consent to the secure processing of these identity photographs."); return; }
     setSubmitting(true);
     try {
       const [frontImage, backImage, portraitImage] = await Promise.all([readImage(front), readImage(back), readImage(portrait)]);
       const result = await api.submitKycDocuments(token, {
-        nationalId: normalizeNin(idNumber), fullName: fullName.trim(), dob, frontImage, backImage, portraitImage,
+        nationalId: normalizeNin(idNumber), fullName: fullName.trim(), dob, frontImage, backImage, portraitImage, photoConsent: true,
       });
       setStatus(result.kyc.status);
       setPictures({ front: null, back: null, portrait: null });
@@ -154,6 +156,10 @@ export function KycScreen({ onNavigate }: Props) {
           <PhotoField kind="front" label="Front of National ID" hint="Show all four corners and readable text." file={pictures.front} onPick={selectPhoto} />
           <PhotoField kind="back" label="Back of National ID" hint="Keep the reverse side fully visible, without glare." file={pictures.back} onPick={selectPhoto} />
           <PhotoField kind="portrait" label="Your portrait photograph" hint="Look straight at the camera, without sunglasses, in good lighting." file={pictures.portrait} onPick={selectPhoto} />
+          <label className="kx-terms" style={{ display: "flex", gap: 12, padding: 8 }}>
+            <input type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} />
+            <span>I consent to Kuula collecting and securely storing my National ID photographs and portrait for manual identity review. I understand that these images are sensitive personal data.</span>
+          </label>
         </div>}
         {step === 3 && <div className="kx-alert kx-alert--success"><CheckCircle size={20} /><span>{status === "verified" ? "Verified. You can continue with Kuula." : "Under review. You can return to your dashboard and track verification status."}</span></div>}
         <div className="kx-auth-stack" style={{ marginTop: 22 }}>

@@ -78,6 +78,7 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
   const duplicate = await prisma.user.findFirst({ where: { nationalId, id: { not: userId }, deletedAt: null }, select: { id: true } });
   if (duplicate) throw new AppError("This NIN is already associated with an account", 409);
 
+  if (req.body?.photoConsent !== true) throw new AppError("Agree to identity photograph processing before submitting", 400);
   const data = {
     front: req.body?.frontImage,
     back: req.body?.backImage,
@@ -118,7 +119,7 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
       });
       await tx.kycAuditEvent.create({ data: {
         submissionId: record.id, actorId: userId, action: "documents_submitted",
-        details: { method: "manual", items: ["front", "back", "portrait"] } as Prisma.InputJsonValue,
+        details: { method: "manual", items: ["front", "back", "portrait"], photoConsent: true } as Prisma.InputJsonValue,
       } });
       await tx.user.update({ where: { id: userId }, data: {
         kycSubmittedAt: new Date(), kycProvider: "kuula-manual", kycReference: record.id,
