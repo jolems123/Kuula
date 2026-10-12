@@ -41,6 +41,15 @@ function isAmount(value: unknown, max = 1_000_000_000_000): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max;
 }
 
+function hasValidBusinessCoordinates(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const business = value as Record<string, unknown>;
+  const { latitude, longitude } = business;
+  if (latitude == null && longitude == null) return true;
+  return typeof latitude === "number" && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
+    && typeof longitude === "number" && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
+}
+
 function isDraft(value: unknown): value is LoanApplicationFormDraft {
   if (typeof value !== "object" || value === null) return false;
   const draft = value as Record<string, unknown>;
@@ -58,7 +67,7 @@ function isDraft(value: unknown): value is LoanApplicationFormDraft {
     && isAmount(draft.income)
     && isAmount(draft.expenses)
     && isAmount(draft.existingDebt)
-    && (draft.businessDetails === undefined || (typeof draft.businessDetails === "object" && draft.businessDetails !== null && !Array.isArray(draft.businessDetails)));
+    && (draft.businessDetails === undefined || hasValidBusinessCoordinates(draft.businessDetails));
 }
 
 export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFormDraft | null {

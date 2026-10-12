@@ -64,6 +64,8 @@ export interface BusinessProfile {
   tradingMonths: number;
   district: string;
   physicalAddress: string;
+  latitude?: number | null;
+  longitude?: number | null;
   goodsOrServices: string;
   customerType: string;
   staffCount: number;

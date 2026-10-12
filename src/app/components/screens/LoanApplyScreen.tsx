@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
@@ -20,7 +20,7 @@ const METHODS = [
 ];
 const EMPTY_BUSINESS: BusinessDetails = {
   businessName: "", sector: "", tradingAs: "informal", registrationNumber: "",
-  tradingMonths: 0, district: "", physicalAddress: "", goodsOrServices: "",
+  tradingMonths: 0, district: "", physicalAddress: "", latitude: null, longitude: null, goodsOrServices: "",
   customerType: "", staffCount: 0, loanUse: "", repaymentPlan: "",
 };
 function durationBand(months: number): string {
@@ -51,6 +51,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [expenses, setExpenses] = useState(savedDraft?.expenses ?? 0);
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
   const [saveError, setSaveError] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
@@ -93,6 +95,35 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   }, [canApply, maxEligibleAmount]);
 
   const quote = localQuote(amount, term);
+  const businessCoordinatesAvailable = Number.isFinite(businessDetails.latitude) && Number.isFinite(businessDetails.longitude);
+  const businessMapUrl = businessCoordinatesAvailable
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${businessDetails.longitude! - 0.003}%2C${businessDetails.latitude! - 0.003}%2C${businessDetails.longitude! + 0.003}%2C${businessDetails.latitude! + 0.003}&layer=mapnik&marker=${businessDetails.latitude}%2C${businessDetails.longitude}`
+    : "";
+
+  const captureBusinessLocation = () => {
+    setLocationError("");
+    if (!navigator.geolocation) {
+      setLocationError("Location is not supported by this browser. You can still enter the business address above.");
+      return;
+    }
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setBusinessDetails((current) => ({ ...current, latitude: coords.latitude, longitude: coords.longitude }));
+        setLocationLoading(false);
+      },
+      (geoError) => {
+        const message = geoError.code === geoError.PERMISSION_DENIED
+          ? "Location permission was denied. Allow location access in your browser settings and try again."
+          : geoError.code === geoError.POSITION_UNAVAILABLE
+            ? "Your device could not determine its location. Check that location services are enabled and try again."
+            : "Getting your location timed out. Move to an area with a clearer GPS signal and try again.";
+        setLocationError(message);
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
+    );
+  };
 
   const continueToReview = () => {
     setError("");
@@ -220,6 +251,27 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             {businessNumberField("Months this business has operated", "tradingMonths", 1)}
             {businessTextField("District", "district", "e.g. Wakiso")}
             {businessTextField("Business location / address", "physicalAddress", "Trading centre, street, shop or market")}
+            <div style={{ border: "1px solid #DCE7E1", borderRadius: 14, padding: 12, background: "#FBFDFC" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <span style={{ width: 36, height: 36, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 11, color: "#0B5E3A", background: "#EAF5EF" }}><MapPin size={19} /></span>
+                <div style={{ flex: 1 }}>
+                  <strong style={{ display: "block", fontSize: 13, color: "#183025" }}>Pin your exact business location</strong>
+                  <span style={{ display: "block", marginTop: 4, color: "#68766F", fontSize: 11, lineHeight: 1.5 }}>Use your device GPS to add a precise map pin. Your location is included with this loan application for business verification.</span>
+                </div>
+              </div>
+              <button type="button" onClick={captureBusinessLocation} disabled={locationLoading} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, minHeight: 42, marginTop: 12, padding: "0 13px", border: "1px solid #B7DEC9", borderRadius: 11, background: "white", color: "#0B5E3A", fontSize: 12, fontWeight: 700, opacity: locationLoading ? 0.65 : 1 }}>
+                <LocateFixed size={16} />{locationLoading ? "Finding your location…" : businessCoordinatesAvailable ? "Update my location" : "Use my current location"}
+              </button>
+              {locationError && <p role="alert" style={{ margin: "9px 0 0", color: "#A13A3A", fontSize: 11, lineHeight: 1.5 }}>{locationError}</p>}
+              {businessCoordinatesAvailable && <>
+                <p style={{ margin: "10px 0 8px", color: "#53635A", fontSize: 11 }}>Pinned coordinates: {businessDetails.latitude!.toFixed(6)}, {businessDetails.longitude!.toFixed(6)}</p>
+                <div style={{ width: "100%", height: 220, overflow: "hidden", border: "1px solid #DCE7E1", borderRadius: 12, background: "#EAF0EC" }}>
+                  <iframe title="Map preview of pinned business location" src={businessMapUrl} loading="lazy" referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", border: 0 }} />
+                </div>
+                <a href={`https://www.openstreetmap.org/?mlat=${businessDetails.latitude}&mlon=${businessDetails.longitude}#map=17/${businessDetails.latitude}/${businessDetails.longitude}`} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}>Open pin in map</a>
+              </>}
+              <span style={{ display: "block", marginTop: 9, color: "#89948E", fontSize: 10, lineHeight: 1.45 }}>Map preview loads from OpenStreetMap only after you share your location. You can continue using the address without a GPS pin.</span>
+            </div>
             {businessTextField("Main products or services", "goodsOrServices", "What does the business sell or provide?")}
             {businessTextField("Who are your customers?", "customerType", "e.g. walk-in shoppers, farmers, contractors")}
             {businessNumberField("Number of workers, including yourself", "staffCount", 0)}

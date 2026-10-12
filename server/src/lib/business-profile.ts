@@ -7,6 +7,8 @@ export interface BusinessProfile {
   tradingMonths: number;
   district: string;
   physicalAddress: string;
+  latitude: number | null;
+  longitude: number | null;
   goodsOrServices: string;
   customerType: string;
   staffCount: number;
@@ -33,6 +35,13 @@ function numeric(value: unknown, label: string, min: number, max: number): numbe
   }
   return value;
 }
+function coordinate(value: unknown, label: string, min: number, max: number): number | null {
+  if (value == null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+    throw new RangeError(label + " must be a valid map coordinate");
+  }
+  return value;
+}
 export function parseBusinessProfile(raw: unknown): BusinessProfile {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new RangeError("Business information is required");
   const obj = raw as Record<string, unknown>;
@@ -41,6 +50,9 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
   if (tradingAs !== "registered" && tradingAs !== "informal") throw new RangeError("Select whether the business is registered");
   const registrationNumber = optional(obj.registrationNumber, "Registration number");
   if (tradingAs === "registered" && !registrationNumber) throw new RangeError("Enter the business registration number");
+  const latitude = coordinate(obj.latitude, "Latitude", -90, 90);
+  const longitude = coordinate(obj.longitude, "Longitude", -180, 180);
+  if ((latitude === null) !== (longitude === null)) throw new RangeError("Both business location coordinates are required");
   const profile: BusinessProfile = {
     businessName,
     sector: required(obj.sector, "Business sector", 80),
@@ -49,6 +61,8 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     tradingMonths: numeric(obj.tradingMonths, "Months trading", 1, 1200),
     district: required(obj.district, "Business district", 80),
     physicalAddress: required(obj.physicalAddress, "Business location", 200),
+    latitude,
+    longitude,
     goodsOrServices: required(obj.goodsOrServices, "Products or services", 300),
     customerType: required(obj.customerType, "Main customers", 100),
     staffCount: numeric(obj.staffCount, "Number of workers", 0, 100000),

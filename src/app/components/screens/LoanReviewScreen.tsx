@@ -124,6 +124,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           <Row label="Registration status" value={draft.business.tradingAs} />
           <Row label="Registration number" value={draft.business.registrationNumber || "Not registered"} />
           <Row label="District and location" value={draft.business.district + " · " + draft.business.physicalAddress} />
+          {draft.business.latitude != null && draft.business.longitude != null && <Row label="Pinned GPS location" value={`${draft.business.latitude.toFixed(6)}, ${draft.business.longitude.toFixed(6)}`} />}
           <Row label="Months trading" value={String(draft.business.tradingMonths)} />
           <Row label="Customers" value={draft.business.customerType} />
           <Row label="Workers" value={String(draft.business.staffCount)} />

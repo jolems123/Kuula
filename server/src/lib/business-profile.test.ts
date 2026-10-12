@@ -25,3 +25,10 @@ test("rejects untrusted numeric coercions", () => {
   assert.throws(() => parseBusinessProfile({ ...good, monthlySales: "2000000" }), /monthly business sales/i);
   assert.throws(() => parseBusinessProfile({ ...good, monthlySales: Number.NaN }), /monthly business sales/i);
 });
+test("accepts valid business GPS coordinates and rejects invalid or incomplete pins", () => {
+  const p = parseBusinessProfile({ ...good, latitude: 0.3476, longitude: 32.5825 });
+  assert.equal(p.latitude, 0.3476);
+  assert.equal(p.longitude, 32.5825);
+  assert.throws(() => parseBusinessProfile({ ...good, latitude: 91, longitude: 32 }), /latitude/i);
+  assert.throws(() => parseBusinessProfile({ ...good, latitude: 0 }), /both business location coordinates/i);
+});

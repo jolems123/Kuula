@@ -45,6 +45,33 @@ describe("loan application autosave", () => {
     expect(getSavedLoanApplicationDraft("customer-2")).toBeNull();
   });
 
+  it("preserves a pinned GPS location in the saved draft", () => {
+    vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
+    const locatedDraft = {
+      ...draft,
+      businessDetails: {
+        businessName: "Kato Bakery",
+        sector: "Food and hospitality",
+        tradingAs: "informal" as const,
+        registrationNumber: "",
+        tradingMonths: 30,
+        district: "Wakiso",
+        physicalAddress: "Kitemu trading centre",
+        latitude: 0.3476,
+        longitude: 32.5825,
+        goodsOrServices: "Bakery",
+        customerType: "Walk-in customers",
+        staffCount: 2,
+        loanUse: "Buy a second oven",
+        repaymentPlan: "Bakery sales",
+      },
+    };
+
+    saveLoanApplicationDraft("customer-1", locatedDraft);
+
+    expect(getSavedLoanApplicationDraft("customer-1")?.businessDetails).toEqual(locatedDraft.businessDetails);
+  });
+
   it("clears the saved draft after submission", () => {
     vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
     saveLoanApplicationDraft("customer-1", draft);
