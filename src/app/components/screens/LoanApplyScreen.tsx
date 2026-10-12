@@ -7,6 +7,7 @@ import { getLoanCalculatorSelection, setLoanCalculatorSelection, setLoanDraft } 
 import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurpose, parseBusinessLoanPurpose, type BusinessLoanPurposeOption } from "../../lib/business-loan-purpose";
 import { getSavedLoanApplicationDraft, saveLoanApplicationDraft } from "../../lib/loan-application-autosave";
 import { getLoanTermOptions } from "../../lib/loan-terms";
+import type { BusinessDetails, BusinessProfile } from "../../api/types";
 
 interface Props { onNavigate: (screen: string) => void; }
 function formatUGX(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG"); }
@@ -17,9 +18,13 @@ const METHODS = [
   { id: "MTN MoMo", label: "MTN MoMo", icon: "📱" },
   { id: "Airtel Money", label: "Airtel Money", icon: "📱" },
 ];
-const EMPLOYMENT = ["Employed", "Self-employed", "Business owner", "Other"];
-const WORK_DURATION = ["Less than 6 months", "6–12 months", "1–2 years", "2+ years"];
-const INCOME_SOURCES = ["Business sales", "Service income", "Salary", "Commission", "Other"];
+const EMPTY_BUSINESS: BusinessDetails = {
+  businessName: "", sector: "", tradingAs: "informal", registrationNumber: "",
+  tradingMonths: 0, district: "", physicalAddress: "", goodsOrServices: "",
+  customerType: "", staffCount: 0, loanUse: "", repaymentPlan: "",
+};
+const SECTORS = ["Retail / shop", "Wholesale / trading", "Agriculture", "Food and hospitality",
+  "Transport and logistics", "Manufacturing", "Beauty and personal care", "Professional services", "Other"];
 
 export function LoanApplyScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
@@ -35,12 +40,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [purpose, setPurpose] = useState<BusinessLoanPurposeOption>(savedDraft?.purpose ?? calculatorPurpose?.option ?? "Working capital");
   const [otherPurpose, setOtherPurpose] = useState(savedDraft?.otherPurpose ?? calculatorPurpose?.otherDetails ?? "");
   const [method, setMethod] = useState(savedDraft?.method ?? "MTN MoMo");
-  const [employmentStatus, setEmploymentStatus] = useState(savedDraft?.employmentStatus ?? "");
-  const [occupationOrBusiness, setOccupationOrBusiness] = useState(savedDraft?.occupationOrBusiness ?? "");
-  const [employerOrBusinessName, setEmployerOrBusinessName] = useState(savedDraft?.employerOrBusinessName ?? "");
-  const [workDuration, setWorkDuration] = useState(savedDraft?.workDuration ?? "");
-  const [incomeSource, setIncomeSource] = useState(savedDraft?.incomeSource ?? "");
-  const [repaymentSource, setRepaymentSource] = useState(savedDraft?.repaymentSource ?? "");
+  const [businessDetails, setBusinessDetails] = useState<BusinessDetails>({ ...EMPTY_BUSINESS, ...savedDraft?.businessDetails });
   const [income, setIncome] = useState(savedDraft?.income ?? 0);
   const [expenses, setExpenses] = useState(savedDraft?.expenses ?? 0);
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
@@ -58,12 +58,13 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         purpose,
         otherPurpose,
         method,
-        employmentStatus,
-        occupationOrBusiness,
-        employerOrBusinessName,
-        workDuration,
-        incomeSource,
-        repaymentSource,
+        employmentStatus: "Business owner",
+        occupationOrBusiness: businessDetails.goodsOrServices,
+        employerOrBusinessName: businessDetails.businessName,
+        workDuration: businessDetails.tradingMonths >= 24 ? "2+ years" : businessDetails.tradingMonths >= 12 ? "1–2 years" : "6–12 months",
+        incomeSource: "Business sales",
+        repaymentSource: businessDetails.repaymentPlan,
+        businessDetails,
         income,
         expenses,
         existingDebt,
@@ -73,7 +74,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       console.error("Could not save the loan application draft.", saveFailure);
       setSaveError("Kuula could not save this draft in your browser. Keep this page open so you do not lose your changes.");
     }
-  }, [state.user, amount, term, purpose, otherPurpose, method, employmentStatus, occupationOrBusiness, employerOrBusinessName, workDuration, incomeSource, repaymentSource, income, expenses, existingDebt]);
+  }, [state.user, amount, term, purpose, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
 
   const availableCredit = Math.max(0, state.loan?.availableCredit ?? 0);
   const maxEligibleAmount = Math.min(PRODUCT_MAX_AMOUNT, availableCredit);
@@ -92,27 +93,37 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     if (!canApply) { setError("No Growth Line is currently available. Complete the required Credit Pass steps and try again when Kuula shows available credit."); return; }
     if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within your current Growth Line."); return; }
     if (purpose === "Other" && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
-    if (!employmentStatus) { setError("Select your employment or livelihood status."); return; }
-    if (!occupationOrBusiness.trim()) { setError("Enter your occupation or business activity."); return; }
-    if (!workDuration) { setError("Select how long you have been in your current work or business."); return; }
-    if (!incomeSource) { setError("Select your primary income source."); return; }
-    if (!repaymentSource.trim()) { setError("Enter the primary source you expect to use for repayment."); return; }
+    for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
+      if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
+    }
+    if (businessDetails.tradingAs === "registered" && !businessDetails.registrationNumber.trim()) {
+      setError("Registered businesses must provide their business registration number."); return;
+    }
+    if (!Number.isSafeInteger(businessDetails.tradingMonths) || businessDetails.tradingMonths < 1) { setError("Enter the number of months this business has traded."); return; }
+    if (!Number.isSafeInteger(businessDetails.staffCount) || businessDetails.staffCount < 0) { setError("Enter a valid number of workers."); return; }
     if (!Number.isFinite(income) || income <= 0) { setError("Enter your average monthly income."); return; }
     if (!Number.isFinite(expenses) || expenses < 0) { setError("Monthly expenses cannot be negative."); return; }
     if (!Number.isFinite(existingDebt) || existingDebt < 0) { setError("Existing monthly debt payments cannot be negative."); return; }
     if (expenses + existingDebt >= income) { setError("Your expenses and existing debt leave no disposable monthly income for new credit."); return; }
 
+    const business: BusinessProfile = {
+      ...businessDetails,
+      monthlySales: Math.round(income),
+      monthlyBusinessExpenses: Math.round(expenses),
+      monthlyExistingDebt: Math.round(existingDebt),
+    };
     setLoanDraft({
+      business,
       amount,
       termDays: term,
       purpose: formatBusinessLoanPurpose(purpose, otherPurpose),
       channel: method,
-      employmentStatus,
-      occupationOrBusiness: occupationOrBusiness.trim(),
-      employerOrBusinessName: employerOrBusinessName.trim(),
-      workDuration,
-      incomeSource,
-      repaymentSource: repaymentSource.trim(),
+      employmentStatus: "Business owner",
+      occupationOrBusiness: business.goodsOrServices,
+      employerOrBusinessName: business.businessName,
+      workDuration: business.tradingMonths >= 24 ? "2+ years" : business.tradingMonths >= 12 ? "1–2 years" : "6–12 months",
+      incomeSource: "Business sales",
+      repaymentSource: business.repaymentPlan,
       declaredMonthlyIncome: Math.round(income),
       declaredMonthlyExpenses: Math.round(expenses),
       existingDebtPayment: Math.round(existingDebt),
@@ -120,6 +131,22 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     onNavigate("loan-review");
   };
 
+  const businessTextField = (label: string, key: keyof BusinessDetails, placeholder: string) => (
+    <label style={{ display: "block" }}>
+      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label}</span>
+      <input value={String(businessDetails[key])} maxLength={key === "goodsOrServices" || key === "loanUse" || key === "repaymentPlan" ? 300 : 120} placeholder={placeholder}
+        onChange={(e) => setBusinessDetails((v) => ({ ...v, [key]: e.target.value }))}
+        className="kx-input" style={{ width: "100%" }} />
+    </label>
+  );
+  const businessNumberField = (label: string, key: "tradingMonths" | "staffCount", min: number) => (
+    <label style={{ display: "block" }}>
+      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label}</span>
+      <input type="number" min={min} step={1} value={businessDetails[key]}
+        onChange={(e) => setBusinessDetails((v) => ({ ...v, [key]: Number(e.target.value) }))}
+        className="kx-input" style={{ width: "100%" }} />
+    </label>
+  );
   const moneyInput = (label: string, value: number, setter: (value: number) => void, hint: string) => (
     <label style={{ display: "block" }}>
       <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label}</span>
@@ -180,25 +207,43 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           </label>}
         </div>
 
-        <div className="p-4 rounded-2xl" style={{ background: "white" }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: "#13251C", margin: "0 0 4px" }}>Employment & livelihood</p>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>Tell us how you currently earn income. These details support underwriting and may be verified during credit review.</p>
+        <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label="Business profile">
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 5px" }}>Tell us about your business</h2>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>We lend only for businesses. A Kuula officer will verify these declarations before approval. Both formally registered and informal businesses can be assessed.</p>
           <div style={{ display: "grid", gap: 14 }}>
-            {selectField("Employment / livelihood status", employmentStatus, setEmploymentStatus, EMPLOYMENT)}
-            {textField("Occupation / business activity", occupationOrBusiness, setOccupationOrBusiness, "e.g. grocery shop, salon, catering")}
-            {textField("Employer / business name", employerOrBusinessName, setEmployerOrBusinessName, "e.g. ABC Traders")}
-            {selectField("Time in current work / business", workDuration, setWorkDuration, WORK_DURATION)}
-            {selectField("Primary income source", incomeSource, setIncomeSource, INCOME_SOURCES)}
-            {textField("Primary repayment source", repaymentSource, setRepaymentSource, "e.g. shop sales, service income")}
+            {businessTextField("Business or trading name", "businessName", "e.g. Amina's Grocery")}
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Business sector</span>
+              <select value={businessDetails.sector} onChange={(e) => setBusinessDetails((v) => ({ ...v, sector: e.target.value }))} className="kx-input" style={{ width: "100%" }}>
+                <option value="">Select your sector</option>
+                {SECTORS.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Registration status</span>
+              <select value={businessDetails.tradingAs} onChange={(e) => setBusinessDetails((v) => ({ ...v, tradingAs: e.target.value as BusinessDetails["tradingAs"] }))} className="kx-input" style={{ width: "100%" }}>
+                <option value="informal">Informal / not formally registered</option>
+                <option value="registered">Registered business</option>
+              </select>
+            </label>
+            {businessDetails.tradingAs === "registered" && businessTextField("Business registration number", "registrationNumber", "Registration / URSB number")}
+            {businessNumberField("Months this business has operated", "tradingMonths", 1)}
+            {businessTextField("District", "district", "e.g. Wakiso")}
+            {businessTextField("Business location / address", "physicalAddress", "Trading centre, street, shop or market")}
+            {businessTextField("Main products or services", "goodsOrServices", "What does the business sell or provide?")}
+            {businessTextField("Who are your customers?", "customerType", "e.g. walk-in shoppers, farmers, contractors")}
+            {businessNumberField("Number of workers, including yourself", "staffCount", 0)}
+            {businessTextField("How exactly will you use this loan?", "loanUse", "e.g. purchase 15 cartons of inventory")}
+            {businessTextField("How will your business repay the loan?", "repaymentPlan", "e.g. daily sales revenue")}
           </div>
-        </div>
+        </section>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <p style={{ fontSize: 13, fontWeight: 800, color: "#13251C", margin: "0 0 4px" }}>Affordability information</p>
           <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>Enter your actual current figures. Kuula uses them together with verified credit evidence, and the server recalculates eligibility before approval and again before disbursement.</p>
           <div style={{ display: "grid", gap: 14 }}>
-            {moneyInput("Average monthly income", income, setIncome, "Enter your typical monthly income before this new credit.")}
-            {moneyInput("Monthly living & business expenses", expenses, setExpenses, "Enter your regular monthly expenses excluding loan repayments.")}
+            {moneyInput("Average monthly business sales", income, setIncome, "Total monthly sales / business revenue, not your salary.")}
+            {moneyInput("Monthly business expenses", expenses, setExpenses, "Operating costs, stock purchases and business expenses; exclude existing loan instalments.")}
             {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Use zero only if you have no existing monthly debt repayments.")}
           </div>
         </div>

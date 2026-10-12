@@ -1,3 +1,5 @@
+import type { BusinessProfile } from "../api/types";
+
 /**
  * Lightweight cross-screen selection store. Sensitive workflow state is kept in
  * memory only and is cleared on logout; it is never persisted to browser storage.
@@ -41,6 +43,7 @@ export interface LoanDraft {
   declaredMonthlyIncome: number;
   declaredMonthlyExpenses: number;
   existingDebtPayment: number;
+  business: BusinessProfile;
 }
 export interface LoanCalculatorSelection {
   amount: number;
