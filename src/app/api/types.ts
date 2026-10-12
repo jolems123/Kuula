@@ -56,6 +56,26 @@ export interface DocumentVerificationSession {
   userDetails?: { given_names: string; last_name: string; phone_number: string };
 }
 
+export interface BusinessProfile {
+  businessName: string;
+  sector: string;
+  tradingAs: "registered" | "informal";
+  registrationNumber: string;
+  tradingMonths: number;
+  district: string;
+  physicalAddress: string;
+  goodsOrServices: string;
+  customerType: string;
+  staffCount: number;
+  monthlySales: number;
+  monthlyBusinessExpenses: number;
+  monthlyExistingDebt: number;
+  loanUse: string;
+  repaymentPlan: string;
+}
+
+export interface BusinessDetails extends Omit<BusinessProfile, "monthlySales" | "monthlyBusinessExpenses" | "monthlyExistingDebt"> {}
+
 export interface LoanApplication {
   id: string;
   applicantId: string;
@@ -81,6 +101,10 @@ export interface LoanApplication {
     offerExpiresAt?: string | null;
     dueDate?: string | null;
   underwritingStatus?: string | null;
+  businessProfile?: BusinessProfile | null;
+  businessReviewStatus?: "not_required" | "pending" | "verified" | "rejected";
+  businessReviewNotes?: string | null;
+  businessReviewedAt?: string | null;
   partnerFinancingRequestId?: string | null;
   partnerName?: string | null;
   partnerLocationName?: string | null;

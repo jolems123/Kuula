@@ -12,7 +12,7 @@ import { api } from "../../api/client";
 import type { StaffMember } from "../../api/types";
 import type { InvestorReport } from "../../api/types-compat";
 import { formatUGX } from "../../lib/export";
-import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportWord } from "../../lib/investorReport";
+import { exportInvestorReportPdf, exportInvestorReportExcel, exportInvestorReportWord, exportInvestorFundingOverviewPdf } from "../../lib/investorReport";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -70,7 +70,11 @@ export function AdminReportsDashboardScreen({ onNavigate }: Props) {
           <label style={{ fontSize:12,fontWeight:600 }}>Period<select value={period} onChange={event=>setPeriod(event.target.value as ReportPeriod)} style={{ display:"block",marginTop:5,height:38,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 10px" }}>{[["today","Today"],["week","This week"],["month","This month"],["quarter","This quarter"],["year","This year"],["all","All time"],["custom","Custom range"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           {period === "custom" && <><label style={{ fontSize:12,fontWeight:600 }}>Start<input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{ display:"block",marginTop:5,height:36,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 8px" }}/></label><label style={{ fontSize:12,fontWeight:600 }}>End<input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{ display:"block",marginTop:5,height:36,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 8px" }}/></label></>}
           <label style={{ fontSize:12,fontWeight:600 }}>Format<select value={format} onChange={event=>setFormat(event.target.value as typeof format)} style={{ display:"block",marginTop:5,height:38,border:"1px solid #CBD5E1",borderRadius:8,padding:"0 10px" }}><option value="pdf">PDF</option><option value="xlsx">Excel (.xlsx)</option><option value="docx">Word (.docx)</option></select></label>
-          <button onClick={()=>void generate()} disabled={loading || !report || invalidRange} style={{ height:38,padding:"0 16px",border:0,borderRadius:8,background:"#0B5E3A",color:"white",fontWeight:700,cursor:"pointer" }}><Download size={14} style={{ verticalAlign:"middle",marginRight:6 }}/>Generate Report</button>
+          <button onClick={()=>void generate()} disabled={loading || !report || invalidRange} style={{ height:38,padding:"0 16px",border:0,borderRadius:8,background:"#0B5E3A",color:"white",fontWeight:700,cursor:"pointer" }}><Download size={14} style={{ verticalAlign:"middle",marginRight:6 }}/>Generate Internal Report</button>
+          <button onClick={() => report && void exportInvestorFundingOverviewPdf(report)} disabled={loading || !report || invalidRange}
+            style={{ height:38,padding:"0 16px",border:"1px solid #0B5E3A",borderRadius:8,background:"white",color:"#0B5E3A",fontWeight:700,cursor:"pointer" }}>
+            <Download size={14} style={{ verticalAlign:"middle", marginRight:6 }}/>Funding Overview (No Customer Data)
+          </button>
         </div>
         {invalidRange && <p role="alert" style={{ color:"#B91C1C",fontSize:12 }}>Start date must be on or before end date.</p>}
       </AdminCard>

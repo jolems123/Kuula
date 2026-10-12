@@ -300,6 +300,8 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (!["return", "reject", "approve"].includes(action)) throw new AppError("Action must be return, reject, or approve", 400);
   if (narrative.length < 40) throw new AppError("A substantive decision narrative of at least 40 characters is required", 400);
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
+  if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
+    throw new AppError("A documented, verified business assessment is required before final approval", 422);
 
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)

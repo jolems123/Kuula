@@ -110,5 +110,7 @@ jobs:
         shell: bash
         run: |
           test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM markets WHERE code = '\''UG'\'' AND status = '\''active'\'';')" = "1"
-          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM credit_products WHERE market_code = '\''UG'\'' AND status = '\''active'\'';')" -ge "5"
-          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM partners WHERE market_code = '\''UG'\'' AND status = '\''active'\'';')" -ge "2"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM credit_products WHERE market_code = '\''UG'\'' AND status = '\''active'\'' AND category = '\''business'\'';')" = "1"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM credit_products WHERE market_code = '\''UG'\'' AND status = '\''active'\'' AND category <> '\''business'\'';')" = "0"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT min_term_days FROM credit_products WHERE code = '\''UG_BUSINESS_GROWTH'\'';')" = "30"
+          test "$(PGPASSWORD=kuula psql -h localhost -U kuula -d kuula_network_test -Atc 'SELECT count(*) FROM partners WHERE market_code = '\''UG'\'' AND status = '\''active'\'';')" = "0"

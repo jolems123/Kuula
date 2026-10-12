@@ -1,4 +1,5 @@
 import { BUSINESS_LOAN_PURPOSES, type BusinessLoanPurposeOption } from "./business-loan-purpose";
+import type { BusinessDetails } from "../api/types";
 
 const STORAGE_PREFIX = "kuula:loan-application-draft:v1:";
 const METHODS = ["MTN MoMo", "Airtel Money"];
@@ -21,6 +22,7 @@ export interface LoanApplicationFormDraft {
   income: number;
   expenses: number;
   existingDebt: number;
+  businessDetails?: BusinessDetails;
 }
 
 function storageKey(userId: string): string {
@@ -55,7 +57,8 @@ function isDraft(value: unknown): value is LoanApplicationFormDraft {
     && isString(draft.repaymentSource)
     && isAmount(draft.income)
     && isAmount(draft.expenses)
-    && isAmount(draft.existingDebt);
+    && isAmount(draft.existingDebt)
+    && (draft.businessDetails === undefined || (typeof draft.businessDetails === "object" && draft.businessDetails !== null && !Array.isArray(draft.businessDetails)));
 }
 
 export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFormDraft | null {

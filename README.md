@@ -2,7 +2,7 @@
 
 # Kuula
 
-**The lending app for Ugandans the banks ignore.**
+**Business loans for entrepreneurs, traders and growing SMEs.**
 
 A mobile-first credit platform being developed by Kuula
 Microfinance Limited for Uganda and its partner applications.
@@ -21,19 +21,35 @@ The repository is still under production hardening. **Do not use the current
 build for live disbursement or repayment collection until the
 real-money integrations and accounting controls are completed and tested.**
 
-## Product direction
+## Product direction — business lending only
 
-Kuula is intended to support:
+Kuula serves borrowers operating an existing business (registered or informal)
+and seeking financing strictly for productive business purposes:
+working capital, stock, equipment and business expansion.
 
-- direct consumer and microenterprise loans;
-- restricted-purpose financing for partner applications;
-- healthcare financing initiated through TibaPay;
-- agricultural input financing initiated through SiliFi;
-- future property, logistics, and merchant-finance products;
-- customer credit history and portfolio-management tools.
+- Repayment terms: **30–365 days** as chosen by the borrower, subject to actual
+  affordability and product eligibility. Pricing and quotes are calculated on
+  both client and server.
+- The application captures a structured business snapshot: business identity,
+  registration status, trading history, trading location, sector, products,
+  customers, staff, declared monthly turnover, costs, existing debt, loan use
+  and repayment plan.
+- Trained credit staff review independent evidence before marking a business
+  verified; the existing KYC, underwriting and final credit approval controls
+  remain in force.
+- Customers no longer see savings, health/education/personal-purpose loans,
+  TibaPay or SiliFi credit options. Existing historical loan obligations and
+  partner settlements are preserved for reconciliation.
+- Admin reporting includes an aggregate-only funding overview without borrower
+  identifiers; full internal reporting remains restricted to authorized staff.
 
-Partner financing requires additional API, payee, invoice, settlement, and
-reconciliation work. Those workflows are not yet production-complete.
+**Release warning:** Do not assume a 30-day business loan is exempt from mobile
+app store short-term lending restrictions. Obtain legal/regulatory and Google
+Play/App Store classification clearance before offering 30–60 day terms to the
+public. Kuula's licensing, pricing, collections, privacy and consumer-credit
+duties must also be reviewed before production disbursement.
+
+See [Business Lending & Investor Readiness](docs/BUSINESS_LENDING_AND_FUNDING.md).
 
 ## Production architecture
 

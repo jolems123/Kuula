@@ -19,7 +19,8 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     if (existingDraft) return existingDraft;
     const saved = state.user ? getSavedLoanApplicationDraft(state.user.id) : null;
     if (
-      !saved?.employmentStatus
+      !saved?.businessDetails
+      || !saved?.employmentStatus
       || !saved.occupationOrBusiness.trim()
       || !saved.workDuration
       || !saved.incomeSource
@@ -29,6 +30,12 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       || (saved.purpose === "Other" && !saved.otherPurpose.trim())
     ) return null;
     const restoredDraft: LoanDraft = {
+      business: {
+        ...saved.businessDetails,
+        monthlySales: Math.round(saved.income),
+        monthlyBusinessExpenses: Math.round(saved.expenses),
+        monthlyExistingDebt: Math.round(saved.existingDebt),
+      },
       amount: saved.amount,
       termDays: saved.termDays,
       purpose: formatBusinessLoanPurpose(saved.purpose, saved.otherPurpose),
@@ -106,13 +113,22 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         <div style={{ background: "#EDF8F2", borderRadius: 16, padding: 16, border: "1px solid #B7DEC9" }}><p style={{ fontSize: 12, color: "#425149", fontWeight: 600, margin: "0 0 4px" }}>REQUESTED AMOUNT</p><p style={{ fontSize: 34, fontWeight: 900, color: "#0B5E3A", margin: 0 }}>{ugx(draft.amount)}</p><p style={{ fontSize: 12, color: "#68766F", margin: "4px 0 0" }}>{draft.termDays}-day term · {draft.purpose} · {draft.channel}</p></div>
 
         <div style={{ background: "white", borderRadius: 16, padding: 16 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "0 0 4px" }}>Employment & livelihood</p>
+          <p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "0 0 4px" }}>Business information</p>
           <Row label="Status" value={draft.employmentStatus} />
           <Row label="Occupation / business" value={draft.occupationOrBusiness} />
           <Row label="Employer / business name" value={draft.employerOrBusinessName || "Not provided"} />
           <Row label="Time in current work" value={draft.workDuration} />
           <Row label="Primary income source" value={draft.incomeSource} />
           <Row label="Primary repayment source" value={draft.repaymentSource} />
+          <Row label="Sector" value={draft.business.sector} />
+          <Row label="Registration status" value={draft.business.tradingAs} />
+          <Row label="Registration number" value={draft.business.registrationNumber || "Not registered"} />
+          <Row label="District and location" value={draft.business.district + " · " + draft.business.physicalAddress} />
+          <Row label="Months trading" value={String(draft.business.tradingMonths)} />
+          <Row label="Customers" value={draft.business.customerType} />
+          <Row label="Workers" value={String(draft.business.staffCount)} />
+          <Row label="Loan use" value={draft.business.loanUse} />
+          <Row label="Business repayment plan" value={draft.business.repaymentPlan} />
         </div>
 
         <div style={{ background: "white", borderRadius: 16, padding: 16 }}>
@@ -122,7 +138,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           {quote && <><Row label="Principal" value={ugx(quote.principal)} /><Row label={`Interest (${quote.aprPercent}% APR, simple)`} value={ugx(quote.interest)} /><Row label="Service fee" value={ugx(quote.fee)} /><Row label="Total cost of credit" value={ugx(quote.interest + quote.fee)} /><Row label="Total repayment" value={ugx(quote.total)} bold /></>}
         </div>
 
-        <div style={{ background: "white", borderRadius: 16, padding: 16 }}><p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "0 0 4px" }}>Affordability Declaration</p><Row label="Monthly income" value={ugx(draft.declaredMonthlyIncome)} /><Row label="Monthly expenses" value={ugx(draft.declaredMonthlyExpenses)} /><Row label="Existing monthly debt" value={ugx(draft.existingDebtPayment)} /><p style={{ fontSize: 11, color: "#68766F", lineHeight: 1.55, margin: "12px 0 0" }}>These are declarations, not automatic approval. Kuula’s server also requires current KYC, credit evidence and affordability checks, and rechecks eligibility before approval and disbursement.</p></div>
+        <div style={{ background: "white", borderRadius: 16, padding: 16 }}><p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "0 0 4px" }}>Affordability Declaration</p><Row label="Monthly business sales" value={ugx(draft.declaredMonthlyIncome)} /><Row label="Monthly business expenses" value={ugx(draft.declaredMonthlyExpenses)} /><Row label="Existing monthly debt" value={ugx(draft.existingDebtPayment)} /><p style={{ fontSize: 11, color: "#68766F", lineHeight: 1.55, margin: "12px 0 0" }}>These are declarations, not automatic approval. Kuula’s server also requires current KYC, credit evidence and affordability checks, and rechecks eligibility before approval and disbursement.</p></div>
 
         <button disabled={!quote || quoteLoading || Boolean(quoteError)} onClick={() => setAgreed(!agreed)} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: agreed ? "#F0FDF4" : "#FFF", border: `1.5px solid ${agreed ? "#0B5E3A" : "#DDE5E0"}`, borderRadius: 12, padding: "12px 14px", textAlign: "left", opacity: !quote || quoteLoading || quoteError ? .55 : 1 }}><div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${agreed ? "#0B5E3A" : "#D1D5DB"}`, background: agreed ? "#0B5E3A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{agreed && <CheckCircle size={14} color="white" />}</div><p style={{ fontSize: 12, color: "#374151", margin: 0, lineHeight: 1.6 }}>I confirm the application, livelihood and affordability information above is accurate to the best of my knowledge. I understand this is a credit application, not a loan agreement or guarantee of approval.</p></button>
       </div>

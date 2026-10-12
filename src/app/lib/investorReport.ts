@@ -100,3 +100,25 @@ export async function exportInvestorReportWord(r: InvestorReport): Promise<void>
   }] });
   saveBlob(await Packer.toBlob(doc), `kuula-loan-report-${reportStamp(r)}.docx`);
 }
+
+/**
+ * Shareable aggregate-only funding overview.
+ * No customer names, contacts, IDs, raw records, or case notes.
+ * Management must validate and approve figures before external distribution.
+ */
+export async function exportInvestorFundingOverviewPdf(r: InvestorReport): Promise<void> {
+  await downloadPdf({
+    title: "Kuula Business Lending — Funding Overview",
+    subtitle: r.period.label + " · aggregate management figures · generated " + new Date(r.generatedAt).toLocaleString("en-GB"),
+    tables: [
+      { title: "Loan portfolio indicators", head: ["Metric", "Value"], rows: kpiRows(r) },
+      { title: "Monthly performance (UGX)", head: ["Month", "Disbursed", "Collected", "New customers"],
+        rows: monthlyRows(r).map(row => row.map(String)) },
+    ],
+    meta: [
+      { label: "Scope", value: "Aggregated lending metrics only; not an audited financial statement" },
+      { label: "Review", value: "Verify ledger reconciliation, licensing and investor disclosures before sharing" },
+    ],
+    filename: `kuula-funding-overview-${reportStamp(r)}.pdf`,
+  });
+}
