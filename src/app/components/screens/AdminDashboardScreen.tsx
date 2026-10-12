@@ -66,7 +66,7 @@ export function AdminDashboardScreen({ onNavigate }: Props) {
         subtitle={today}
         action={
           <>
-            <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("admin-partner-financing")}><Building2 size={16} strokeWidth={1.75} /> Partner verification</button>
+            <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("admin-loan-apps")}><Building2 size={16} strokeWidth={1.75} /> Business reviews</button>
             <button type="button" className="kx-btn kx-btn--primary" onClick={() => onNavigate("admin-reports")}><FileBarChart size={16} strokeWidth={1.75} /> Reports</button>
           </>
         }

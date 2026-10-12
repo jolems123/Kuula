@@ -29,6 +29,10 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -49,12 +53,34 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
     if (!token) return;
     setBusyId(id);
     try {
-      await api.decideApplication(token, id, decision);
+      await api.decideApplication(token, id, decision, decision === "approved"
+        ? "Business assessment has been verified and reviewed for credit decision"
+        : "Loan request rejected following credit assessment");
       await refresh();
+      setReviewError("");
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : "Could not record the credit decision.");
     } finally {
       setBusyId(null);
     }
   };
+
+  const verify = async (id: string, status: "verified" | "rejected") => {
+    if (!token || reviewBusy) return;
+    setReviewError("");
+    setReviewBusy(true);
+    try {
+      await api.reviewBusiness(token, id, status, reviewNotes);
+      await refresh();
+      setReviewNotes("");
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : "Could not record the business review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const selected = apps.find((a) => a.id === selectedId);
 
   const filtered = filter === "All"
     ? apps
@@ -89,17 +115,20 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>No {filter === "All" ? "" : filter.toLowerCase() + " "}applications yet</div>
       ) : (
         <AdminTable
-          columns={["Applicant", "Amount", "Purpose", "Applied", "Status", "Action"]}
+          columns={["Applicant / business", "Amount", "Loan purpose", "Applied", "Status", "Action"]}
           rows={filtered.map((a) => [
-            a.applicantName || "—",
+            <div key={a.id + "-name"}><strong>{a.applicantName || "—"}</strong>{a.businessProfile && <div style={{ fontSize: 11, color: "#64748B" }}>{a.businessProfile.businessName} · {a.businessProfile.sector}</div>}</div>
             ugx(a.amount),
             a.purpose,
             fmtDate(a.createdAt),
             <StatusBadge key={a.id + "-s"} status={a.status} />,
             a.status === "pending" ? (
-              <div key={a.id + "-act"} style={{ display: "flex", gap: 6 }}>
-                <button disabled={busyId === a.id} onClick={(e) => { e.stopPropagation(); decide(a.id, "approved"); }}
-                  style={{ padding: "4px 10px", borderRadius: 6, background: "#178654", color: "white", border: "none", fontSize: 11, fontWeight: 600, cursor: busyId === a.id ? "not-allowed" : "pointer" }}>
+              <div key={a.id + "-act"} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedId(a.id); setReviewNotes(a.businessReviewNotes ?? ""); setReviewError(""); }}
+                  style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Review business</button>
+                {a.businessProfile && <span style={{ fontSize: 10, color: "#556B5D" }}>{a.businessReviewStatus === "verified" ? "Verified" : "Needs verification"}</span>}
+                <button disabled={busyId === a.id || (Boolean(a.businessProfile) && a.businessReviewStatus !== "verified")} title={a.businessProfile && a.businessReviewStatus !== "verified" ? "Complete the documented business verification before approval" : "Approve loan"} onClick={(e) => { e.stopPropagation(); void decide(a.id, "approved"); }}
+                  style={{ padding: "4px 10px", borderRadius: 6, background: "#178654", color: "white", border: "none", fontSize: 11, fontWeight: 600, opacity: a.businessProfile && a.businessReviewStatus !== "verified" ? 0.4 : 1, cursor: busyId === a.id ? "not-allowed" : "pointer" }}>
                   {busyId === a.id ? "…" : "Approve"}
                 </button>
                 <button disabled={busyId === a.id} onClick={(e) => { e.stopPropagation(); decide(a.id, "rejected"); }}
@@ -112,6 +141,53 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
             ),
           ])}
         />
+      )}
+      {reviewError && <div role="alert" style={{ padding: 12, marginTop: 10, borderRadius: 10, background: "#FEF2F2", color: "#991B1B" }}>{reviewError}</div>}
+      {selected && (
+        <section aria-label="Business credit review" style={{ marginTop: 18, background: "white", padding: 20, borderRadius: 16, border: "1px solid #DAE8DF" }}>
+          <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>Business review — {selected.applicantName}</h2>
+              <p style={{ color: "#66756D", fontSize: 12 }}>Application {selected.id} · {selected.termDays} days · {ugx(selected.amount)}</p>
+            </div>
+            <button type="button" onClick={() => setSelectedId(null)} style={{ border: 0, background: "transparent", fontWeight: 700 }}>Close</button>
+          </div>
+          {selected.businessProfile ? (
+            <>
+              <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, fontSize: 13 }}>
+                {([
+                  ["Business name", selected.businessProfile.businessName],
+                  ["Sector", selected.businessProfile.sector],
+                  ["Registered?", selected.businessProfile.tradingAs],
+                  ["Registration number", selected.businessProfile.registrationNumber || "Not formally registered"],
+                  ["Trading history", selected.businessProfile.tradingMonths + " months"],
+                  ["District and location", selected.businessProfile.district + ", " + selected.businessProfile.physicalAddress],
+                  ["Products / services", selected.businessProfile.goodsOrServices],
+                  ["Main customers", selected.businessProfile.customerType],
+                  ["Employees", String(selected.businessProfile.staffCount)],
+                  ["Monthly sales (declared)", ugx(selected.businessProfile.monthlySales)],
+                  ["Monthly business expenses (declared)", ugx(selected.businessProfile.monthlyBusinessExpenses)],
+                  ["Existing debt payments (declared)", ugx(selected.businessProfile.monthlyExistingDebt)],
+                  ["Requested loan use", selected.businessProfile.loanUse],
+                  ["Repayment plan", selected.businessProfile.repaymentPlan],
+                  ["Business verification", selected.businessReviewStatus ?? "Pending"],
+                ] as [string, string][]).map(([label, value]) => <div key={label}><dt style={{ color: "#68766F", marginBottom: 4 }}>{label}</dt><dd style={{ fontWeight: 700, margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{value}</dd></div>)}
+              </dl>
+              <p style={{ fontSize: 12, color: "#68766F", marginTop: 12 }}>Declarations require independent document / field evidence. Do not mark verified based only on what the borrower entered.</p>
+              {["pending", "resubmitted"].includes(selected.status) && (
+                <div style={{ marginTop: 16 }}>
+                  <label htmlFor="business-review-notes" style={{ display: "block", fontSize: 13, fontWeight: 700 }}>Verification findings and supporting evidence reference</label>
+                  <textarea id="business-review-notes" value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} maxLength={2000} style={{ width: "100%", marginTop: 6, padding: 12, border: "1px solid #D1D5DB", borderRadius: 10 }} placeholder="Describe business visit, turnover evidence, registration check and affordability findings (min 15 characters)." />
+                  <div style={{ display: "flex", gap: 9, flexWrap: "wrap", marginTop: 10 }}>
+                    <button type="button" disabled={reviewBusy || reviewNotes.trim().length < 15} onClick={() => void verify(selected.id, "verified")} className="kx-btn kx-btn--primary">Mark business verified</button>
+                    <button type="button" disabled={reviewBusy || reviewNotes.trim().length < 15} onClick={() => void verify(selected.id, "rejected")} className="kx-btn kx-btn--secondary">Verification unsuccessful</button>
+                  </div>
+                </div>
+              )}
+              {selected.businessReviewNotes && <p style={{ fontSize: 12, color: "#475569", whiteSpace: "pre-wrap" }}>Latest review: {selected.businessReviewNotes}</p>}
+            </>
+          ) : <p style={{ fontSize: 13, color: "#64748B" }}>Historical loan: no business profile collected. Existing loan records remain accessible.</p>}
+        </section>
       )}
     </AdminLayout>
   );

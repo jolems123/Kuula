@@ -158,22 +158,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     </label>
   );
 
-  const selectField = (label: string, value: string, setter: (value: string) => void, options: string[]) => (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label}</span>
-      <select value={value} onChange={(e) => setter(e.target.value)} style={{ width: "100%", height: 46, border: "1px solid #D8E2DC", borderRadius: 12, padding: "0 12px", background: "white", color: "#13251C", fontWeight: 600 }}>
-        <option value="">Select</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}
-      </select>
-    </label>
-  );
-
-  const textField = (label: string, value: string, setter: (value: string) => void, placeholder: string, optional = false) => (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label}{optional ? " (optional)" : ""}</span>
-      <input value={value} maxLength={120} placeholder={placeholder} onChange={(e) => setter(e.target.value)} style={{ width: "100%", height: 46, border: "1px solid #D8E2DC", borderRadius: 12, padding: "0 12px", background: "white", color: "#13251C", fontWeight: 600 }} />
-    </label>
-  );
-
   return (
     <div className="flex flex-col h-full" style={{ background: "#F7FAF8", paddingTop: 0 }}>
       <div className="flex items-center px-4 pt-4 pb-4" style={{ background: "linear-gradient(135deg, #0B5E3A, #087148)" }}>
