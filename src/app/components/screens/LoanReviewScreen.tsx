@@ -19,7 +19,8 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     if (existingDraft) return existingDraft;
     const saved = state.user ? getSavedLoanApplicationDraft(state.user.id) : null;
     if (
-      !saved?.employmentStatus
+      !saved?.businessDetails
+      || !saved?.employmentStatus
       || !saved.occupationOrBusiness.trim()
       || !saved.workDuration
       || !saved.incomeSource
@@ -29,6 +30,12 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       || (saved.purpose === "Other" && !saved.otherPurpose.trim())
     ) return null;
     const restoredDraft: LoanDraft = {
+      business: {
+        ...saved.businessDetails,
+        monthlySales: Math.round(saved.income),
+        monthlyBusinessExpenses: Math.round(saved.expenses),
+        monthlyExistingDebt: Math.round(saved.existingDebt),
+      },
       amount: saved.amount,
       termDays: saved.termDays,
       purpose: formatBusinessLoanPurpose(saved.purpose, saved.otherPurpose),
