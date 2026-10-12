@@ -60,8 +60,11 @@ Database:     kuula_local
 
 ```text
 Phone:    +256700000000
-Password: 12345678
+PIN:      7391
 ```
+
+The local launcher seeds or resets this customer's PIN to `7391` each time it
+runs. Launch it again to apply the PIN to an existing local demo account.
 
 ## Credit operations staff
 

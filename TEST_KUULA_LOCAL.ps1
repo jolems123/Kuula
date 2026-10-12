@@ -25,7 +25,7 @@ Assert-Status "Frontend reachable" {
 
 $customer = $null
 Assert-Status "Customer login" {
-  $script:customer = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/auth/login" -Method Post -ContentType "application/json" -Body '{"phone":"+256700000000","pin":"12345678"}'
+  $script:customer = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/auth/login" -Method Post -ContentType "application/json" -Body '{"phone":"+256700000000","pin":"7391"}'
   if (-not $customer.token) { throw "Customer token missing" }
 }
 

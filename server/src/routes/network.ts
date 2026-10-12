@@ -223,7 +223,7 @@ router.get("/products", authenticateToken, async (req: Request, res: Response) =
   const marketCode = String(req.query.market ?? "UG").toUpperCase();
   const profile = await refreshNetworkProfile(req.user!.userId, marketCode);
   const products = await prisma.creditProduct.findMany({
-    where: { marketCode, status: "active" },
+    where: { marketCode, status: "active", category: "business" },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
   res.json({ products: products.map((product) => mapProduct(product, number(profile.growthLine.availableLimit))) });
@@ -277,7 +277,7 @@ router.get("/overview", authenticateToken, async (req: Request, res: Response) =
   const marketCode = String(req.query.market ?? "UG").toUpperCase();
   const profile = await refreshNetworkProfile(req.user!.userId, marketCode);
   const [products, partners, requests] = await Promise.all([
-    prisma.creditProduct.findMany({ where: { marketCode, status: "active" }, orderBy: { category: "asc" } }),
+    prisma.creditProduct.findMany({ where: { marketCode, status: "active", category: "business" }, orderBy: { category: "asc" } }),
     prisma.partner.findMany({ where: { marketCode, status: "active" }, include: { locations: { where: { active: true }, take: 3 } }, orderBy: { name: "asc" } }),
     prisma.partnerFinancingRequest.findMany({ where: { userId: req.user!.userId }, orderBy: { createdAt: "desc" }, take: 5 }),
   ]);
@@ -378,6 +378,7 @@ router.post("/partner-financing", authenticateToken, async (req: Request, res: R
     prisma.partner.findUnique({ where: { code: partnerCode }, include: { locations: true } }),
   ]);
   if (!product || product.status !== "active" || product.marketCode !== marketCode) throw new AppError("Credit product is unavailable", 404);
+  if (product.category !== "business") throw new AppError("Only business financing is available for new requests", 400);
   if (!partner || partner.status !== "active" || partner.marketCode !== marketCode) throw new AppError("Partner is unavailable", 404);
   if (!product.partnerRequired || product.disbursementMode !== "direct_payee") {
     throw new AppError("This endpoint is only for restricted-purpose direct-payee financing", 400);

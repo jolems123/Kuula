@@ -32,9 +32,9 @@ function optionalText(value: unknown, max = 120): string | null {
   return normalized || null;
 }
 
-const EMPLOYMENT_STATUSES = new Set(["Employed", "Self-employed", "Business owner", "Farmer", "Casual worker", "Other"]);
+const EMPLOYMENT_STATUSES = new Set(["Employed", "Self-employed", "Business owner", "Other"]);
 const WORK_DURATIONS = new Set(["Less than 6 months", "6–12 months", "1–2 years", "2+ years"]);
-const INCOME_SOURCES = new Set(["Salary", "Business", "Farming", "Commission", "Casual work", "Remittances", "Other"]);
+const INCOME_SOURCES = new Set(["Business sales", "Service income", "Salary", "Commission", "Other"]);
 
 /**
  * Validate application-only livelihood declarations before the canonical loan

@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { normalizeUgandaMobileMoneyPhone } from "./lib/marzpay.js";
+import { validateNewPin } from "./lib/otp.js";
 
 const prisma = new PrismaClient();
 
@@ -27,16 +28,17 @@ async function seedCreditNetworkCatalog() {
   });
 
   for (const product of [
-    { code: "UG_BUSINESS_GROWTH", name: "Kuula Business", category: "business", purposeType: "working_capital", description: "Working capital for stock, equipment and productive business needs.", minAmount: 50_000, maxAmount: 2_000_000, minTermDays: 90, maxTermDays: 365, disbursementMode: "customer_or_verified_supplier", partnerRequired: false, metadata: { icon: "store", label: "Grow my business" } },
+    { code: "UG_BUSINESS_GROWTH", name: "Kuula Business", category: "business", purposeType: "working_capital", description: "Working capital for stock, equipment and productive business needs.", minAmount: 50_000, maxAmount: 2_000_000, minTermDays: 30, maxTermDays: 365, disbursementMode: "customer_or_verified_supplier", partnerRequired: false, metadata: { icon: "store", label: "Grow my business" } },
     { code: "UG_HEALTH_TIBAPAY", name: "TibaPay Health Finance", category: "health", purposeType: "medical_bill", description: "Restricted-purpose healthcare financing paid to an approved provider.", minAmount: 20_000, maxAmount: 2_000_000, minTermDays: 90, maxTermDays: 365, disbursementMode: "direct_payee", partnerRequired: true, metadata: { icon: "heart-pulse", label: "Pay for healthcare", partnerBrand: "TibaPay" } },
     { code: "UG_AGRI_SILIFI", name: "SiliFi Farm Finance", category: "agriculture", purposeType: "farm_inputs", description: "Restricted-purpose input finance paid directly to an approved agro-dealer.", minAmount: 20_000, maxAmount: 5_000_000, minTermDays: 90, maxTermDays: 365, disbursementMode: "direct_payee", partnerRequired: true, metadata: { icon: "sprout", label: "Finance farm inputs", partnerBrand: "SiliFi" } },
     { code: "UG_EDUCATION", name: "Kuula Education", category: "education", purposeType: "school_fees", description: "Education financing designed to settle approved school obligations.", minAmount: 50_000, maxAmount: 2_000_000, minTermDays: 90, maxTermDays: 365, disbursementMode: "direct_payee", partnerRequired: true, metadata: { icon: "graduation-cap", label: "Pay school fees" } },
     { code: "UG_ESSENTIALS", name: "Kuula Essentials", category: "essentials", purposeType: "essential_purchase", description: "Purpose-linked finance for essential household and productive purchases.", minAmount: 20_000, maxAmount: 1_000_000, minTermDays: 90, maxTermDays: 365, disbursementMode: "direct_payee", partnerRequired: true, metadata: { icon: "home", label: "Finance an essential need" } },
   ]) {
+    const productStatus = product.category === "business" ? "active" : "inactive";
     await prisma.creditProduct.upsert({
       where: { code: product.code },
-      update: { ...product, minAmount: BigInt(product.minAmount), maxAmount: BigInt(product.maxAmount), marketCode: "UG", status: "active" },
-      create: { ...product, minAmount: BigInt(product.minAmount), maxAmount: BigInt(product.maxAmount), marketCode: "UG", status: "active" },
+      update: { ...product, minAmount: BigInt(product.minAmount), maxAmount: BigInt(product.maxAmount), marketCode: "UG", status: productStatus },
+      create: { ...product, minAmount: BigInt(product.minAmount), maxAmount: BigInt(product.maxAmount), marketCode: "UG", status: productStatus },
     });
   }
 
@@ -46,8 +48,8 @@ async function seedCreditNetworkCatalog() {
   ]) {
     await prisma.partner.upsert({
       where: { code: partner.code },
-      update: { ...partner, marketCode: "UG", status: "active" },
-      create: { ...partner, marketCode: "UG", status: "active" },
+      update: { ...partner, marketCode: "UG", status: "inactive" },
+      create: { ...partner, marketCode: "UG", status: "inactive" },
     });
   }
 }
@@ -66,6 +68,7 @@ async function main() {
   const adminPhone = normalizeUgandaMobileMoneyPhone(process.env.ADMIN_PHONE?.trim() || "+256709295211");
   const demoPhone = normalizeUgandaMobileMoneyPhone(required("DEMO_PHONE"));
   const demoPassword = required("DEMO_PASSWORD");
+  const demoPin = validateNewPin(required("DEMO_PIN"));
   const isProduction = process.env.NODE_ENV === "production";
 
   if (adminPassword.length < 12 || /Admin@123456/i.test(adminPassword)) throw new Error("ADMIN_PASSWORD must be a unique password of at least 12 characters");
@@ -82,6 +85,7 @@ async function main() {
   }
 
   let demo = await prisma.user.findUnique({ where: { phone: demoPhone } });
+  const demoPinHash = await bcrypt.hash(demoPin, 12);
   if (!demo) {
     demo = await prisma.user.create({
       data: {
@@ -89,6 +93,7 @@ async function main() {
         phone: demoPhone,
         email: "demo@kuula.test",
         passwordHash: await bcrypt.hash(demoPassword, 12),
+        pinHash: demoPinHash,
         role: "user",
         nationalId: "CM8602410E8EWE",
         dateOfBirth: new Date("1990-01-01T00:00:00.000Z"),
@@ -101,7 +106,10 @@ async function main() {
       },
     });
     console.log(`Created isolated demo user: ${demoPhone}`);
-  } else console.log(`Demo user already exists: ${demoPhone}`);
+  } else {
+    await prisma.user.update({ where: { id: demo.id }, data: { pinHash: demoPinHash } });
+    console.log(`Updated isolated demo user's PIN: ${demoPhone}`);
+  }
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 30 * 86_400_000);

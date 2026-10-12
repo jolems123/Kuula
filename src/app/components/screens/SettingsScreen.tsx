@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, LogOut, Globe,
+  ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, Globe,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,7 +41,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
 
 export function SettingsScreen({ onNavigate }: Props) {
   const { t, i18n } = useTranslation();
-  const { state, logout } = useAppContext();
+  const { state } = useAppContext();
   const user = state.user;
   const credit = state.credit;
   const loan = state.loan;
@@ -58,13 +58,12 @@ export function SettingsScreen({ onNavigate }: Props) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const flip = (k: keyof typeof toggles) => setToggles((t) => ({ ...t, [k]: !t[k] }));
 
-  const handleLogout = () => { logout(); onNavigate("welcome"); };
-
   return (
-    <div className="flex flex-col h-full bg-gray-50" style={{ paddingTop: 0 }}>
+    <div className="kuula-settings-screen flex flex-col h-full bg-gray-50">
+      <div className="kuula-settings-screen__scroll">
       {/* Header */}
       <div
-        className="flex items-center px-4 pt-4 pb-4"
+        className="kuula-settings-screen__header flex items-center px-4 pt-4 pb-4"
         style={{ background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}
       >
         <button
@@ -189,7 +188,7 @@ export function SettingsScreen({ onNavigate }: Props) {
       {/* Menu items */}
       <div
         className="mx-4 mt-3 rounded-2xl overflow-hidden"
-        style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", marginBottom: 80 }}
+        style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
       >
         {menuItems.map((item, i) => {
           const Icon = item.icon;
@@ -231,21 +230,7 @@ export function SettingsScreen({ onNavigate }: Props) {
         })}
       </div>
 
-      {/* Log out */}
-      <div className="mx-4 mb-4" style={{ position: "absolute", bottom: 76, left: 0, right: 0, paddingLeft: 16, paddingRight: 16 }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            width: "100%", height: 50, borderRadius: 14,
-            background: "#FEF2F2", color: "#EF4444",
-            fontSize: 15, fontWeight: 700, border: "1px solid #FECACA", cursor: "pointer",
-          }}
-        >
-          <LogOut size={16} style={{ display: "inline", marginRight: 8, verticalAlign: "middle" }} />
-          {t("settings.logOut")}
-        </button>
       </div>
-
       <BottomNav active="settings" onNavigate={onNavigate} />
     </div>
   );

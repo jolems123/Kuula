@@ -50,6 +50,7 @@ router.post("/partner-financing", authenticateToken, async (req: Request, res: R
   ]);
   if (!market || market.status !== "active") throw new AppError("This Kuula market is not active", 404);
   if (!product || product.marketCode !== marketCode || product.status !== "active") throw new AppError("Credit product is unavailable", 404);
+  if (product.category !== "business") throw new AppError("Only business financing is available for new requests", 400);
   if (!product.partnerRequired || product.disbursementMode !== "direct_payee") throw new AppError("This endpoint is only for restricted-purpose direct-payee credit", 400);
   if (!partner || partner.marketCode !== marketCode || partner.status !== "active") throw new AppError("Partner is unavailable", 404);
 

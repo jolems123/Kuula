@@ -8,6 +8,7 @@ import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting, UNDERWRITING_POLICY } from "../lib/underwriting.js";
 import { writeAuditEvent } from "../lib/audit.js";
+import { isBusinessLoanPurpose } from "../lib/business-loan-purpose.js";
 import {
   buildMarzPayWebhookUrl,
   collectMoney,
@@ -138,7 +139,7 @@ async function createLoanApplicationForUser(
   userId: string,
   payload: {
     amount: number;
-    purpose?: string;
+    purpose: string;
     termDays: number;
     channel?: string;
     declaredMonthlyIncome: number;
@@ -146,6 +147,9 @@ async function createLoanApplicationForUser(
     existingDebtPayment: number;
   }
 ) {
+  if (!isBusinessLoanPurpose(payload.purpose)) {
+    throw new AppError("Choose a valid business loan purpose and describe Other when selected", 400);
+  }
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
   if (!user.phoneVerified) throw new AppError("Verify your phone before applying for a loan", 403);
@@ -187,7 +191,7 @@ async function createLoanApplicationForUser(
           applicantId: userId,
           applicantName: user.fullName,
           amount: BigInt(quote.principal),
-          purpose: payload.purpose || "Personal",
+          purpose: payload.purpose,
           termDays: quote.termDays,
           channel: payload.channel || "MTN MoMo",
           apr: quote.apr,
@@ -219,7 +223,7 @@ async function createLoanApplicationForUser(
       action: "loan.application_submitted",
       resourceType: "loan_application",
       resourceId: application.id,
-      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose || "Personal" },
+      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose },
     });
     return application;
   } catch (error) {
@@ -231,7 +235,7 @@ async function createLoanApplicationForUser(
 router.post("/applications", authenticateToken, async (req: Request, res: Response) => {
   const application = await createLoanApplicationForUser(req.user!.userId, {
     amount: Number(req.body?.amount),
-    purpose: typeof req.body?.purpose === "string" ? req.body.purpose.trim().slice(0, 120) : undefined,
+    purpose: typeof req.body?.purpose === "string" ? req.body.purpose.trim() : "",
     termDays: Number(req.body?.termDays),
     channel: typeof req.body?.channel === "string" ? req.body.channel.trim().slice(0, 40) : undefined,
     declaredMonthlyIncome: Number(req.body?.declaredMonthlyIncome),

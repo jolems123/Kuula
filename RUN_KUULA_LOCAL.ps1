@@ -100,6 +100,7 @@ try {
   $env:ADMIN_PASSWORD = "LocalAdminPassword2026!"
   $env:DEMO_PHONE = "+256700000000"
   $env:DEMO_PASSWORD = "12345678"
+  $env:DEMO_PIN = "7391"
 
   $env:VITE_BACKEND = "node"
   $env:VITE_USE_API = "true"
@@ -194,7 +195,7 @@ node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort
   Write-Host ""
   Write-Host "Customer demo" -ForegroundColor Cyan
   Write-Host "  Phone:    +256700000000"
-  Write-Host "  Password: 12345678"
+  Write-Host "  PIN:      7391"
   Write-Host ""
   Write-Host "Level 1 field officer" -ForegroundColor Cyan
   Write-Host "  Email:    officer-local@kuula.test"

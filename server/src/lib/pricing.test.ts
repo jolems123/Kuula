@@ -29,9 +29,16 @@ test("returns the complete customer quote shape", () => {
 });
 
 test("clamps loan terms to the supported range", () => {
-  assert.equal(localQuote(100_000, 30).termDays, PRICING.MIN_TERM_DAYS);
+  assert.equal(localQuote(100_000, 15).termDays, PRICING.MIN_TERM_DAYS);
+  assert.equal(localQuote(100_000, 30).termDays, 30);
   assert.equal(localQuote(100_000, 720).termDays, PRICING.MAX_TERM_DAYS);
   assert.equal(localQuote(100_000, Number.NaN).termDays, PRICING.MIN_TERM_DAYS);
+});
+
+test("prices the newly supported 30, 45 and 60 day terms exactly", () => {
+  for (const termDays of [30, 45, 60]) {
+    assert.equal(localQuote(100_000, termDays).termDays, termDays);
+  }
 });
 
 test("rounds Uganda-shilling principal amounts", () => {

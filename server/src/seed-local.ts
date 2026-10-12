@@ -42,30 +42,6 @@ async function ensureProviderLimit(network: "mtn" | "airtel", beneficiaryType: "
   }
 }
 
-async function ensureDestination(network: "mtn" | "airtel", reference: string, accountTier: string) {
-  const phone = normalizeUgandaMobileMoneyPhone(reference);
-  const changed = await prisma.$executeRaw(Prisma.sql`
-    UPDATE payment_destination_profiles
-       SET account_tier=${accountTier}, max_single_amount=2000000, max_daily_amount=5000000,
-           status='verified', expires_at=CURRENT_TIMESTAMP + interval '30 days',
-           source_note='LOCAL DEVELOPMENT ONLY - fake verified partner destination', updated_at=CURRENT_TIMESTAMP
-     WHERE market_code='UG' AND provider='marzpay' AND network=${network}
-       AND beneficiary_type='partner' AND beneficiary_reference=${phone} AND status='verified'
-  `);
-  if (changed === 0) {
-    await prisma.$executeRaw(Prisma.sql`
-      INSERT INTO payment_destination_profiles (
-        id, market_code, provider, network, beneficiary_type, beneficiary_reference,
-        account_tier, max_single_amount, max_daily_amount, status, expires_at, source_note
-      ) VALUES (
-        ${crypto.randomUUID()}::uuid, 'UG', 'marzpay', ${network}, 'partner', ${phone},
-        ${accountTier}, 2000000, 5000000, 'verified', CURRENT_TIMESTAMP + interval '30 days',
-        'LOCAL DEVELOPMENT ONLY - fake verified partner destination'
-      )
-    `);
-  }
-}
-
 async function main() {
   if (process.env.NODE_ENV === "production") throw new Error("Local seed must never run in production");
 
@@ -90,10 +66,7 @@ async function main() {
     ensureProviderLimit("mtn", "customer"),
     ensureProviderLimit("airtel", "customer"),
   ]);
-  await ensureDestination("mtn", "+256700000010", "TibaPay local demo payee");
-  await ensureDestination("airtel", "+256700000011", "SiliFi local demo payee");
-
-  console.log("Local workflow seed complete: officer, manager, provider limits and fake partner destinations ready.");
+  console.log("Local workflow seed complete: officer, manager and provider limits ready.");
 }
 
 main()

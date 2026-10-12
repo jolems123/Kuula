@@ -46,6 +46,7 @@ jobs:
       ADMIN_PASSWORD: Network-Admin-CI-Password-2026
       DEMO_PHONE: "+256700000000"
       DEMO_PASSWORD: "12345678"
+      DEMO_PIN: "7391"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4

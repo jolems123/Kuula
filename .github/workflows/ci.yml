@@ -123,6 +123,7 @@ jobs:
       ADMIN_PASSWORD: Admin-CI-Password-Only-2026
       DEMO_PHONE: "+256700000000"
       DEMO_PASSWORD: "12345678"
+      DEMO_PIN: "7391"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
@@ -174,7 +175,7 @@ jobs:
           done
           test "$ready" = "true"
 
-          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{"phone":"+256700000000","pin":"12345678"}')
+          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{"phone":"+256700000000","pin":"7391"}')
           CUSTOMER_TOKEN=$(echo "$CUSTOMER_JSON" | jq -r '.token')
           CUSTOMER_REFRESH=$(echo "$CUSTOMER_JSON" | jq -r '.refreshToken')
           test -n "$CUSTOMER_TOKEN"

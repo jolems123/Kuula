@@ -42,6 +42,7 @@ jobs:
       ADMIN_PASSWORD: Auth-Admin-CI-Password-2026
       DEMO_PHONE: "+256700000000"
       DEMO_PASSWORD: "12345678"
+      DEMO_PIN: "7391"
 
     steps:
       - uses: actions/checkout@v5

@@ -12,12 +12,133 @@ import { staffCanOpenScreen, staffHome } from "./lib/staff-routing";
 import { REGISTERED_SCREENS, type ScreenAccess } from "./screens/registry";
 import { PhotoBackdrop } from "./components/auth/PhotoBackdrop";
 import { AdminPartnerFinancingScreen } from "./components/screens/AdminPartnerFinancingScreen";
-import { PartnerNetworkScreen } from "./components/screens/PartnerNetworkScreen";
 import { PartnerFinancingScreen } from "./components/screens/PartnerFinancingScreen";
 import { api } from "./api/client";
 import { useNativeChrome } from "../lib/native-chrome";
 import { useRealtimeSubscriptions } from "./lib/useRealtimeSubscriptions";
 import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib/session-vault";
+import {
+  ArrowRightLeft,
+  Bell,
+  CreditCard,
+  HandCoins,
+  House,
+  LogOut,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+import { KuulaLogo } from "./components/brand/KuulaLogo";
+
+const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: "home", label: "Overview", icon: House },
+  { id: "credit-dashboard", label: "Credit Pass", icon: CreditCard },
+  { id: "quick-actions", label: "Borrow", icon: HandCoins },
+  { id: "transaction-history", label: "Transactions", icon: ArrowRightLeft },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
+const CUSTOMER_TITLES: Record<string, string> = {
+  home: "Overview",
+  dashboard: "Dashboard",
+  "credit-dashboard": "Credit Pass",
+  "credit-breakdown": "Credit details",
+  "improve-credit": "Improve your credit",
+  "quick-actions": "Use your Growth Line",
+  "loan-apply": "Apply for credit",
+  "loan-review": "Review application",
+  "loan-approval": "Application status",
+  "loan-detail": "Facility details",
+  "loan-history": "Facility history",
+  "make-payment": "Make a payment",
+  "payment-confirm": "Payment confirmation",
+  "loan-agreement": "Loan agreement",
+  "transaction-history": "Transactions",
+  "transaction-detail": "Transaction details",
+  notifications: "Notifications",
+  "partner-network": "Partner network",
+  "partner-financing": "Partner financing",
+  settings: "Settings",
+  profile: "Your profile",
+  "personal-info": "Personal information",
+  "notification-settings": "Notification preferences",
+  "privacy-security": "Privacy and security",
+  "help-support": "Help and support",
+  "contact-support": "Contact support",
+  "about-app": "About Kuula",
+  "delete-account": "Delete account",
+  "user-support-chat": "Kuula support",
+  "customer-officer-assigned": "Your credit application",
+};
+
+function CustomerWorkspace({ screenId, children }: { screenId: string; children: React.ReactNode }) {
+  const { state, logout } = useAppContext();
+  const navigate = useNavigate();
+  const title = CUSTOMER_TITLES[screenId]
+    ?? screenId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  const initials = (state.user?.fullName ?? "Kuula Customer")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="kuula-customer-workspace">
+      <aside className="kuula-customer-sidebar" aria-label="Customer workspace">
+        <div className="kuula-customer-sidebar__brand">
+          <KuulaLogo tone="light" size={34} subtitle="Customer workspace" />
+        </div>
+        <p className="kuula-customer-sidebar__label">YOUR KUULA</p>
+        <nav className="kuula-customer-sidebar__nav" aria-label="Customer navigation">
+          {CUSTOMER_NAV.map(({ id, label, icon: Icon }) => {
+            const active = id === screenId
+              || (id === "credit-dashboard" && ["credit-breakdown", "improve-credit"].includes(screenId))
+              || (id === "quick-actions" && ["loan-calculator", "loan-apply", "loan-review", "loan-approval", "loan-detail", "loan-history", "make-payment", "payment-confirm", "loan-agreement", "customer-officer-assigned"].includes(screenId))
+              || (id === "transaction-history" && screenId === "transaction-detail")
+              || (id === "settings" && ["profile", "personal-info", "notification-settings", "privacy-security", "help-support", "contact-support", "about-app", "delete-account"].includes(screenId));
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`kuula-customer-sidebar__item${active ? " is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+                onClick={() => navigate(`/${id}`)}
+              >
+                <Icon size={19} strokeWidth={1.8} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="kuula-customer-sidebar__account">
+          <span className="kuula-customer-sidebar__avatar" aria-hidden="true">{initials}</span>
+          <span className="kuula-customer-sidebar__identity">
+            <strong>{state.user?.fullName || "Kuula customer"}</strong>
+            <small>Customer account</small>
+          </span>
+          <button type="button" onClick={() => { logout(); navigate("/welcome", { replace: true }); }} aria-label="Log out" title="Log out">
+            <LogOut size={17} />
+          </button>
+        </div>
+      </aside>
+      <div className="kuula-customer-workspace__main">
+        <header className="kuula-customer-topbar">
+          <div>
+            <span className="kuula-customer-topbar__eyebrow">Customer workspace</span>
+            <h1>{title}</h1>
+          </div>
+          <div className="kuula-customer-topbar__account">
+            <span>{state.user?.fullName || "Kuula customer"}</span>
+            <span className="kuula-customer-sidebar__avatar" aria-hidden="true">{initials}</span>
+          </div>
+        </header>
+        <div className="kuula-customer-workspace__content">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-disbursement-status": "loan-agreement",
@@ -27,7 +148,7 @@ const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
   "loan-schedule": "loan-detail",
-  "wallet": "partner-network",
+  "wallet": "quick-actions",
   "add-payment-method": "home",
   "payment-methods-list": "home",
   "notification-detail": "notifications",
@@ -168,8 +289,27 @@ function Shell() {
   const screenId = location.pathname.replace(/^\//, "") || "root";
   const isAuthScreen = AUTH_SCREENS.has(screenId);
   const isAdminScreen = screenId.startsWith("admin-") && !isAuthScreen;
-  const isPublicScreen = isAuthScreen || screenId === "language";
+  const isPublicScreen = isAuthScreen || screenId === "language" || screenId === "customer-privacy-policy" || screenId === "customer-terms";
+  const isCustomerScreen = !isAuthScreen && !isAdminScreen && !isPublicScreen;
   const shellClass = isAuthScreen ? "kuula-auth-shell" : isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell";
+  const routeContent = <main className="kuula-route-viewport">
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/onboarding" element={<Navigate to="/welcome" replace />} />
+        <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
+        <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><Navigate to="/quick-actions" replace /></Guard>} />
+        <Route path="/partner-financing" element={<Guard access="customer" screenId="partner-financing"><ScreenRoute Component={PartnerFinancingScreen} /></Guard>} />
+        {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
+          <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer" screenId={from}><Navigate to={`/${to}`} replace /></Guard>} />
+        ))}
+        {REGISTERED_SCREENS.filter(({ id }) => !LEGACY_ROUTE_REDIRECTS[id] && id !== "admin-partner-financing").map(({ id, access, Component }) => (
+          <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)} screenId={id}><ScreenRoute Component={Component} /></Guard>} />
+        ))}
+        <Route path="*" element={<RootRedirect />} />
+      </Routes>
+    </Suspense>
+  </main>;
 
   // While a saved session is checked, show the same photo backdrop the landing
   // page uses, so signed-out visitors see one continuous screen instead of a splash.
@@ -185,24 +325,7 @@ function Shell() {
     <div className={`kuula-app-shell ${shellClass}`} data-screen={screenId} data-surface={isAdminScreen ? "admin" : isPublicScreen ? "public" : "customer"}>
       <div className="kuula-device-frame">
         {isAuthScreen && <PhotoBackdrop />}
-        <main className="kuula-route-viewport">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<RootRedirect />} />
-              <Route path="/onboarding" element={<Navigate to="/welcome" replace />} />
-              <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
-              <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><ScreenRoute Component={PartnerNetworkScreen} /></Guard>} />
-              <Route path="/partner-financing" element={<Guard access="customer" screenId="partner-financing"><ScreenRoute Component={PartnerFinancingScreen} /></Guard>} />
-              {Object.entries(LEGACY_ROUTE_REDIRECTS).map(([from, to]) => (
-                <Route key={`legacy-${from}`} path={`/${from}`} element={<Guard access="customer" screenId={from}><Navigate to={`/${to}`} replace /></Guard>} />
-              ))}
-              {REGISTERED_SCREENS.filter(({ id }) => !LEGACY_ROUTE_REDIRECTS[id] && id !== "admin-partner-financing").map(({ id, access, Component }) => (
-                <Route key={id} path={`/${id}`} element={<Guard access={releaseAccess(id, access)} screenId={id}><ScreenRoute Component={Component} /></Guard>} />
-              ))}
-              <Route path="*" element={<RootRedirect />} />
-            </Routes>
-          </Suspense>
-        </main>
+        {isCustomerScreen ? <CustomerWorkspace screenId={screenId}>{routeContent}</CustomerWorkspace> : routeContent}
       </div>
     </div>
   );

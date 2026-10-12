@@ -42,9 +42,17 @@ export interface LoanDraft {
   declaredMonthlyExpenses: number;
   existingDebtPayment: number;
 }
+export interface LoanCalculatorSelection {
+  amount: number;
+  termDays: number;
+  purpose: string;
+}
 let _loanDraft: LoanDraft | null = null;
 export function setLoanDraft(value: LoanDraft | null): void { _loanDraft = value; }
 export function getLoanDraft(): LoanDraft | null { return _loanDraft; }
+let _loanCalculatorSelection: LoanCalculatorSelection | null = null;
+export function setLoanCalculatorSelection(value: LoanCalculatorSelection | null): void { _loanCalculatorSelection = value; }
+export function getLoanCalculatorSelection(): LoanCalculatorSelection | null { return _loanCalculatorSelection; }
 
 export interface CreditUseSelection {
   productCode: string;
@@ -96,12 +104,15 @@ export function setCustomer360Id(value: string | null): void { _customer360Id = 
 export function getCustomer360Id(): string | null { return _customer360Id; }
 
 export function clearSelectionState(): void {
+  clearAllSavedLoanApplicationDrafts();
   _selectedTransaction = null;
   _lastPayment = null;
   _loanDraft = null;
+  _loanCalculatorSelection = null;
   _creditUseSelection = null;
   _partnerSelection = null;
   _adminMfaChallenge = null;
   _creditOperationsSelection = null;
   _customer360Id = null;
 }
+import { clearAllSavedLoanApplicationDrafts } from "./loan-application-autosave";

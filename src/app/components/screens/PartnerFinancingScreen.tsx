@@ -180,7 +180,7 @@ export function PartnerFinancingScreen({ onNavigate }: Props) {
           <button onClick={() => void submit()} disabled={!valid || busy} style={{ width: "100%", height: 52, border: 0, borderRadius: 15, marginTop: 16, background: valid && !busy ? "#0B5E3A" : "#CAD6CF", color: "white", fontWeight: 900 }}>{busy ? "Submitting application…" : "Submit credit application"}</button>
         </>}
       </main>
-      <BottomNav active="network" onNavigate={onNavigate} />
+      <BottomNav active="borrow" onNavigate={onNavigate} />
     </div>
   );
 }

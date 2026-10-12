@@ -8,6 +8,7 @@ import { AnimatedStat } from "../AnimatedStat";
 import { useAppContext } from "../../context/AppContext";
 import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
+import { setLoanCalculatorSelection } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -227,6 +228,7 @@ export function DashboardScreen({ onNavigate }: Props) {
         {tab === "loan" && (
           <LoanCalculator
             onApply={(amount, termDays, purpose) => {
+              setLoanCalculatorSelection({ amount, termDays, purpose });
               onNavigate("loan-apply");
             }}
             maxAmount={loan?.availableCredit ?? 0}

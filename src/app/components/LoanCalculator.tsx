@@ -2,14 +2,15 @@ import { useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { localQuote } from "../lib/pricing";
+import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurpose, type BusinessLoanPurposeOption } from "../lib/business-loan-purpose";
+import { getLoanTermOptions } from "../lib/loan-terms";
 
 interface Props {
   onApply?: (amount: number, termDays: number, purpose: string) => void;
   maxAmount?: number;
 }
 
-// Terms stay >= 90 days (Google) and pricing uses the shared APR-capped engine.
-const TERM_DAYS = [90, 120, 180, 365];
+const TERM_DAYS = getLoanTermOptions();
 
 function fmt(n: number) {
   return "UGX " + Math.round(n).toLocaleString("en-UG");
@@ -37,11 +38,12 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
   const [amount, setAmount] = useState(500_000);
   const [termIdx, setTermIdx] = useState(0);
-  const [purpose, setPurpose] = useState("Business");
+  const [purpose, setPurpose] = useState<BusinessLoanPurposeOption>("Working capital");
+  const [otherPurpose, setOtherPurpose] = useState("");
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const termDays = TERM_DAYS[termIdx];
-  const termLabel = t(`loanApply.months${termDays === 90 ? "3" : termDays === 120 ? "4" : termDays === 180 ? "6" : "12"}`);
+  const termLabel = `${termDays} ${t("loanApply.days")}`;
   const quote = localQuote(amount, termDays);
   const interest = quote.interest;
   const fee = quote.fee;
@@ -49,15 +51,6 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
   const weekly = total / (termDays / 7);
 
   const sliderPct = ((amount - MIN) / (MAX - MIN)) * 100;
-
-  const PURPOSES = [
-    { key: "Business", label: t("loanApply.purposeBusiness") },
-    { key: "School Fees", label: t("loanApply.purposeSchool") },
-    { key: "Medical", label: t("loanApply.purposeMedical") },
-    { key: "Farming", label: t("loanApply.purposeFarming") },
-    { key: "Home Repair", label: t("loanApply.purposeHomeRepair") },
-    { key: "Other", label: t("loanApply.purposeOther") },
-  ];
 
   const handleSlider = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = Number(e.target.value);
@@ -155,15 +148,15 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
         {/* Term selector */}
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>{t("loanApply.loanTerm")}</p>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
             {TERM_DAYS.map((days, i) => {
-              const lbl = t(`loanApply.months${days === 90 ? "3" : days === 120 ? "4" : days === 180 ? "6" : "12"}`);
+              const lbl = `${days} ${t("loanApply.days")}`;
               return (
                 <button
                   key={days}
                   onClick={() => setTermIdx(i)}
                   style={{
-                    flex: 1, padding: "8px 4px", borderRadius: 10, fontSize: 11, fontWeight: 600,
+                    minWidth: 0, padding: "8px 3px", borderRadius: 10, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
                     border: `1.5px solid ${termIdx === i ? "#0B5E3A" : "#E5E7EB"}`,
                     background: termIdx === i ? "#F3FAF7" : "white",
                     color: termIdx === i ? "#064A2E" : "#6B7280",
@@ -179,24 +172,25 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
         {/* Purpose */}
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>{t("loanApply.purpose")}</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Business loan purpose</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {PURPOSES.map((p) => (
+            {BUSINESS_LOAN_PURPOSES.map((option) => (
               <button
-                key={p.key}
-                onClick={() => setPurpose(p.key)}
+                key={option}
+                onClick={() => setPurpose(option)}
                 style={{
                   padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  border: `1.5px solid ${purpose === p.key ? "#0B5E3A" : "#E5E7EB"}`,
-                  background: purpose === p.key ? "#F3FAF7" : "white",
-                  color: purpose === p.key ? "#064A2E" : "#6B7280",
+                  border: `1.5px solid ${purpose === option ? "#0B5E3A" : "#E5E7EB"}`,
+                  background: purpose === option ? "#F3FAF7" : "white",
+                  color: purpose === option ? "#064A2E" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
-                {p.label}
+                {option}
               </button>
             ))}
           </div>
+          {purpose === "Other" && <textarea value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Describe your business use" rows={2} style={{ boxSizing: "border-box", width: "100%", marginTop: 10, border: "1px solid #D8E2DC", borderRadius: 10, padding: 10, resize: "vertical" }} />}
         </div>
 
         {/* Summary */}
@@ -247,7 +241,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
         {/* CTA */}
         <button
-          onClick={() => onApply?.(amount, termDays, purpose)}
+          disabled={purpose === "Other" && !otherPurpose.trim()}
+          onClick={() => onApply?.(amount, termDays, formatBusinessLoanPurpose(purpose, otherPurpose))}
           style={{
             width: "100%", height: 52, borderRadius: 14,
             background: "linear-gradient(135deg, #0B5E3A, #064A2E)",

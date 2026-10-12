@@ -10,7 +10,7 @@ import type { LoanQuote } from "../api/client";
 
 export const PRICING = {
   MAX_APR: 0.336,
-  MIN_TERM_DAYS: 90,
+  MIN_TERM_DAYS: 30,
   MAX_TERM_DAYS: 365,
 } as const;
 

@@ -41,26 +41,26 @@ export function CreditPassScreen({ onNavigate }: Props) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#F4F7F5" }}>
-      <header style={{ background: "linear-gradient(160deg,#063C27,#0B5E3A)", color: "white", padding: "16px 16px 28px", borderRadius: "0 0 28px 28px" }}>
+      <header className="kx-credit-pass__hero">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => onNavigate("home")} aria-label="Back" style={{ width: 40, height: 40, borderRadius: 13, border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.12)", color: "white" }}><ArrowLeft size={19} /></button>
+          <button className="kx-credit-pass__back" onClick={() => onNavigate("home")} aria-label="Back"><ArrowLeft size={19} /></button>
           <div>
-            <div style={{ fontSize: 11, opacity: .7, fontWeight: 800 }}>YOUR FINANCIAL IDENTITY</div>
-            <h1 style={{ margin: "2px 0 0", fontSize: 21 }}>Kuula Credit Pass</h1>
+            <div className="kx-credit-pass__eyebrow">YOUR FINANCIAL IDENTITY</div>
+            <h1 className="kx-credit-pass__title">Kuula Credit Pass</h1>
           </div>
         </div>
 
-        <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr auto", gap: 16, padding: 18, borderRadius: 20, background: "rgba(255,255,255,.11)", border: "1px solid rgba(255,255,255,.15)" }}>
+        <div className="kx-credit-pass__score">
           <div>
-            <div style={{ fontSize: 12, opacity: .7 }}>Kuula Score</div>
-            <div style={{ fontSize: 38, fontWeight: 950, lineHeight: 1, marginTop: 4 }}>{pass?.score ?? "—"}<span style={{ fontSize: 13, opacity: .65, fontWeight: 700 }}> / {pass?.maxScore ?? 850}</span></div>
-            <div style={{ display: "inline-flex", marginTop: 9, padding: "5px 9px", borderRadius: 99, background: "#F2C94C", color: "#263023", fontSize: 11, fontWeight: 900 }}>{pass?.tier ?? "Building"}</div>
+            <div className="kx-credit-pass__score-label">Kuula Score</div>
+            <div className="kx-credit-pass__score-value">{pass?.score ?? "—"}<span> / {pass?.maxScore ?? 850}</span></div>
+            <div className="kx-credit-pass__tier">{pass?.tier ?? "Building"}</div>
           </div>
-          <div style={{ width: 64, height: 64, borderRadius: 22, background: "#F2C94C", color: "#233326", display: "grid", placeItems: "center" }}><ShieldCheck size={32} /></div>
+          <div className="kx-credit-pass__badge"><ShieldCheck size={28} /></div>
         </div>
       </header>
 
-      <main style={{ flex: 1, overflowY: "auto", padding: "18px 16px 96px" }}>
+      <main className="kx-credit-pass__content">
         {error && <div role="alert" style={{ background: "#FFF1F1", color: "#9E3737", borderRadius: 13, padding: 12, fontSize: 12 }}>{error}</div>}
 
         <section style={{ background: "white", border: "1px solid #E1E9E4", borderRadius: 18, padding: 16 }}>

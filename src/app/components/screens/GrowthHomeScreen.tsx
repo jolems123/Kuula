@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  Bell, BriefcaseBusiness, HeartPulse, Sprout, GraduationCap, House, ShieldCheck, CalendarClock,
-  ChevronRight, RefreshCw, ArrowUpRight, Building2, AlertCircle, type LucideIcon,
+  Bell, BriefcaseBusiness, ShieldCheck, CalendarClock,
+  ChevronRight, RefreshCw, ArrowUpRight, AlertCircle, type LucideIcon,
 } from "lucide-react";
 import { BottomNav } from "../BottomNav";
 import { api, type CreditProduct, type NetworkOverview } from "../../api/client";
@@ -10,7 +10,7 @@ import { setCreditUseSelection } from "../../lib/selection";
 
 interface Props { onNavigate: (screen: string) => void; }
 
-const ICONS: Record<string, LucideIcon> = { business: BriefcaseBusiness, health: HeartPulse, agriculture: Sprout, education: GraduationCap, essentials: House };
+const ICONS: Record<string, LucideIcon> = { business: BriefcaseBusiness };
 const money = (value: number, currency = "UGX") => `${currency} ${Math.round(value).toLocaleString("en-UG")}`;
 const STATUS_COPY: Record<string, string> = {
   available: "Ready to use",
@@ -47,7 +47,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
 
   const select = (product: CreditProduct) => {
     setCreditUseSelection({ productCode: product.code, productName: product.name, category: product.category, description: product.description, minAmount: product.minAmount, maxAmount: product.maxAmount, customerLimit: product.customerLimit, minTermDays: product.minTermDays, maxTermDays: product.maxTermDays, partnerRequired: product.partnerRequired, disbursementMode: product.disbursementMode });
-    onNavigate(product.partnerRequired ? "partner-network" : "loan-apply");
+    onNavigate("loan-apply");
   };
 
   const currency = overview?.market.currency ?? "UGX";
@@ -58,7 +58,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
   const availableShare = total > 0 ? Math.min(100, Math.max(0, (available / total) * 100)) : 0;
   const ready = line?.status === "available";
   const pass = overview?.creditPass;
-  const products = (overview?.products ?? []).slice(0, 4);
+  const products = (overview?.products ?? []).filter((product) => product.category === "business").slice(0, 1);
 
   return (
     <div className="kx kx-app">
@@ -108,20 +108,20 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
           <section>
             <div className="kx-section-head">
               <div>
-                <h2>What are you growing?</h2>
-                <p>Choose a real-life use for your credit.</p>
+                <h2>Kuula Business</h2>
+                <p>Business credit for stock, equipment, working capital and growth.</p>
               </div>
               <button type="button" className="kx-link" onClick={() => onNavigate("quick-actions")}>See all</button>
             </div>
             <div className="kx-uses">
-              {loading && products.length === 0 && [0, 1, 2, 3].map((i) => <div key={i} className="kx-use kx-use--loading"><span className="kx-skeleton" style={{ width: 36, height: 36 }} /><span className="kx-skeleton" style={{ width: "70%", height: 14 }} /><span className="kx-skeleton" style={{ width: "50%", height: 12 }} /></div>)}
+              {loading && products.length === 0 && <div className="kx-use kx-use--loading"><span className="kx-skeleton" style={{ width: 36, height: 36 }} /><span className="kx-skeleton" style={{ width: "70%", height: 14 }} /><span className="kx-skeleton" style={{ width: "50%", height: 12 }} /></div>}
               {products.map((product) => {
                 const Icon = ICONS[product.category] ?? BriefcaseBusiness;
                 return (
                   <button key={product.id} type="button" className="kx-use" onClick={() => select(product)}>
                     <span className="kx-use__icon"><Icon size={20} strokeWidth={1.75} /></span>
                     <ChevronRight className="kx-use__go" size={16} strokeWidth={1.75} />
-                    <strong>{String(product.metadata?.label ?? product.name)}</strong>
+                    <strong>Kuula Business</strong>
                     <span>Up to {money(product.customerLimit, currency)}</span>
                   </button>
                 );
@@ -154,14 +154,6 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             <ChevronRight size={18} strokeWidth={1.75} className="kx-row__chevron" />
           </button>
 
-          <button type="button" className="kx-card kx-row kx-row--quiet" onClick={() => onNavigate("quick-actions")}>
-            <span className="kx-tile-icon"><Building2 size={20} strokeWidth={1.75} /></span>
-            <div className="kx-row__text">
-              <strong className="kx-row__title">Pay partners directly</strong>
-              <span className="kx-row__sub">Hospitals, schools, agro-dealers and suppliers can receive approved financing for you.</span>
-            </div>
-            <ChevronRight size={18} strokeWidth={1.75} className="kx-row__chevron" />
-          </button>
         </div>
       </div>
 

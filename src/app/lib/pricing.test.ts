@@ -3,9 +3,16 @@ import { localQuote, PRICING } from "./pricing";
 
 describe("localQuote — loan pricing", () => {
   it("enforces the supported term range", () => {
-    expect(localQuote(100000, 30).termDays).toBe(PRICING.MIN_TERM_DAYS);
+    expect(localQuote(100000, 15).termDays).toBe(PRICING.MIN_TERM_DAYS);
+    expect(localQuote(100000, 30).termDays).toBe(30);
     expect(localQuote(100000, 720).termDays).toBe(PRICING.MAX_TERM_DAYS);
     expect(localQuote(100000, Number.NaN).termDays).toBe(PRICING.MIN_TERM_DAYS);
+  });
+
+  it("prices the newly supported 30, 45 and 60 day terms exactly", () => {
+    for (const termDays of [30, 45, 60]) {
+      expect(localQuote(100000, termDays).termDays).toBe(termDays);
+    }
   });
 
   it("keeps the all-in APR at or below the configured caps", () => {

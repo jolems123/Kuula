@@ -4,16 +4,18 @@ const kuulaLogo = "/kuula-logo.svg";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { api, type Compliance } from "../../api/client";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
 
 interface Props { onNavigate: (s: string) => void; }
 
 const FALLBACK_COMPLIANCE: Compliance = {
-  maxAprPercent: 33.6, appleAprCapPercent: 36, minTermDays: 90, googleMinTermDays: 61,
+  maxAprPercent: 33.6, appleAprCapPercent: 36, minTermDays: 30, googleMinTermDays: 61,
   compound: false, dataRetentionYears: 10,
 };
 
 export function AboutAppScreen({ onNavigate }: Props) {
   const [c, setC] = useState<Compliance>(FALLBACK_COMPLIANCE);
+  const minimumTermDays = Capacitor.getPlatform() === "android" ? c.googleMinTermDays : c.minTermDays;
   const { t } = useTranslation();
   useEffect(() => { api.compliance().then(setC).catch(() => {}); }, []);
 
@@ -49,7 +51,7 @@ export function AboutAppScreen({ onNavigate }: Props) {
           {[
             ["Maximum APR (all-in)", `${c.maxAprPercent}% / year`],
             ["Interest type", c.compound ? "Compound" : "Simple — never compounded"],
-            ["Minimum loan term", `${c.minTermDays} days`],
+            ["Minimum loan term", `${minimumTermDays} days`],
             ["Record retention", `${c.dataRetentionYears} years (UMRA)`],
           ].map(([l, v], i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: i < 3 ? "1px solid #F3F4F6" : "none" }}>

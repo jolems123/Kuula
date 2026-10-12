@@ -4,7 +4,9 @@ import { useAppContext } from "../../context/AppContext";
 import { api, type LoanQuote, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { localQuote } from "../../lib/pricing";
-import { getLoanDraft } from "../../lib/selection";
+import { clearSavedLoanApplicationDraft, getSavedLoanApplicationDraft } from "../../lib/loan-application-autosave";
+import { formatBusinessLoanPurpose } from "../../lib/business-loan-purpose";
+import { getLoanDraft, setLoanDraft, type LoanDraft } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG"); }
@@ -12,7 +14,38 @@ function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG");
 export function LoanReviewScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
-  const draft = getLoanDraft();
+  const [draft] = useState<LoanDraft | null>(() => {
+    const existingDraft = getLoanDraft();
+    if (existingDraft) return existingDraft;
+    const saved = state.user ? getSavedLoanApplicationDraft(state.user.id) : null;
+    if (
+      !saved?.employmentStatus
+      || !saved.occupationOrBusiness.trim()
+      || !saved.workDuration
+      || !saved.incomeSource
+      || !saved.repaymentSource.trim()
+      || saved.income <= 0
+      || saved.expenses + saved.existingDebt >= saved.income
+      || (saved.purpose === "Other" && !saved.otherPurpose.trim())
+    ) return null;
+    const restoredDraft: LoanDraft = {
+      amount: saved.amount,
+      termDays: saved.termDays,
+      purpose: formatBusinessLoanPurpose(saved.purpose, saved.otherPurpose),
+      channel: saved.method,
+      employmentStatus: saved.employmentStatus,
+      occupationOrBusiness: saved.occupationOrBusiness,
+      employerOrBusinessName: saved.employerOrBusinessName,
+      workDuration: saved.workDuration,
+      incomeSource: saved.incomeSource,
+      repaymentSource: saved.repaymentSource,
+      declaredMonthlyIncome: saved.income,
+      declaredMonthlyExpenses: saved.expenses,
+      existingDebtPayment: saved.existingDebt,
+    };
+    setLoanDraft(restoredDraft);
+    return restoredDraft;
+  });
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -44,12 +77,22 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     if (!agreed || loading || !token || !quote || quoteLoading || quoteError) return;
     setError(""); setLoading(true);
     if (env.USE_API) {
-      try { await api.submitApplication(token, draft); onNavigate("loan-approval"); }
+      try {
+        await api.submitApplication(token, draft);
+        if (state.user) clearSavedLoanApplicationDraft(state.user.id);
+        setLoanDraft(null);
+        onNavigate("loan-approval");
+      }
       catch (e) { setError(e instanceof ApiError ? e.message : "Could not submit your application. Please review your details and try again."); }
       finally { setLoading(false); }
       return;
     }
-    setTimeout(() => { setLoading(false); onNavigate("loan-approval"); }, 500);
+    setTimeout(() => {
+      if (state.user) clearSavedLoanApplicationDraft(state.user.id);
+      setLoanDraft(null);
+      setLoading(false);
+      onNavigate("loan-approval");
+    }, 500);
   };
 
   const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderBottom: "1px solid #EEF2EF" }}><span style={{ fontSize: 13, color: "#68766F" }}>{label}</span><span style={{ fontSize: 13, fontWeight: bold ? 800 : 600, color: bold ? "#0B5E3A" : "#1F2937", textAlign: "right" }}>{value}</span></div>;
