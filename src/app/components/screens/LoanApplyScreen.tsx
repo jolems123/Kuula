@@ -23,6 +23,12 @@ const EMPTY_BUSINESS: BusinessDetails = {
   tradingMonths: 0, district: "", physicalAddress: "", goodsOrServices: "",
   customerType: "", staffCount: 0, loanUse: "", repaymentPlan: "",
 };
+function durationBand(months: number): string {
+  if (months < 6) return "Less than 6 months";
+  if (months < 12) return "6–12 months";
+  if (months < 24) return "1–2 years";
+  return "2+ years";
+}
 const SECTORS = ["Retail / shop", "Wholesale / trading", "Agriculture", "Food and hospitality",
   "Transport and logistics", "Manufacturing", "Beauty and personal care", "Professional services", "Other"];
 
@@ -61,7 +67,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         employmentStatus: "Business owner",
         occupationOrBusiness: businessDetails.goodsOrServices,
         employerOrBusinessName: businessDetails.businessName,
-        workDuration: businessDetails.tradingMonths >= 24 ? "2+ years" : businessDetails.tradingMonths >= 12 ? "1–2 years" : "6–12 months",
+        workDuration: durationBand(businessDetails.tradingMonths),
         incomeSource: "Business sales",
         repaymentSource: businessDetails.repaymentPlan,
         businessDetails,
@@ -121,7 +127,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       employmentStatus: "Business owner",
       occupationOrBusiness: business.goodsOrServices,
       employerOrBusinessName: business.businessName,
-      workDuration: business.tradingMonths >= 24 ? "2+ years" : business.tradingMonths >= 12 ? "1–2 years" : "6–12 months",
+      workDuration: durationBand(business.tradingMonths),
       incomeSource: "Business sales",
       repaymentSource: business.repaymentPlan,
       declaredMonthlyIncome: Math.round(income),
