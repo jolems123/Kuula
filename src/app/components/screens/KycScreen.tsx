@@ -69,7 +69,9 @@ export function KycScreen({ onNavigate }: Props) {
       if (!live) return;
       const current = String(kyc.status ?? "");
       setStatus(current);
-      if (current === "pending" || current === "verified") setStep(3);
+      const legacyPending = current === "pending" && kyc.method === "smile-id";
+      if ((current === "pending" && !legacyPending) || current === "verified") setStep(3);
+      if (legacyPending) setRejectionReason("The previous identity capture service was retired. Use the new photo upload instead.");
       if (current === "rejected") setRejectionReason(String(kyc.decisionReason ?? "Your document photographs need to be retaken."));
     }).catch(() => {
       if (live) setError("Could not check identity status. You can still enter your details.");

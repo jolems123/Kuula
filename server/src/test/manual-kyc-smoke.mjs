@@ -41,7 +41,7 @@ function pixelPng(red, green, blue) {
 }
 const phone = "+256700000099", nationalId = "CM990000000002";
 const created = await request("/api/auth/signup", { method: "POST", body: {
-  name: "Kuula KYC CI Customer", phone, nationalId, pin: "7392", acceptedTerms: true, termsVersion: "ci",
+  name: "Kuula KYC CI Customer", phone, nationalId, pin: "7392", acceptedTerms: true, termsVersion: "2026-08-20",
 } });
 assert.equal(created.status, 201, JSON.stringify(created.body));
 const verified = await request("/api/auth/verify-phone", { method: "POST", body: { phone, code: process.env.TEST_OTP_CODE } });

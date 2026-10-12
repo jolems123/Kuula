@@ -30,7 +30,7 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
   const latest = await prisma.kycSubmission.findFirst({
     where: { userId: user.id },
     orderBy: { version: "desc" },
-    select: { id: true, version: true, status: true, submittedAt: true, reviewedAt: true, decisionReason: true },
+    select: { id: true, version: true, status: true, provider: true, submittedAt: true, reviewedAt: true, decisionReason: true },
   });
 
   res.json({
@@ -46,7 +46,7 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
       version: latest?.version ?? 0,
       submittedAt: latest?.submittedAt ?? null,
       reviewedAt: latest?.reviewedAt ?? null,
-      method: latest ? (await prisma.kycSubmission.findUnique({ where: { id: latest.id }, select: { provider: true } }))?.provider ?? null : null,
+      method: latest?.provider ?? null,
       decisionReason: latest?.status === "rejected" ? latest.decisionReason : null,
       updatedAt: user.updatedAt,
     },
@@ -95,8 +95,9 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
       parsed.get("front")!.equals(parsed.get("portrait")!) ||
       parsed.get("back")!.equals(parsed.get("portrait")!))
     throw new AppError("Upload three different photos: ID front, ID back and your portrait", 400);
-  const latest = await prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true } });
-  if (latest?.status === "pending") throw new AppError("Your identity documents are awaiting staff review", 409);
+  const latest = await prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true, provider: true } });
+  if (latest?.status === "pending" && latest.provider !== "smile-id")
+    throw new AppError("Your identity documents are awaiting staff review", 409);
 
   const saved: string[] = [];
   try {
@@ -105,8 +106,19 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
     const portrait = await saveKycImage({ userId, side: "portrait", dataUrl: data.portrait as string }); saved.push(portrait.key);
     const submission = await prisma.$transaction(async tx => {
       // Protect against concurrent submissions for the same borrower.
-      const current = await tx.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true } });
-      if (current?.status === "pending") throw new AppError("Your identity documents are awaiting staff review", 409);
+      const current = await tx.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" },
+        select: { id: true, version: true, status: true, provider: true } });
+      if (current?.status === "pending" && current.provider !== "smile-id")
+        throw new AppError("Your identity documents are awaiting staff review", 409);
+      if (current?.status === "pending" && current.provider === "smile-id") {
+        await tx.kycSubmission.updateMany({
+          where: { id: current.id, status: "pending", provider: "smile-id" },
+          data: { status: "rejected", providerStatus: "superseded_by_manual_capture",
+            reviewedAt: new Date(), decisionReason: "Legacy capture replaced with Kuula document upload" },
+        });
+        await tx.kycAuditEvent.create({ data: { submissionId: current.id, actorId: userId,
+          action: "legacy_capture_superseded", details: { method: "manual" } as Prisma.InputJsonValue } });
+      }
       const record = await tx.kycSubmission.create({
         data: {
           userId, version: (current?.version ?? 0) + 1, status: "pending",
@@ -258,8 +270,8 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
   }).slice(0, 1000);
 
   await prisma.$transaction(async (tx) => {
-    await tx.kycSubmission.update({
-      where: { id: submission.id },
+    const claim = await tx.kycSubmission.updateMany({
+      where: { id: submission.id, status: "pending", provider: "smile-id" },
       data: {
         status: nextStatus,
         providerStatus: status,
@@ -269,6 +281,7 @@ router.post("/smile-webhook", async (req: Request, res: Response) => {
         ...(nextStatus !== "pending" ? { reviewedAt: new Date(), decisionReason } : {}),
       },
     });
+    if (claim.count === 0) return; // customer may have superseded this old capture
     await tx.kycAuditEvent.create({
       data: {
         submissionId: submission.id,
