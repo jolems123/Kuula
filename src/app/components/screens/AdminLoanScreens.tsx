@@ -117,7 +117,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         <AdminTable
           columns={["Applicant / business", "Amount", "Loan purpose", "Applied", "Status", "Action"]}
           rows={filtered.map((a) => [
-            <div key={a.id + "-name"}><strong>{a.applicantName || "—"}</strong>{a.businessProfile && <div style={{ fontSize: 11, color: "#64748B" }}>{a.businessProfile.businessName} · {a.businessProfile.sector}</div>}</div>
+            <div key={a.id + "-name"}><strong>{a.applicantName || "—"}</strong>{a.businessProfile && <div style={{ fontSize: 11, color: "#64748B" }}>{a.businessProfile.businessName} · {a.businessProfile.sector}</div>}</div>,
             ugx(a.amount),
             a.purpose,
             fmtDate(a.createdAt),
