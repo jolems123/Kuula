@@ -162,6 +162,7 @@ jobs:
         working-directory: server
         env:
           TEST_OTP_CODE: "568921"
+          SMS_PROVIDER: "test"
         run: |
           set -euo pipefail
           npx tsx src/test/fake-marzpay-server.ts &
