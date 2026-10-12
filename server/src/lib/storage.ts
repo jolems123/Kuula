@@ -121,7 +121,7 @@ function s3Client(): S3Client {
   });
 }
 
-function objectKey(userId: string, side: "front" | "back", extension: string): string {
+function objectKey(userId: string, side: "front" | "back" | "portrait", extension: string): string {
   const safeUserId = userId.replace(/[^a-z0-9-]/gi, "");
   if (!safeUserId) throw new Error("Invalid user identifier for document storage");
   return `kyc/${safeUserId}/${Date.now()}-${crypto.randomUUID()}-${side}.${extension}`;
@@ -138,7 +138,7 @@ function localAbsolutePath(key: string): string {
 
 export async function saveKycImage(params: {
   userId: string;
-  side: "front" | "back";
+  side: "front" | "back" | "portrait";
   dataUrl: string;
 }): Promise<StoredKycDocument> {
   const parsed = parseDataUrl(params.dataUrl);

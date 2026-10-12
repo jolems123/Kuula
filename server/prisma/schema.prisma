@@ -121,6 +121,8 @@ model KycSubmission {
   dateOfBirth       DateTime  @map("date_of_birth")
   frontRef          String    @map("front_ref")
   backRef           String    @map("back_ref")
+  portraitRef       String?   @map("portrait_ref")
+  portraitMime      String?   @map("portrait_mime")
   frontMime         String    @map("front_mime")
   backMime          String    @map("back_mime")
   provider          String?

@@ -4,16 +4,8 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { isValidUgandaNin, normalizeNin } from "../lib/nin.js";
-import {
-  mintDocumentVerificationToken,
-  smileIdConfigured,
-  verifyWebhookSignature,
-  normalizeDocumentVerificationWebhook,
-  webhookKuulaUserId,
-  SmileTokenError,
-  type DocumentVerificationWebhook,
-} from "../lib/smile-id.js";
-import { saveKycImage } from "../lib/storage.js";
+import { verifyWebhookSignature, normalizeDocumentVerificationWebhook, webhookKuulaUserId, type DocumentVerificationWebhook } from "../lib/smile-id.js";
+import { deleteKycDocument, parseDataUrl, saveKycImage } from "../lib/storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -25,7 +17,7 @@ function normalizeString(v: unknown): string {
 function parseDateOnly(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const d = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? null : d;
 }
 
 router.get("/status", authenticateToken, async (req: Request, res: Response) => {
@@ -54,10 +46,87 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
       version: latest?.version ?? 0,
       submittedAt: latest?.submittedAt ?? null,
       reviewedAt: latest?.reviewedAt ?? null,
+      method: latest ? (await prisma.kycSubmission.findUnique({ where: { id: latest.id }, select: { provider: true } }))?.provider ?? null : null,
       decisionReason: latest?.status === "rejected" ? latest.decisionReason : null,
       updatedAt: user.updatedAt,
     },
   });
+});
+
+/**
+ * Direct customer KYC capture. This is NOT identity verification by upload.
+ * The national ID (both sides) and portrait are private, unverified evidence
+ * reviewed by authorized KYC staff. Existing Smile submissions remain in history.
+ */
+router.post("/submit-documents", authenticateToken, async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+  const fullName = normalizeString(req.body?.fullName);
+  const nationalId = normalizeNin(normalizeString(req.body?.nationalId));
+  const dateOfBirth = parseDateOnly(normalizeString(req.body?.dob));
+  if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the legal name printed on your ID", 400);
+  if (!isValidUgandaNin(nationalId)) throw new AppError("Enter a valid 14-character Uganda NIN", 400);
+  if (!dateOfBirth) throw new AppError("Enter a valid date of birth", 400);
+  const today = new Date();
+  const adultCutoff = new Date(Date.UTC(today.getUTCFullYear() - 18, today.getUTCMonth(), today.getUTCDate()));
+  if (dateOfBirth > adultCutoff || dateOfBirth.getUTCFullYear() < 1900) throw new AppError("Kuula requires an applicant aged 18 or over", 422);
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.deletedAt) throw new AppError("Account not found", 404);
+  if (!user.phoneVerified) throw new AppError("Verify your phone number first", 403);
+  if (user.kycVerified) throw new AppError("Identity is already verified", 409);
+  if (user.nationalId && user.nationalId !== nationalId) throw new AppError("The NIN must match the one you registered", 422);
+  const duplicate = await prisma.user.findFirst({ where: { nationalId, id: { not: userId }, deletedAt: null }, select: { id: true } });
+  if (duplicate) throw new AppError("This NIN is already associated with an account", 409);
+
+  const data = {
+    front: req.body?.frontImage,
+    back: req.body?.backImage,
+    portrait: req.body?.portraitImage,
+  };
+  // Validate all three before persisting any file. Never echo images into logs/errors.
+  for (const [side, value] of Object.entries(data)) {
+    if (typeof value !== "string") throw new AppError("Capture the ID front, ID back and portrait image", 400);
+    try { parseDataUrl(value); }
+    catch { throw new AppError("The " + side + " image must be a valid JPG, PNG or WEBP under 5 MB", 400); }
+  }
+  const latest = await prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true } });
+  if (latest?.status === "pending") throw new AppError("Your identity documents are awaiting staff review", 409);
+
+  const saved: string[] = [];
+  try {
+    const front = await saveKycImage({ userId, side: "front", dataUrl: data.front as string }); saved.push(front.key);
+    const back = await saveKycImage({ userId, side: "back", dataUrl: data.back as string }); saved.push(back.key);
+    const portrait = await saveKycImage({ userId, side: "portrait", dataUrl: data.portrait as string }); saved.push(portrait.key);
+    const submission = await prisma.$transaction(async tx => {
+      // Protect against concurrent submissions for the same borrower.
+      const current = await tx.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true } });
+      if (current?.status === "pending") throw new AppError("Your identity documents are awaiting staff review", 409);
+      const record = await tx.kycSubmission.create({
+        data: {
+          userId, version: (current?.version ?? 0) + 1, status: "pending",
+          fullName, nationalId, dateOfBirth,
+          frontRef: front.key, frontMime: front.mime,
+          backRef: back.key, backMime: back.mime,
+          portraitRef: portrait.key, portraitMime: portrait.mime,
+          provider: "kuula-manual", providerStatus: "manual_review",
+        },
+      });
+      await tx.kycAuditEvent.create({ data: {
+        submissionId: record.id, actorId: userId, action: "documents_submitted",
+        details: { method: "manual", items: ["front", "back", "portrait"] } as Prisma.InputJsonValue,
+      } });
+      await tx.user.update({ where: { id: userId }, data: {
+        kycSubmittedAt: new Date(), kycProvider: "kuula-manual", kycReference: record.id,
+      } });
+      return record;
+    });
+    await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "kyc.manual_submitted",
+      resourceType: "kyc_submission", resourceId: submission.id, metadata: { version: submission.version } });
+    res.status(201).json({ ok: true, kyc: { submissionId: submission.id, status: "pending", version: submission.version } });
+  } catch (error) {
+    await Promise.allSettled(saved.map(key => deleteKycDocument(key)));
+    throw error;
+  }
 });
 
 /**
@@ -72,126 +141,8 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
  * NIN read from the document, so a customer cannot verify against a borrowed
  * number.
  */
-router.post("/document-verification/start", authenticateToken, async (req: Request, res: Response) => {
-  if (!smileIdConfigured()) throw new AppError("Identity verification is temporarily unavailable", 503);
-
-  const userId = req.user!.userId;
-  const nationalId = normalizeNin(normalizeString(req.body?.nationalId));
-  const fullName = normalizeString(req.body?.fullName);
-  const dobRaw = normalizeString(req.body?.dob);
-
-  if (!isValidUgandaNin(nationalId)) throw new AppError("A valid 14-character Uganda NIN is required", 400);
-  if (!fullName || fullName.length < 2) throw new AppError("Valid full name is required", 400);
-  const dobDate = parseDateOnly(dobRaw);
-  if (!dobDate) throw new AppError("Valid date of birth is required (YYYY-MM-DD)", 400);
-
-  const existing = await prisma.user.findUnique({ where: { id: userId } });
-  if (!existing || existing.deletedAt) throw new AppError("User not found", 404);
-  if (existing.kycVerified) throw new AppError("Identity is already verified", 409);
-  if (!existing.phone) throw new AppError("A verified phone number is required before identity verification", 422);
-
-  const duplicateNin = await prisma.user.findFirst({
-    where: { nationalId, id: { not: userId }, deletedAt: null },
-    select: { id: true },
-  });
-  if (duplicateNin) throw new AppError("This NIN is already linked to another account", 409);
-
-  const latest = await prisma.kycSubmission.findFirst({
-    where: { userId },
-    orderBy: { version: "desc" },
-    select: { id: true, version: true, status: true, providerReference: true, providerStatus: true },
-  });
-  // A capture that was started but never produced a verdict (cancelled, closed,
-  // or failed to load) must not lock the customer out: restart it on the same
-  // submission. Only a submission Smile ID has already answered stays in review.
-  const resumable = latest?.status === "pending" && latest.providerStatus === "capture_started" ? latest : null;
-  if (latest?.status === "pending" && !resumable) {
-    throw new AppError("Your identity verification is already in progress. We will notify you when it completes.", 409);
-  }
-  const nextVersion = (latest?.version ?? 0) + 1;
-
-  const jobId = `docv-${userId}-${Date.now()}`;
-  let minted;
-  try {
-    minted = await mintDocumentVerificationToken({ userId, jobId, fullName, phone: existing.phone, nationalId });
-  } catch (error) {
-    // The technical reason is for us; the customer gets something they can act on.
-    console.error(JSON.stringify({
-      event: "kyc.smile_token_failed",
-      reason: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-      status: error instanceof SmileTokenError ? error.status : null,
-    }));
-    throw new AppError("The identity check service is not responding right now. Please try again in a minute.", 503);
-  }
-
-  const submission = await prisma.$transaction(async (tx) => {
-    if (resumable) {
-      const restarted = await tx.kycSubmission.update({
-        where: { id: resumable.id },
-        data: { fullName, nationalId, dateOfBirth: dobDate, providerReference: jobId },
-      });
-      await tx.kycAuditEvent.create({
-        data: {
-          submissionId: restarted.id,
-          actorId: userId,
-          action: "capture_restarted",
-          details: { provider: "smile-id", method: "document_verification" } as Prisma.InputJsonValue,
-        },
-      });
-      return restarted;
-    }
-    const created = await tx.kycSubmission.create({
-      data: {
-        userId,
-        version: nextVersion,
-        status: "pending",
-        fullName,
-        nationalId,
-        dateOfBirth: dobDate,
-        // The document images are captured inside Smile ID's hosted flow and
-        // pulled into Kuula storage when the verdict webhook arrives.
-        frontRef: "smile:capture-pending",
-        backRef: "smile:capture-pending",
-        frontMime: "image/jpeg",
-        backMime: "image/jpeg",
-        provider: "smile-id",
-        providerReference: jobId,
-        providerStatus: "capture_started",
-      },
-    });
-    await tx.kycAuditEvent.create({
-      data: {
-        submissionId: created.id,
-        actorId: userId,
-        action: "submitted",
-        details: { provider: "smile-id", method: "document_verification" } as Prisma.InputJsonValue,
-      },
-    });
-    return created;
-  });
-
-  await writeAuditEvent({
-    actorId: userId,
-    subjectUserId: userId,
-    action: "kyc.document_verification_started",
-    resourceType: "kyc_submission",
-    resourceId: submission.id,
-    metadata: { version: submission.version },
-  });
-
-  res.json({
-    ok: true,
-    verification: {
-      submissionId: submission.id,
-      jobId,
-      token: minted.token,
-      environment: minted.environment,
-      callbackUrl: minted.callbackUrl,
-      partnerId: minted.partnerId,
-      privacyPolicyUrl: minted.privacyPolicyUrl,
-      userDetails: minted.userDetails,
-    },
-  });
+router.post("/document-verification/start", authenticateToken, async (_req: Request, _res: Response) => {
+  throw new AppError("Smile ID capture has been retired. Upload ID front, back and portrait instead.", 410);
 });
 
 /** Persist a Smile-hosted image into Kuula KYC storage. Best-effort. */
