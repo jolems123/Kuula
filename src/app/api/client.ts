@@ -17,7 +17,6 @@ import {
   type KuulaMarket,
   type PartnerFinancingRequestInput,
   type StaffMember,
-  type DocumentVerificationSession,
 } from "./types";
 import type { AdminStats, InvestorReport, CustomerRow, AppNotification } from "./types-compat";
 
@@ -38,9 +37,8 @@ export type {
   PartnerFinancingRequestInput,
 };
 
-// Starting identity verification waits on Smile ID's token service, which can
-// take over 10 seconds; the usual request limit would give up too early.
-const SMILE_START_TIMEOUT_MS = 45_000;
+// Large images may require longer on mobile networks.
+const KYC_UPLOAD_TIMEOUT_MS = 90_000;
 
 let apiBaseUrl = env.API_BASE_URL;
 let apiTimeoutMs = env.API_TIMEOUT_MS;
@@ -115,11 +113,15 @@ const nodeApi = {
   partners: (token: string, market = "UG", type?: string) => request<{ partners: KuulaPartner[] }>(`/api/network/partners${query({ market, type })}`, { headers: auth(token) }),
   partnerFinancingRequests: (token: string) => request<{ requests: Array<Record<string, unknown>> }>("/api/network/partner-financing", { headers: auth(token) }),
   submitPartnerFinancing: (token: string, input: PartnerFinancingRequestInput) => request<{ request: { id: string; status: string; amount: number; partner: string; product: string; message: string } }>("/api/network/partner-financing", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
-  startDocumentVerification: (token: string, body: { nationalId: string; fullName: string; dob: string }) => request<{ ok: boolean; verification: DocumentVerificationSession }>("/api/kyc/document-verification/start", { method: "POST", headers: auth(token), body: JSON.stringify(body) }, SMILE_START_TIMEOUT_MS),
+  submitKycDocuments: (token: string, body: { nationalId: string; fullName: string; dob: string; frontImage: string; backImage: string; portraitImage: string }) =>
+    request<{ ok: boolean; kyc: { submissionId: string; status: string; version: number } }>("/api/kyc/submit-documents",
+      { method: "POST", headers: auth(token), body: JSON.stringify(body) }, KYC_UPLOAD_TIMEOUT_MS),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),
   getAdminKycQueue: (token: string, status = "pending") => request<{ submissions: Array<Record<string, unknown>> }>(`/api/admin/kyc/queue${query({ status })}`, { headers: auth(token) }),
   decideAdminKyc: (token: string, id: string, decision: "verified" | "rejected", reason: string) => request<{ ok: boolean; submission: Record<string, unknown> }>(`/api/admin/kyc/${id}/decision`, { method: "POST", headers: auth(token), body: JSON.stringify({ decision, reason }) }),
   getAdminKycAudit: (token: string, id: string) => request<{ events: Array<Record<string, unknown>> }>(`/api/admin/kyc/${id}/audit`, { headers: auth(token) }),
+  getAdminKycPreview: (token: string, id: string, side: "front" | "back" | "portrait") =>
+    request<{ url?: string; dataUrl?: string }>(`/api/admin/kyc/${encodeURIComponent(id)}/preview/${side}`, { headers: auth(token) }),
   getMessages: (token: string) => request<{ messages: Message[] }>("/api/messages", { headers: auth(token) }),
   postMessage: (token: string, content: string, receiverId?: string) => request<{ message: Message }>("/api/messages", { method: "POST", headers: auth(token), body: JSON.stringify({ content, receiverId }) }),
   getSupportTickets: (token: string, status = "all") => request<{ tickets: Array<Record<string, unknown>> }>(`/api/admin/support-tickets${query({ status })}`, { headers: auth(token) }),
