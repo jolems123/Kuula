@@ -205,3 +205,23 @@ export async function accessKycDocument(key: string, mime: string): Promise<KycD
     mime,
   };
 }
+
+/** Internal-only buffer lookup for RBAC-protected KYC photo previews.
+ * This avoids exposing cross-origin pre-signed object links to the browser.
+ */
+export async function readKycPreview(key: string, mime: string): Promise<{ buffer: Buffer; mime: string }> {
+  const provider = kycStorageProvider();
+  let buffer: Buffer;
+  if (provider === "s3") {
+    const result = await s3Client().send(new GetObjectCommand({ Bucket: s3Bucket(), Key: key }));
+    if (!result.Body) throw new Error("Document cannot be opened");
+    if (result.ContentLength && result.ContentLength > MAX_IMAGE_BYTES) throw new Error("Document exceeds the preview limit");
+    buffer = Buffer.from(await result.Body.transformToByteArray());
+  } else {
+    buffer = await fs.readFile(localAbsolutePath(key));
+  }
+  if (buffer.length > MAX_IMAGE_BYTES) throw new Error("Document exceeds the preview limit");
+  const detected = detectImage(buffer);
+  if (detected.mime !== mime) throw new Error("Stored document type mismatch");
+  return { buffer, mime: detected.mime };
+}

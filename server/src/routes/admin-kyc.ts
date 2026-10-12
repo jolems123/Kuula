@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { accessKycDocument } from "../lib/storage.js";
+import { accessKycDocument, readKycPreview } from "../lib/storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -154,13 +154,13 @@ router.get("/:id/preview/:side", requirePermissions("kyc.document.view"), async 
   const key = side === "front" ? submission.frontRef : side === "back" ? submission.backRef : submission.portraitRef;
   const mime = side === "front" ? submission.frontMime : side === "back" ? submission.backMime : submission.portraitMime;
   if (!key || !mime || key.startsWith("smile:")) throw new AppError("Image unavailable", 404);
-  const access = await accessKycDocument(key, mime);
+  const preview = await readKycPreview(key, mime);
   await prisma.kycAuditEvent.create({ data: { submissionId: submission.id, actorId: req.user!.userId,
     action: "document_viewed", details: { side } as Prisma.InputJsonValue } });
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: submission.userId,
     action: "kyc.document_viewed", resourceType: "kyc_submission", resourceId: submission.id, metadata: { side } });
   res.setHeader("Cache-Control", "private, no-store");
-  res.json(access.kind === "url" ? { url: access.url } : { dataUrl: `data:${access.mime};base64,${access.buffer.toString("base64")}` });
+  res.json({ dataUrl: `data:${preview.mime};base64,${preview.buffer.toString("base64")}` });
 });
 
 router.get("/:id/audit", requirePermissions("kyc.review"), async (req: Request, res: Response) => {

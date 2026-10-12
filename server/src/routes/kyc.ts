@@ -84,11 +84,16 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
     portrait: req.body?.portraitImage,
   };
   // Validate all three before persisting any file. Never echo images into logs/errors.
+  const parsed = new Map<string, Buffer>();
   for (const [side, value] of Object.entries(data)) {
     if (typeof value !== "string") throw new AppError("Capture the ID front, ID back and portrait image", 400);
-    try { parseDataUrl(value); }
+    try { parsed.set(side, parseDataUrl(value).buffer); }
     catch { throw new AppError("The " + side + " image must be a valid JPG, PNG or WEBP under 5 MB", 400); }
   }
+  if (parsed.get("front")!.equals(parsed.get("back")!) ||
+      parsed.get("front")!.equals(parsed.get("portrait")!) ||
+      parsed.get("back")!.equals(parsed.get("portrait")!))
+    throw new AppError("Upload three different photos: ID front, ID back and your portrait", 400);
   const latest = await prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { version: true, status: true } });
   if (latest?.status === "pending") throw new AppError("Your identity documents are awaiting staff review", 409);
 
@@ -120,8 +125,11 @@ router.post("/submit-documents", authenticateToken, async (req: Request, res: Re
       } });
       return record;
     });
+    // The authoritative submission audit is committed inside the transaction.
+    // Failure to emit a secondary generic event must not orphan persisted evidence.
     await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "kyc.manual_submitted",
-      resourceType: "kyc_submission", resourceId: submission.id, metadata: { version: submission.version } });
+      resourceType: "kyc_submission", resourceId: submission.id, metadata: { version: submission.version } })
+      .catch(() => console.warn("KYC secondary audit unavailable; submission audit remains committed"));
     res.status(201).json({ ok: true, kyc: { submissionId: submission.id, status: "pending", version: submission.version } });
   } catch (error) {
     await Promise.allSettled(saved.map(key => deleteKycDocument(key)));
