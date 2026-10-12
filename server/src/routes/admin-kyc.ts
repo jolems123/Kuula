@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { accessKycDocument } from "../lib/storage.js";
+import { accessKycDocument, readKycPreview } from "../lib/storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -27,13 +27,21 @@ router.get("/queue", requirePermissions("kyc.review"), async (req: Request, res:
       provider: true,
       providerReference: true,
       providerStatus: true,
+      // Only expose availability in queue responses, never raw storage keys.
+      frontRef: true,
+      backRef: true,
+      portraitRef: true,
       submittedAt: true,
       reviewedAt: true,
       reviewedBy: true,
       decisionReason: true,
     },
   });
-  res.json({ submissions });
+  res.json({ submissions: submissions.map(({ frontRef, backRef, portraitRef, ...row }) => ({ ...row,
+    hasFront: Boolean(frontRef) && !frontRef.startsWith("smile:"),
+    hasBack: Boolean(backRef) && !backRef.startsWith("smile:"),
+    hasPortrait: Boolean(portraitRef),
+  })) });
 });
 
 router.post("/:id/decision", requirePermissions("kyc.review"), async (req: Request, res: Response) => {
@@ -49,6 +57,10 @@ router.post("/:id/decision", requirePermissions("kyc.review"), async (req: Reque
 
   const latest = await prisma.kycSubmission.findFirst({ where: { userId: current.userId }, orderBy: { version: "desc" } });
   if (!latest || latest.id !== current.id) throw new AppError("Only the latest KYC submission can be reviewed", 409);
+  if (decision === "verified" && current.provider === "kuula-manual" &&
+      (current.providerStatus !== "manual_review" || !current.frontRef || !current.backRef || !current.portraitRef)) {
+    throw new AppError("All three identity images must be available for review", 422);
+  }
   if (decision === "verified" && current.provider === "smile-id" && current.providerStatus !== "attention") {
     throw new AppError("Smile ID verification may only be manually approved when the provider requested human review", 409);
   }
@@ -70,6 +82,9 @@ router.post("/:id/decision", requirePermissions("kyc.review"), async (req: Reque
         verified: decision === "verified",
         nationalId: current.nationalId,
         dateOfBirth: current.dateOfBirth,
+        kycProvider: current.provider,
+        kycReference: current.id,
+        ...(decision === "verified" ? { kycDocFrontRef: current.frontRef, kycDocBackRef: current.backRef } : {}),
       },
     });
     await tx.kycAuditEvent.create({
@@ -96,12 +111,13 @@ router.post("/:id/decision", requirePermissions("kyc.review"), async (req: Reque
 
 router.get("/:id/document/:side", requirePermissions("kyc.document.view"), async (req: Request, res: Response) => {
   const side = String(req.params.side);
-  if (side !== "front" && side !== "back") throw new AppError("Document side must be front or back", 400);
+  if (side !== "front" && side !== "back" && side !== "portrait") throw new AppError("Document side must be front, back or portrait", 400);
   const submission = await prisma.kycSubmission.findUnique({ where: { id: String(req.params.id) } });
   if (!submission) throw new AppError("KYC submission not found", 404);
 
-  const key = side === "front" ? submission.frontRef : submission.backRef;
-  const mime = side === "front" ? submission.frontMime : submission.backMime;
+  const key = side === "front" ? submission.frontRef : side === "back" ? submission.backRef : submission.portraitRef;
+  const mime = side === "front" ? submission.frontMime : side === "back" ? submission.backMime : submission.portraitMime;
+  if (!key || !mime || key.startsWith("smile:")) throw new AppError("This image is not available", 404);
   const access = await accessKycDocument(key, mime);
   await prisma.kycAuditEvent.create({
     data: {
@@ -126,6 +142,25 @@ router.get("/:id/document/:side", requirePermissions("kyc.document.view"), async
     return;
   }
   res.type(access.mime).send(access.buffer);
+});
+
+// No permanent public links: short-lived signed S3 URLs (or a private local
+// test data URL), subject to staff document permission and audit logging.
+router.get("/:id/preview/:side", requirePermissions("kyc.document.view"), async (req: Request, res: Response) => {
+  const side = String(req.params.side);
+  if (!["front", "back", "portrait"].includes(side)) throw new AppError("Invalid document side", 400);
+  const submission = await prisma.kycSubmission.findUnique({ where: { id: String(req.params.id) } });
+  if (!submission) throw new AppError("KYC submission not found", 404);
+  const key = side === "front" ? submission.frontRef : side === "back" ? submission.backRef : submission.portraitRef;
+  const mime = side === "front" ? submission.frontMime : side === "back" ? submission.backMime : submission.portraitMime;
+  if (!key || !mime || key.startsWith("smile:")) throw new AppError("Image unavailable", 404);
+  const preview = await readKycPreview(key, mime);
+  await prisma.kycAuditEvent.create({ data: { submissionId: submission.id, actorId: req.user!.userId,
+    action: "document_viewed", details: { side } as Prisma.InputJsonValue } });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: submission.userId,
+    action: "kyc.document_viewed", resourceType: "kyc_submission", resourceId: submission.id, metadata: { side } });
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json({ dataUrl: `data:${preview.mime};base64,${preview.buffer.toString("base64")}` });
 });
 
 router.get("/:id/audit", requirePermissions("kyc.review"), async (req: Request, res: Response) => {

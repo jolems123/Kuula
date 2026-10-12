@@ -45,17 +45,6 @@ export interface StaffMember {
   status: "active" | "invited" | "deactivated";
 }
 
-export interface DocumentVerificationSession {
-  submissionId: string;
-  jobId: string;
-  token: string;
-  environment: "sandbox" | "production";
-  callbackUrl: string;
-  partnerId: string;
-  privacyPolicyUrl: string;
-  userDetails?: { given_names: string; last_name: string; phone_number: string };
-}
-
 export interface BusinessProfile {
   businessName: string;
   sector: string;

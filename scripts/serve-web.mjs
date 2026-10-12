@@ -11,14 +11,14 @@ app.disable("x-powered-by");
 app.use((_req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://cdn.usesmileid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.kuulapp.com https://o1154186.ingest.us.sentry.io; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://cdn.usesmileid.com; manifest-src 'self'; upgrade-insecure-requests",
+    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.kuulapp.com https://o1154186.ingest.us.sentry.io; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests",
   );
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  // Identity verification runs in Smile ID's hosted frame, which needs the camera.
-  res.setHeader("Permissions-Policy", 'camera=(self "https://cdn.usesmileid.com"), microphone=(), geolocation=()');
+  // Photo capture is local to the device; third-party identity iframes are retired.
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
   next();
 });
 app.use(express.static(distDir, {

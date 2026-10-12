@@ -160,6 +160,9 @@ jobs:
         run: npm run db:seed
       - name: Hardened financial lifecycle
         working-directory: server
+        env:
+          TEST_OTP_CODE: "568921"
+          SMS_PROVIDER: "test"
         run: |
           set -euo pipefail
           npx tsx src/test/fake-marzpay-server.ts &
@@ -184,6 +187,7 @@ jobs:
           ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login -H 'Content-Type: application/json' -d '{"email":"admin-ci@kuula.test","password":"Admin-CI-Password-Only-2026"}')
           ADMIN_TOKEN=$(echo "$ADMIN_JSON" | jq -r '.token')
           test -n "$ADMIN_TOKEN"
+          ADMIN_TOKEN="$ADMIN_TOKEN" node src/test/manual-kyc-smoke.mjs
 
           APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
             -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
