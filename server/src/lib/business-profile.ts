@@ -36,12 +36,13 @@ function numeric(value: unknown, label: string, min: number, max: number): numbe
 export function parseBusinessProfile(raw: unknown): BusinessProfile {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new RangeError("Business information is required");
   const obj = raw as Record<string, unknown>;
+  const businessName = required(obj.businessName, "Business name", 120);
   const tradingAs = obj.tradingAs;
   if (tradingAs !== "registered" && tradingAs !== "informal") throw new RangeError("Select whether the business is registered");
   const registrationNumber = optional(obj.registrationNumber, "Registration number");
   if (tradingAs === "registered" && !registrationNumber) throw new RangeError("Enter the business registration number");
   const profile: BusinessProfile = {
-    businessName: required(obj.businessName, "Business name", 120),
+    businessName,
     sector: required(obj.sector, "Business sector", 80),
     tradingAs,
     registrationNumber,
