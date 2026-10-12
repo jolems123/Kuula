@@ -5,6 +5,7 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
+import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting, UNDERWRITING_POLICY } from "../lib/underwriting.js";
 import { writeAuditEvent } from "../lib/audit.js";
@@ -86,6 +87,10 @@ const mapApplication = (application: any) => ({
   decisionNotes: application.decisionNotes ?? null,
   offerExpiresAt: application.offerExpiresAt ?? null,
   underwritingStatus: application.underwriting?.status ?? null,
+  businessProfile: application.businessProfile ?? null,
+  businessReviewStatus: application.businessReviewStatus ?? "not_required",
+  businessReviewNotes: application.businessReviewNotes ?? null,
+  businessReviewedAt: application.businessReviewedAt ?? null,
 });
 
 async function recheckUnderwriting(application: any, user: any, assessment: any) {
@@ -145,6 +150,7 @@ async function createLoanApplicationForUser(
     declaredMonthlyIncome: number;
     declaredMonthlyExpenses: number;
     existingDebtPayment: number;
+    business: unknown;
   }
 ) {
   if (!isBusinessLoanPurpose(payload.purpose)) {
@@ -161,10 +167,19 @@ async function createLoanApplicationForUser(
   });
   if (open) throw new AppError(`You already have an open loan or application (${open.status})`, 409);
 
+  let business: BusinessProfile;
+  try { business = parseBusinessProfile(payload.business); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid business information", 422); }
+  if (!Number.isInteger(payload.termDays) || payload.termDays < 30 || payload.termDays > 365)
+    throw new AppError("Business loan terms must be between 30 and 365 days", 422);
   const quote = quoteForRequest(payload.amount, payload.termDays);
-  const declaredMonthlyIncome = money(payload.declaredMonthlyIncome, "Monthly income");
-  const declaredMonthlyExpenses = money(payload.declaredMonthlyExpenses, "Monthly expenses", true);
+  const declaredMonthlyIncome = money(payload.declaredMonthlyIncome, "Monthly business sales");
+  const declaredMonthlyExpenses = money(payload.declaredMonthlyExpenses, "Monthly business expenses", true);
   const existingDebtPayment = money(payload.existingDebtPayment, "Existing debt payment", true);
+  if (declaredMonthlyIncome !== business.monthlySales ||
+      declaredMonthlyExpenses !== business.monthlyBusinessExpenses ||
+      existingDebtPayment !== business.monthlyExistingDebt)
+    throw new AppError("Loan affordability figures must match the business profile", 422);
   const evidence = await effectiveCreditEvidence(userId);
   const underwriting = evaluateUnderwriting({
     requestedAmount: quote.principal,
@@ -192,6 +207,8 @@ async function createLoanApplicationForUser(
           applicantName: user.fullName,
           amount: BigInt(quote.principal),
           purpose: payload.purpose,
+          businessProfile: business as unknown as Prisma.InputJsonValue,
+          businessReviewStatus: "pending",
           termDays: quote.termDays,
           channel: payload.channel || "MTN MoMo",
           apr: quote.apr,
@@ -241,8 +258,36 @@ router.post("/applications", authenticateToken, async (req: Request, res: Respon
     declaredMonthlyIncome: Number(req.body?.declaredMonthlyIncome),
     declaredMonthlyExpenses: Number(req.body?.declaredMonthlyExpenses),
     existingDebtPayment: Number(req.body?.existingDebtPayment ?? 0),
+    business: req.body?.business,
   });
   res.status(201).json({ application: mapApplication(application) });
+});
+
+router.post("/applications/:id/business-review", authenticateToken, requirePermissions("loan.review"), async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  const status = String(req.body?.status || "");
+  const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : "";
+  if (!["verified", "rejected"].includes(status)) throw new AppError("Status must be verified or rejected", 400);
+  if (notes.length < 15 || notes.length > 2000) throw new AppError("Document verification findings (15–2000 characters)", 400);
+  const application = await prisma.loanApplication.findUnique({ where: { id } });
+  if (!application || !application.businessProfile) throw new AppError("Business loan application not found", 404);
+  if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Application is no longer pending review", 409);
+  const updated = await prisma.loanApplication.update({
+    where: { id },
+    data: {
+      businessReviewStatus: status,
+      businessReviewNotes: notes,
+      businessReviewedAt: new Date(),
+      businessReviewedBy: req.user!.userId,
+    },
+    include: { underwriting: true },
+  });
+  await writeAuditEvent({
+    actorId: req.user!.userId, subjectUserId: application.applicantId,
+    action: "loan.business_reviewed", resourceType: "loan_application", resourceId: id,
+    metadata: { status, notes },
+  });
+  res.json({ application: mapApplication(updated) });
 });
 
 router.post("/top-up", authenticateToken, (_req: Request, res: Response) => {
@@ -272,6 +317,8 @@ router.post(
     if (!application.underwriting) throw new AppError("Application has no underwriting assessment", 409);
 
     if (decision === "approved") {
+      if (application.businessProfile && application.businessReviewStatus !== "verified")
+        throw new AppError("Business verification is required before approval", 422);
       const current = await recheckUnderwriting(application, application.applicant, application.underwriting);
       await persistAssessment(application.id, req.user!.userId, current);
       if (!current.approved) throw new AppError(`Application is no longer eligible: ${current.flags.join(", ")}`, 422);

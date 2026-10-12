@@ -212,6 +212,11 @@ model LoanApplication {
   amount              BigInt
   purpose             String    @default("Personal")
   termDays            Int       @default(90) @map("term_days")
+  businessProfile      Json?      @map("business_profile")
+  businessReviewStatus String     @default("not_required") @map("business_review_status")
+  businessReviewedAt   DateTime?  @map("business_reviewed_at")
+  businessReviewedBy   String?    @map("business_reviewed_by") @db.Uuid
+  businessReviewNotes  String?    @map("business_review_notes")
   channel             String    @default("MTN MoMo")
   apr                 Decimal   @default(0.336) @db.Decimal(5, 4)
   interest            BigInt    @default(0)
