@@ -15,11 +15,10 @@ function uuid(value: unknown, label: string): string {
   return id;
 }
 
+import { roleLevel } from "../lib/credit-roles.js";
+
 function levelForRole(role: string): number {
-  if (["officer", "loan_officer"].includes(role)) return 1;
-  if (["manager", "credit_manager"].includes(role)) return 2;
-  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
-  return 0;
+  return roleLevel(role);
 }
 
 async function activeAssignment(applicationId: string, userId: string, level: number): Promise<boolean> {

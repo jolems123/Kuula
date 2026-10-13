@@ -6,11 +6,11 @@ import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
+import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
 
 const router = Router();
 router.use(authenticateToken, requirePermissions("loan.review"));
 
-const LEVEL_ROLE: Record<number, string> = { 1: "officer", 2: "manager", 3: "admin" };
 const LEVEL_STATUS: Record<number, string> = { 1: "field_evaluation", 2: "level2_review", 3: "final_review" };
 const EVIDENCE_TYPES = new Set(["storefront", "business_interior", "stock", "equipment", "licence", "supplier_invoice", "applicant_at_business", "other"]);
 
@@ -35,10 +35,23 @@ function numberOrNull(value: unknown): number | null {
   return n;
 }
 export function roleLevel(role: string): number {
-  if (["officer", "loan_officer"].includes(role)) return 1;
-  if (["manager", "credit_manager"].includes(role)) return 2;
-  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
-  return 0;
+  return sharedRoleLevel(role);
+}
+
+/**
+ * Segregation of duties: one person may work only one approval level of a case, so
+ * no one can both evaluate and approve, or recommend and finally approve, the same loan.
+ */
+async function assertIndependentOfOtherLevels(applicationId: string, userId: string, level: number) {
+  const rows = await prisma.$queryRaw<Array<{ level: number }>>(Prisma.sql`
+    SELECT level FROM approval_assignments WHERE application_id=${applicationId}::uuid AND assignee_id=${userId}::uuid AND level <> ${level}
+    UNION
+    SELECT level FROM approval_actions WHERE application_id=${applicationId}::uuid AND actor_id=${userId}::uuid AND level <> ${level}
+    LIMIT 1
+  `);
+  if (rows[0]) {
+    throw new AppError(`Segregation of duties: this person already worked Level ${rows[0].level} of this case and cannot act at Level ${level}`, 403);
+  }
 }
 
 async function assertApplication(applicationId: string) {
@@ -114,7 +127,8 @@ router.post("/applications/:id/assign", requirePermissions("loan.approve"), asyn
   const assigneeId = asId(req.body?.assigneeId, "Assignee ID");
   const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, role: true, fullName: true, deletedAt: true } });
   if (!assignee || assignee.deletedAt) throw new AppError("Assignee not found", 404);
-  if (assignee.role !== LEVEL_ROLE[level]) throw new AppError(`Level ${level} must be assigned to a ${LEVEL_ROLE[level]}`, 422);
+  if (!roleFitsLevel(assignee.role, level)) throw new AppError(`Level ${level} must be assigned to a ${levelLabel(level)}`, 422);
+  await assertIndependentOfOtherLevels(applicationId, assignee.id, level);
 
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`
@@ -276,7 +290,8 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
   const nextLevel = level + 1;
   if (!nextAssigneeId) throw new AppError(`Select the Level ${nextLevel} approver before submitting`, 400);
   const next = await prisma.user.findUnique({ where: { id: nextAssigneeId }, select: { id: true, role: true, fullName: true, deletedAt: true } });
-  if (!next || next.deletedAt || next.role !== LEVEL_ROLE[nextLevel]) throw new AppError(`The next approver must have role ${LEVEL_ROLE[nextLevel]}`, 422);
+  if (!next || next.deletedAt || !roleFitsLevel(next.role, nextLevel)) throw new AppError(`The next approver must be a ${levelLabel(nextLevel)}`, 422);
+  await assertIndependentOfOtherLevels(applicationId, next.id, nextLevel);
 
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${level} AND assignee_id=${req.user!.userId}::uuid AND status='active'`);
@@ -300,6 +315,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (!["return", "reject", "approve"].includes(action)) throw new AppError("Action must be return, reject, or approve", 400);
   if (narrative.length < 40) throw new AppError("A substantive decision narrative of at least 40 characters is required", 400);
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
+  await assertIndependentOfOtherLevels(applicationId, req.user!.userId, level);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
     throw new AppError("A documented, verified business assessment is required before final approval", 422);
 
@@ -312,7 +328,8 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
     const returnLevel = level === 1 ? 1 : Math.max(1, Number(req.body?.returnToLevel) || level - 1);
     const targetId = asId(req.body?.assigneeId, "Return assignee ID");
     const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true, role: true, fullName: true } });
-    if (!target || target.role !== LEVEL_ROLE[returnLevel]) throw new AppError(`Return assignee must be a ${LEVEL_ROLE[returnLevel]}`, 422);
+    if (!target || !roleFitsLevel(target.role, returnLevel)) throw new AppError(`Return assignee must be a ${levelLabel(returnLevel)}`, 422);
+    await assertIndependentOfOtherLevels(applicationId, target.id, returnLevel);
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='returned', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${level} AND status='active'`);
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='returned', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${returnLevel} AND status='active'`);

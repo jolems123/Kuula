@@ -307,6 +307,9 @@ router.post("/login", async (req: Request, res: Response) => {
     : typeof req.body.password === "string" ? req.body.password : "";
   const user = await prisma.user.findUnique({ where: { phone } });
   if (!user || (!user.pinHash && !user.passwordHash) || user.deletedAt) throw new AppError("Wrong phone number or PIN", 401);
+  // Staff must use the staff portal, which adds the SMS code step. The same generic
+  // error is returned so this route does not reveal which numbers belong to staff.
+  if (isStaffRole(user.role)) throw new AppError("Wrong phone number or PIN", 401);
   if (!user.phoneVerified) throw new AppError("Verify your phone before signing in", 403);
   await assertLoginSecret(user, supplied);
 
