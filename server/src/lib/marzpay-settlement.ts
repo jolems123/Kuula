@@ -1,7 +1,7 @@
 import { Prisma, type Transaction } from "@prisma/client";
 import prisma from "./prisma.js";
 import type { MarzPayWebhookEvent } from "./marzpay.js";
-import { postSettlementJournal } from "./ledger.js";
+import { allocateRepayment, postSettlementJournal, type RepaymentAllocation } from "./ledger.js";
 import { dispatchNextDisbursementLeg } from "./disbursements.js";
 import { writeAuditEvent } from "./audit.js";
 
@@ -267,16 +267,19 @@ async function settleTransaction(event: MarzPayWebhookEvent, ledger: Transaction
 
     // The journal is posted inside this database transaction, so settlement status,
     // balances and accounting either all commit or all roll back.
-    if (event.isSuccess) await postSettlementJournal(tx, { ...ledger, providerFee });
+    // Repayment journals depend on how the money is allocated, so they are posted in
+    // settleRepayment; everything else is posted here.
+    if (event.isSuccess && ledger.type !== "loan_payment") await postSettlementJournal(tx, { ...ledger, providerFee });
 
     if (ledger.type === "loan_disbursement" && ledger.loanId) {
       await settleLegacyDisbursement(tx, ledger, event);
       return { settled: true, unapplied: false };
     }
     if (ledger.type === "loan_payment" && ledger.loanId) {
-      const unapplied = await settleRepayment(tx, ledger, event);
+      const unapplied = await settleRepayment(tx, { ...ledger, providerFee }, event);
       return { settled: true, unapplied };
     }
+    if (event.isSuccess && ledger.type === "loan_payment") await postSettlementJournal(tx, { ...ledger, providerFee, allocation: null });
     return { settled: true, unapplied: false };
   });
 
@@ -338,10 +341,19 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
   const outstanding = repayment ? Number(repayment.total) - Number(repayment.amountPaid) : 0;
   if (!repayment || outstanding <= 0) {
     // Money was received but there is nothing open to apply it to: a possible refund case.
+    await postSettlementJournal(tx, { ...ledger, allocation: null });
     await tx.transaction.update({ where: { id: ledger.id }, data: { reconciliationStatus: "reconciliation_required" } });
     return true;
   }
-  const applied = Math.min(outstanding, paymentAmount);
+  const application = await tx.loanApplication.findFirst({ where: { applicantId: ledger.userId, loanId: ledger.loanId! }, select: { interest: true } });
+  const allocation: RepaymentAllocation = allocateRepayment({
+    payment: paymentAmount,
+    loanInterest: Number(application?.interest ?? 0),
+    loanTotal: Number(repayment.total),
+    paidBefore: Number(repayment.amountPaid),
+  });
+  await postSettlementJournal(tx, { ...ledger, allocation });
+  const applied = Number(allocation.interest + allocation.principal);
   const newPaid = Number(repayment.amountPaid) + applied;
   const fullyPaid = newPaid >= Number(repayment.total);
   const receiptId = `RCPT-${event.reference.slice(0, 8).toUpperCase()}`;
@@ -352,7 +364,7 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
       status: fullyPaid ? "paid" : repayment.status,
       receiptId,
       pendingCollectionRef: repayment.pendingCollectionRef === event.reference ? null : repayment.pendingCollectionRef,
-      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: paymentAmount, applied, success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
+      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: paymentAmount, applied, interest: Number(allocation.interest), principal: Number(allocation.principal), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
     },
   });
   if (applied < paymentAmount) {

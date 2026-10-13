@@ -6,7 +6,27 @@ interface JournalLine {
   amount: bigint;
 }
 
-type SettlementSource = Pick<Transaction, "type" | "amount"> & { providerFee?: bigint | null };
+/**
+ * How a confirmed repayment is split. Policy: interest is settled first, then principal;
+ * anything beyond the loan's balance is held as unapplied customer funds for refund or
+ * a later decision. No penalty or fee income is charged to borrowers.
+ */
+export interface RepaymentAllocation {
+  interest: bigint;
+  principal: bigint;
+  unapplied: bigint;
+}
+
+export function allocateRepayment(input: { payment: number; loanInterest: number; loanTotal: number; paidBefore: number }): RepaymentAllocation {
+  const payment = Math.max(0, Math.round(input.payment));
+  const outstanding = Math.max(0, Math.round(input.loanTotal - input.paidBefore));
+  const applied = Math.min(payment, outstanding);
+  const interestDue = Math.max(0, Math.round(input.loanInterest) - Math.min(Math.round(input.paidBefore), Math.round(input.loanInterest)));
+  const interest = Math.min(applied, interestDue);
+  return { interest: BigInt(interest), principal: BigInt(applied - interest), unapplied: BigInt(payment - applied) };
+}
+
+type SettlementSource = Pick<Transaction, "type" | "amount"> & { providerFee?: bigint | null; allocation?: RepaymentAllocation | null };
 
 /**
  * MOBILE_MONEY_CLEARING mirrors Kuula's MarzPay wallet. MarzPay's own charges are kept
@@ -26,18 +46,28 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
   }
   if (transaction.type === "loan_payment") {
     if (fee >= transaction.amount) throw new Error("Provider fee cannot equal or exceed the collected amount");
-    return [
-      { accountCode: "MOBILE_MONEY_CLEARING", direction: "debit", amount: transaction.amount - fee },
-      ...feeLine,
-      { accountCode: "LOAN_COLLECTIONS_SUSPENSE", direction: "credit", amount: transaction.amount },
+    const debits: JournalLine[] = [{ accountCode: "MOBILE_MONEY_CLEARING", direction: "debit", amount: transaction.amount - fee }, ...feeLine];
+    const allocation = transaction.allocation;
+    if (!allocation) {
+      // Without a loan to apply it to, the money waits in suspense for a person to decide.
+      return [...debits, { accountCode: "LOAN_COLLECTIONS_SUSPENSE", direction: "credit", amount: transaction.amount }];
+    }
+    if (allocation.interest + allocation.principal + allocation.unapplied !== transaction.amount) {
+      throw new Error("Repayment allocation does not equal the collected amount");
+    }
+    const credits: JournalLine[] = [
+      { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "credit", amount: allocation.principal },
+      { accountCode: "INTEREST_INCOME", direction: "credit", amount: allocation.interest },
+      { accountCode: "UNAPPLIED_CUSTOMER_FUNDS", direction: "credit", amount: allocation.unapplied },
     ];
+    return [...debits, ...credits.filter((line) => line.amount > BigInt(0))];
   }
   return [];
 }
 
 export async function postSettlementJournal(
   tx: Prisma.TransactionClient,
-  transaction: Pick<Transaction, "id" | "type" | "amount" | "reference" | "userId" | "loanId"> & { providerFee?: bigint | null }
+  transaction: Pick<Transaction, "id" | "type" | "amount" | "reference" | "userId" | "loanId"> & { providerFee?: bigint | null; allocation?: RepaymentAllocation | null }
 ): Promise<void> {
   if (!transaction.reference) throw new Error("Settled transaction requires a reference");
   const lines = linesFor(transaction);
