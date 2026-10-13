@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
-import { authenticateToken, isStaffRole, requirePermissions } from "../middleware/auth.js";
+import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting } from "../lib/underwriting.js";
@@ -189,8 +189,11 @@ router.get("/:id/disbursement", authenticateToken, async (req: Request, res: Res
     select: { id: true, applicantId: true, status: true },
   });
   if (!application) throw new AppError("Loan application not found", 404);
-  const isStaff = isStaffRole(req.user!.role);
-  if (!isStaff && application.applicantId !== req.user!.userId) throw new AppError("Loan application not found", 404);
+  const role = req.user!.role;
+  // Payout details (phone, amounts, references) are for the borrower and for staff who
+  // work loans or payments, not for every staff role (e.g. support or KYC reviewers).
+  const staffMayView = isStaffRole(role) && (["loan.review", "reconciliation.manage", "disbursement.release"] as const).some((permission) => hasPermission(role, permission));
+  if (!staffMayView && application.applicantId !== req.user!.userId) throw new AppError("Loan application not found", 404);
   const batch = await disbursementBatchForApplication(application.id);
   res.json({ applicationStatus: application.status, disbursement: compatibleBatch(batch) });
 });

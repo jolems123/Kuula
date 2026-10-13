@@ -104,6 +104,35 @@ async function assertLoginSecret(user: User, supplied: string): Promise<void> {
   throw new AppError("Wrong phone number or PIN", 401);
 }
 
+/**
+ * Staff passwords get the same per-account lockout as customer PINs, so a password
+ * cannot be guessed from many addresses. The error stays generic until the lock.
+ */
+async function assertStaffPassword(user: User, supplied: string): Promise<void> {
+  const now = new Date();
+  if (user.loginLockedUntil && user.loginLockedUntil > now) {
+    const minutes = Math.ceil((user.loginLockedUntil.getTime() - now.getTime()) / 60_000);
+    throw new AppError(`Too many wrong attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}, or reset your password.`, 429);
+  }
+  if (user.passwordHash && await bcrypt.compare(supplied, user.passwordHash)) {
+    if (user.loginAttempts || user.loginLockedUntil) {
+      await prisma.user.update({ where: { id: user.id }, data: { loginAttempts: 0, loginLockedUntil: null } });
+    }
+    return;
+  }
+  const attempts = user.loginAttempts + 1;
+  const locked = attempts >= LOGIN_POLICY.maxAttempts;
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { loginAttempts: locked ? 0 : attempts, loginLockedUntil: locked ? new Date(now.getTime() + LOGIN_POLICY.lockMinutes * 60_000) : null },
+  });
+  if (locked) {
+    await writeAuditEvent({ subjectUserId: user.id, action: "auth.staff_login_locked", resourceType: "user", resourceId: user.id });
+    throw new AppError(`Too many wrong attempts. Try again in ${LOGIN_POLICY.lockMinutes} minutes, or reset your password.`, 429);
+  }
+  throw new AppError("Invalid credentials", 401);
+}
+
 function tokenFor(user: Pick<User, "id" | "role" | "authVersion">, sessionId: string): string {
   return generateToken({
     userId: user.id,
@@ -346,7 +375,7 @@ router.post("/admin-login", async (req: Request, res: Response) => {
     }
     throw new AppError("Invalid credentials", 401);
   }
-  if (!await bcrypt.compare(supplied, user.passwordHash)) throw new AppError("Invalid credentials", 401);
+  await assertStaffPassword(user, supplied);
 
   if (process.env.NODE_ENV === "test") {
     res.json(await sessionResponse(user, req));
