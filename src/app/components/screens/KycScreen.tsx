@@ -10,6 +10,43 @@ type ImageSide = "front" | "back" | "portrait";
 type Pictures = Record<ImageSide, File | null>;
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+// Phone cameras often save HEIC or 5-15 MB photos. These are converted before upload.
+const CONVERTIBLE_TYPES = new Set([...ALLOWED_TYPES, "image/heic", "image/heif", ""]);
+const MAX_EDGE_PX = 2000;
+const RESIZE_ABOVE_BYTES = 1.5 * 1024 * 1024;
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("This photo format could not be opened")); };
+    image.src = url;
+  });
+}
+
+/**
+ * Keeps ID photos readable (longest side up to 2000 px) while bringing large camera
+ * images under the upload limit. Small JPG/PNG/WEBP files are sent unchanged.
+ */
+async function prepareIdPhoto(file: File): Promise<File> {
+  if (ALLOWED_TYPES.has(file.type) && file.size <= RESIZE_ABOVE_BYTES) return file;
+  const image = await loadImage(file);
+  const scale = Math.min(1, MAX_EDGE_PX / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("This device could not prepare the photo");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  for (const quality of [0.88, 0.8, 0.7]) {
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (blob && blob.size <= MAX_BYTES) {
+      return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: Date.now() });
+    }
+  }
+  throw new Error("This photo is too large even after resizing");
+}
 
 function readImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -39,7 +76,7 @@ function PhotoField({ kind, label, hint, file, onPick }: {
     <label className="kx-field" style={{ display: "block", border: "1px solid #D5E8DA", borderRadius: 14, padding: 13, background: "rgba(255,255,255,.08)" }}>
       <span className="kx-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><Camera size={16} />{label}</span>
       <span className="kx-hint" style={{ display: "block", margin: "5px 0 9px" }}>{hint}</span>
-      <input type="file" name={kind} accept="image/jpeg,image/png,image/webp" capture={kind === "portrait" ? "user" : "environment"}
+      <input type="file" name={kind} accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture={kind === "portrait" ? "user" : "environment"}
         onChange={change} aria-label={label} style={{ maxWidth: "100%", fontSize: 13 }} />
       {preview && <img src={preview} alt={label + " preview"} style={{ width: "100%", maxHeight: 170, objectFit: "contain", marginTop: 10, borderRadius: 10 }} />}
       {file && <span className="kx-hint" style={{ display: "block", marginTop: 7 }}>Selected · {(file.size / 1024 / 1024).toFixed(2)} MB</span>}
@@ -79,14 +116,18 @@ export function KycScreen({ onNavigate }: Props) {
     return () => { live = false; };
   }, [token]);
 
-  const selectPhoto = (side: ImageSide, file: File | null) => {
+  const selectPhoto = async (side: ImageSide, file: File | null) => {
     setError("");
-    if (file && (!ALLOWED_TYPES.has(file.type) || file.size < 32 || file.size > MAX_BYTES)) {
-      setError("Use a JPG, PNG or WEBP image no larger than 5 MB.");
+    if (!file) { setPictures(previous => ({ ...previous, [side]: null })); return; }
+    try {
+      if (!CONVERTIBLE_TYPES.has(file.type) || file.size < 32) throw new Error("unsupported");
+      const prepared = await prepareIdPhoto(file);
+      if (!ALLOWED_TYPES.has(prepared.type) || prepared.size > MAX_BYTES) throw new Error("too large");
+      setPictures(previous => ({ ...previous, [side]: prepared }));
+    } catch {
+      setError("This photo could not be used. Take it again, or choose a JPG or PNG photo.");
       setPictures(previous => ({ ...previous, [side]: null }));
-      return;
     }
-    setPictures(previous => ({ ...previous, [side]: file }));
   };
 
   const submit = async (event: FormEvent) => {
