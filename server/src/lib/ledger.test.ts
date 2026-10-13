@@ -19,7 +19,7 @@ test("a payout charge is an expense, not borrower principal", () => {
   assert.equal(debit, credit);
 });
 
-test("a collection credits the borrower in full and books the charge separately", () => {
+test("an unmatched collection waits in suspense, with the charge booked separately", () => {
   const lines = linesFor({ type: "loan_payment", amount: BigInt(10000), providerFee: BigInt(350) });
   assert.deepEqual(lines.map((line) => [line.accountCode, line.direction, line.amount]), [
     ["MOBILE_MONEY_CLEARING", "debit", BigInt(9650)],
@@ -33,4 +33,27 @@ test("a collection credits the borrower in full and books the charge separately"
 test("without a known charge the journal is a plain two-line entry", () => {
   assert.equal(linesFor({ type: "loan_payment", amount: BigInt(10000) }).length, 2);
   assert.throws(() => linesFor({ type: "loan_payment", amount: BigInt(300), providerFee: BigInt(300) }));
+});
+
+test("repayments settle interest first, then principal, and hold any excess", async () => {
+  const { allocateRepayment } = await import("./ledger.js");
+  // Loan: 100,000 principal + 8,285 interest.
+  const loan = { loanInterest: 8_285, loanTotal: 108_285 };
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 10_000, paidBefore: 0 }), { interest: BigInt(8_285), principal: BigInt(1_715), unapplied: BigInt(0) });
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 20_000, paidBefore: 10_000 }), { interest: BigInt(0), principal: BigInt(20_000), unapplied: BigInt(0) });
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 5_000, paidBefore: 3_000 }), { interest: BigInt(5_000), principal: BigInt(0), unapplied: BigInt(0) });
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 80_000, paidBefore: 30_000 }), { interest: BigInt(0), principal: BigInt(78_285), unapplied: BigInt(1_715) });
+});
+
+test("an allocated collection reduces the receivable and recognises interest income", () => {
+  const lines = linesFor({ type: "loan_payment", amount: BigInt(10_000), providerFee: BigInt(350), allocation: { interest: BigInt(8_285), principal: BigInt(1_715), unapplied: BigInt(0) } });
+  assert.deepEqual(lines.map((line) => [line.accountCode, line.direction, line.amount]), [
+    ["MOBILE_MONEY_CLEARING", "debit", BigInt(9_650)],
+    ["PROVIDER_FEE_EXPENSE", "debit", BigInt(350)],
+    ["LOAN_PRINCIPAL_RECEIVABLE", "credit", BigInt(1_715)],
+    ["INTEREST_INCOME", "credit", BigInt(8_285)],
+  ]);
+  const { debit, credit } = balance(lines);
+  assert.equal(debit, credit);
+  assert.throws(() => linesFor({ type: "loan_payment", amount: BigInt(10_000), allocation: { interest: BigInt(1), principal: BigInt(1), unapplied: BigInt(1) } }), /allocation/);
 });

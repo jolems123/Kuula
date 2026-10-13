@@ -163,11 +163,21 @@ try {
   repayment = await call("GET", "/api/loans/repayment", { token: C });
   assert.equal(repayment.repayment.amount_paid, 30000);
 
-  step("collection journal credits the borrower in full and books MarzPay's charge apart");
-  const collectionJournal = await prisma.journal.findUnique({ where: { transactionId: paymentTx.id }, include: { entries: true } });
-  const credit = collectionJournal.entries.find((entry) => entry.direction === "credit");
-  assert.equal(credit.accountCode, "LOAN_COLLECTIONS_SUSPENSE");
-  assert.equal(credit.amount, BigInt(10000));
+  step("repayment journals settle interest first, then principal, crediting the borrower in full");
+  const loanInterest = Number((await prisma.loanApplication.findUnique({ where: { id: applicationId }, select: { interest: true } })).interest);
+  assert.ok(loanInterest > 0 && loanInterest < 10000, "the first 10,000 payment covers all interest");
+  const credits = async (transactionId) => Object.fromEntries((await prisma.journalEntry.findMany({ where: { journal: { transactionId }, direction: "credit" } }))
+    .map((entry) => [entry.accountCode, Number(entry.amount)]));
+  assert.deepEqual(await credits(paymentTx.id), { INTEREST_INCOME: loanInterest, LOAN_PRINCIPAL_RECEIVABLE: 10000 - loanInterest });
+  assert.deepEqual(await credits(uncertainTx.id), { LOAN_PRINCIPAL_RECEIVABLE: 20000 });
+  const receivable = await prisma.journalEntry.groupBy({ by: ["direction"], where: { accountCode: "LOAN_PRINCIPAL_RECEIVABLE" }, _sum: { amount: true } });
+  const byDirection = Object.fromEntries(receivable.map((row) => [row.direction, Number(row._sum.amount)]));
+  assert.equal(byDirection.debit - byDirection.credit, 100000 - (30000 - loanInterest), "principal receivable equals principal not yet repaid");
+  const trial = await call("GET", "/api/admin/reconciliation/trial-balance", { token: A });
+  assert.equal(trial.balanced, true, "total debits equal total credits");
+  const account = (code) => trial.accounts.find((row) => row.account === code)?.balance ?? 0;
+  assert.equal(account("LOAN_PRINCIPAL_RECEIVABLE"), 100000 - (30000 - loanInterest));
+  assert.equal(account("INTEREST_INCOME"), -loanInterest);
   const journalCount = await prisma.journal.count();
   assert.ok(journalCount >= 3);
 

@@ -49,6 +49,28 @@ router.get("/", async (req: Request, res: Response) => {
   });
 });
 
+// Trial balance from posted journals: per account, total debits, total credits and the
+// net debit balance. Optional ?asOf=YYYY-MM-DD includes journals posted up to that day.
+router.get("/trial-balance", async (req: Request, res: Response) => {
+  const asOfRaw = typeof req.query.asOf === "string" ? req.query.asOf : "";
+  const asOf = asOfRaw ? new Date(`${asOfRaw}T23:59:59.999Z`) : new Date();
+  if (Number.isNaN(asOf.getTime())) throw new AppError("asOf must be a date (YYYY-MM-DD)", 400);
+  const rows = await prisma.journalEntry.groupBy({
+    by: ["accountCode", "direction"],
+    where: { journal: { postedAt: { lte: asOf } } },
+    _sum: { amount: true },
+  });
+  const accounts = new Map<string, { account: string; debit: number; credit: number }>();
+  for (const row of rows) {
+    const entry = accounts.get(row.accountCode) ?? { account: row.accountCode, debit: 0, credit: 0 };
+    entry[row.direction === "debit" ? "debit" : "credit"] += Number(row._sum.amount ?? 0);
+    accounts.set(row.accountCode, entry);
+  }
+  const list = [...accounts.values()].sort((a, b) => a.account.localeCompare(b.account)).map((entry) => ({ ...entry, balance: entry.debit - entry.credit }));
+  const totals = list.reduce((sum, entry) => ({ debit: sum.debit + entry.debit, credit: sum.credit + entry.credit }), { debit: 0, credit: 0 });
+  res.json({ asOf: asOf.toISOString(), accounts: list, totals, balanced: totals.debit === totals.credit });
+});
+
 router.post("/flag-stale", async (_req: Request, res: Response) => {
   const count = await flagStalePaymentTransactions();
   res.json({ ok: true, flagged: count });
