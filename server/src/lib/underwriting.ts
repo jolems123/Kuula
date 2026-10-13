@@ -32,6 +32,12 @@ const MIN_MONTHLY_INCOME_UGX = 100_000;
 // trusted at face value for affordability. Until a verified-income provider is
 // available Kuula uses only 60% of the declaration for debt-capacity math.
 const UNVERIFIED_INCOME_HAIRCUT = 0.60;
+// Repayments come out of what the business keeps after its own costs, so capacity is
+// also capped at this share of net monthly cash flow (sales minus business expenses).
+const MAX_NET_CASH_FLOW_SHARE = 0.50;
+// Credit limits step up with proven repayment: a first loan is capped here, and each
+// fully repaid loan raises the cap by the same amount, never beyond the score limit.
+const FIRST_LOAN_CAP_UGX = 500_000;
 
 function integerMoney(value: number, label: string, allowZero = false): number {
   const normalized = Math.round(Number(value));
@@ -64,7 +70,11 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
     : Math.min(declaredMonthlyIncome, verifiedMonthlyIncome);
   const disposableIncome = Math.max(0, incomeForAffordability - declaredMonthlyExpenses - existingDebtPayment);
   const termMonths = Math.max(1, input.termDays / 30);
-  const maxMonthlyDebtService = Math.max(0, Math.floor(incomeForAffordability * MAX_DEBT_SERVICE_RATIO) - existingDebtPayment);
+  // The smaller of: 35% of (haircut) sales, and 50% of net cash flow after business costs.
+  const netMonthlyCashFlow = Math.max(0, incomeForAffordability - declaredMonthlyExpenses);
+  const grossCapacity = Math.floor(incomeForAffordability * MAX_DEBT_SERVICE_RATIO);
+  const netCapacity = Math.floor(netMonthlyCashFlow * MAX_NET_CASH_FLOW_SHARE);
+  const maxMonthlyDebtService = Math.max(0, Math.min(grossCapacity, netCapacity) - existingDebtPayment);
   const maxAffordablePayment = Math.max(0, Math.floor(maxMonthlyDebtService * termMonths));
 
   const credit = computeCreditScore({
@@ -85,7 +95,9 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
   if (disposableIncome <= 0) flags.push("no_disposable_income");
   if (totalRepayment > maxAffordablePayment) flags.push("repayment_not_affordable");
 
-  const scoreBasedLimit = scoreLimit(credit.score);
+  const repaidLoans = Math.max(0, Math.floor(input.loansRepaid || 0));
+  const historyCap = FIRST_LOAN_CAP_UGX * (1 + repaidLoans);
+  const scoreBasedLimit = Math.min(scoreLimit(credit.score), historyCap);
   const affordabilityPrincipalLimit = totalRepayment > 0
     ? Math.floor(requestedAmount * Math.min(1, maxAffordablePayment / totalRepayment))
     : 0;
@@ -107,5 +119,7 @@ export const UNDERWRITING_POLICY = {
   maxDebtServiceRatio: MAX_DEBT_SERVICE_RATIO,
   minMonthlyIncomeUgx: MIN_MONTHLY_INCOME_UGX,
   unverifiedIncomeHaircut: UNVERIFIED_INCOME_HAIRCUT,
+  maxNetCashFlowShare: MAX_NET_CASH_FLOW_SHARE,
+  firstLoanCapUgx: FIRST_LOAN_CAP_UGX,
   offerValidityHours: 48,
 } as const;

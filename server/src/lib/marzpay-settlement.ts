@@ -361,7 +361,10 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
   }
   if (fullyPaid) {
     await tx.loanApplication.updateMany({ where: { applicantId: ledger.userId, loanId: ledger.loanId!, status: { not: "paid" } }, data: { status: "paid" } });
-    await tx.user.update({ where: { id: ledger.userId }, data: { loansRepaid: { increment: 1 } } });
+    // "Repaid on time" feeds the credit score: a payoff more than 7 days after the due
+    // date still closes the loan but does not count as an on-time repayment.
+    const onTime = Date.now() <= repayment.dueDate.getTime() + 7 * 86_400_000;
+    if (onTime) await tx.user.update({ where: { id: ledger.userId }, data: { loansRepaid: { increment: 1 } } });
   }
   await tx.notification.create({
     data: {
