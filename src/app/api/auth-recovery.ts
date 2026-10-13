@@ -39,6 +39,12 @@ export const authRecoveryApi = {
       body: JSON.stringify({ identifier, code, newPin }),
     }),
 
+  confirmPasswordReset: (identifier: string, code: string, newPassword: string) =>
+    request<{ ok: boolean; message: string }>("/api/auth/reset-password/confirm", {
+      method: "POST",
+      body: JSON.stringify({ identifier, code, newPassword }),
+    }),
+
   revokeSession: (token: string) =>
     request<{ ok: boolean }>("/api/auth/signout", {
       method: "POST",

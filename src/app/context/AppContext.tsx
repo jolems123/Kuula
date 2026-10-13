@@ -1,5 +1,6 @@
 /** Global app context — Node/Express + PostgreSQL is the only runtime backend. */
-import { createContext, useContext, useReducer, useCallback, useState, type ReactNode } from "react";
+import { createContext, useContext, useReducer, useCallback, useState, useRef, type ReactNode } from "react";
+import { api } from "../api/client";
 import { clearSelectionState } from "../lib/selection";
 import { clearServiceCache } from "../api/types-compat";
 import { clearSessionTokens } from "../lib/session-vault";
@@ -207,7 +208,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "LOGIN", payload: { token, expiresAt, user, credit, loan, role, messages, unreadNotifications } });
   }, []);
   const updateToken = useCallback((token: string, expiresAt: number) => dispatch({ type: "UPDATE_TOKEN", payload: { token, expiresAt } }), []);
+  const tokenRef = useRef<string | null>(null);
+  tokenRef.current = state.session.token ?? null;
   const logout = useCallback(() => {
+    // End the session on the server too, so a copied token stops working. Logging out
+    // locally must never wait for, or fail because of, the network.
+    const token = tokenRef.current;
+    if (token) void api.signOut(token).catch(() => undefined);
     clearSessionTokens();
     clearSelectionState();
     clearServiceCache();

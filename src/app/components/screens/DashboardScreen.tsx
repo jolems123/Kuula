@@ -10,6 +10,10 @@ import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { setLoanCalculatorSelection } from "../../lib/selection";
 
+// The API refuses loan top-ups (HTTP 503): more business credit needs a new, fully
+// underwritten application. Keep the button hidden until top-ups are underwritten too.
+const TOP_UPS_ENABLED = false;
+
 interface Props { onNavigate: (s: string) => void; }
 
 type Tab = "overview" | "loan" | "credit";
@@ -155,7 +159,7 @@ export function DashboardScreen({ onNavigate }: Props) {
                   <div style={{ width: `${loan.activeLoan.repaidPercent}%`, height: "100%", background: "linear-gradient(90deg, #178654, #34D399)", borderRadius: 4, transition: "width 1s ease" }} />
                 </div>
                 {/* Request More — one-tap top-up */}
-                {env.USE_API && (
+                {env.USE_API && TOP_UPS_ENABLED && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setTopUpOpen(true); setTopUpError(""); setTopUpAmount(50000); }}
                     style={{

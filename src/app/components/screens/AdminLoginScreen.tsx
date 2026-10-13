@@ -8,6 +8,7 @@ import { setAdminMfaChallenge } from "../../lib/selection";
 import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
 import { toUgandaPhone } from "../../lib/phone";
+import { authRecoveryApi } from "../../api/auth-recovery";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -21,6 +22,12 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
+  // Staff password reset: request a code, then set a new password with it.
+  const [resetFor, setResetFor] = useState<string | null>(null);
+  const [resetCode, setResetCode] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
 
   useEffect(() => {
     if (lockoutRemaining <= 0) return;
@@ -37,8 +44,30 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     setError(""); setNotice("");
     const identifier = toUgandaPhone(phone);
     if (!identifier) { setError("Enter your staff phone number first, then choose Forgot password."); return; }
-    try { await api.resetPassword(identifier); setNotice("If that account is eligible, a reset code will be sent to its verified phone."); }
+    try {
+      await api.resetPassword(identifier);
+      setResetFor(identifier);
+      setNotice("If that account is eligible, a reset code has been sent to its verified phone.");
+    }
     catch (e) { setError(e instanceof ApiError ? e.message : "Could not request a reset."); }
+  };
+
+  const confirmReset = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!resetFor || resetBusy) return;
+    setError(""); setNotice("");
+    if (!/^\d{6}$/.test(resetCode.trim())) { setError("Enter the 6-digit code from the SMS."); return; }
+    if (resetPassword !== resetConfirm) { setError("The new passwords do not match."); return; }
+    setResetBusy(true);
+    try {
+      const result = await authRecoveryApi.confirmPasswordReset(resetFor, resetCode.trim(), resetPassword);
+      setResetFor(null); setResetCode(""); setResetPassword(""); setResetConfirm(""); setPw("");
+      setNotice(result.message || "Password updated. Sign in with your new password.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "The password could not be reset.");
+    } finally {
+      setResetBusy(false);
+    }
   };
 
   const finishSession = (s: any) => {
@@ -110,6 +139,28 @@ export function AdminLoginScreen({ onNavigate }: Props) {
           </button>
         </div>
       </form>
+
+      {resetFor && (
+        <form onSubmit={confirmReset} noValidate style={{ marginTop: 18 }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Set a new password</h3>
+          <div className="kx-field">
+            <label className="kx-label" htmlFor="staff-reset-code">Code from SMS</label>
+            <div className="kx-control"><input id="staff-reset-code" className="kx-input" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" /></div>
+          </div>
+          <div className="kx-field">
+            <label className="kx-label" htmlFor="staff-reset-password">New password</label>
+            <div className="kx-control"><input id="staff-reset-password" className="kx-input" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} autoComplete="new-password" /></div>
+          </div>
+          <div className="kx-field">
+            <label className="kx-label" htmlFor="staff-reset-confirm">Confirm new password</label>
+            <div className="kx-control"><input id="staff-reset-confirm" className="kx-input" type="password" value={resetConfirm} onChange={(e) => setResetConfirm(e.target.value)} autoComplete="new-password" /></div>
+          </div>
+          <div className="kx-auth-row">
+            <button type="button" className="kx-link" onClick={() => setResetFor(null)}>Cancel</button>
+            <button type="submit" className="kx-btn kx-btn--primary" disabled={resetBusy}>{resetBusy ? "Saving…" : "Set new password"}</button>
+          </div>
+        </form>
+      )}
 
       <div className="kx-auth-foot">
         <ShieldCheck size={16} />
