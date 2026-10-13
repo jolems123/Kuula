@@ -5,8 +5,11 @@ import { AppError } from "../middleware/error-handler.js";
 import {
   buildMarzPayWebhookUrl,
   createPaymentReference,
+  lookupMarzPayTransaction,
+  marzPayLookupConfigured,
   normalizeMarzPayAmount,
   sendMoney,
+  type MarzPayOutcome,
 } from "./marzpay.js";
 
 export type DisbursementNetwork = "mtn" | "airtel";
@@ -48,6 +51,8 @@ interface LegRow {
   status: string;
   transaction_id: string | null;
   reference: string | null;
+  provider_status: string | null;
+  provider_transaction_id: string | null;
 }
 
 export interface DisbursementPlan {
@@ -264,27 +269,40 @@ async function claimNextLeg(batchId: string): Promise<{ batch: BatchRow; leg: Le
   });
 }
 
-export async function dispatchNextDisbursementLeg(batchId: string): Promise<{ dispatched: boolean; reference?: string; sequence?: number; amount?: number; reason?: string }> {
+export async function dispatchNextDisbursementLeg(batchId: string): Promise<{ dispatched: boolean; outcome?: MarzPayOutcome; reference?: string; sequence?: number; amount?: number; reason?: string }> {
   const claimed = await claimNextLeg(batchId);
   if (!claimed) return { dispatched: false, reason: "no-dispatchable-leg" };
 
   const amount = normalizeMarzPayAmount(Number(claimed.leg.amount));
   const result = await sendMoney({ phone: claimed.batch.beneficiary_reference, amount, reference: claimed.reference, description: `Kuula loan ${claimed.batch.loan_id} tranche ${claimed.leg.sequence}`, callbackUrl: buildMarzPayWebhookUrl() });
+  const fee = result.charge === null ? null : BigInt(result.charge);
 
-  if (!result.accepted) {
+  if (result.outcome === "rejected") {
+    // MarzPay definitely refused this reference, so no money moved and a retry is safe.
+    const providerStatus = `rejected${result.errorCode ? `:${result.errorCode}` : ""}`;
     await prisma.$transaction(async (tx) => {
-      await tx.transaction.update({ where: { id: claimed.transactionId }, data: { status: "failed", providerStatus: result.status, transactionId: result.uuid || null, providerPayload: result.raw as Prisma.InputJsonValue, reconciliationStatus: "reconciliation_required" } });
-      await tx.$executeRaw(Prisma.sql`UPDATE disbursement_legs SET status='failed', provider_transaction_id=${result.uuid || null}, provider_status=${result.status}, failure_reason=${result.message}, updated_at=CURRENT_TIMESTAMP WHERE id=${claimed.leg.id}::uuid`);
+      await tx.transaction.update({ where: { id: claimed.transactionId }, data: { status: "failed", providerStatus, transactionId: result.uuid || null, providerPayload: result.raw as Prisma.InputJsonValue, reconciliationStatus: "reconciliation_required" } });
+      await tx.$executeRaw(Prisma.sql`UPDATE disbursement_legs SET status='failed', provider_transaction_id=${result.uuid || null}, provider_status=${providerStatus}, failure_reason=${result.message}, updated_at=CURRENT_TIMESTAMP WHERE id=${claimed.leg.id}::uuid`);
       await tx.$executeRaw(Prisma.sql`UPDATE disbursement_batches SET status=CASE WHEN total_settled > 0 THEN 'attention_required' ELSE 'failed' END, failure_reason=${result.message}, updated_at=CURRENT_TIMESTAMP WHERE id=${batchId}::uuid`);
     });
-    return { dispatched: false, reference: claimed.reference, sequence: claimed.leg.sequence, amount, reason: result.message };
+    return { dispatched: false, outcome: "rejected", reference: claimed.reference, sequence: claimed.leg.sequence, amount, reason: result.message };
+  }
+
+  if (result.outcome === "unknown") {
+    // The payout may have gone through. Keep it pending so a late callback or a status
+    // lookup can settle it, and never send another payment for this leg in the meantime.
+    await prisma.$transaction(async (tx) => {
+      await tx.transaction.update({ where: { id: claimed.transactionId }, data: { providerStatus: "unknown", providerPayload: result.raw as Prisma.InputJsonValue, reconciliationStatus: "awaiting_provider" } });
+      await tx.$executeRaw(Prisma.sql`UPDATE disbursement_legs SET status='pending', provider_status='unknown', failure_reason=${result.message}, updated_at=CURRENT_TIMESTAMP WHERE id=${claimed.leg.id}::uuid`);
+    });
+    return { dispatched: true, outcome: "unknown", reference: claimed.reference, sequence: claimed.leg.sequence, amount, reason: result.message };
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.transaction.update({ where: { id: claimed.transactionId }, data: { providerStatus: result.status || "processing", transactionId: result.uuid || null, providerPayload: result.raw as Prisma.InputJsonValue } });
+    await tx.transaction.update({ where: { id: claimed.transactionId }, data: { providerStatus: result.status || "processing", transactionId: result.uuid || null, providerFee: fee, providerPayload: result.raw as Prisma.InputJsonValue } });
     await tx.$executeRaw(Prisma.sql`UPDATE disbursement_legs SET status='pending', provider_transaction_id=${result.uuid || null}, provider_status=${result.status || "processing"}, updated_at=CURRENT_TIMESTAMP WHERE id=${claimed.leg.id}::uuid`);
   });
-  return { dispatched: true, reference: claimed.reference, sequence: claimed.leg.sequence, amount };
+  return { dispatched: true, outcome: "accepted", reference: claimed.reference, sequence: claimed.leg.sequence, amount };
 }
 
 export async function disbursementBatchForApplication(applicationId: string) {
@@ -305,16 +323,40 @@ export async function disbursementBatchForApplication(applicationId: string) {
   };
 }
 
+/**
+ * Before a failed leg may be sent again, MarzPay must confirm the earlier attempt did not
+ * pay out. Accepted: MarzPay reports it failed or cancelled, or it cannot find a reference
+ * that it had explicitly rejected at creation. Anything else blocks the retry.
+ */
+export async function assertLegSafeToRetry(leg: Pick<LegRow, "reference" | "provider_status" | "provider_transaction_id">): Promise<void> {
+  if (!leg.reference) return;
+  if (!marzPayLookupConfigured()) throw new AppError("MarzPay status lookup is not configured, so the earlier payout cannot be verified", 503);
+  const lookup = await lookupMarzPayTransaction({ reference: leg.reference, uuid: leg.provider_transaction_id });
+  if (lookup.state === "error") throw new AppError(`Could not verify the earlier payout with MarzPay: ${lookup.message}`, 503);
+  if (lookup.state === "not_found") {
+    if (String(leg.provider_status || "").startsWith("rejected")) return;
+    throw new AppError("MarzPay has no record of the earlier payout yet. Reconcile it manually before any retry.", 409);
+  }
+  if (lookup.event.isFailure) return;
+  throw new AppError(`MarzPay reports the earlier payout as "${lookup.event.status}". It must not be sent again.`, 409);
+}
+
 export async function resetFailedLegForRetry(batchId: string): Promise<void> {
+  const candidates = await prisma.$queryRaw<LegRow[]>(Prisma.sql`
+    SELECT * FROM disbursement_legs WHERE batch_id=${batchId}::uuid AND status='failed' ORDER BY sequence LIMIT 1
+  `);
+  if (!candidates[0]) throw new AppError("There is no provider-failed disbursement leg to retry", 409);
+  await assertLegSafeToRetry(candidates[0]);
+
   await prisma.$transaction(async (tx) => {
     const batches = await tx.$queryRaw<BatchRow[]>(Prisma.sql`SELECT * FROM disbursement_batches WHERE id=${batchId}::uuid FOR UPDATE`);
     const batch = batches[0];
     if (!batch) throw new AppError("Disbursement batch not found", 404);
     if (batch.status === "settled") throw new AppError("Disbursement is already fully settled", 409);
     const failed = await tx.$queryRaw<LegRow[]>(Prisma.sql`
-      SELECT * FROM disbursement_legs WHERE batch_id=${batchId}::uuid AND status='failed' ORDER BY sequence LIMIT 1 FOR UPDATE
+      SELECT * FROM disbursement_legs WHERE id=${candidates[0].id}::uuid AND status='failed' FOR UPDATE
     `);
-    if (!failed[0]) throw new AppError("There is no provider-failed disbursement leg to retry", 409);
+    if (!failed[0] || failed[0].reference !== candidates[0].reference) throw new AppError("The disbursement leg changed while it was being verified; try again", 409);
     await tx.$executeRaw(Prisma.sql`
       UPDATE disbursement_legs SET status='planned', transaction_id=NULL, reference=NULL, provider_transaction_id=NULL, provider_status=NULL, failure_reason=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=${failed[0].id}::uuid
     `);

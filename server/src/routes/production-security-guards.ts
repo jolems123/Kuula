@@ -61,6 +61,7 @@ router.post("/payments/marzpay/webhook", async (req: Request, res: Response, nex
     res.status(401).json({ error: "Invalid webhook authentication" });
     return;
   }
+  res.locals.marzpayWebhookAuthenticated = true;
 
   if (isProductionMoney()) {
     const eventId = `${event.eventType || "transaction"}:${event.uuid || event.reference}:${event.status}`;
