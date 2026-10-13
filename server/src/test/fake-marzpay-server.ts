@@ -90,6 +90,12 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/v1/balance") {
+      const raw = Number(process.env.FAKE_MARZPAY_BALANCE || 50_000_000);
+      send(res, 200, { status: "success", data: { account: { available_balance: money(raw), balance: money(raw) }, metadata: { country_code: "UG", currency: "UGX", sandbox_mode: true } } });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/v1/transactions") {
       const reference = url.searchParams.get("reference") || "";
       const matches = [...byUuid.values()].filter((record) => record.ourReference === reference || record.systemReference === reference);

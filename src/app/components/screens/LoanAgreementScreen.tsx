@@ -168,7 +168,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               {disbursement.status === "settled" ? <CheckCircle size={22} color="#0B5E3A" /> : disbursementTerminal ? <AlertTriangle size={22} color="#B45309" /> : <Clock3 size={22} color="#0B5E3A" />}
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#13251C" }}>{disbursement.status === "settled" ? `Full principal settled to ${beneficiaryLabel}` : disbursementTerminal ? "Kuula review required" : `Settling approved credit to ${beneficiaryLabel}`}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#13251C" }}>{disbursement.status === "settled" ? `Full principal settled to ${beneficiaryLabel}` : disbursementTerminal ? "Kuula review required" : disbursement.status === "awaiting_release" ? "Approved · awaiting Kuula's final payment authorization" : `Settling approved credit to ${beneficiaryLabel}`}</div>
                 <div style={{ fontSize: 11, color: "#718078", marginTop: 2 }}>{disbursement.network.toUpperCase()} Mobile Money · {disbursement.legs.length} transfer{disbursement.legs.length === 1 ? "" : "s"}</div>
               </div>
             </div>

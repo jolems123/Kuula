@@ -7,9 +7,11 @@ import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting } from "../lib/underwriting.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import {
+  batchesAwaitingRelease,
   createCustomerDisbursementBatch,
   dispatchNextDisbursementLeg,
   disbursementBatchForApplication,
+  releaseDisbursementBatch,
   resetFailedLegForRetry,
 } from "../lib/disbursements.js";
 import { writeAuditEvent } from "../lib/audit.js";
@@ -97,7 +99,9 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     res.json({
       application: mapApplication(application),
       disbursement: compatibleBatch(existingBatch),
-      message: existingBatch.status === "settled" ? "Disbursement is complete." : "Disbursement is already being processed.",
+      message: existingBatch.status === "settled" ? "Disbursement is complete."
+        : existingBatch.status === "awaiting_release" ? "Your loan is approved and awaiting Kuula's final payment authorization."
+        : "Disbursement is already being processed.",
     });
     return;
   }
@@ -135,30 +139,47 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     throw error;
   }
 
-  const first = await dispatchNextDisbursementLeg(plan.batchId);
+  // No money moves on the borrower's acceptance. The payout waits for an independent
+  // staff release (POST /:id/disbursement/release).
   await writeAuditEvent({
     actorId: userId,
     subjectUserId: userId,
-    action: "loan.disbursement_batch_started",
+    action: "loan.disbursement_batch_created",
     resourceType: "loan_application",
     resourceId: application.id,
-    metadata: {
-      batchId: plan.batchId,
-      approvedAmount: amount,
-      network: plan.network,
-      maxSingleAmount: plan.maxSingleAmount,
-      legAmounts: plan.legs,
-      firstReference: first.reference ?? null,
-    },
+    metadata: { batchId: plan.batchId, approvedAmount: amount, network: plan.network, maxSingleAmount: plan.maxSingleAmount, legAmounts: plan.legs },
   });
 
   const batch = await disbursementBatchForApplication(application.id);
   res.json({
     application: mapApplication({ ...application, status: "disbursing" }),
     disbursement: compatibleBatch(batch),
-    message: first.dispatched
-      ? `Disbursement started in ${plan.legs.length} provider-safe transaction${plan.legs.length === 1 ? "" : "s"}.`
-      : `Disbursement requires attention: ${first.reason || "provider request was not accepted"}`,
+    message: "Your loan is approved and awaiting Kuula's final payment authorization.",
+  });
+});
+
+router.get("/disbursements/awaiting-release", authenticateToken, requirePermissions("disbursement.release"), async (_req: Request, res: Response) => {
+  res.json({ payouts: await batchesAwaitingRelease() });
+});
+
+router.post("/:id/disbursement/release", authenticateToken, requirePermissions("disbursement.release"), async (req: Request, res: Response) => {
+  const applicationId = String(req.params.id || "");
+  const released = await releaseDisbursementBatch({ applicationId, releasedBy: req.user!.userId });
+  const first = await dispatchNextDisbursementLeg(released.batchId);
+  await writeAuditEvent({
+    actorId: req.user!.userId,
+    action: "loan.disbursement_released",
+    resourceType: "loan_application",
+    resourceId: applicationId,
+    metadata: { batchId: released.batchId, amount: released.amount, firstReference: first.reference ?? null, outcome: first.outcome ?? null, reason: first.reason ?? null },
+  });
+  const batch = await disbursementBatchForApplication(applicationId);
+  res.json({
+    ok: first.dispatched,
+    disbursement: compatibleBatch(batch),
+    message: first.outcome === "accepted" ? "Payout released and sent to MarzPay."
+      : first.outcome === "unknown" ? "Payout released. MarzPay's answer was lost; it is being confirmed and will not be sent again."
+      : `Payout released but MarzPay refused it: ${first.reason || "unknown reason"}`,
   });
 });
 

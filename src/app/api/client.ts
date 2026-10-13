@@ -140,6 +140,8 @@ const nodeApi = {
   topupWallet: (token: string, amount: number) => request<{ balance: number }>("/api/wallet/topup", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
   getTransactions: (token: string) => request<{ transactions: Array<Record<string, unknown>> }>("/api/transactions", { headers: auth(token) }),
   getReconciliationQueue: (token: string, status = "open") => request<{ transactions: Array<Record<string, unknown>> }>(`/api/admin/reconciliation${query({ status })}`, { headers: auth(token) }),
+  listPayoutsAwaitingRelease: (token: string) => request<{ payouts: Array<{ batchId: string; applicationId: string; applicantName: string; phone: string; network: string; amount: number; legs: number; createdAt: string }> }>("/api/loans/disbursements/awaiting-release", { headers: auth(token) }),
+  releasePayout: (token: string, applicationId: string) => request<{ ok: boolean; message: string }>(`/api/loans/${applicationId}/disbursement/release`, { method: "POST", headers: auth(token) }),
   verifyReconciliationWithProvider: (token: string, id: string) => request<{ lookup: "found" | "not_found" | "error"; providerStatus?: string; message?: string; settlement?: { httpStatus: number; body: Record<string, unknown> } }>(`/api/admin/reconciliation/${id}/verify`, { method: "POST", headers: auth(token) }),
   reviewReconciliation: (token: string, id: string, note: string) => request<{ ok: boolean; status: string }>(`/api/admin/reconciliation/${id}/review`, { method: "POST", headers: auth(token), body: JSON.stringify({ note }) }),
   getTransactionJournal: (token: string, id: string) => request<{ journal: Record<string, unknown> | null }>(`/api/admin/reconciliation/${id}/journal`, { headers: auth(token) }),
