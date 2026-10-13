@@ -14,14 +14,19 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
   const isAdmin = hasPermission(req.user!.role, "support.manage");
 
+  // Support staff may narrow to one customer's conversation; listings are capped to the
+  // most recent messages instead of returning every message ever sent.
+  const customerId = isAdmin && typeof req.query.customerId === "string" ? req.query.customerId : "";
   const where = isAdmin
-    ? {}
+    ? (customerId ? { OR: [{ senderId: customerId }, { receiverId: customerId }] } : {})
     : { OR: [{ senderId: userId }, { receiverId: userId }] };
+  const take = Math.min(1_000, Math.max(1, Number(req.query.limit) || 500));
 
-  const messages = await prisma.message.findMany({
+  const messages = (await prisma.message.findMany({
     where,
-    orderBy: { createdAt: "asc" },
-  });
+    orderBy: { createdAt: "desc" },
+    take,
+  })).reverse();
 
   res.json({
     messages: messages.map((m) => ({
