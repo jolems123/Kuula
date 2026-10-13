@@ -7,12 +7,7 @@ import { AppError } from "../middleware/error-handler.js";
 const router = Router();
 router.use(authenticateToken, requirePermissions("customer.view"));
 
-function roleLevel(role: string): number {
-  if (["officer", "loan_officer"].includes(role)) return 1;
-  if (["manager", "credit_manager"].includes(role)) return 2;
-  if (["admin", "administrator", "super_admin", "final_approver"].includes(role)) return 3;
-  return 0;
-}
+import { roleLevel, rolesForLevelQuery } from "../lib/credit-roles.js";
 
 function maskNin(value: string | null): string | null {
   if (!value) return null;
@@ -239,10 +234,13 @@ router.get("/search", async (req: Request, res: Response) => {
 
 router.get("/staff", async (req: Request, res: Response) => {
   const requested = String(req.query.role || "").trim().toLowerCase();
-  const roles = requested ? [requested] : ["officer", "manager", "admin"];
-  if (roles.some((role) => !["officer", "manager", "admin"].includes(role))) throw new AppError("Invalid staff role", 400);
+  // Accepts a level (1-3) or any role of that level, and always returns every role that
+  // can work the level, so staff invited with the new roles are assignable.
+  const roles = rolesForLevelQuery(requested);
+  if (!roles) throw new AppError("Invalid staff role", 400);
+  const roleList = [...roles];
   const staff = await prisma.user.findMany({
-    where: { role: { in: roles }, deletedAt: null },
+    where: { role: { in: roleList }, deletedAt: null },
     select: { id: true, fullName: true, email: true, phone: true, role: true },
     orderBy: [{ role: "asc" }, { fullName: "asc" }],
     take: 200,

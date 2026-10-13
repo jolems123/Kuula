@@ -35,9 +35,9 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 function roleLabel(role: string | null) {
-  if (role === "officer") return "Level 1 · Field / Credit Officer";
-  if (role === "manager") return "Level 2 · Senior Credit Reviewer";
-  if (role === "admin") return "Level 3 · Final Credit Authority";
+  if (role === "officer" || role === "loan_officer") return "Level 1 · Field / Credit Officer";
+  if (role === "manager" || role === "credit_manager") return "Level 2 · Senior Credit Reviewer";
+  if (role && ["admin", "administrator", "super_admin", "final_approver"].includes(role)) return "Level 3 · Final Credit Authority";
   return "Credit Operations";
 }
 

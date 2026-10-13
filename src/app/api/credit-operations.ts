@@ -60,7 +60,7 @@ export interface OperationsStaff {
   fullName: string;
   email?: string | null;
   phone?: string | null;
-  role: "officer" | "manager" | "admin";
+  role: string;
   activeCases: number;
 }
 
