@@ -1,33 +1,136 @@
 import http from "node:http";
 import crypto from "node:crypto";
 
+// Stand-in for MarzPay in CI, answering in the shapes the official documentation gives
+// (https://wallet.wearemarz.com/documentation). Status lookups report a transaction as
+// "processing" until a test calls POST /__test/settle with its final state.
 const port = Number(process.env.FAKE_MARZPAY_PORT || 3999);
 
-const server = http.createServer((req, res) => {
-  if (req.method !== "POST" || !["/api/v1/send-money", "/api/v1/collect-money"].includes(req.url || "")) {
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "error", message: "Not found" }));
-    return;
-  }
+interface Stored {
+  uuid: string;
+  kind: "disbursement" | "collection";
+  ourReference: string;
+  systemReference: string;
+  amount: number;
+  phone: string;
+  status: string;
+}
+const byUuid = new Map<string, Stored>();
+// When set, the next money request is recorded but answered with a 502, simulating a
+// response lost after MarzPay accepted the request.
+let loseNextResponse = false;
 
-  // Consume the multipart body so the client completes normally. The Kuula
-  // unit tests validate individual request fields; this stub validates the
-  // end-to-end asynchronous state machine.
-  req.on("data", () => {});
+function money(raw: number) {
+  return { formatted: raw.toLocaleString("en-US", { minimumFractionDigits: 2 }), raw, currency: "UGX" };
+}
+
+function callbackShape(record: Stored) {
+  const section = { provider: "mtn", phone_number: record.phone, amount: money(record.amount), provider_transaction_id: `FAKE-${record.uuid.slice(0, 8)}` };
+  return {
+    event_type: `${record.kind}.${record.status === "processing" ? "pending" : record.status}`,
+    transaction: {
+      uuid: record.uuid,
+      reference: record.kind === "disbursement" ? record.systemReference : record.ourReference,
+      ...(record.kind === "disbursement" ? { provider_reference: record.ourReference } : {}),
+      status: record.status,
+      amount: money(record.amount),
+    },
+    [record.kind]: section,
+  };
+}
+
+function send(res: http.ServerResponse, status: number, body: unknown) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url || "/", `http://127.0.0.1:${port}`);
+  let raw = "";
+  req.on("data", (chunk) => { raw += chunk; });
   req.on("end", () => {
-    const uuid = crypto.randomUUID();
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-      status: "success",
-      message: "Transaction initiated successfully.",
-      data: {
-        transaction: {
-          uuid,
-          status: "processing",
-          provider_reference: `TEST-${uuid.slice(0, 8)}`,
+    const body = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+
+    if (req.method === "POST" && (url.pathname === "/api/v1/send-money" || url.pathname === "/api/v1/collect-money")) {
+      const kind = url.pathname.endsWith("send-money") ? "disbursement" : "collection";
+      const record: Stored = {
+        uuid: crypto.randomUUID(),
+        kind,
+        ourReference: String(body.reference),
+        systemReference: crypto.randomUUID(),
+        amount: Number(body.amount),
+        phone: String(body.phone_number),
+        status: "processing",
+      };
+      byUuid.set(record.uuid, record);
+      if (loseNextResponse) {
+        loseNextResponse = false;
+        send(res, 502, { status: "error", error_code: "SERVER_ERROR", message: "Bad gateway" });
+        return;
+      }
+      if (kind === "disbursement") {
+        send(res, 201, {
+          status: "success",
+          message: "Withdrawal request submitted successfully!",
+          data: {
+            transaction: { uuid: record.uuid, reference: record.systemReference, provider_reference: record.ourReference, status: "pending" },
+            withdrawal: { amount: money(record.amount), charge: money(500), total_deduction: money(record.amount + 500), provider: "mtn", phone_number: record.phone },
+          },
+        });
+      } else {
+        send(res, 201, {
+          status: "success",
+          message: "Collection initiated successfully.",
+          data: {
+            transaction: { uuid: record.uuid, reference: record.ourReference, status: "processing", provider_reference: null },
+            collection: { amount: money(record.amount), provider: "mtn", phone_number: record.phone, mode: "live" },
+          },
+        });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/v1/transactions") {
+      const reference = url.searchParams.get("reference") || "";
+      const matches = [...byUuid.values()].filter((record) => record.ourReference === reference || record.systemReference === reference);
+      send(res, 200, {
+        status: "success",
+        data: {
+          transactions: matches.map((record) => ({
+            uuid: record.uuid,
+            reference: record.kind === "disbursement" ? record.systemReference : record.ourReference,
+            ...(record.kind === "disbursement" ? { provider_reference: record.ourReference } : {}),
+            status: record.status,
+          })),
         },
-      },
-    }));
+      });
+      return;
+    }
+
+    const detail = /^\/api\/v1\/transactions\/([0-9a-f-]{36})$/.exec(url.pathname);
+    if (req.method === "GET" && detail) {
+      const record = byUuid.get(detail[1]);
+      if (!record) return send(res, 404, { status: "error", error_code: "NOT_FOUND", message: "Transaction not found" });
+      send(res, 200, callbackShape(record));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/__test/lose-next-response") {
+      loseNextResponse = true;
+      send(res, 200, { ok: true });
+      return;
+    }
+
+    // Test-only control: set a transaction's final status, found by Kuula's reference.
+    if (req.method === "POST" && url.pathname === "/__test/settle") {
+      const record = [...byUuid.values()].find((item) => item.ourReference === body.reference);
+      if (!record) return send(res, 404, { error: "unknown reference" });
+      record.status = String(body.status || "completed");
+      send(res, 200, callbackShape(record));
+      return;
+    }
+
+    send(res, 404, { status: "error", message: "Not found" });
   });
 });
 

@@ -2,17 +2,21 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { flagStalePaymentTransactions } from "../lib/reconciliation.js";
+import { flagStalePaymentTransactions, verifyTransactionWithProvider } from "../lib/reconciliation.js";
+import { AWAITING_PROVIDER } from "../lib/marzpay-settlement.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 router.use(authenticateToken, requirePermissions("reconciliation.manage"));
 
 router.get("/", async (req: Request, res: Response) => {
-  const status = typeof req.query.status === "string" ? req.query.status : "reconciliation_required";
+  // "open" (the default) is everything a person may need to look at.
+  const status = typeof req.query.status === "string" ? req.query.status : "open";
   const take = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
   const transactions = await prisma.transaction.findMany({
-    where: status === "all" ? {} : { reconciliationStatus: status },
+    where: status === "all" ? {} : status === "open"
+      ? { reconciliationStatus: { in: ["reconciliation_required", AWAITING_PROVIDER] } }
+      : { reconciliationStatus: status },
     orderBy: { createdAt: "asc" },
     take,
     select: {
@@ -27,6 +31,7 @@ router.get("/", async (req: Request, res: Response) => {
       providerStatus: true,
       providerAmount: true,
       providerCurrency: true,
+      providerFee: true,
       transactionId: true,
       reconciliationStatus: true,
       reconciledAt: true,
@@ -39,6 +44,7 @@ router.get("/", async (req: Request, res: Response) => {
       ...row,
       amount: Number(row.amount),
       providerAmount: row.providerAmount == null ? null : Number(row.providerAmount),
+      providerFee: row.providerFee == null ? null : Number(row.providerFee),
     })),
   });
 });
@@ -46,6 +52,25 @@ router.get("/", async (req: Request, res: Response) => {
 router.post("/flag-stale", async (_req: Request, res: Response) => {
   const count = await flagStalePaymentTransactions();
   res.json({ ok: true, flagged: count });
+});
+
+// Asks MarzPay for the transaction's real status and applies it if final. This is the
+// controlled way to resolve an uncertain payout or collection; it never sends money.
+router.post("/:id/verify", async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const transaction = await prisma.transaction.findUnique({ where: { id }, select: { id: true, userId: true, provider: true } });
+  if (!transaction) throw new AppError("Transaction not found", 404);
+  if (transaction.provider !== "marzpay") throw new AppError("Only MarzPay transactions can be verified with MarzPay", 409);
+  const result = await verifyTransactionWithProvider(id);
+  await writeAuditEvent({
+    actorId: req.user!.userId,
+    subjectUserId: transaction.userId,
+    action: "payment.provider_verification_requested",
+    resourceType: "transaction",
+    resourceId: id,
+    metadata: { lookup: result.lookup, providerStatus: result.providerStatus ?? null, settlement: result.settlement?.body ?? null, message: result.message ?? null },
+  });
+  res.json(result);
 });
 
 router.post("/:id/review", async (req: Request, res: Response) => {

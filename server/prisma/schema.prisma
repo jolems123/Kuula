@@ -338,6 +338,7 @@ model Transaction {
   providerPayload       Json?     @map("provider_payload")
   providerAmount        BigInt?   @map("provider_amount")
   providerCurrency      String?   @map("provider_currency")
+  providerFee           BigInt?   @map("provider_fee")
   transactionId         String?   @map("transaction_id")
   reconciliationStatus  String    @default("unreconciled") @map("reconciliation_status")
   reconciledAt          DateTime? @map("reconciled_at")

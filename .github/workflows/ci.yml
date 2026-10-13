@@ -178,101 +178,13 @@ jobs:
           done
           test "$ready" = "true"
 
-          CUSTOMER_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{"phone":"+256700000000","pin":"7391"}')
-          CUSTOMER_TOKEN=$(echo "$CUSTOMER_JSON" | jq -r '.token')
-          CUSTOMER_REFRESH=$(echo "$CUSTOMER_JSON" | jq -r '.refreshToken')
-          test -n "$CUSTOMER_TOKEN"
-          test -n "$CUSTOMER_REFRESH"
-
           ADMIN_JSON=$(curl -sf -X POST http://localhost:3000/api/auth/admin-login -H 'Content-Type: application/json' -d '{"email":"admin-ci@kuula.test","password":"Admin-CI-Password-Only-2026"}')
           ADMIN_TOKEN=$(echo "$ADMIN_JSON" | jq -r '.token')
           test -n "$ADMIN_TOKEN"
           ADMIN_TOKEN="$ADMIN_TOKEN" node src/test/manual-kyc-smoke.mjs
 
-          APPLICATION_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"Business: Working capital","termDays":90,"channel":"MTN MoMo","employmentStatus":"Business owner","occupationOrBusiness":"Grocery shop","employerOrBusinessName":"CI Grocery Trading","workDuration":"2+ years","incomeSource":"Business sales","repaymentSource":"Daily sales","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0,"business":{"businessName":"CI Grocery Trading","sector":"Retail / shop","tradingAs":"informal","registrationNumber":"","tradingMonths":28,"district":"Wakiso","physicalAddress":"CI Grocery Street","goodsOrServices":"Retail groceries and household items","customerType":"Walk-in customers","staffCount":2,"monthlySales":1000000,"monthlyBusinessExpenses":250000,"monthlyExistingDebt":0,"loanUse":"Restock retail inventory","repaymentPlan":"Daily sales cash flow"}}')
-          APPLICATION_ID=$(echo "$APPLICATION_JSON" | jq -r '.application.id')
-          test -n "$APPLICATION_ID"
-
-          duplicate_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/applications \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"amount":100000,"purpose":"Business: Working capital","termDays":90,"employmentStatus":"Business owner","occupationOrBusiness":"Grocery shop","employerOrBusinessName":"CI Grocery Trading","workDuration":"2+ years","incomeSource":"Business sales","repaymentSource":"Daily sales","declaredMonthlyIncome":1000000,"declaredMonthlyExpenses":250000,"existingDebtPayment":0,"business":{"businessName":"CI Grocery Trading","sector":"Retail / shop","tradingAs":"informal","registrationNumber":"","tradingMonths":28,"district":"Wakiso","physicalAddress":"CI Grocery Street","goodsOrServices":"Retail groceries and household items","customerType":"Walk-in customers","staffCount":2,"monthlySales":1000000,"monthlyBusinessExpenses":250000,"monthlyExistingDebt":0,"loanUse":"Restock retail inventory","repaymentPlan":"Daily sales cash flow"}}')
-          test "$duplicate_code" = "409"
-
-          # New business loan must not bypass verification or be approved on declarations alone.
-          unverified_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/loans/applications/decision \
-            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"id\":\"$APPLICATION_ID\",\"decision\":\"approved\",\"notes\":\"Unverified business test must be denied\"}")
-          test "$unverified_code" = "422"
-
-          REVIEW_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/applications/$APPLICATION_ID/business-review" \
-            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"status":"verified","notes":"CI verified trading operations and business turnover evidence"}')
-          test "$(echo "$REVIEW_JSON" | jq -r '.application.businessReviewStatus')" = "verified"
-
-          OFFER_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/applications/decision \
-            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"id\":\"$APPLICATION_ID\",\"decision\":\"approved\",\"notes\":\"CI approval after underwriting recheck\"}")
-          test "$(echo "$OFFER_JSON" | jq -r '.application.status')" = "offered"
-
-          no_agreement_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$no_agreement_code" = "409"
-
-          AGREEMENT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/agreement/accept" \
-            -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"clientContext":{"source":"ci"}}')
-          test "$(echo "$AGREEMENT_JSON" | jq -r '.ok')" = "true"
-
-          ACCEPT_JSON=$(curl -sf -X POST "http://localhost:3000/api/loans/$APPLICATION_ID/accept" -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          DISBURSEMENT_REF=$(echo "$ACCEPT_JSON" | jq -r '.disbursement.legs[0].reference')
-          test -n "$DISBURSEMENT_REF"
-          test "$DISBURSEMENT_REF" != "null"
-
-          mismatch_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
-            -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":99999}}}")
-          test "$mismatch_code" = "409"
-
-          blocked_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
-            -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}")
-          test "$blocked_code" = "409"
-
-          RECON_ID=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; const ref=process.argv[1]; prisma.transaction.findUnique({where:{reference:ref}}).then((tx)=>console.log(tx?.id||"")).finally(()=>prisma.$disconnect());' "$DISBURSEMENT_REF")
-          test -n "$RECON_ID"
-
-          curl -sf -X POST "http://localhost:3000/api/admin/reconciliation/$RECON_ID/review" \
-            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"note":"CI verified provider amount/reference before accepting replay"}' \
-            | grep -q '"status":"reviewed"'
-
-          curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
-            -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"disbursement.completed\",\"transaction\":{\"reference\":\"$DISBURSEMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":100000}}}" \
-            | grep -q '"settled":true'
-
-          STATUS_JSON=$(curl -sf "http://localhost:3000/api/loans/$APPLICATION_ID/disbursement" -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$STATUS_JSON" | jq -r '.disbursement.status')" = "settled"
-          test "$(echo "$STATUS_JSON" | jq -r '.disbursement.totalSettled')" = "100000"
-
-          PAYMENT_JSON=$(curl -sf -X POST http://localhost:3000/api/loans/repayment/pay -H "Authorization: Bearer $CUSTOMER_TOKEN" -H 'Content-Type: application/json' -d '{"amount":10000}')
-          PAYMENT_REF=$(echo "$PAYMENT_JSON" | jq -r '.reference')
-          PAYMENT_UUID=$(echo "$PAYMENT_JSON" | jq -r '.uuid')
-          test -n "$PAYMENT_REF"
-          test -n "$PAYMENT_UUID"
-          test "$PAYMENT_UUID" != "null"
-
-          curl -sf -X POST 'http://localhost:3000/api/payments/marzpay/webhook?token=ci-webhook-secret' \
-            -H 'Content-Type: application/json' \
-            -d "{\"event_type\":\"collection.completed\",\"transaction\":{\"uuid\":\"$PAYMENT_UUID\",\"reference\":\"$PAYMENT_REF\",\"status\":\"completed\",\"amount\":{\"raw\":10000}}}" \
-            | grep -q '"settled":true'
-
-          AFTER_PAYMENT=$(curl -sf http://localhost:3000/api/loans/repayment -H "Authorization: Bearer $CUSTOMER_TOKEN")
-          test "$(echo "$AFTER_PAYMENT" | jq -r '.repayment.amount_paid')" = "10000"
-
-          JOURNAL_COUNT=$(DATABASE_URL="$DATABASE_URL" npx tsx -e 'import prisma from "./src/lib/prisma.ts"; prisma.journal.count().then((count)=>console.log(count)).finally(()=>prisma.$disconnect());')
-          test "$JOURNAL_COUNT" -ge 2
+          # Loan, payout, repayments, callbacks, status lookups, fees and journals.
+          node scripts/financial-lifecycle.mjs
 
   capacitor-sync:
     name: Capacitor Sync

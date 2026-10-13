@@ -71,11 +71,12 @@ test("sends current send-money and collect-money requests", async () => {
     paths.push(String(input));
     assert.equal(init?.method, "POST");
     assert.equal((init?.headers as Record<string, string>).Authorization, "Basic a2V5OnNlY3JldA==");
-    const body = init?.body as FormData;
-    assert.equal(body.get("phone_number"), "+256770123456");
-    assert.equal(body.get("amount"), "1000");
-    assert.equal(body.get("country"), "UG");
-    assert.equal(body.get("callback_url"), "https://api.kuula.ug/api/payments/marzpay/webhook?token=x");
+    assert.equal((init?.headers as Record<string, string>)["Content-Type"], "application/json");
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    assert.equal(body.phone_number, "+256770123456");
+    assert.equal(body.amount, 1000);
+    assert.equal(body.country, "UG");
+    assert.equal(body.callback_url, "https://api.kuula.ug/api/payments/marzpay/webhook?token=x");
 
     return new Response(JSON.stringify({
       status: "success",
@@ -83,12 +84,12 @@ test("sends current send-money and collect-money requests", async () => {
       data: {
         transaction: {
           uuid: "provider-uuid",
-          reference: body.get("reference"),
+          reference: body.reference,
           status: "processing",
           provider_reference: "provider-ref",
         },
       },
-    }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }), { status: 201, headers: { "Content-Type": "application/json" } });
   };
 
   const common = {
@@ -167,4 +168,88 @@ test("verifies the current MarzPay signed webhook format", () => {
     secret,
     nowMs: Number(timestamp) * 1000 + 301_000,
   }), false);
+});
+
+function moneyEnv() {
+  process.env.NODE_ENV = "test";
+  process.env.MARZPAY_API_KEY = "key";
+  process.env.MARZPAY_API_SECRET = "secret";
+  process.env.MARZPAY_BASE_URL = "https://wallet.example/api/v1";
+}
+const sendInput = () => ({ phone: "+256770123456", amount: 1000, reference: createPaymentReference(), description: "Kuula test", callbackUrl: "https://api.kuula.ug/cb" });
+
+test("a timeout or network error is unknown, never failed", async () => {
+  moneyEnv();
+  globalThis.fetch = async () => { throw new DOMException("The operation was aborted due to timeout", "TimeoutError"); };
+  const result = await sendMoney(sendInput());
+  assert.equal(result.outcome, "unknown");
+  assert.equal(result.accepted, false);
+});
+
+test("5xx and duplicate-reference answers are unknown; 4xx validation is a definite rejection", async () => {
+  moneyEnv();
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: "error", error_code: "SERVER_ERROR", message: "boom" }), { status: 502 });
+  assert.equal((await sendMoney(sendInput())).outcome, "unknown");
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: "error", error_code: "DUPLICATE_REFERENCE", message: "reused" }), { status: 422 });
+  assert.equal((await sendMoney(sendInput())).outcome, "unknown");
+  globalThis.fetch = async () => new Response(JSON.stringify({ status: "error", error_code: "INSUFFICIENT_BALANCE", message: "low" }), { status: 400 });
+  const rejected = await sendMoney(sendInput());
+  assert.equal(rejected.outcome, "rejected");
+  assert.equal(rejected.errorCode, "INSUFFICIENT_BALANCE");
+});
+
+test("reads the live send-money create response, including MarzPay's charge", async () => {
+  moneyEnv();
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({
+      status: "success",
+      data: {
+        transaction: { uuid: "4e7fb3fa-c13a-4b05-8acd-cf60ff68cb94", reference: "system-uuid", provider_reference: body.reference, status: "pending" },
+        withdrawal: { amount: { raw: 1000, currency: "UGX" }, charge: { raw: 500, currency: "UGX" }, total_deduction: { raw: 1500, currency: "UGX" } },
+      },
+    }), { status: 201 });
+  };
+  const input = sendInput();
+  const result = await sendMoney(input);
+  assert.equal(result.outcome, "accepted");
+  assert.equal(result.uuid, "4e7fb3fa-c13a-4b05-8acd-cf60ff68cb94");
+  assert.equal(result.providerReference, input.reference);
+  assert.equal(result.charge, 500);
+});
+
+test("disbursement callbacks are matched on Kuula's reference, sent back as provider_reference", () => {
+  const event = parseMarzPayWebhook({
+    event_type: "disbursement.completed",
+    transaction: { uuid: "t-1", reference: "marzpay-system-uuid", provider_reference: "kuula-ref", status: "completed", amount: { raw: 1000, currency: "UGX" } },
+    disbursement: { provider_transaction_id: "AIRTEL_MONEY_ID", amount: { raw: 1000, currency: "UGX" } },
+  });
+  assert.equal(event.kind, "disbursement");
+  assert.equal(event.reference, "kuula-ref");
+  assert.equal(event.alternateReference, "marzpay-system-uuid");
+  assert.equal(event.providerTransactionId, "AIRTEL_MONEY_ID");
+  assert.equal(event.currency, "UGX");
+  assert.equal(event.isSuccess, true);
+});
+
+test("collection callbacks use transaction.reference and carry the charge; dashboard wrappers unwrap", () => {
+  const direct = {
+    event_type: "collection.completed",
+    transaction: { uuid: "t-2", reference: "kuula-collect-ref", status: "completed", amount: { raw: 10000, currency: "UGX" }, charge: { raw: 350, currency: "UGX" } },
+    collection: { provider_transaction_id: "148769164724" },
+  };
+  const wrapped = parseMarzPayWebhook({ event_type: "collection.completed", webhook_id: 1, data: direct });
+  for (const event of [parseMarzPayWebhook(direct), wrapped]) {
+    assert.equal(event.kind, "collection");
+    assert.equal(event.reference, "kuula-collect-ref");
+    assert.equal(event.amount, 10000);
+    assert.equal(event.charge, 350);
+    assert.equal(event.isSuccess, true);
+  }
+});
+
+test("a failure event is never a success even if the word appears elsewhere", () => {
+  const event = parseMarzPayWebhook({ event_type: "collection.failed", transaction: { reference: "r", status: "failed" } });
+  assert.equal(event.isSuccess, false);
+  assert.equal(event.isFailure, true);
 });

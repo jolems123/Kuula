@@ -596,6 +596,24 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
   });
 
   const result = await collectMoney({ phone, amount, reference, description: `Kuula repayment ${repayment.loanId}`, callbackUrl });
+  if (result.outcome === "unknown") {
+    // MarzPay may have sent the prompt. Keep the collection open so the callback or a
+    // status lookup can still credit the loan if the customer approves it.
+    await prisma.transaction.update({
+      where: { reference },
+      data: { providerStatus: "unknown", providerPayload: result.raw as Prisma.InputJsonValue, reconciliationStatus: "awaiting_provider" },
+    });
+    res.status(202).json({
+      repayment: { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid), amount_paid: Number(repayment.amountPaid) },
+      attempt: { success: false, reason: "confirming-with-provider" },
+      isPending: true,
+      isPartial: amount < outstanding,
+      reference,
+      uuid: null,
+      message: "We are confirming this payment with Mobile Money. Do not pay again; your balance updates as soon as it is confirmed.",
+    });
+    return;
+  }
   if (!result.accepted) {
     const currentRepayment = await prisma.repayment.findUniqueOrThrow({ where: { id: repayment.id } });
     await prisma.$transaction([
