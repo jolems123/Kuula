@@ -4,6 +4,7 @@
 // Expects the seeded CI customer/admin and an empty disbursement history for them.
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const API = process.env.LIFECYCLE_API_URL || "http://localhost:3000";
 const FAKE = (process.env.MARZPAY_BASE_URL || "http://127.0.0.1:3999/api/v1").replace(/\/api\/v1\/?$/, "");
@@ -61,12 +62,35 @@ try {
   const offer = await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "CI approval after underwriting recheck" } });
   assert.equal(offer.application.status, "offered");
 
-  step("payout needs the signed agreement, then starts with MarzPay's charge recorded");
+  step("accepting needs the signed agreement and moves no money: the payout waits for release");
   await call("POST", `/api/loans/${applicationId}/accept`, { token: C, expect: 409 });
   const agreement = await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci" } } });
   assert.equal(agreement.ok, true);
   const accepted = await call("POST", `/api/loans/${applicationId}/accept`, { token: C });
-  const disbursementRef = accepted.disbursement.legs[0].reference;
+  assert.equal(accepted.disbursement.status, "awaiting_release");
+  assert.ok(accepted.disbursement.legs.every((leg) => !leg.reference), "no payment reference exists before release");
+  // The CI database is freshly seeded, so no payout transaction may exist yet.
+  assert.equal(await prisma.transaction.count({ where: { type: "loan_disbursement_leg" } }), 0);
+
+  step("release is refused to the borrower and to the admin who approved the loan");
+  await call("POST", `/api/loans/${applicationId}/disbursement/release`, { token: C, expect: 403 });
+  await call("POST", `/api/loans/${applicationId}/disbursement/release`, { token: A, expect: 403 });
+
+  step("an independent finance officer releases it; MarzPay's charge is recorded");
+  const financeEmail = "finance-ci@kuula.test";
+  const financePassword = "Finance-CI-Password-Only-2026";
+  await prisma.user.upsert({
+    where: { email: financeEmail },
+    update: { role: "finance", passwordHash: await bcrypt.hash(financePassword, 10), deletedAt: null },
+    create: { email: financeEmail, fullName: "CI Finance Officer", role: "finance", passwordHash: await bcrypt.hash(financePassword, 10) },
+  });
+  const finance = await call("POST", "/api/auth/admin-login", { body: { email: financeEmail, password: financePassword } });
+  const waiting = await call("GET", "/api/loans/disbursements/awaiting-release", { token: finance.token });
+  assert.ok(waiting.payouts.some((payout) => payout.applicationId === applicationId));
+  const released = await call("POST", `/api/loans/${applicationId}/disbursement/release`, { token: finance.token });
+  assert.equal(released.ok, true);
+  await call("POST", `/api/loans/${applicationId}/disbursement/release`, { token: finance.token, expect: 409 });
+  const disbursementRef = released.disbursement.legs[0].reference;
   assert.ok(disbursementRef);
   const payoutTx = await prisma.transaction.findUnique({ where: { reference: disbursementRef } });
   assert.equal(payoutTx.providerFee, BigInt(500), "send-money charge from the create response is stored");

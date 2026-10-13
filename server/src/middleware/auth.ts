@@ -39,6 +39,7 @@ export type Permission =
   | "support.manage"
   | "credit_evidence.manage"
   | "reconciliation.manage"
+  | "disbursement.release"
   | "admin.manage"
   | "staff.manage";
 
@@ -56,7 +57,7 @@ export const INVITABLE_STAFF_ROLES = [
 
 const ADMINISTRATOR_PERMISSIONS: readonly Permission[] = [
   "loan.review", "loan.approve", "kyc.review", "kyc.document.view", "report.view",
-  "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage", "admin.manage",
+  "customer.view", "support.manage", "credit_evidence.manage", "reconciliation.manage", "disbursement.release", "admin.manage",
 ];
 
 // Least privilege is deliberate here:
@@ -64,7 +65,8 @@ const ADMINISTRATOR_PERMISSIONS: readonly Permission[] = [
 // - credit managers may review credit/KYC and approve loans, but cannot
 //   manufacture verified credit evidence or reconcile payment destinations;
 // - final approvers only release loans already reviewed upstream;
-// - finance handles reconciliation, never loan decisions;
+// - finance handles reconciliation and releases approved payouts, never loan decisions;
+// - a payout release is always refused to anyone who worked or approved that loan;
 // - treasury/evidence administration remains an administrator control plane;
 // - only the super admin may invite or deactivate staff.
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
@@ -77,7 +79,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   final_approver: ["loan.review", "loan.approve", "report.view", "customer.view"],
   loan_officer: ["loan.review", "customer.view", "support.manage"],
   kyc_officer: ["kyc.review", "kyc.document.view", "customer.view"],
-  finance: ["reconciliation.manage", "report.view", "customer.view"],
+  finance: ["reconciliation.manage", "disbursement.release", "report.view", "customer.view"],
   collections: ["loan.review", "customer.view", "support.manage"],
   support: ["customer.view", "support.manage"],
   admin: ADMINISTRATOR_PERMISSIONS,

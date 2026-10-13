@@ -291,6 +291,21 @@ export async function lookupMarzPayTransaction(input: { reference: string; uuid?
   }
 }
 
+/**
+ * Spendable UGX in Kuula's MarzPay main wallet (GET /balance?country=UG, field
+ * data.account.available_balance.raw). Returns null when MarzPay cannot be read.
+ */
+export async function getMarzPayAvailableBalanceUgx(): Promise<number | null> {
+  try {
+    const { status, body } = await getJson("/balance?country=UG");
+    if (status >= 400) return null;
+    const account = asObject(asObject(body.data).account);
+    return readAmount(account.available_balance) ?? readAmount(account.balance);
+  } catch {
+    return null;
+  }
+}
+
 export function secureTokenEquals(actual: string, expected: string): boolean {
   const actualBuffer = Buffer.from(actual || "", "utf8");
   const expectedBuffer = Buffer.from(expected || "", "utf8");
