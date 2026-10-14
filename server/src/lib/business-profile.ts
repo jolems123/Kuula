@@ -29,6 +29,14 @@ export interface BusinessProfile {
   monthlySales: number;
   monthlyBusinessExpenses: number;
   monthlyExistingDebt: number;
+  preferredRepaymentFrequency: "daily" | "weekly" | "biweekly" | "monthly" | "at_maturity";
+  useOfFunds: {
+    stock: number;
+    equipment: number;
+    operations: number;
+    expansion: number;
+    other: number;
+  };
   loanUse: string;
   repaymentPlan: string;
 }
@@ -104,11 +112,20 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     monthlySales: numeric(obj.monthlySales, "Monthly business sales", 1, 100000000000),
     monthlyBusinessExpenses: numeric(obj.monthlyBusinessExpenses, "Monthly business expenses", 0, 100000000000),
     monthlyExistingDebt: numeric(obj.monthlyExistingDebt, "Monthly existing debt payments", 0, 100000000000),
+    preferredRepaymentFrequency: (obj.preferredRepaymentFrequency ?? "at_maturity") as BusinessProfile["preferredRepaymentFrequency"],
+    useOfFunds: {
+      stock: numeric((obj.useOfFunds as Record<string, unknown> | null)?.stock ?? 0, "Funds for stock", 0, 100000000000),
+      equipment: numeric((obj.useOfFunds as Record<string, unknown> | null)?.equipment ?? 0, "Funds for equipment", 0, 100000000000),
+      operations: numeric((obj.useOfFunds as Record<string, unknown> | null)?.operations ?? 0, "Funds for operations", 0, 100000000000),
+      expansion: numeric((obj.useOfFunds as Record<string, unknown> | null)?.expansion ?? 0, "Funds for expansion", 0, 100000000000),
+      other: numeric((obj.useOfFunds as Record<string, unknown> | null)?.other ?? 0, "Funds for other uses", 0, 100000000000),
+    },
     loanUse: required(obj.loanUse, "How the loan will be used", 300),
     repaymentPlan: required(obj.repaymentPlan, "How the business will repay", 300),
   };
   if (!["daily", "weekly", "monthly", "seasonal", "unknown"].includes(profile.salesFrequency))
     throw new RangeError("Select a valid sales frequency");
+  if (!["daily", "weekly", "biweekly", "monthly", "at_maturity"].includes(profile.preferredRepaymentFrequency)) throw new RangeError("Invalid preferred repayment frequency");
   const expenseParts = profile.inventoryCost + profile.rentCost + profile.wagesCost + profile.otherOperatingCosts;
   if (!Number.isSafeInteger(expenseParts) || expenseParts > profile.monthlyBusinessExpenses)
     throw new RangeError("Expense breakdown exceeds declared business expenses");
