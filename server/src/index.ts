@@ -10,6 +10,7 @@ import authPrivacyGuardRoutes from "./routes/auth-privacy-guard.js";
 import httpsEnforcementRoutes from "./routes/https-enforcement.js";
 import operationsAuditGuardRoutes from "./routes/operations-audit-guard.js";
 import loanRoutes from "./routes/loans.js";
+import businessApplicationPhotoRoutes from "./routes/business-application-photos.js";
 import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
 import disbursementRoutes from "./routes/disbursement-routes.js";
@@ -147,6 +148,7 @@ const jsonVerify = (req: express.Request, _res: express.Response, buffer: Buffer
 // Three identity photos may use up to 5 MB each (base64 transport overhead).
 app.use("/api/kyc", express.json({ limit: "22mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
+app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "22mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
 
 app.use("/api", httpsEnforcementRoutes);
@@ -191,6 +193,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkFinancialFallbackGuard);
 app.use("/api/network", networkRoutes);
+app.use("/api/loans", businessApplicationPhotoRoutes);
 app.use("/api/loans", loanApplicationReadRoutes);
 app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);
