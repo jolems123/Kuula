@@ -190,7 +190,7 @@ async function buildSession(user: any) {
   const credit = isStaff ? null : computeCreditScore({
     momoMonths: evidence?.momoMonths ?? 0,
     momoTxnCount: evidence?.momoTxnCount ?? 0,
-    crbStatus: evidence?.crbStatus ?? "thin",
+    momoVerified: !!evidence?.momoVerified,
     kycVerified: user.kycVerified ?? false,
     loansRepaid: user.loansRepaid ?? 0,
     loansTotal: user.loansTotal ?? 0,
@@ -212,7 +212,7 @@ async function buildSession(user: any) {
   });
 
   const scoreValue = credit?.score ?? 0;
-  const evidenceReady = !!evidence?.momoVerified && !!evidence?.crbVerified && !!user.kycVerified;
+  const evidenceReady = !!evidence?.momoVerified && !!user.kycVerified;
   const tierLimit = !evidenceReady ? 0 : scoreValue >= 750 ? 2_000_000 : scoreValue >= 700 ? 1_000_000 : scoreValue >= 600 ? 500_000 : scoreValue >= 500 ? 200_000 : 0;
 
   return {
