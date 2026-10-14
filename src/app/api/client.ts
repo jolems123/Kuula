@@ -114,6 +114,28 @@ const nodeApi = {
   verifyPhone: (phone: string, code: string) => request<SessionPayload>("/api/auth/verify-phone", { method: "POST", body: JSON.stringify({ phone, code }) }),
   resendOtp: (phone: string) => request<{ ok: boolean }>("/api/auth/resend-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   me: (token: string) => request<SessionPayload>("/api/auth/me", { headers: auth(token) }),
+  updateCustomerPhoto: (token: string, photo: string) =>
+    request<{ok: boolean}>("/api/customer/profile/photo", {
+      method: "PUT", headers: auth(token), body: JSON.stringify({photo}),
+    }, 90_000),
+  removeCustomerPhoto: (token: string) =>
+    request<{ok: boolean}>("/api/customer/profile/photo", { method: "DELETE", headers: auth(token) }),
+  customerPhoto: async (token: string): Promise<string | null> => {
+    const response = await fetch(apiBaseUrl + "/api/customer/profile/photo", {
+      headers: auth(token), cache: "no-store",
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("Could not load your profile photo");
+    const mime = response.headers.get("content-type") ?? "";
+    if (mime.startsWith("image/")) {
+      return URL.createObjectURL(await response.blob());
+    }
+    const body = await response.json() as { url?: string };
+    if (!body.url) throw new Error("Profile photograph is not available");
+    const imageResponse = await fetch(body.url, { cache: "no-store" });
+    if (!imageResponse.ok) throw new Error("Profile photograph could not be loaded");
+    return URL.createObjectURL(await imageResponse.blob());
+  },
   updateProfile: (token: string, input: { fullName: string; email?: string; dateOfBirth: string; district: string; occupation: string; physicalAddress: string }) => request<{ user: UserProfile }>("/api/auth/me", { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   markets: () => request<{ markets: KuulaMarket[] }>("/api/network/markets"),
   networkOverview: (token: string, market = "UG") => request<NetworkOverview>(`/api/network/overview${query({ market })}`, { headers: auth(token) }),
