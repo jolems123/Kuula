@@ -15,6 +15,16 @@ export interface BusinessProfile {
   longitude: number | null;
   goodsOrServices: string;
   customerType: string;
+  primarySuppliers: string;
+  supplierPaymentTerms: string;
+  salesFrequency: "daily" | "weekly" | "monthly" | "seasonal" | "unknown";
+  seasonalPattern: string;
+  lowSeasonMonthlySales: number;
+  inventoryCost: number;
+  rentCost: number;
+  wagesCost: number;
+  otherOperatingCosts: number;
+  otherDebtDetails: string;
   staffCount: number;
   monthlySales: number;
   monthlyBusinessExpenses: number;
@@ -80,6 +90,16 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     longitude,
     goodsOrServices: required(obj.goodsOrServices, "Products or services", 300),
     customerType: required(obj.customerType, "Main customers", 100),
+    primarySuppliers: optional(obj.primarySuppliers, "Main suppliers", 200),
+    supplierPaymentTerms: optional(obj.supplierPaymentTerms, "Supplier payment arrangements", 100),
+    salesFrequency: (obj.salesFrequency ?? "unknown") as BusinessProfile["salesFrequency"],
+    seasonalPattern: optional(obj.seasonalPattern, "Seasonality", 200),
+    lowSeasonMonthlySales: numeric(obj.lowSeasonMonthlySales ?? 0, "Low-season monthly sales", 0, 100000000000),
+    inventoryCost: numeric(obj.inventoryCost ?? 0, "Monthly inventory costs", 0, 100000000000),
+    rentCost: numeric(obj.rentCost ?? 0, "Monthly rent", 0, 100000000000),
+    wagesCost: numeric(obj.wagesCost ?? 0, "Monthly wages", 0, 100000000000),
+    otherOperatingCosts: numeric(obj.otherOperatingCosts ?? 0, "Other operating expenses", 0, 100000000000),
+    otherDebtDetails: optional(obj.otherDebtDetails, "Existing debt details", 200),
     staffCount: numeric(obj.staffCount, "Number of workers", 0, 100000),
     monthlySales: numeric(obj.monthlySales, "Monthly business sales", 1, 100000000000),
     monthlyBusinessExpenses: numeric(obj.monthlyBusinessExpenses, "Monthly business expenses", 0, 100000000000),
@@ -87,6 +107,13 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     loanUse: required(obj.loanUse, "How the loan will be used", 300),
     repaymentPlan: required(obj.repaymentPlan, "How the business will repay", 300),
   };
+  if (!["daily", "weekly", "monthly", "seasonal", "unknown"].includes(profile.salesFrequency))
+    throw new RangeError("Select a valid sales frequency");
+  const expenseParts = profile.inventoryCost + profile.rentCost + profile.wagesCost + profile.otherOperatingCosts;
+  if (!Number.isSafeInteger(expenseParts) || expenseParts > profile.monthlyBusinessExpenses)
+    throw new RangeError("Expense breakdown exceeds declared business expenses");
+  if (profile.lowSeasonMonthlySales > profile.monthlySales)
+    throw new RangeError("Low-season monthly sales cannot exceed typical monthly sales");
   if (profile.monthlySales <= profile.monthlyBusinessExpenses + profile.monthlyExistingDebt)
     throw new RangeError("Business expenses and existing debt exceed the declared monthly sales");
   return profile;
