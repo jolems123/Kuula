@@ -188,8 +188,15 @@ jobs:
 
           # The production credit path: restart the API with the staged-review gate on
           # and run Level 1 -> 2 -> 3 -> offer -> independent release with invited roles.
-          kill $API_PID
-          wait $API_PID 2>/dev/null || true
+          # npm start -> start-production.mjs -> node dist/index.js: stop the server itself
+          # and make sure the port is free, or the health check would find the old API.
+          kill $API_PID 2>/dev/null || true
+          pkill -f "node dist/index.js" || true
+          for i in $(seq 1 40); do
+            if ! curl -sf http://localhost:3000/api/health > /dev/null; then break; fi
+            sleep 0.5
+          done
+          if curl -sf http://localhost:3000/api/health > /dev/null; then echo "previous API is still running"; exit 1; fi
           CREDIT_OPERATIONS_REQUIRED=true npm start &
           API_PID=$!
           ready=false
