@@ -120,4 +120,5 @@ export function clearSelectionState(): void {
   _customer360Id = null;
 }
 import { clearAllSavedLoanApplicationDrafts } from "./loan-application-autosave";
-\nimport { clearBusinessPhotos } from "./business-photos";\n
+
+import { clearBusinessPhotos } from "./business-photos";
