@@ -20,6 +20,44 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function BusinessPhotoReview({ token, applicationId }: { token: string; applicationId: string }) {
+  const [photos, setPhotos] = useState<Array<{ id: string; type: string; bytes: number }>>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    api.getBusinessPhotos(token, applicationId).then(result => {
+      if (active) setPhotos(result.photos);
+    }).catch(err => { if (active) setError(err instanceof Error ? err.message : "Could not load business photo evidence"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, applicationId]);
+  const open = async (photoId: string) => {
+    try {
+      const response = await api.accessBusinessPhoto(token, applicationId, photoId);
+      window.open(response.url, "_blank", "noopener,noreferrer");
+      if (response.temporary) window.setTimeout(() => URL.revokeObjectURL(response.url), 60_000);
+    } catch(err) { setError(err instanceof Error ? err.message : "Could not open private photo"); }
+  };
+  const mandatory = ["exterior", "interior", "applicant_at_business"];
+  const missing = mandatory.filter(kind => !photos.some(photo => photo.type === kind));
+  return <div style={{ border: "1px solid #D6E4DC", borderRadius: 12, padding: 14, marginTop: 14 }}>
+    <strong style={{ fontSize: 14 }}>Applicant business photographs</strong>
+    <p style={{ color: "#64748B", fontSize: 12 }}>Compare premises, applicant identity and other evidence. Images alone do not establish authenticity.</p>
+    {loading ? <p style={{ fontSize: 12 }}>Loading private evidence...</p> : <>
+      <p style={{ color: missing.length ? "#B45309" : "#0B5E3A", fontSize: 12 }}>
+        {missing.length ? "Missing required evidence: " + missing.join(", ") : "All required photographs received — authenticity still requires review"}
+      </p>
+      {photos.map(photo => <button key={photo.id} type="button" onClick={() => void open(photo.id)}
+        style={{ padding: 10, marginRight: 8, marginBottom: 8, background: "white", border: "1px solid #C9DCD0", borderRadius: 9 }}>
+        {photo.type.replaceAll("_", " ")} · {Math.round(photo.bytes / 1024)} KB · View privately
+      </button>)}
+    </>}
+    {error && <p role="alert" style={{ color: "#B91C1C", fontSize: 12 }}>{error}</p>}
+  </div>;
+}
 // A3.1
 export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
@@ -173,6 +211,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
                   ["Business verification", selected.businessReviewStatus ?? "Pending"],
                 ] as [string, string][]).map(([label, value]) => <div key={label}><dt style={{ color: "#68766F", marginBottom: 4 }}>{label}</dt><dd style={{ fontWeight: 700, margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{value}</dd></div>)}
               </dl>
+              {token && <BusinessPhotoReview token={token} applicationId={selected.id} />}
               <p style={{ fontSize: 12, color: "#68766F", marginTop: 12 }}>Declarations require independent document / field evidence. Do not mark verified based only on what the borrower entered.</p>
               {["pending", "resubmitted"].includes(selected.status) && (
                 <div style={{ marginTop: 16 }}>
