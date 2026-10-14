@@ -87,9 +87,11 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   }, [state.user, amount, term, purpose, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
 
   const availableCredit = Math.max(0, state.loan?.availableCredit ?? 0);
-  const maxEligibleAmount = Math.min(PRODUCT_MAX_AMOUNT, availableCredit);
-  const canApply = maxEligibleAmount >= MIN_AMOUNT;
-  const rangeMax = Math.max(MIN_AMOUNT, maxEligibleAmount);
+  // Growth Line indicates a pre-assessed offer, not eligibility to START a
+  // business application. The server independently validates underwriting.
+  const maxEligibleAmount = PRODUCT_MAX_AMOUNT;
+  const canApply = true;
+  const rangeMax = PRODUCT_MAX_AMOUNT;
 
   useEffect(() => {
     if (!canApply) return;
@@ -150,8 +152,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
   const continueToReview = () => {
     setError("");
-    if (!canApply) { setError("No Growth Line is currently available. Complete the required Credit Pass steps and try again when Kuula shows available credit."); return; }
-    if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within your current Growth Line."); return; }
+    if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within the advertised business-loan range."); return; }
     if (purpose === "Other" && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
       if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
@@ -230,13 +231,13 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <p role={saveError ? "alert" : "status"} style={{ margin: 0, fontSize: 11, color: saveError ? "#A13A3A" : "#68766F" }}>
           {saveError || (savedDraft ? "Saved progress restored. Your changes save automatically in this browser tab and remain if you go back." : "Your progress saves automatically in this browser tab and remains if you go back or refresh. It clears after sign out or successful submission.")}
         </p>
-        {!canApply && <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}><p style={{ fontSize: 13, fontWeight: 800, color: "#6B5414", margin: "0 0 4px" }}>No Growth Line available yet</p><p style={{ fontSize: 11.5, color: "#776628", margin: 0, lineHeight: 1.5 }}>Kuula will not accept a new application until your Credit Pass shows at least {formatUGX(MIN_AMOUNT)} available. Check identity verification, credit evidence and any existing facility.</p></div>}
+        {availableCredit === 0 && <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}><p style={{ fontSize: 13, fontWeight: 800, color: "#6B5414", margin: "0 0 4px" }}>No pre-assessed Growth Line</p><p style={{ fontSize: 11.5, color: "#776628", margin: 0, lineHeight: 1.5 }}>You can complete a business-loan application. The amount you request is not pre-approved; Kuula will review verification, business evidence, affordability and credit policy before making a decision.</p></div>}
 
         <div className="p-5 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", opacity: canApply ? 1 : 0.6 }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.loanAmount").toUpperCase()}</label>
           <div className="flex items-baseline gap-2 mt-2"><span style={{ fontSize: 15, fontWeight: 700, color: "#5D6C64" }}>UGX</span><input disabled={!canApply} type="number" value={amount} onChange={(e) => { const v = Number(e.target.value); if (canApply && v >= MIN_AMOUNT && v <= maxEligibleAmount) setAmount(v); }} style={{ fontSize: 34, fontWeight: 800, color: "#0B5E3A", border: "none", outline: "none", background: "transparent", width: "100%" }} /></div>
           <input disabled={!canApply} type="range" min={MIN_AMOUNT} max={rangeMax} step={50000} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: "100%", accentColor: "#0B5E3A", marginTop: 12 }} />
-          <div className="flex justify-between"><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(MIN_AMOUNT)}</span><span style={{ fontSize: 11, color: "#9CA3AF" }}>{canApply ? formatUGX(maxEligibleAmount) : "Not available"}</span></div>
+          <div className="flex justify-between"><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(MIN_AMOUNT)}</span><span style={{ fontSize: 11, color: "#9CA3AF" }}>{formatUGX(maxEligibleAmount)}</span></div>
         </div>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.repaymentTerm").toUpperCase()}</label><div className="flex gap-2 flex-wrap mt-3">{TERMS.map((d) => <button key={d} onClick={() => setTerm(d)} style={{ padding: "8px 14px", borderRadius: 10, border: term === d ? "none" : "1.5px solid #DDE5E0", background: term === d ? "#0B5E3A" : "white", color: term === d ? "white" : "#374151", fontSize: 13, fontWeight: 600 }}>{d} {t("loanApply.days")}</button>)}</div></div>
