@@ -42,7 +42,13 @@ router.get("/avatar", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   if (result.kind === "buffer") { res.type(result.mime).send(result.buffer); return; }
-  res.json({ url: result.url, expiresInSeconds: result.expiresInSeconds });
+  // Proxy the short-lived S3 download through this authenticated endpoint so
+  // mobile WebViews never need public bucket access or S3 browser CORS.
+  const upstream = await fetch(result.url, { signal: AbortSignal.timeout(10000) });
+  if (!upstream.ok) throw new AppError("Profile photo temporarily unavailable", 503);
+  const bytes = Buffer.from(await upstream.arrayBuffer());
+  if (bytes.length > 1_000_000) throw new AppError("Profile photo size is invalid", 409);
+  res.type("image/jpeg").send(bytes);
 });
 
 export default router;
