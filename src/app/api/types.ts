@@ -55,6 +55,16 @@ export interface BusinessProfile {
   longitude?: number | null;
   goodsOrServices: string;
   customerType: string;
+  primarySuppliers: string;
+  supplierPaymentTerms: string;
+  salesFrequency: "daily" | "weekly" | "monthly" | "seasonal" | "unknown";
+  seasonalPattern: string;
+  lowSeasonMonthlySales: number;
+  inventoryCost: number;
+  rentCost: number;
+  wagesCost: number;
+  otherOperatingCosts: number;
+  otherDebtDetails: string;
   staffCount: number;
   monthlySales: number;
   monthlyBusinessExpenses: number;
