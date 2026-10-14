@@ -4,19 +4,18 @@ import { staffUiTier, useAppContext } from "../../context/AppContext";
 import { api, ApiError } from "../../api/client";
 import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
-import { toUgandaPhone } from "../../lib/phone";
 
 interface Props { onNavigate: (s: string) => void; }
 
 /**
  * Staff invitation acceptance. The Super Admin invites a staff member by phone
  * number; here the invitee proves ownership of that number with the SMS code
- * and chooses their password. Afterwards they sign in with phone + password +
+ * and chooses their password. Afterwards they sign in with email + password +
  * SMS code like every other staff member.
  */
 export function AdminActivateScreen({ onNavigate }: Props) {
   const { login } = useAppContext();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -28,12 +27,12 @@ export function AdminActivateScreen({ onNavigate }: Props) {
 
   const resend = async () => {
     setError(""); setNotice("");
-    const staffPhone = toUgandaPhone(phone);
-    if (!staffPhone) { setError("Enter the phone number the invitation was sent to."); return; }
+    const staffEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail)) { setError("Enter the work email address your invitation was sent to."); return; }
     setResending(true);
     try {
-      const r = await api.resendStaffInvite(staffPhone);
-      setNotice(r.message || "If that number has a pending staff invitation, a new activation code has been sent.");
+      const r = await api.resendStaffInvite(staffEmail);
+      setNotice(r.message || "If that email has a pending staff invitation, a new activation code has been sent.");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not send the activation code.");
     } finally { setResending(false); }
@@ -43,14 +42,14 @@ export function AdminActivateScreen({ onNavigate }: Props) {
     event?.preventDefault();
     setError(""); setNotice("");
     const staffPhone = toUgandaPhone(phone);
-    if (!staffPhone) { setError("Enter the phone number the invitation was sent to."); return; }
-    if (!/^\d{6}$/.test(code.trim())) { setError("Enter the 6-digit activation code from the SMS."); return; }
+    if (!staffPhone) { setError("Enter the work email address the invitation was sent to."); return; }
+    if (!/^\d{6}$/.test(code.trim())) { setError("Enter the 6-digit activation code from your email."); return; }
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) { setError("Password must be at least 8 characters with a letter and a number."); return; }
     if (pw !== pw2) { setError("Passwords do not match."); return; }
 
     setLoading(true);
     try {
-      const s = await api.activateStaffInvite(staffPhone, code.trim(), pw);
+      const s = await api.activateStaffInvite(staffEmail, code.trim(), pw);
       const expiresAt = Date.now() + (s.accessExpiresInSeconds ?? 900) * 1000;
       if (s.refreshToken) storeSessionTokens({ accessToken: s.token, refreshToken: s.refreshToken, accessExpiresAt: expiresAt });
       login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
@@ -65,15 +64,14 @@ export function AdminActivateScreen({ onNavigate }: Props) {
       <div className="kx-auth-head">
         <div className="kx-auth-head__icon"><UserRoundCheck size={22} /></div>
         <h2>Activate your account</h2>
-        <p>Use the phone number your invitation was sent to, then choose a password.</p>
+        <p>Use your invited work email address, then choose a password.</p>
       </div>
 
       <form onSubmit={submit} noValidate>
         <div className="kx-field">
-          <label className="kx-label" htmlFor="invite-phone">Phone number</label>
+          <label className="kx-label" htmlFor="invite-phone">Work email address</label>
           <div className="kx-control">
-            <span className="kx-control__prefix">+256</span>
-            <input id="invite-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="7XX XXX XXX" autoFocus />
+            <input id="invite-phone" className="kx-input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="you@kuulapp.com" autoFocus />
           </div>
         </div>
 
