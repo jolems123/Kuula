@@ -1,3 +1,4 @@
+import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
@@ -302,6 +303,7 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
   });
   await event(applicationId, req.user!.userId, "application.escalated", level, nextLevel, { narrative, nextAssigneeId, nextAssigneeName: next.fullName });
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: application.applicantId, action: "credit.application_escalated", resourceType: "loan_application", resourceId: applicationId, metadata: { fromLevel: level, toLevel: nextLevel, nextAssigneeId } });
+  await notifyLoanCustomer(application.applicantId, "Kuula loan review update", "Your business loan application has advanced to Level " + nextLevel + " review. Track its progress in Kuula.");
   res.json({ ok: true, fromLevel: level, toLevel: nextLevel, assignee: { id: next.id, name: next.fullName } });
 });
 
@@ -352,6 +354,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
     });
     await event(applicationId, req.user!.userId, "application.rejected", level, null, { narrative });
     await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: application.applicantId, action: "credit.application_rejected", resourceType: "loan_application", resourceId: applicationId, metadata: { level, narrative } });
+    await notifyLoanCustomer(application.applicantId, "Kuula loan decision", "Your business loan application was not approved. Open Kuula to view your application status.");
     res.json({ ok: true, status: "rejected" }); return;
   }
 
@@ -361,6 +364,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   });
   await event(applicationId, req.user!.userId, "application.final_approved", 3, null, { narrative });
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: application.applicantId, action: "credit.final_approval_recorded", resourceType: "loan_application", resourceId: applicationId, metadata: { narrative, canonicalDecisionRequired: true } });
+  await notifyLoanCustomer(application.applicantId, "Kuula final review completed", "Final staff review has finished. Your formal loan decision will be available in Kuula when all required checks are complete.");
   res.json({ ok: true, status: "ready_for_offer", canonicalDecisionRequired: true, canonicalEndpoint: "/api/loans/applications/decision" });
 });
 

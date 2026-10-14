@@ -161,6 +161,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
     where,
     include: {
       underwriting: true,
+      agreementAcceptance: true,
       partnerFinancing: {
         include: { partner: true, partnerLocation: true, product: true },
       },
@@ -187,6 +188,15 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
         WHERE application_id::text IN (${Prisma.join(applicationIds)})
       `);
   const detailsByApplication = new Map(detailsRows.map((row) => [row.application_id, row]));
+  // Expose stage, never internal evidence, narratives or assignee identities.
+  const stageRows = applicationIds.length === 0 ? [] : await prisma.$queryRaw<
+    Array<{ application_id: string; current_level: number; status: string }>
+  >(Prisma.sql`
+    SELECT application_id::text, current_level, status FROM credit_cases
+    WHERE application_id::text IN (${Prisma.join(applicationIds)})
+  `);
+  const stages = new Map(stageRows.map(row => [row.application_id, row]));
+
 
   res.json({
     applications: applications.map((application) => {
@@ -201,6 +211,9 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
         channel: application.channel,
         disbursementMethod: application.disbursementMethod,
         status: application.status,
+        reviewLevel: stages.get(application.id)?.current_level ?? null,
+        reviewStage: stages.get(application.id)?.status ?? null,
+        agreementAccepted: application.agreementAcceptance != null,
         total: Number(application.total),
         apr: Number(application.apr),
         interest: Number(application.interest),

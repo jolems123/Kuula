@@ -44,6 +44,7 @@ import { authenticateToken } from "./middleware/auth.js";
 import { computeCreditScore } from "./lib/credit-score.js";
 import { effectiveCreditEvidence } from "./lib/credit-evidence.js";
 import { startReconciliationSweeper } from "./lib/reconciliation.js";
+import { startOfferExpirySweeper } from "./lib/loan-offer-expiry.js";
 import prisma from "./lib/prisma.js";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -264,6 +265,7 @@ app.post("/api/users/me/delete", authenticateToken, async (req, res) => {
 app.use(errorHandler);
 
 const stopReconciliationSweeper = startReconciliationSweeper();
+const stopOfferExpirySweeper = startOfferExpirySweeper();
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(JSON.stringify({ event: "server.started", port: PORT, realMoneyEnabled }));
 });
@@ -273,6 +275,7 @@ async function shutdown(signal: string, exitCode = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
   stopReconciliationSweeper();
+  stopOfferExpirySweeper();
   const forceExit = setTimeout(() => process.exit(exitCode || 1), 10_000);
   forceExit.unref();
   server.close(async () => {

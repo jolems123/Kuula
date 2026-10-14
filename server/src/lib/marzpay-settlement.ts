@@ -1,3 +1,4 @@
+import { sendLoanExternalNotice } from "./loan-customer-notifications.js";
 import { Prisma, type Transaction } from "@prisma/client";
 import prisma from "./prisma.js";
 import type { MarzPayWebhookEvent } from "./marzpay.js";
@@ -215,6 +216,11 @@ async function settleDisbursementLeg(event: MarzPayWebhookEvent, ledger: Transac
       resourceId: leg.batch_id,
       metadata: { applicationId: leg.application_id, sequence: leg.sequence, reference: event.reference, amount: event.amount, charge: event.charge, providerUuid: event.uuid },
     });
+  }
+
+  if (result.settled && result.complete && event.isSuccess) {
+    await sendLoanExternalNotice(leg.user_id, "Kuula loan disbursed",
+      "MarzPay has confirmed settlement of your approved Kuula loan to your registered Mobile Money account. Open Kuula to review your repayment terms.");
   }
 
   if (result.shouldDispatchNext) {

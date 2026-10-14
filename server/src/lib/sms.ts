@@ -125,3 +125,13 @@ export async function sendOtpSms(
 
   return sendViaEgoSms(phone, messageFor(code, purpose));
 }
+
+/** Operational SMS is opt-in and cannot borrow the authentication OTP path. */
+export async function sendNotificationSms(phoneInput: string, content: string): Promise<boolean> {
+  if (process.env.LOAN_SMS_NOTIFICATIONS_ENABLED !== "true" || !smsConfigured()) return false;
+  const phone = normalizeUgandaMobileMoneyPhone(phoneInput);
+  const message = content.replace(/[\r\n]+/g, " ").slice(0, 300);
+  if (provider() === "test" && process.env.NODE_ENV === "test") return true;
+  if (provider() !== "egosms") return false;
+  return (await sendViaEgoSms(phone, message)).accepted;
+}

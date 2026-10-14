@@ -1,3 +1,4 @@
+import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
@@ -253,6 +254,8 @@ async function createLoanApplicationForUser(
       resourceId: application.id,
       metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose },
     });
+    await notifyLoanCustomer(userId, "Kuula business loan application submitted",
+      "Your business loan application was received and is awaiting assessment. Follow the review stages in Kuula.");
     return application;
   } catch (error) {
     if ((error as { code?: string })?.code === "P2002") throw new AppError("You already have an open loan or application", 409);
@@ -361,6 +364,10 @@ router.post(
       resourceId: application.id,
       metadata: { notes, offerExpiresAt: offerExpiresAt?.toISOString() ?? null },
     });
+    await notifyLoanCustomer(application.applicantId, decision === "approved" ? "Kuula loan offer available" : "Kuula loan application not approved",
+      decision === "approved"
+        ? "Your application has an approved offer. Sign in to review the exact loan agreement before the offer expires. Funds are not disbursed until independent staff release."
+        : "Your business loan application was not approved. Open Kuula to view its status.");
     res.json({ application: mapApplication(updated) });
   }
 );
@@ -406,6 +413,12 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     serviceFee: 0,
   };
   const agreementHash = crypto.createHash("sha256").update(JSON.stringify(termsSnapshot)).digest("hex");
+  const signature = req.body?.clientContext;
+  if (signature?.signatureVersion === "typed_name_v1") {
+    const statedName = typeof signature.signedByName === "string" ? signature.signedByName.trim().toLowerCase() : "";
+    if (!signature.explicitConsent || !statedName || statedName !== (application.applicant.fullName || "").trim().toLowerCase())
+      throw new AppError("Please explicitly sign with your registered full name", 422);
+  }
   const clientContext = req.body?.clientContext && typeof req.body.clientContext === "object"
     ? req.body.clientContext as Prisma.InputJsonValue
     : undefined;
@@ -428,6 +441,7 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     resourceId: application.id,
     metadata: { agreementVersion: AGREEMENT_VERSION, agreementHash },
   });
+  await notifyLoanCustomer(userId, "Kuula loan agreement accepted", "Your agreement acceptance has been recorded. Payment will require an independent authorized Kuula disbursement release.");
   res.json({ ok: true, acceptedAt: acceptance.acceptedAt, agreementVersion: AGREEMENT_VERSION, agreementHash });
 });
 

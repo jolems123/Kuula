@@ -22,6 +22,8 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [signatureName, setSignatureName] = useState("");
+  const [understoodTerms, setUnderstoodTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [disbursement, setDisbursement] = useState<DisbursementBatchStatus | null>(null);
 
@@ -86,10 +88,17 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
 
   const acceptAgreement = async () => {
     if (!token || !offer || busy) return;
+    if (!understoodTerms || !signatureName.trim() || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()) {
+      setError("Please confirm that you understand the agreement and type your registered name to sign.");
+      return;
+    }
     setBusy(true); setError(null);
     try {
       const result = await api.acceptLoanAgreement(token, offer.id, {
         appVersion: env.APP_VERSION,
+        signatureVersion: "typed_name_v1",
+        signedByName: signatureName.trim(),
+        explicitConsent: understoodTerms,
         platform: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 255) : "unknown",
         disbursementMode: isPartnerFacility ? "direct_payee" : "customer_mobile_money",
         partnerFinancingRequestId: offer.partnerFinancingRequestId ?? null,
@@ -184,6 +193,18 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         <div style={{ background: "white", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ textAlign: "center", borderBottom: "2px solid #EEF2EF", paddingBottom: 16 }}><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}>KUULA MICROFINANCE LIMITED</p><h2 style={{ fontSize: 18, fontWeight: 800, color: "#13251C", margin: "4px 0" }}>{isPartnerFacility ? "RESTRICTED-PURPOSE CREDIT AGREEMENT" : "LOAN AGREEMENT"}</h2><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}>Agreement No: {agreementNo}</p></div>
           {clauses.map(({ title, body }) => <div key={title}><p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: "0 0 4px" }}>{title}</p><p style={{ fontSize: 12, color: "#68766F", margin: 0, lineHeight: 1.7 }}>{body}</p></div>)}
+          {!serverAccepted && <div style={{ padding: 14, borderRadius: 12, background: "#F3F9F5", border: "1px solid #CDE2D5" }}>
+            <strong style={{ fontSize: 13, color: "#1C4A31" }}>Sign your exact loan offer</strong>
+            <p style={{ color: "#50645B", fontSize: 12 }}>Your typed name and consent will be attached to the server-recorded agreement. Signing does not disburse money; an independent Kuula staff release is still required.</p>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700 }}>Registered full name
+              <input type="text" autoComplete="name" value={signatureName} onChange={event => setSignatureName(event.target.value)}
+                placeholder={borrower} style={{ display: "block", width: "100%", marginTop: 6, padding: 12, border: "1px solid #D1E4D8", borderRadius: 8 }} />
+            </label>
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12, fontSize: 12 }}>
+              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} />
+              I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement.
+            </label>
+          </div>}
           {serverAccepted && <div style={{ border: "2px solid #0B5E3A", borderRadius: 12, padding: 16, background: "#EDF8F2" }}><p style={{ fontSize: 13, fontWeight: 700, color: "#0B5E3A", margin: "0 0 4px" }}>Server-recorded Acceptance</p><p style={{ fontSize: 15, color: "#1F2937", margin: "0 0 4px", fontWeight: 700 }}>{borrower}</p><p style={{ fontSize: 11, color: "#0B5E3A", margin: 0 }}>Accepted {fmtDate(acceptedAt)} · App {env.APP_VERSION}</p></div>}
         </div>
       </div>
@@ -193,7 +214,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         {!offer ? <button disabled style={{ width: "100%", height: 52, borderRadius: 14, border: 0 }}>Loading offer…</button> : disbursement ? (
           <button onClick={() => onNavigate(disbursement.status === "settled" ? "loan-detail" : "home")} className="kuula-primary" style={{ width: "100%", height: 52 }}>{disbursement.status === "settled" ? "View Active Loan" : "Return Home"}</button>
         ) : !serverAccepted ? (
-          <button onClick={acceptAgreement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Recording acceptance…" : "Accept Credit Agreement"}</button>
+          <button onClick={acceptAgreement} disabled={busy || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Recording acceptance…" : "Accept Credit Agreement"}</button>
         ) : (
           <button onClick={requestDisbursement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Starting secure settlement…" : isPartnerFacility ? `Pay ${payee}` : "Request Mobile-Money Disbursement"}</button>
         )}
