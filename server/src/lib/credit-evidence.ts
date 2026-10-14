@@ -32,15 +32,15 @@ export async function effectiveCreditEvidence(
 
   const current = rows.filter((row) => isCurrent(row, now));
   const momo = current.find((row) => row.sourceType === "mobile_money");
-  const crb = current.find((row) => row.sourceType === "crb");
+  // Historical CRB records remain in the audit store but are deliberately unused.
 
   return {
     momoMonths: momo?.momoMonths ?? 0,
     momoTxnCount: momo?.momoTxnCount ?? 0,
-    crbStatus: crb?.crbStatus ?? "thin",
+    crbStatus: "not_used",
     momoVerified: !!momo,
-    crbVerified: !!crb,
-    evidenceIds: [momo?.id, crb?.id].filter((value): value is string => !!value),
+    crbVerified: false,
+    evidenceIds: [momo?.id].filter((value): value is string => !!value),
   };
 }
 
