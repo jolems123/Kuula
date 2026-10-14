@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 
-const base = process.env.MARZPAY_BASE_URL?.trim().replace(/\\/+$/, "");
+const base = process.env.MARZPAY_BASE_URL?.trim().replace(/[/]+$/, "");
 const key = process.env.MARZPAY_API_KEY?.trim();
 const secret = process.env.MARZPAY_API_SECRET?.trim();
 if (!base || !key || !secret) {
