@@ -138,6 +138,10 @@ const nodeApi = {
   getCollections: (token: string) => request<{ accounts: Array<Record<string, unknown>>; activities: Array<Record<string, unknown>> }>("/api/admin/collections", { headers: auth(token) }),
   addCollectionActivity: (token: string, repaymentId: string, input: Record<string, unknown>) => request<{ activity: Record<string, unknown> }>(`/api/admin/collections/${repaymentId}/activities`, { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   getApplications: (token: string) => request<{ applications: LoanApplication[] }>("/api/loans/applications", { headers: auth(token) }),
+  uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string>) =>
+    request<{ ok: boolean; photoTypes: string[] }>(
+      "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
+      { method: "POST", headers: auth(token), body: JSON.stringify({ photoConsent: true, photos }) }, 120000),
   submitApplication: (token: string, body: { amount: number; purpose: string; termDays: number; channel?: string; declaredMonthlyIncome: number; declaredMonthlyExpenses: number; existingDebtPayment: number; business: import("./types").BusinessProfile }) => request<{ application: LoanApplication }>("/api/loans/applications", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   reviewBusiness: (token: string, id: string, status: "verified" | "rejected", notes: string) => request<{ application: LoanApplication }>(`/api/loans/applications/${id}/business-review`, { method: "POST", headers: auth(token), body: JSON.stringify({ status, notes }) }),
   decideApplication: (token: string, id: string, decision: "approved" | "rejected", notes = "Decision recorded by authorized staff") => request<{ application: LoanApplication }>("/api/loans/applications/decision", { method: "POST", headers: auth(token), body: JSON.stringify({ id, decision, notes }) }),
