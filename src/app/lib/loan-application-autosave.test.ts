@@ -65,6 +65,8 @@ describe("loan application autosave", () => {
         longitude: 32.5825,
         goodsOrServices: "Bakery",
         customerType: "Walk-in customers",
+        primarySuppliers: "Wholesale market", supplierPaymentTerms: "Cash", salesFrequency: "daily" as const, seasonalPattern: "", lowSeasonMonthlySales: 0,
+        inventoryCost: 300000, rentCost: 50000, wagesCost: 50000, otherOperatingCosts: 50000, otherDebtDetails: "",
         staffCount: 2,
         loanUse: "Buy a second oven",
         repaymentPlan: "Bakery sales",
