@@ -37,7 +37,11 @@ export function ConfirmScreen({ onNavigate }: Props) {
         const transaction = transactions.find((item) => String(item.reference ?? "") === payment.reference);
         if (!active || !transaction) return;
         const status = String(transaction.status ?? "pending").toLowerCase();
-        const statusLabel = String(transaction.providerStatus ?? status).replace(/_/g, " ");
+        const rawLabel = String(transaction.providerStatus ?? status).toLowerCase();
+        // "unknown" means Mobile Money's answer was lost; Kuula is confirming it, not guessing.
+        const statusLabel = ["unknown", "initiating", "processing", "pending"].includes(rawLabel)
+          ? "Confirming with Mobile Money. Do not pay again."
+          : rawLabel.replace(/_/g, " ");
         if (["completed", "settled", "paid", "success", "successful"].includes(status)) {
           setProviderState("settled");
           setProviderStatus("Provider-confirmed settlement");
@@ -56,7 +60,17 @@ export function ConfirmScreen({ onNavigate }: Props) {
     };
 
     void refresh();
-    timer = window.setInterval(() => { void refresh(); }, 3000);
+    // Poll for ten minutes; after that the screen asks the customer to check back, while
+    // Kuula keeps confirming the payment with Mobile Money in the background.
+    const startedAt = Date.now();
+    timer = window.setInterval(() => {
+      if (Date.now() - startedAt > 10 * 60_000) {
+        if (timer) window.clearInterval(timer);
+        if (active) setProviderStatus("Still confirming. Check Transactions later; do not pay again.");
+        return;
+      }
+      void refresh();
+    }, 3000);
     return () => {
       active = false;
       if (timer) window.clearInterval(timer);

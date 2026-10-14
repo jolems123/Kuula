@@ -68,7 +68,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
           amount: typeof res.amount === "number" ? res.amount : amt,
           reference: String(res.reference ?? res.uuid ?? "—"),
           method: "Verified Mobile Money",
-          status: "Pending provider confirmation",
+          status: typeof res.message === "string" && res.message ? res.message : "Pending provider confirmation",
           dateISO: new Date().toISOString(),
         });
         onNavigate("payment-confirm");
