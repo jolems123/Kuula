@@ -72,7 +72,23 @@ export function CreditPassScreen({ onNavigate }: Props) {
           <p style={{ margin: "12px 0 0", fontSize: 11.5, lineHeight: 1.5, color: "#68776E" }}>This provisional Kuula score uses verified identity, reviewed mobile money evidence (where available) and Kuula repayment records. Missing data earns no assumed points. Business cash flow and affordability are reviewed separately before any credit decision. No CRB report is used.</p>
         </section>
 
-        <h2 style={{ margin: "20px 0 10px", fontSize: 16, color: "#18271E" }}>What builds your Credit Pass</h2>
+        <h2 style={{ margin: "20px 0 10px", fontSize: 16, color: "#18271E" }}>How your score is calculated</h2>
+        <section style={{ background: "white", borderRadius: 16, padding: 15, border: "1px solid #E1E9E4" }}>
+          <p style={{ fontSize: 12, margin: "0 0 10px", color: "#45594B" }}>
+            {pass?.provisional ? "Provisional score: we do not have enough financial history to assess repayment risk. " : ""}
+            Kuula starts from 300 points and adds points only for verified evidence. The maximum is 850. The score is not a bureau rating or guaranteed loan approval.
+          </p>
+          {pass?.factors?.map(factor => (
+            <div key={factor.key} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderTop: "1px solid #EDF1EF", padding: "10px 0" }}>
+              <div style={{ flex: 1 }}>
+                <strong style={{ display: "block", fontSize: 12, color: "#1B2A21" }}>{factor.label} · {factor.weightPercent}%</strong>
+                <span style={{ display: "block", fontSize: 11, color: "#68776E" }}>{factor.detail}</span>
+              </div>
+              <strong style={{ whiteSpace: "nowrap", fontSize: 12, color: "#0B5E3A" }}>+{factor.contribution} pts</strong>
+            </div>
+          ))}
+        </section>
+        <h2 style={{ margin: "20px 0 10px", fontSize: 16, color: "#18271E" }}>Evidence on your Credit Pass</h2>
         <section style={{ background: "white", border: "1px solid #E1E9E4", borderRadius: 18, overflow: "hidden" }}>
           {checks.map((check, index) => {
             const Icon = check.icon;
