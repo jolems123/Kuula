@@ -181,7 +181,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [notice, setNotice] = useState("");
   const [showInvite, setShowInvite] = useState(false);
   const [inviteName, setInviteName] = useState("");
-  const [invitePhone, setInvitePhone] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("loan_officer");
   const [inviting, setInviting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -207,12 +207,12 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     if (!token) return;
     setError(""); setNotice("");
     if (inviteName.trim().length < 2) { setError("Enter the staff member's full name."); return; }
-    if (!invitePhone.trim()) { setError("Enter the staff member's phone number."); return; }
+    if (!inviteEmail.trim()) { setError("Enter the staff member's work email address."); return; }
     setInviting(true);
     try {
-      await api.inviteStaff(token, { fullName: inviteName.trim(), phone: invitePhone.trim(), role: inviteRole });
-      setNotice(`Invitation sent to ${invitePhone.trim()}. They activate it from the staff sign-in screen.`);
-      setInviteName(""); setInvitePhone(""); setInviteRole("loan_officer"); setShowInvite(false);
+      await api.inviteStaff(token, { fullName: inviteName.trim(), email: inviteEmail.trim().toLowerCase(), role: inviteRole });
+      setNotice(`Invitation sent to ${inviteEmail.trim()}. They activate it from the staff sign-in screen.`);
+      setInviteName(""); setInviteEmail(""); setInviteRole("loan_officer"); setShowInvite(false);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send the invitation.");
@@ -269,8 +269,8 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
               <input value={inviteName} onChange={(e)=>setInviteName(e.target.value)} placeholder="e.g. Alice Kabanda" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
             </div>
             <div>
-              <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Phone number</label>
-              <input value={invitePhone} onChange={(e)=>setInvitePhone(e.target.value)} type="tel" placeholder="+256 7XX XXX XXX" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
+              <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Work email address</label>
+              <input value={inviteEmail} onChange={(e)=>setInviteEmail(e.target.value)} type="email" placeholder="staff@kuulapp.com" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
             </div>
             <div>
               <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Role</label>
@@ -315,7 +315,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
               </div>
             </AdminCard>
           ))}
-          {staff.length === 0 && <AdminCard><p style={{ fontSize:13,color:"#64748B",margin:0 }}>No staff accounts yet. Invite your team by phone number.</p></AdminCard>}
+          {staff.length === 0 && <AdminCard><p style={{ fontSize:13,color:"#64748B",margin:0 }}>No staff accounts yet. Invite your team by work email.</p></AdminCard>}
         </div>
       )}
     </AdminLayout>
