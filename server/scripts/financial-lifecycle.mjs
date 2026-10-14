@@ -59,6 +59,11 @@ try {
   await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "Unverified business test must be denied" }, expect: 422 });
   const review = await call("POST", `/api/loans/applications/${applicationId}/business-review`, { token: A, body: { status: "verified", notes: "CI verified trading operations and business turnover evidence" } });
   assert.equal(review.application.businessReviewStatus, "verified");
+  step("an approval above the approver's configured authority is refused");
+  const approverRole = admin.user?.role || admin.role;
+  await call("PUT", `/api/staff/authority-limits/${approverRole}`, { token: A, body: { maxAmount: 50000, reason: "CI authority limit test" } });
+  await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "Above authority must be refused" }, expect: 403 });
+  await call("PUT", `/api/staff/authority-limits/${approverRole}`, { token: A, body: { maxAmount: null, reason: "CI removes the test limit" } });
   const offer = await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "CI approval after underwriting recheck" } });
   assert.equal(offer.application.status, "offered");
 
