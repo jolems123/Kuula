@@ -68,6 +68,8 @@ describe("loan application autosave", () => {
         primarySuppliers: "Wholesale market", supplierPaymentTerms: "Cash", salesFrequency: "daily" as const, seasonalPattern: "", lowSeasonMonthlySales: 0,
         inventoryCost: 300000, rentCost: 50000, wagesCost: 50000, otherOperatingCosts: 50000, otherDebtDetails: "",
         staffCount: 2,
+        preferredRepaymentFrequency: "monthly" as const,
+        useOfFunds: { stock: 50000, equipment: 100000, operations: 0, expansion: 0, other: 0 },
         loanUse: "Buy a second oven",
         repaymentPlan: "Bakery sales",
       },
