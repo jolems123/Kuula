@@ -3,6 +3,8 @@ import prisma from "./prisma.js";
 import { AppError } from "../middleware/error-handler.js";
 import { generateOtpCode, hashOtp, otpExpiry, OTP_POLICY, type OtpPurpose } from "./otp.js";
 import { sendOtpSms, smsConfigured } from "./sms.js";
+import { emailConfigured, sendTransactionalEmail } from "./email.js";
+import { isStaffRole } from "../middleware/auth.js";
 
 function cooldownSeconds(lastSentAt: Date | null, now = new Date()): number {
   if (!lastSentAt) return 0;
@@ -15,7 +17,8 @@ function cooldownSeconds(lastSentAt: Date | null, now = new Date()): number {
  * it by SMS. Shared by the auth routes and the staff invitation flow.
  */
 export async function issueOtpForUser(user: User, purpose: OtpPurpose): Promise<void> {
-  if (!smsConfigured()) throw new AppError("SMS verification is temporarily unavailable", 503);
+  const staffEmail = isStaffRole(user.role) && ["staff_invite", "admin_login", "password_reset"].includes(purpose);
+  if (staffEmail ? !emailConfigured() : !smsConfigured()) throw new AppError("Verification delivery is temporarily unavailable", 503);
 
   const now = new Date();
   if (user.otpLockedUntil && user.otpLockedUntil > now) {
@@ -25,7 +28,7 @@ export async function issueOtpForUser(user: User, purpose: OtpPurpose): Promise<
 
   const retryAfter = cooldownSeconds(user.otpLastSentAt, now);
   if (retryAfter > 0) throw new AppError(`Wait ${retryAfter} seconds before requesting another code.`, 429);
-  if (!user.phone) throw new AppError("A verified staff phone number is required for verification", 422);
+  if (staffEmail ? !user.email : !user.phone) throw new AppError("A verified destination is required for verification", 422);
 
   const code = generateOtpCode();
   const otpHash = hashOtp(user.id, purpose, code);
@@ -42,7 +45,9 @@ export async function issueOtpForUser(user: User, purpose: OtpPurpose): Promise<
   });
 
   try {
-    const result = await sendOtpSms(user.phone, code, purpose);
+    const result = staffEmail
+      ? await sendTransactionalEmail({ to: user.email!, subject: "Kuula staff verification code", text: `Your Kuula staff verification code is ${code}. It expires shortly. Never share this code.` })
+      : await sendOtpSms(user.phone!, code, purpose);
     if (!result.accepted) throw new Error(result.detail || "SMS provider rejected the message");
   } catch (error) {
     await prisma.user.updateMany({
