@@ -2,6 +2,7 @@ import {
   ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, Globe,
 } from "lucide-react";
 import { useState } from "react";
+import { CustomerProfilePhoto } from "./CustomerProfilePhoto";
 import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
 import { useAppContext } from "../../context/AppContext";
@@ -62,23 +63,10 @@ export function SettingsScreen({ onNavigate }: Props) {
 
       {/* Profile section */}
       <div
-        className="mx-4 mt-4 p-4 rounded-2xl flex items-center gap-4"
+        className="mx-4 mt-4 p-4 rounded-2xl flex flex-wrap items-center gap-4"
         style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "3px solid #DFF2E9",
-          }}
-        >
-          <span style={{ fontSize: 24, fontWeight: 800, color: "white" }}>{user?.initials ?? "?"}</span>
-        </div>
+        <CustomerProfilePhoto token={state.session.token} initials={user?.initials ?? "?"} />
         <div className="flex-1">
           <p style={{ fontSize: 17, fontWeight: 700, color: "#1F2937" }}>{user?.fullName ?? "—"}</p>
           <p style={{ fontSize: 13, color: "#6B7280" }}>{user?.phone ?? "—"}</p>

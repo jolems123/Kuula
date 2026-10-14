@@ -1,3 +1,4 @@
+import customerAvatarRoutes from "./routes/customer-avatar.js";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -148,6 +149,7 @@ const jsonVerify = (req: express.Request, _res: express.Response, buffer: Buffer
 };
 // Three identity photos may use up to 5 MB each (base64 transport overhead).
 app.use("/api/kyc", express.json({ limit: "22mb", verify: jsonVerify }));
+app.use("/api/profile/me/photo", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "30mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
@@ -207,6 +209,7 @@ app.use("/api/admin/support-tickets", supportTicketRoutes);
 app.use("/api/admin/collections", collectionRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/profile", customerAvatarRoutes);
 app.use("/api/customer", customerCreditMessagesRoutes);
 app.use("/api/operations", creditOperationsGuardRoutes);
 app.use("/api/operations", creditOperationsDirectoryRoutes);
