@@ -353,7 +353,7 @@ router.post("/login", async (req: Request, res: Response) => {
  */
 async function findStaffByIdentifier(req: Request): Promise<User | null> {
   const identifier = String(req.body.identifier ?? req.body.phone ?? req.body.email ?? "").trim();
-  if (!identifier) throw new AppError("Phone number and password are required", 400);
+  if (!identifier) throw new AppError("Staff email and password are required", 400);
   if (identifier.includes("@")) {
     return prisma.user.findUnique({ where: { email: normalizedEmail(identifier)! } });
   }
@@ -362,16 +362,16 @@ async function findStaffByIdentifier(req: Request): Promise<User | null> {
 
 router.post("/admin-login", async (req: Request, res: Response) => {
   const supplied = typeof req.body.password === "string" ? req.body.password : "";
-  if (!supplied) throw new AppError("Phone number and password are required", 400);
+  if (!supplied) throw new AppError("Staff email and password are required", 400);
 
   const user = await findStaffByIdentifier(req);
   if (!user || !isStaffRole(user.role) || user.deletedAt) throw new AppError("Invalid credentials", 401);
   if (!user.passwordHash) {
     // Invited but never activated: resend the invite code instead of leaking
     // the account state with a different error.
-    if (user.phone && !user.phoneVerified) {
+    if (user.email && !user.phoneVerified) {
       await issueOtp(user, "staff_invite");
-      throw new AppError("This staff account is not activated yet. We sent a new activation code to its phone — open “First time? Activate account”.", 409);
+      throw new AppError("This staff account is not activated yet. We sent a new activation code to its email — open “First time? Activate account”.", 409);
     }
     throw new AppError("Invalid credentials", 401);
   }
@@ -381,7 +381,7 @@ router.post("/admin-login", async (req: Request, res: Response) => {
     res.json(await sessionResponse(user, req));
     return;
   }
-  if (!user.phone || !user.phoneVerified) throw new AppError("Staff sign-in requires a verified phone number. Ask the Super Admin to re-invite this account.", 403);
+  if (!user.email || !user.phoneVerified) throw new AppError("Staff sign-in requires an activated work email account. Ask the Super Admin to re-invite this account.", 403);
 
   await issueOtp(user, "admin_login");
   const challengeToken = generateAdminChallenge({ userId: user.id, authVersion: user.authVersion });
@@ -389,7 +389,7 @@ router.post("/admin-login", async (req: Request, res: Response) => {
   res.json({
     requiresMfa: true,
     challengeToken,
-    destination: `${user.phone.slice(0, 4)}••••${user.phone.slice(-3)}`,
+    destination: user.email.replace(/^(.{2}).*(@.*)$/, "$1••••$2"),
   });
 });
 
@@ -426,12 +426,12 @@ router.post("/admin-login/resend", async (req: Request, res: Response) => {
 
 const GENERIC_INVITE_RESPONSE = {
   ok: true,
-  message: "If that number has a pending staff invitation, a new activation code has been sent.",
+  message: "If that email has a pending staff invitation, a new activation code has been sent.",
 };
 
 router.post("/staff-invite/activate", async (req: Request, res: Response) => {
-  const phone = normalizedPhone(req.body.phone);
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const email = normalizedEmail(req.body.email);
+  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
   if (!user || user.deletedAt || !isStaffRole(user.role) || user.passwordHash || user.phoneVerified) {
     throw new AppError("Invalid or expired activation code", 401);
   }
@@ -452,8 +452,8 @@ router.post("/staff-invite/activate", async (req: Request, res: Response) => {
 });
 
 router.post("/staff-invite/resend", async (req: Request, res: Response) => {
-  const phone = normalizedPhone(req.body.phone);
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const email = normalizedEmail(req.body.email);
+  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
   if (user && !user.deletedAt && isStaffRole(user.role) && !user.passwordHash && !user.phoneVerified) {
     await issueOtp(user, "staff_invite");
   }
@@ -486,7 +486,6 @@ router.post("/resend-otp", async (req: Request, res: Response) => {
 });
 
 router.post("/reset-password", async (req: Request, res: Response) => {
-  if (!smsConfigured()) throw new AppError("SMS verification is temporarily unavailable", 503);
   const identifier = String(req.body.identifier ?? req.body.email ?? req.body.phone ?? "").trim();
   if (!identifier) throw new AppError("Enter your phone number or email address", 400);
 
@@ -494,8 +493,8 @@ router.post("/reset-password", async (req: Request, res: Response) => {
     ? await prisma.user.findUnique({ where: { email: normalizedEmail(identifier)! } })
     : await prisma.user.findUnique({ where: { phone: normalizedPhone(identifier) } });
 
-  if (user && !user.deletedAt && user.phoneVerified && user.phone) await issueOtp(user, "password_reset");
-  res.json({ ok: true, message: "If the account is eligible, a reset code was sent to its verified phone." });
+  if (user && !user.deletedAt && (isStaffRole(user.role) ? Boolean(user.email && user.phoneVerified) : Boolean(user.phone && user.phoneVerified))) await issueOtp(user, "password_reset");
+  res.json({ ok: true, message: "If the account is eligible, a reset code was sent to its registered verification channel." });
 });
 
 router.post("/reset-password/confirm", async (req: Request, res: Response) => {
