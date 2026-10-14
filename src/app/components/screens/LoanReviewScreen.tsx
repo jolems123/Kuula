@@ -4,6 +4,7 @@ import { useAppContext } from "../../context/AppContext";
 import { api, type LoanQuote, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { localQuote } from "../../lib/pricing";
+import { getBusinessPhotos, setBusinessPhotoApplicationId, clearBusinessPhotos, fileToDataUrl } from "../../lib/business-photos";
 import { clearSavedLoanApplicationDraft, getSavedLoanApplicationDraft } from "../../lib/loan-application-autosave";
 import { formatBusinessLoanPurpose } from "../../lib/business-loan-purpose";
 import { getLoanDraft, setLoanDraft, type LoanDraft } from "../../lib/selection";
@@ -54,6 +55,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     return restoredDraft;
   });
   const [agreed, setAgreed] = useState(false);
+  const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(() => getBusinessPhotos().submittedApplicationId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [quoteError, setQuoteError] = useState("");
@@ -85,7 +87,24 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     setError(""); setLoading(true);
     if (env.USE_API) {
       try {
-        await api.submitApplication(token, draft);
+        // If application creation succeeded but uploading the evidence failed,
+        // retry attachment without submitting a duplicate loan application.
+        const existingId = pendingApplicationId ?? getBusinessPhotos().submittedApplicationId;
+        const applicationId = existingId ?? (await api.submitApplication(token, draft)).application.id;
+        if (!existingId) {
+          setPendingApplicationId(applicationId);
+          setBusinessPhotoApplicationId(applicationId);
+        }
+        const { files, consent } = getBusinessPhotos();
+        if (!consent || !files.exterior || !files.interior || !files.applicant_at_business) {
+          throw new Error("Required business photos are missing. Return to the form and capture them again before continuing.");
+        }
+        const photos: Record<string, string> = {};
+        for (const [kind, file] of Object.entries(files)) {
+          if (file) photos[kind] = await fileToDataUrl(file);
+        }
+        await api.uploadBusinessPhotos(token, applicationId, photos);
+        clearBusinessPhotos();
         if (state.user) clearSavedLoanApplicationDraft(state.user.id);
         setLoanDraft(null);
         onNavigate("loan-approval");
