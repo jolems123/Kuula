@@ -43,6 +43,8 @@ workflows:
           npm run check:env
       - name: Install application dependencies
         script: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Verify Capacitor version alignment
+        script: node scripts/check-capacitor-versions.mjs
       - name: Typecheck
         script: npm run typecheck
       - name: Unit tests
@@ -127,6 +129,8 @@ workflows:
           npm run check:env
       - name: Install application dependencies
         script: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Verify Capacitor version alignment
+        script: node scripts/check-capacitor-versions.mjs
       - name: Typecheck
         script: npm run typecheck
       - name: Unit tests
