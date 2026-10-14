@@ -32,9 +32,10 @@ function optionalText(value: unknown, max = 120): string | null {
   return normalized || null;
 }
 
-const EMPLOYMENT_STATUSES = new Set(["Employed", "Self-employed", "Business owner", "Other"]);
+// Kuula lends to businesses only: salaried employment is not an eligible basis.
+const EMPLOYMENT_STATUSES = new Set(["Self-employed", "Business owner"]);
 const WORK_DURATIONS = new Set(["Less than 6 months", "6–12 months", "1–2 years", "2+ years"]);
-const INCOME_SOURCES = new Set(["Business sales", "Service income", "Salary", "Commission", "Other"]);
+const INCOME_SOURCES = new Set(["Business sales", "Service income", "Commission"]);
 
 /**
  * Validate application-only livelihood declarations before the canonical loan
