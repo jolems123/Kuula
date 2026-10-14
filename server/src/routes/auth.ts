@@ -190,7 +190,7 @@ async function buildSession(user: any) {
   const credit = isStaff ? null : computeCreditScore({
     momoMonths: evidence?.momoMonths ?? 0,
     momoTxnCount: evidence?.momoTxnCount ?? 0,
-    momoVerified: !!evidence?.momoVerified,
+    crbStatus: evidence?.crbStatus ?? "thin",
     kycVerified: user.kycVerified ?? false,
     loansRepaid: user.loansRepaid ?? 0,
     loansTotal: user.loansTotal ?? 0,
@@ -212,7 +212,7 @@ async function buildSession(user: any) {
   });
 
   const scoreValue = credit?.score ?? 0;
-  const evidenceReady = !!evidence?.momoVerified && !!user.kycVerified;
+  const evidenceReady = !!evidence?.momoVerified && !!evidence?.crbVerified && !!user.kycVerified;
   const tierLimit = !evidenceReady ? 0 : scoreValue >= 750 ? 2_000_000 : scoreValue >= 700 ? 1_000_000 : scoreValue >= 600 ? 500_000 : scoreValue >= 500 ? 200_000 : 0;
 
   return {
@@ -355,6 +355,12 @@ async function findStaffByIdentifier(req: Request): Promise<User | null> {
   return prisma.user.findUnique({ where: { phone: normalizedPhone(identifier) } });
 }
 
+function staffEmailMfaRequired(): boolean {
+  // Roll out only after SMTP delivery and staff recovery have been verified.
+  // Defaults to the existing login behavior until explicitly enabled.
+  return process.env.STAFF_EMAIL_MFA_REQUIRED === "true";
+}
+
 router.post("/admin-login", async (req: Request, res: Response) => {
   const supplied = typeof req.body.password === "string" ? req.body.password : "";
   if (!supplied) throw new AppError("Staff email and password are required", 400);
@@ -370,12 +376,37 @@ router.post("/admin-login", async (req: Request, res: Response) => {
   await assertStaffPassword(user, supplied);
 
   if (!user.phoneVerified) throw new AppError("Your staff account is awaiting Super Admin approval.", 403);
-  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_login", resourceType: "user", resourceId: user.id });
-  res.json(await sessionResponse(user, req));
+  if (!staffEmailMfaRequired()) {
+    await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_login", resourceType: "user", resourceId: user.id });
+    res.json(await sessionResponse(user, req));
+    return;
+  }
+  // Fail closed when this security requirement is enabled and email delivery is unavailable.
+  // Email OTP is interim possession verification, not phishing-resistant MFA.
+  await issueOtp(user, "admin_login");
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_mfa_challenge", resourceType: "user", resourceId: user.id });
+  res.json({ ok: true, mfaRequired: true, identifier: user.email });
 });
 
 // Password-only signup never grants staff access. The Super Admin must confirm
 // the person's identity independently before approving the account.
+router.post("/admin-login/verify", async (req: Request, res: Response) => {
+  if (!staffEmailMfaRequired()) throw new AppError("Not found", 404);
+  const email = normalizedEmail(req.body.identifier ?? req.body.email);
+  if (!email) throw new AppError("Enter your staff email", 400);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !isStaffRole(user.role) || user.deletedAt || !user.phoneVerified || !user.passwordHash) throw new AppError("Invalid or expired code", 401);
+  await assertOtp(user, "admin_login", req.body.code);
+  // Atomically consume the current challenge; simultaneous submissions must not both succeed.
+  const consumed = await prisma.user.updateMany({
+    where: { id: user.id, authVersion: user.authVersion, otpHash: user.otpHash, otpPurpose: "admin_login", otpExpiresAt: { gt: new Date() }, deletedAt: null, phoneVerified: true },
+    data: { ...clearOtp },
+  });
+  if (consumed.count !== 1) throw new AppError("Invalid or expired code", 401);
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_mfa_verified", resourceType: "user", resourceId: user.id });
+  res.json(await sessionResponse(user, req));
+});
+
 router.post("/staff-signup", async (req: Request, res: Response) => {
   const email = normalizedEmail(req.body.email);
   if (!email) throw new AppError("Enter a valid work email address", 400);

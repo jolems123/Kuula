@@ -97,6 +97,17 @@ test("password-only staff signup cannot grant access or overwrite an existing pa
     assert.equal(typeof signedInPayload.token, "string");
     assert.equal(typeof signedInPayload.refreshToken, "string");
     assert.equal(signedInPayload.requiresMfa, undefined);
+    // MFA is rollout-gated. When enabled with unconfigured email transport,
+    // do not create a password-only staff session or pretend delivery worked.
+    process.env.STAFF_EMAIL_MFA_REQUIRED = "true";
+    try {
+      const unavailable = await post("/admin-login", credentials);
+      assert.equal(unavailable.status, 503);
+      const invalidCode = await post("/admin-login/verify", { identifier: "staff@example.com", code: "" });
+      assert.equal(invalidCode.status, 400);
+    } finally {
+      delete process.env.STAFF_EMAIL_MFA_REQUIRED;
+    }
   } finally {
     (prisma.user as any).updateMany = originalUpdateMany;
     (prisma.user as any).findUnique = originalFindUnique;
