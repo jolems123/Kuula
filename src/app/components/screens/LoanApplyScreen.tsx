@@ -258,6 +258,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           <div style={{ display: "grid", gap: 14 }}>
             {businessTextField("Business or trading name", "businessName", "e.g. Amina's Grocery")}
             <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Your position in this business</span>
+              <select value={businessDetails.applicantPosition} className="kx-input" style={{ width: "100%" }}
+                onChange={event => setBusinessDetails(current => ({ ...current, applicantPosition: event.target.value }))}>
+                <option value="">Choose your position</option>
+                {["Owner", "Co-owner", "Director", "Manager", "Operator", "Other authorized representative"].map(position =>
+                  <option value={position} key={position}>{position}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "block" }}>
               <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Business sector</span>
               <select value={businessDetails.sector} onChange={(e) => setBusinessDetails((v) => ({ ...v, sector: e.target.value }))} className="kx-input" style={{ width: "100%" }}>
                 <option value="">Select your sector</option>
