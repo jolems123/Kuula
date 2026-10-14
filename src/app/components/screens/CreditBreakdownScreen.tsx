@@ -11,14 +11,6 @@ const COLORS = ["#178654", "#064A2E", "#F59E0B", "#8B5CF6", "#06B6D4"];
 const ratingLabel = (pct: number) =>
   pct >= 85 ? "Excellent" : pct >= 70 ? "Very Good" : pct >= 55 ? "Good" : pct >= 40 ? "Fair" : "Needs work";
 
-const FALLBACK = [
-  { label: "Payment History", score: 92, weight: "35%", status: "Excellent", color: "#178654", tip: "You've made all payments on time." },
-  { label: "Credit Utilization", score: 68, weight: "30%", status: "Good", color: "#064A2E", tip: "Using 32% of available credit." },
-  { label: "Length of History", score: 45, weight: "15%", status: "Fair", color: "#F59E0B", tip: "Longer history improves your score." },
-  { label: "Credit Mix", score: 80, weight: "10%", status: "Very Good", color: "#8B5CF6", tip: "Good mix of loan types." },
-  { label: "New Inquiries", score: 90, weight: "10%", status: "Excellent", color: "#178654", tip: "No recent hard inquiries." },
-];
-
 export function CreditBreakdownScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const { t } = useTranslation();
@@ -29,15 +21,13 @@ export function CreditBreakdownScreen({ onNavigate }: Props) {
     if (env.USE_API && token) api.creditScore(token).then(setData).catch(() => {});
   }, [token]);
 
-  // Real five-source breakdown from the scoring engine; static sample otherwise.
-  const factors = data
-    ? data.factors.map((f, i) => ({
-        label: f.label, score: f.ratingPercent, weight: `${f.weightPercent}%`,
-        status: ratingLabel(f.ratingPercent), color: COLORS[i % COLORS.length], tip: f.detail,
-      }))
-    : FALLBACK;
-  const headerScore = data?.score ?? state.credit?.score ?? 742;
-  const headerTier = data?.tier ?? state.credit?.tier ?? "Excellent";
+  const factors = data?.factors.map((f, i) => ({
+    label: f.label, score: f.ratingPercent, weight: `${f.weightPercent}%`,
+    status: f.available === false ? "Not assessed" : ratingLabel(f.ratingPercent),
+    color: COLORS[i % COLORS.length], tip: f.detail,
+  })) ?? [];
+  const headerScore = data?.score ?? state.credit?.score;
+  const headerTier = data?.tier ?? state.credit?.tier ?? "Building";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
@@ -50,11 +40,12 @@ export function CreditBreakdownScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 30px", display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ background: "linear-gradient(135deg, #F3FAF7, #DFF2E9)", borderRadius: 14, padding: "14px 16px", border: "1px solid #DFF2E9" }}>
-          <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: 0 }}>Your Credit Score</p>
-          <p style={{ fontSize: 36, fontWeight: 900, color: "#064A2E", margin: "2px 0" }}>{headerScore} / 850</p>
-          <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>{headerTier} · {data ? "Computed from 5 data sources" : "Top 15% of borrowers"}</p>
+          <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: 0 }}>Your Kuula evidence score</p>
+          <p style={{ fontSize: 36, fontWeight: 900, color: "#064A2E", margin: "2px 0" }}>{headerScore ?? "—"} / 850</p>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>{headerTier} · Internal provisional score, not a credit bureau rating</p>
         </div>
 
+        {factors.length === 0 && <p style={{ fontSize: 12, color: "#6B7280" }}>Verified credit factors could not be loaded. Refresh to see your actual Kuula score breakdown.</p>}
         {factors.map((f) => (
           <div key={f.label} style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
