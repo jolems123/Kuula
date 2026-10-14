@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.post("/applications/decision", authenticateToken, async (req: Request, _r
   }
 
   if (decision === "approved") {
+    await assertBusinessPhotoEvidence(applicationId);
     const review = await prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT c.application_id
       FROM credit_cases c
