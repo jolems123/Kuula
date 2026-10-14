@@ -186,6 +186,20 @@ jobs:
           # Loan, payout, repayments, callbacks, status lookups, fees and journals.
           node scripts/financial-lifecycle.mjs
 
+          # The production credit path: restart the API with the staged-review gate on
+          # and run Level 1 -> 2 -> 3 -> offer -> independent release with invited roles.
+          kill $API_PID
+          wait $API_PID 2>/dev/null || true
+          CREDIT_OPERATIONS_REQUIRED=true npm start &
+          API_PID=$!
+          ready=false
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:3000/api/health > /dev/null; then ready=true; break; fi
+            sleep 0.5
+          done
+          test "$ready" = "true"
+          node scripts/staged-credit-lifecycle.mjs
+
   capacitor-sync:
     name: Capacitor Sync
     needs: frontend
