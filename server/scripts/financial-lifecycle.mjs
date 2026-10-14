@@ -222,6 +222,8 @@ try {
   );
   const afterRefund = await call("GET", "/api/admin/refunds", { token: A });
   assert.equal(afterRefund.refunds.find((row) => row.id === refund.id).status, "completed");
+  const openQueue = await call("GET", "/api/admin/reconciliation", { token: A });
+  assert.ok(!openQueue.transactions.some((row) => row.reference === orphanReference), "a fully refunded payment leaves the open queue");
   assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
 
   console.log("Financial lifecycle passed");
