@@ -132,6 +132,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Test-only control: record a completed collection that Kuula did not initiate through
+    // the app, e.g. a customer paying again after their loan was already settled.
+    if (req.method === "POST" && url.pathname === "/__test/record-collection") {
+      const record: Stored = {
+        uuid: crypto.randomUUID(), kind: "collection", ourReference: String(body.reference), systemReference: crypto.randomUUID(),
+        amount: Number(body.amount), phone: String(body.phone || "+256700000000"), status: "completed", createdAt: new Date().toISOString(),
+      };
+      byUuid.set(record.uuid, record);
+      send(res, 200, callbackShape(record));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/__test/lose-next-response") {
       loseNextResponse = true;
       send(res, 200, { ok: true });

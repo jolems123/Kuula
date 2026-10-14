@@ -189,6 +189,36 @@ try {
   assert.equal(run.summary.kuulaCount, run.summary.providerCount);
   assert.equal(run.summary.kuulaCount, 4, "one payout and three collections");
 
+  step("money that matches no open loan is held, then refunded by two different people");
+  const orphanReference = crypto.randomUUID();
+  const customerUser = await prisma.user.findUnique({ where: { phone: process.env.DEMO_PHONE || "+256700000000" } });
+  await prisma.transaction.create({
+    data: { userId: customerUser.id, loanId: `orphan-${orphanReference.slice(0, 8)}`, type: "loan_payment", amount: BigInt(5000), status: "pending", reference: orphanReference, provider: "marzpay", providerStatus: "processing", reconciliationStatus: "unreconciled" },
+  });
+  const orphanCallback = await call("POST", "/__test/record-collection", { base: FAKE, body: { reference: orphanReference, amount: 5000 } });
+  assert.equal((await webhook(orphanCallback, 200)).unapplied, true);
+  const refundable = await call("GET", "/api/admin/refunds", { token: A });
+  const heldMoney = refundable.refundable.find((row) => row.reference === orphanReference);
+  assert.equal(heldMoney.refundable, 5000);
+  assert.equal(heldMoney.account, "LOAN_COLLECTIONS_SUSPENSE");
+  await call("POST", "/api/admin/refunds", { token: A, body: { sourceTransactionId: heldMoney.transactionId, amount: 6000, reason: "Customer paid after the loan was settled" }, expect: 422 });
+  const refund = await call("POST", "/api/admin/refunds", { token: A, body: { sourceTransactionId: heldMoney.transactionId, amount: 5000, reason: "Customer paid after the loan was settled" }, expect: 201 });
+  await call("POST", "/api/admin/refunds", { token: A, body: { sourceTransactionId: heldMoney.transactionId, amount: 1, reason: "A second request must find nothing left" }, expect: 422 });
+  await call("POST", `/api/admin/refunds/${refund.id}/approve`, { token: A, expect: 403 });
+  const sent = await call("POST", `/api/admin/refunds/${refund.id}/approve`, { token: finance.token });
+  assert.equal(sent.status, "sent");
+  await call("POST", `/api/admin/refunds/${refund.id}/approve`, { token: finance.token, expect: 409 });
+  const refundCallback = await fakeSettle(sent.reference, "completed");
+  assert.equal((await webhook(refundCallback, 200)).settled, true);
+  const refundTx = await prisma.transaction.findUnique({ where: { reference: sent.reference }, include: { journal: { include: { entries: true } } } });
+  assert.deepEqual(
+    refundTx.journal.entries.map((entry) => `${entry.accountCode}:${entry.direction}:${entry.amount}`).sort(),
+    ["LOAN_COLLECTIONS_SUSPENSE:debit:5000", "MOBILE_MONEY_CLEARING:credit:5500", "PROVIDER_FEE_EXPENSE:debit:500"],
+  );
+  const afterRefund = await call("GET", "/api/admin/refunds", { token: A });
+  assert.equal(afterRefund.refunds.find((row) => row.id === refund.id).status, "completed");
+  assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
+
   console.log("Financial lifecycle passed");
 } finally {
   await prisma.$disconnect();

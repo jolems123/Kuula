@@ -57,3 +57,13 @@ test("an allocated collection reduces the receivable and recognises interest inc
   assert.equal(debit, credit);
   assert.throws(() => linesFor({ type: "loan_payment", amount: BigInt(10_000), allocation: { interest: BigInt(1), principal: BigInt(1), unapplied: BigInt(1) } }), /allocation/);
 });
+
+test("a confirmed refund releases the held money and books MarzPay's charge as Kuula's cost", () => {
+  const lines = linesFor({ type: "customer_refund", amount: BigInt(5_000), providerFee: BigInt(500), refundSourceAccount: "UNAPPLIED_CUSTOMER_FUNDS" });
+  assert.deepEqual(lines.map((line) => [line.accountCode, line.direction, line.amount]), [
+    ["UNAPPLIED_CUSTOMER_FUNDS", "debit", BigInt(5_000)],
+    ["PROVIDER_FEE_EXPENSE", "debit", BigInt(500)],
+    ["MOBILE_MONEY_CLEARING", "credit", BigInt(5_500)],
+  ]);
+  assert.throws(() => linesFor({ type: "customer_refund", amount: BigInt(5_000) }), /held/);
+});

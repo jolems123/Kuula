@@ -26,7 +26,13 @@ export function allocateRepayment(input: { payment: number; loanInterest: number
   return { interest: BigInt(interest), principal: BigInt(applied - interest), unapplied: BigInt(payment - applied) };
 }
 
-type SettlementSource = Pick<Transaction, "type" | "amount"> & { providerFee?: bigint | null; allocation?: RepaymentAllocation | null };
+export type RefundSourceAccount = "UNAPPLIED_CUSTOMER_FUNDS" | "LOAN_COLLECTIONS_SUSPENSE";
+
+type SettlementSource = Pick<Transaction, "type" | "amount"> & {
+  providerFee?: bigint | null;
+  allocation?: RepaymentAllocation | null;
+  refundSourceAccount?: RefundSourceAccount | null;
+};
 
 /**
  * MOBILE_MONEY_CLEARING mirrors Kuula's MarzPay wallet. MarzPay's own charges are kept
@@ -40,6 +46,15 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
   if (transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg") {
     return [
       { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "debit", amount: transaction.amount },
+      ...feeLine,
+      { accountCode: "MOBILE_MONEY_CLEARING", direction: "credit", amount: transaction.amount + fee },
+    ];
+  }
+  if (transaction.type === "customer_refund") {
+    // Money held for the customer leaves the wallet; MarzPay's charge is Kuula's cost.
+    if (!transaction.refundSourceAccount) throw new Error("A refund journal needs the account the money was held in");
+    return [
+      { accountCode: transaction.refundSourceAccount, direction: "debit", amount: transaction.amount },
       ...feeLine,
       { accountCode: "MOBILE_MONEY_CLEARING", direction: "credit", amount: transaction.amount + fee },
     ];
@@ -67,7 +82,7 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
 
 export async function postSettlementJournal(
   tx: Prisma.TransactionClient,
-  transaction: Pick<Transaction, "id" | "type" | "amount" | "reference" | "userId" | "loanId"> & { providerFee?: bigint | null; allocation?: RepaymentAllocation | null }
+  transaction: Pick<Transaction, "id" | "type" | "amount" | "reference" | "userId" | "loanId"> & SettlementSource
 ): Promise<void> {
   if (!transaction.reference) throw new Error("Settled transaction requires a reference");
   const lines = linesFor(transaction);
@@ -81,11 +96,13 @@ export async function postSettlementJournal(
   if (existing) return;
 
   const isDisbursement = transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg";
+  const description = transaction.type === "customer_refund" ? "Provider-confirmed customer refund"
+    : isDisbursement ? "Provider-confirmed loan disbursement" : "Provider-confirmed loan repayment collection";
   await tx.journal.create({
     data: {
       transactionId: transaction.id,
       reference: transaction.reference,
-      description: isDisbursement ? "Provider-confirmed loan disbursement" : "Provider-confirmed loan repayment collection",
+      description,
       entries: {
         create: lines.map((line) => ({
           accountCode: line.accountCode,
