@@ -11,6 +11,10 @@ export async function notifyLoanCustomer(userId: string, title: string, body: st
   } catch (error) {
     console.error("loan.customer_notification_failed", error instanceof Error ? error.message : "unknown");
   }
+  await sendLoanExternalNotice(userId, title, body);
+}
+
+export async function sendLoanExternalNotice(userId: string, title: string, body: string): Promise<void> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } });
     if (!user) return;
