@@ -1,3 +1,4 @@
+import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
@@ -150,6 +151,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     metadata: { batchId: plan.batchId, approvedAmount: amount, network: plan.network, maxSingleAmount: plan.maxSingleAmount, legAmounts: plan.legs },
   });
 
+  await notifyLoanCustomer(userId, "Kuula disbursement awaiting authorization", "Your loan agreement has been accepted and payment is awaiting an independent Kuula release. Funds have not yet been sent.");
   const batch = await disbursementBatchForApplication(application.id);
   res.json({
     application: mapApplication({ ...application, status: "disbursing" }),
@@ -173,6 +175,9 @@ router.post("/:id/disbursement/release", authenticateToken, requirePermissions("
     resourceId: applicationId,
     metadata: { batchId: released.batchId, amount: released.amount, firstReference: first.reference ?? null, outcome: first.outcome ?? null, reason: first.reason ?? null },
   });
+  const owner = await prisma.loanApplication.findUnique({ where: { id: applicationId }, select: { applicantId: true } });
+  if (owner) await notifyLoanCustomer(owner.applicantId, "Kuula payment release update",
+    "Your loan payment was authorized for processing. Confirm receipt only after the payment provider confirms settlement.");
   const batch = await disbursementBatchForApplication(applicationId);
   res.json({
     ok: first.dispatched,
