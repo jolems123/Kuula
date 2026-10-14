@@ -7,7 +7,7 @@ import { localQuote } from "../../lib/pricing";
 import { getBusinessPhotos, getBusinessPhotoApplicationId, setBusinessPhotoApplicationId, clearBusinessPhotos, fileToDataUrl } from "../../lib/business-photos";
 import { clearSavedLoanApplicationDraft, getSavedLoanApplicationDraft } from "../../lib/loan-application-autosave";
 import { formatBusinessLoanPurpose } from "../../lib/business-loan-purpose";
-import { getLoanDraft, setLoanDraft, type LoanDraft } from "../../lib/selection";
+import { getLoanDraft, setLoanDraft, setLastSubmittedApplicationId, type LoanDraft } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG"); }
@@ -126,6 +126,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         await api.uploadBusinessPhotos(token, applicationId, photos);
       }
       setSubmissionStage("complete");
+      setLastSubmittedApplicationId(applicationId);
       clearBusinessPhotos(state.user.id);
       clearSavedLoanApplicationDraft(state.user.id);
       setLoanDraft(null);
