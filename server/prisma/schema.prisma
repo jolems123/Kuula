@@ -34,6 +34,8 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  staffTotpSecret String? @map("staff_totp_secret")
+  staffTotpPending String? @map("staff_totp_pending")
   passwordHash   String?  @map("password_hash")
   pinHash        String?  @map("pin_hash")
   loginAttempts  Int      @default(0) @map("login_attempts")
