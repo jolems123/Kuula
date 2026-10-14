@@ -95,7 +95,8 @@ const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
-  adminLogin: (identifier: string, password: string) => request<SessionPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  adminLogin: (identifier: string, password: string) => request<SessionPayload & { mfaRequired?: boolean }>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  verifyStaffLogin: (identifier: string, code: string) => request<SessionPayload>("/api/auth/admin-login/verify", { method: "POST", body: JSON.stringify({ identifier, code }) }),
   staffSignUp: (email: string, password: string, confirmPassword: string) => request<{ ok: boolean; message: string }>("/api/auth/staff-signup", { method: "POST", body: JSON.stringify({ email, password, confirmPassword }) }),
   approveStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/approve`, { method: "POST", headers: auth(token) }),
   listStaff: (token: string) => request<{ staff: StaffMember[] }>("/api/staff", { headers: auth(token) }),

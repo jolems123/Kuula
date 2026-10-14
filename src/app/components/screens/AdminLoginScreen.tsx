@@ -17,6 +17,8 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [mfaFor, setMfaFor] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -87,10 +89,32 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     try {
       const result = await api.adminLogin(identifier, pw);
       adminLoginLimiter.reset();
-      finishSession(result);
-      onNavigate(staffHome(result.role).slice(1));
+      if (result.mfaRequired) {
+        setPw(""); setMfaFor(identifier); setNotice("Enter the verification code sent to your staff email.");
+      } else if (result.token && result.role) {
+        // Server-controlled rollout: accept the existing authenticated session
+        // until staff email OTP is enabled and SMTP delivery is verified.
+        finishSession(result);
+        onNavigate(staffHome(result.role).slice(1));
+      } else {
+        setError("Staff sign-in did not return a valid session or verification challenge.");
+      }
     } catch (e) { setError(e instanceof ApiError ? e.message : "Sign in failed. Try again."); }
     finally { setLoading(false); }
+  };
+
+  const verifyMfa = async (event: FormEvent) => {
+    event.preventDefault();
+    if (loading || !mfaFor) return;
+    setError(""); setLoading(true);
+    try {
+      const result = await api.verifyStaffLogin(mfaFor, mfaCode.trim());
+      setMfaFor(null); setMfaCode("");
+      finishSession(result);
+      onNavigate(staffHome(result.role).slice(1));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Verification failed.");
+    } finally { setLoading(false); }
   };
 
   const locked = lockoutRemaining > 0;
@@ -134,6 +158,20 @@ export function AdminLoginScreen({ onNavigate }: Props) {
         </div>
       </form>
 
+      {mfaFor && (
+        <form onSubmit={verifyMfa} noValidate style={{ marginTop: 18 }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Verify staff sign-in</h3>
+          <p>A one-time code was sent to your work email.</p>
+          <div className="kx-field">
+            <label className="kx-label" htmlFor="staff-login-otp">Verification code</label>
+            <div className="kx-control"><input id="staff-login-otp" className="kx-input" value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" required /></div>
+          </div>
+          <div className="kx-auth-row">
+            <button type="button" className="kx-link" onClick={() => { setMfaFor(null); setMfaCode(""); }}>Cancel</button>
+            <button type="submit" className="kx-btn kx-btn--primary" disabled={loading || mfaCode.length !== 6}>{loading ? "Verifying…" : "Verify and sign in"}</button>
+          </div>
+        </form>
+      )}
       {resetFor && (
         <form onSubmit={confirmReset} noValidate style={{ marginTop: 18 }}>
           <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Set a new password</h3>
