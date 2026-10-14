@@ -109,6 +109,26 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
               </div>
               <div style={{ marginTop: 10, borderTop: "1px solid #F0F3F1", paddingTop: 9, display: "grid", gap: 5 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Application</span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
+                <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label="Loan application progress">
+                  <strong style={{ fontSize: 12, color: "#184B32" }}>Application progress</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
+                    {([
+                      ["Submitted", true],
+                      ["Level 1 · Field verification", (loan.reviewLevel ?? 0) >= 1 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+                      ["Level 2 · Credit review", (loan.reviewLevel ?? 0) >= 2 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+                      ["Level 3 · Final decision", (loan.reviewLevel ?? 0) >= 3 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+                      [loan.status === "rejected" ? "Not approved" : "Decision / Offer", ["rejected", "offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+                      ["Agreement accepted", Boolean(loan.agreementAccepted)],
+                      ["Disbursement", ["active", "paid", "overdue"].includes(loan.status)],
+                    ] as Array<[string, boolean]>).map(([name, done]) => (
+                      <span key={name} style={{ borderRadius: 12, padding: "5px 8px", fontSize: 10, color: done ? "#12613D" : "#68766F", background: done ? "#E5F5EA" : "#F2F4F3" }}>
+                        {done ? "✓ " : "○ "}{name}
+                      </span>
+                    ))}
+                  </div>
+                  {loan.status === "offered" && <span style={{ fontSize: 11, color: "#0B5E3A", display: "block", marginTop: 6 }}>Offer available: open it to review and accept your agreement.</span>}
+                  {loan.status === "disbursing" && <span style={{ fontSize: 11, color: "#72570B", display: "block", marginTop: 6 }}>Payment processing or awaiting independent Kuula release; not yet confirmed received.</span>}
+                </div>
                 {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Quoted total repayment</span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
                 {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Offer expires</span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
               </div>
