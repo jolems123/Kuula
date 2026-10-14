@@ -115,6 +115,15 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </div>
             <div className="kx-uses">
               {loading && products.length === 0 && <div className="kx-use kx-use--loading"><span className="kx-skeleton" style={{ width: 36, height: 36 }} /><span className="kx-skeleton" style={{ width: "70%", height: 14 }} /><span className="kx-skeleton" style={{ width: "50%", height: 12 }} /></div>}
+              {!loading && !error && products.length === 0 && (
+                <div className="kuula-empty-state" role="status">
+                  <strong>No business credit products available yet</strong>
+                  <p>Your eligible business loan options will appear here when available. You can review your Credit Pass in the meantime.</p>
+                  <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("credit-dashboard")}>
+                    View my Credit Pass
+                  </button>
+                </div>
+              )}
               {products.map((product) => {
                 const Icon = ICONS[product.category] ?? BriefcaseBusiness;
                 return (
