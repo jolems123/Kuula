@@ -60,3 +60,17 @@ test("rejects expense breakdowns that exceed declared total, unreasonable low-se
   assert.throws(() => parseBusinessProfile({ ...good, lowSeasonMonthlySales: 2_500_000 }), /low-season monthly sales/i);
   assert.throws(() => parseBusinessProfile({ ...good, salesFrequency: "hourly" }), /sales frequency/i);
 });
+
+test("parses itemized use of funds and requested repayment frequency", () => {
+  const result = parseBusinessProfile({ ...good,
+    preferredRepaymentFrequency: "weekly",
+    useOfFunds: { stock: 100000, equipment: 0, operations: 50000, expansion: 0, other: 0 },
+  });
+  assert.equal(result.preferredRepaymentFrequency, "weekly");
+  assert.equal(result.useOfFunds.stock + result.useOfFunds.operations, 150000);
+});
+test("rejects invalid instalment preferences and invented loan-use values", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, preferredRepaymentFrequency: "hourly" }), /repayment frequency/i);
+  assert.throws(() => parseBusinessProfile({ ...good, useOfFunds: { stock: -10 } }), /funds for stock/i);
+  assert.throws(() => parseBusinessProfile({ ...good, useOfFunds: { stock: "ten" } }), /funds for stock/i);
+});
