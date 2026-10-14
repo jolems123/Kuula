@@ -6,6 +6,8 @@ import {
   authenticateToken,
   INVITABLE_STAFF_ROLES,
   generateToken,
+  generateAdminChallenge,
+  verifyAdminChallenge,
   isStaffRole,
   normalizeRole,
 } from "../middleware/auth.js";
@@ -32,6 +34,7 @@ import {
 import { issueOtpForUser } from "../lib/otp-service.js";
 import { smsConfigured } from "../lib/sms.js";
 import { writeAuditEvent } from "../lib/audit.js";
+import { totpConfigured, generateTotpSecret, encryptTotpSecret, decryptTotpSecret, verifyTotp, totpEnrollmentUri } from "../lib/staff-totp.js";
 
 const router = Router();
 
@@ -370,8 +373,54 @@ router.post("/admin-login", async (req: Request, res: Response) => {
   await assertStaffPassword(user, supplied);
 
   if (!user.phoneVerified) throw new AppError("Your staff account is awaiting Super Admin approval.", 403);
+  if (user.staffTotpSecret) {
+    if (!totpConfigured()) throw new AppError("Staff authenticator verification is temporarily unavailable", 503);
+    res.json({ requiresMfa: true, challengeToken: generateAdminChallenge({ userId: user.id, authVersion: user.authVersion }), method: "authenticator" });
+    return;
+  }
+  if (process.env.STAFF_TOTP_REQUIRED === "true") throw new AppError("Authenticator enrollment required. Contact your security administrator.", 403);
   await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_login", resourceType: "user", resourceId: user.id });
   res.json(await sessionResponse(user, req));
+});
+
+
+router.post("/admin-login/totp", async (req: Request, res: Response) => {
+  let challenge: { userId: string; authVersion: number };
+  try { challenge = verifyAdminChallenge(String(req.body.challengeToken || "")); }
+  catch { throw new AppError("Invalid or expired verification challenge", 401); }
+  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
+  if (!user || user.deletedAt || !isStaffRole(user.role) || !user.phoneVerified || !user.staffTotpSecret || user.authVersion !== challenge.authVersion) throw new AppError("Invalid verification challenge", 401);
+  if (!totpConfigured()) throw new AppError("Authenticator verification unavailable", 503);
+  if (!verifyTotp(decryptTotpSecret(user.staffTotpSecret), req.body.code)) {
+    await writeAuditEvent({ subjectUserId: user.id, action: "auth.staff_mfa_failed", resourceType: "user", resourceId: user.id });
+    throw new AppError("Invalid authenticator code", 401);
+  }
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_mfa_succeeded", resourceType: "user", resourceId: user.id });
+  res.json(await sessionResponse(user, req));
+});
+
+router.post("/staff-mfa/enroll", authenticateToken, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+  if (!user || user.deletedAt || !isStaffRole(user.role) || !user.phoneVerified || !user.passwordHash) throw new AppError("Staff account not eligible", 403);
+  if (user.staffTotpSecret) throw new AppError("Authenticator already enabled", 409);
+  if (!totpConfigured()) throw new AppError("Authenticator enrollment unavailable", 503);
+  if (typeof req.body.password !== "string" || !(await bcrypt.compare(req.body.password, user.passwordHash))) throw new AppError("Invalid credentials", 401);
+  const secret = generateTotpSecret();
+  await prisma.user.update({ where: { id: user.id }, data: { staffTotpPending: encryptTotpSecret(secret) } });
+  res.json({ uri: totpEnrollmentUri(user.email || "", secret) });
+});
+
+router.post("/staff-mfa/confirm", authenticateToken, async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+  if (!user || user.deletedAt || !isStaffRole(user.role) || !user.phoneVerified || !user.staffTotpPending || user.staffTotpSecret) throw new AppError("Authenticator enrollment not pending", 409);
+  if (!totpConfigured()) throw new AppError("Authenticator enrollment unavailable", 503);
+  if (!verifyTotp(decryptTotpSecret(user.staffTotpPending), req.body.code)) throw new AppError("Invalid authenticator code", 401);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: user.id }, data: { staffTotpSecret: user.staffTotpPending, staffTotpPending: null, authVersion: { increment: 1 } } }),
+    prisma.authSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_mfa_enrolled", resourceType: "user", resourceId: user.id });
+  res.json({ ok: true, message: "Authenticator enabled. Sign in again to verify." });
 });
 
 // Password-only signup never grants staff access. The Super Admin must confirm
