@@ -32,3 +32,16 @@ test("accepts valid business GPS coordinates and rejects invalid or incomplete p
   assert.throws(() => parseBusinessProfile({ ...good, latitude: 91, longitude: 32 }), /latitude/i);
   assert.throws(() => parseBusinessProfile({ ...good, latitude: 0 }), /both business location coordinates/i);
 });
+
+test("records applicant position and provenance for a business map pin", () => {
+  const p = parseBusinessProfile({ ...good, applicantPosition: "Owner", latitude: 0.3476, longitude: 32.5825,
+    locationSource: "gps", locationCapturedAt: "2026-10-14T10:00:00.000Z", locationAccuracyMeters: 19 });
+  assert.equal(p.applicantPosition, "Owner");
+  assert.equal(p.locationSource, "gps");
+  assert.equal(p.locationAccuracyMeters, 19);
+});
+test("rejects invalid location provenance and coordinates", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, locationSource: "gps" }), /pinned business coordinates/i);
+  assert.throws(() => parseBusinessProfile({ ...good, locationSource: "fake" }), /location source/i);
+  assert.throws(() => parseBusinessProfile({ ...good, latitude: 0.3476, longitude: 32.5825, locationSource: "gps", locationAccuracyMeters: -2 }), /accuracy/i);
+});
