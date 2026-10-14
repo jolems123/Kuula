@@ -18,6 +18,7 @@ model User {
   district       String?   @default("")
   occupation     String?   @default("")
   physicalAddress String?  @default("") @map("physical_address")
+  avatarRef String? @map("avatar_ref")
   verified       Boolean   @default(false)
   momoMonths     Int       @default(0) @map("momo_months")
   momoTxnCount   Int       @default(0) @map("momo_txn_count")
