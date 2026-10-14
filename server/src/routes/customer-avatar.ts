@@ -18,16 +18,22 @@ router.put("/avatar", async (req: Request, res: Response) => {
   try { parsed = parseDataUrl(photo); } catch { throw new AppError("Invalid profile photo", 400); }
   if (parsed.mime !== "image/jpeg" || parsed.buffer.length > 1_000_000) throw new AppError("Cropped photo must be JPG under 1MB", 400);
 
+  const existing = await prisma.user.findUnique({ where: { id: userId }, select: { avatarRef: true } });
+  if (!existing) throw new AppError("Customer account not found", 404);
   const uploaded = await saveFieldEvidence({ applicationId: userId, evaluationId: userId, evidenceType: "customer-avatar", dataUrl: photo });
   try {
-    await prisma.user.update({
-      where: { id: userId },
+    const updated = await prisma.user.updateMany({
+      where: { id: userId, avatarRef: existing.avatarRef },
       data: { avatarRef: uploaded.key },
-      select: { avatarRef: true },
     });
+    if (updated.count !== 1) throw new AppError("Profile photo was updated in another session; please retry", 409);
   } catch (error) {
     await deleteFieldEvidence(uploaded.key).catch(() => undefined);
     throw error;
+  }
+  if (existing.avatarRef && existing.avatarRef !== uploaded.key
+      && /^credit-evidence\\/[a-z0-9-]+\\/[a-z0-9-]+\\/[a-z0-9-]+-customer-avatar\\.jpg$/i.test(existing.avatarRef)) {
+    await deleteFieldEvidence(existing.avatarRef).catch(() => console.warn("Old profile photo requires cleanup"));
   }
   await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "customer.avatar_updated", resourceType: "user", resourceId: userId }).catch(() => undefined);
   res.json({ ok: true });
