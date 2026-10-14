@@ -132,9 +132,9 @@ const nodeApi = {
     }
     const body = await response.json() as { url?: string };
     if (!body.url) throw new Error("Profile photograph is not available");
-    const imageResponse = await fetch(body.url, { cache: "no-store" });
-    if (!imageResponse.ok) throw new Error("Profile photograph could not be loaded");
-    return URL.createObjectURL(await imageResponse.blob());
+    // Private object-store signed URLs may not permit browser CORS reads; an
+    // <img> can display them directly without exposing the photo publicly.
+    return body.url;
   },
   updateProfile: (token: string, input: { fullName: string; email?: string; dateOfBirth: string; district: string; occupation: string; physicalAddress: string }) => request<{ user: UserProfile }>("/api/auth/me", { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   markets: () => request<{ markets: KuulaMarket[] }>("/api/network/markets"),
