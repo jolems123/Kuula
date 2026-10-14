@@ -37,7 +37,8 @@ router.post("/:userId", async (req: Request, res: Response) => {
   const sourceType = String(req.body?.sourceType || "").trim().toLowerCase();
   const provider = String(req.body?.provider || "manual").trim().toLowerCase();
   const externalReference = String(req.body?.externalReference || "").trim();
-  if (!["mobile_money", "crb"].includes(sourceType)) throw new AppError("sourceType must be mobile_money or crb", 400);
+  // CRB reports are not currently used or accepted as Kuula credit evidence.
+  if (sourceType !== "mobile_money") throw new AppError("Only verified mobile_money evidence is currently supported", 400);
   if (!provider || !externalReference) throw new AppError("Provider and external reference are required", 400);
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
