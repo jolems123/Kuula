@@ -162,6 +162,14 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           <Row label="Workers" value={String(draft.business.staffCount)} />
           <Row label="Loan use" value={draft.business.loanUse} />
           <Row label="Business repayment plan" value={draft.business.repaymentPlan} />
+          <Row label="Preferred repayment frequency" value={draft.business.preferredRepaymentFrequency.replaceAll("_", " ")} />
+          <Row label="Planned use · Stock" value={ugx(draft.business.useOfFunds.stock)} />
+          <Row label="Planned use · Equipment" value={ugx(draft.business.useOfFunds.equipment)} />
+          <Row label="Planned use · Working capital" value={ugx(draft.business.useOfFunds.operations)} />
+          <Row label="Planned use · Expansion" value={ugx(draft.business.useOfFunds.expansion)} />
+          <Row label="Planned use · Other" value={ugx(draft.business.useOfFunds.other)} />
+          <p style={{ fontSize: 11, color: "#68766F", margin: "10px 0 0" }}>Your selected repayment frequency is a preference only. Actual obligations are determined by the final offer and accepted loan agreement.</p>
+
         </div>
 
         <div style={{ background: "white", borderRadius: 16, padding: 16 }}>
