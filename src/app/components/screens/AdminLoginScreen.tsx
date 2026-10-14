@@ -78,7 +78,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     setError(""); setNotice("");
-    const identifier = toUgandaPhone(phone);
+    const identifier = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier) || !pw) { setError("Enter your staff email and password."); return; }
     const rateCheck = adminLoginLimiter.check();
     if (!rateCheck.allowed) { setLockoutRemaining(rateCheck.retryAfterMs); setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`); return; }
