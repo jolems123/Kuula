@@ -87,5 +87,20 @@ documented in detail, so 2.9 and 2.11 must be confirmed on real sandbox response
 4. Compare row counts of `users`, `loan_applications`, `repayments`, `transactions`,
    `journals`, `journal_entries`, `audit_events` with production, and check that
    `GET /api/admin/reconciliation/trial-balance` reports `balanced: true`.
+
+### Read-only isolated restore verification (new)
+
+After restoring a backup into a **separate database** whose name includes `restore`, `isolated`, or `drill`, run:
+
+```bash
+cd server
+REAL_MONEY_ENABLED=false \
+RESTORE_AUDIT_CONFIRM=ISOLATED \
+ISOLATED_DATABASE_URL="$ISOLATED_DATABASE_URL" \
+node scripts/verify-isolated-restore.mjs
+```
+
+The script checks restored table counts, balanced journal entries, and missing journal-to-transaction links using an explicitly read-only transaction. It never restores, changes, deletes, or exports production records. Optionally set `RESTORE_EXPECTED_COUNTS_JSON` to a confidential JSON object with expected counts for all seven tables to demand equality with a separately recorded baseline. A PASS without this baseline checks integrity only, **not** that the correct production backup was restored. Store the timestamp, database identifier, original backup identifier, expected counts, exit code, and authorized reviewer in a secure operational record. Do not log connection URLs or credentials. This is not a substitute for an actual isolated restore or independently verified recovery.
+
 5. Delete the isolated database and the dump file. The dump contains personal and
    identity data: keep it encrypted and never on a shared or personal drive.
