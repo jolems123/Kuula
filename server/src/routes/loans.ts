@@ -411,6 +411,12 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     serviceFee: 0,
   };
   const agreementHash = crypto.createHash("sha256").update(JSON.stringify(termsSnapshot)).digest("hex");
+  const signature = req.body?.clientContext;
+  if (signature?.signatureVersion === "typed_name_v1") {
+    const statedName = typeof signature.signedByName === "string" ? signature.signedByName.trim().toLowerCase() : "";
+    if (!signature.explicitConsent || !statedName || statedName !== (application.applicant.fullName || "").trim().toLowerCase())
+      throw new AppError("Please explicitly sign with your registered full name", 422);
+  }
   const clientContext = req.body?.clientContext && typeof req.body.clientContext === "object"
     ? req.body.clientContext as Prisma.InputJsonValue
     : undefined;
