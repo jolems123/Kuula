@@ -94,8 +94,11 @@ const query = (values: Record<string, string | undefined>) => {
 const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
-  /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
-  adminLogin: (identifier: string, password: string) => request<SessionPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  /** Staff sign-in uses email; enrolled accounts must complete authenticator verification. */
+  adminLogin: (identifier: string, password: string) => request<SessionPayload | { requiresMfa: true; challengeToken: string; method: "authenticator" }>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  adminTotpVerify: (challengeToken: string, code: string) => request<SessionPayload>("/api/auth/admin-login/totp", { method: "POST", body: JSON.stringify({ challengeToken, code }) }),
+  staffTotpEnroll: (token: string, password: string) => request<{ uri: string }>("/api/auth/staff-mfa/enroll", { method: "POST", headers: auth(token), body: JSON.stringify({ password }) }),
+  staffTotpConfirm: (token: string, code: string) => request<{ ok: boolean; message: string }>("/api/auth/staff-mfa/confirm", { method: "POST", headers: auth(token), body: JSON.stringify({ code }) }),
   staffSignUp: (email: string, password: string, confirmPassword: string) => request<{ ok: boolean; message: string }>("/api/auth/staff-signup", { method: "POST", body: JSON.stringify({ email, password, confirmPassword }) }),
   approveStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/approve`, { method: "POST", headers: auth(token) }),
   listStaff: (token: string) => request<{ staff: StaffMember[] }>("/api/staff", { headers: auth(token) }),
