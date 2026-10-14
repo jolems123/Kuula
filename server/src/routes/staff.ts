@@ -77,7 +77,8 @@ router.get("/", async (_req: Request, res: Response) => {
 
 router.post("/invite", async (req: Request, res: Response) => {
   const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : "";
-  const phone = normalizedPhone(req.body.phone);
+  const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("Enter a valid staff work email", 400);
   const role = typeof req.body.role === "string" ? req.body.role.trim().toLowerCase() : "";
 
   if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the staff member's full name", 400);
@@ -85,7 +86,7 @@ router.post("/invite", async (req: Request, res: Response) => {
     throw new AppError(`Role must be one of: ${INVITABLE_STAFF_ROLES.join(", ")}`, 400);
   }
 
-  const existing = await prisma.user.findUnique({ where: { phone } });
+  const existing = await prisma.user.findUnique({ where: { email } });
   if (existing && !existing.deletedAt) {
     if (isStaffRole(existing.role) && !existing.passwordHash && !existing.phoneVerified) {
       // Pending invitation for this number — resend the activation code.
@@ -100,13 +101,13 @@ router.post("/invite", async (req: Request, res: Response) => {
       res.json({ ok: true, staffId: existing.id, status: "invited" });
       return;
     }
-    throw new AppError("That phone number already belongs to an account", 409);
+    throw new AppError("That email already belongs to an account", 409);
   }
 
   const user = await prisma.user.create({
     data: {
       fullName,
-      phone,
+      email,
       role,
       phoneVerified: false,
       passwordHash: null,
