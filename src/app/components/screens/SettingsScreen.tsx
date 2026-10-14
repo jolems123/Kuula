@@ -4,6 +4,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
+import { CustomerAvatarEditor } from "./CustomerAvatarEditor";
 import { useAppContext } from "../../context/AppContext";
 
 interface Props {
@@ -103,6 +104,8 @@ export function SettingsScreen({ onNavigate }: Props) {
           {t("settings.edit")}
         </button>
       </div>
+
+      <div className="mx-4 mt-3 p-4 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}><CustomerAvatarEditor /></div>
 
       {/* Language picker */}
       <div className="mx-4 mt-3 p-3 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
