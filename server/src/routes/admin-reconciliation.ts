@@ -4,6 +4,8 @@ import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { flagStalePaymentTransactions, verifyTransactionWithProvider } from "../lib/reconciliation.js";
 import { AWAITING_PROVIDER } from "../lib/marzpay-settlement.js";
+import { runProviderReconciliation } from "../lib/provider-reconciliation.js";
+import { Prisma } from "@prisma/client";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -69,6 +71,34 @@ router.get("/trial-balance", async (req: Request, res: Response) => {
   const list = [...accounts.values()].sort((a, b) => a.account.localeCompare(b.account)).map((entry) => ({ ...entry, balance: entry.debit - entry.credit }));
   const totals = list.reduce((sum, entry) => ({ debit: sum.debit + entry.debit, credit: sum.credit + entry.credit }), { debit: 0, credit: 0 });
   res.json({ asOf: asOf.toISOString(), accounts: list, totals, balanced: totals.debit === totals.credit });
+});
+
+// Daily comparison against MarzPay's records. Runs automatically for the previous day
+// after 01:00 UTC; finance can also run any past day on demand.
+router.get("/provider-runs", async (_req: Request, res: Response) => {
+  const runs = await prisma.$queryRaw<any[]>(Prisma.sql`
+    SELECT id, provider, day, status, summary, error, triggered_by, started_at, finished_at,
+           jsonb_array_length(exceptions) AS exception_count
+    FROM provider_reconciliation_runs ORDER BY day DESC, started_at DESC LIMIT 60
+  `);
+  res.json({ runs: runs.map((run) => ({ ...run, exception_count: Number(run.exception_count) })) });
+});
+
+router.get("/provider-runs/:id", async (req: Request, res: Response) => {
+  const rows = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT * FROM provider_reconciliation_runs WHERE id=${String(req.params.id)}::uuid LIMIT 1`);
+  if (!rows[0]) throw new AppError("Reconciliation run not found", 404);
+  res.json({ run: rows[0] });
+});
+
+router.post("/provider-runs", async (req: Request, res: Response) => {
+  const day = String(req.body?.day || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(new Date(`${day}T00:00:00Z`).getTime())) throw new AppError("day must be a date (YYYY-MM-DD)", 400);
+  const today = new Date().toISOString().slice(0, 10);
+  // Only finished days are meaningful; the automated test suite may also check today.
+  if (day > today || (day === today && process.env.NODE_ENV !== "test")) throw new AppError("Only completed past days can be reconciled", 400);
+  const result = await runProviderReconciliation(day, req.user!.userId);
+  await writeAuditEvent({ actorId: req.user!.userId, action: "payment.provider_reconciliation_run", resourceType: "provider_reconciliation_run", resourceId: result.id, metadata: { day, status: result.status } });
+  res.json(result);
 });
 
 router.post("/flag-stale", async (_req: Request, res: Response) => {

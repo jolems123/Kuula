@@ -14,6 +14,7 @@ interface Stored {
   amount: number;
   phone: string;
   status: string;
+  createdAt: string;
 }
 const byUuid = new Map<string, Stored>();
 // When set, the next money request is recorded but answered with a 502, simulating a
@@ -61,6 +62,7 @@ const server = http.createServer((req, res) => {
         amount: Number(body.amount),
         phone: String(body.phone_number),
         status: "processing",
+        createdAt: new Date().toISOString(),
       };
       byUuid.set(record.uuid, record);
       if (loseNextResponse) {
@@ -98,16 +100,25 @@ const server = http.createServer((req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/v1/transactions") {
       const reference = url.searchParams.get("reference") || "";
-      const matches = [...byUuid.values()].filter((record) => record.ourReference === reference || record.systemReference === reference);
+      const day = url.searchParams.get("start_date") || "";
+      const perPage = Math.min(100, Number(url.searchParams.get("per_page")) || 25);
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+      const matches = [...byUuid.values()].filter((record) => reference
+        ? record.ourReference === reference || record.systemReference === reference
+        : !day || record.createdAt.slice(0, 10) === day);
+      const pageRows = matches.slice((page - 1) * perPage, page * perPage);
       send(res, 200, {
         status: "success",
         data: {
-          transactions: matches.map((record) => ({
+          transactions: pageRows.map((record) => ({
             uuid: record.uuid,
+            type: record.kind === "disbursement" ? "withdrawal" : "collection",
             reference: record.kind === "disbursement" ? record.systemReference : record.ourReference,
             ...(record.kind === "disbursement" ? { provider_reference: record.ourReference } : {}),
             status: record.status,
+            amount: money(record.amount),
           })),
+          pagination: { current_page: page, last_page: Math.max(1, Math.ceil(matches.length / perPage)), per_page: perPage, total: matches.length },
         },
       });
       return;

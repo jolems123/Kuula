@@ -181,6 +181,14 @@ try {
   const journalCount = await prisma.journal.count();
   assert.ok(journalCount >= 3);
 
+  step("today's transactions reconcile exactly against MarzPay's own records");
+  const today = new Date().toISOString().slice(0, 10);
+  const run = await call("POST", "/api/admin/reconciliation/provider-runs", { token: A, body: { day: today } });
+  const detail = await call("GET", `/api/admin/reconciliation/provider-runs/${run.id}`, { token: A });
+  assert.equal(run.status, "matched", JSON.stringify(detail.run.exceptions));
+  assert.equal(run.summary.kuulaCount, run.summary.providerCount);
+  assert.equal(run.summary.kuulaCount, 4, "one payout and three collections");
+
   console.log("Financial lifecycle passed");
 } finally {
   await prisma.$disconnect();
