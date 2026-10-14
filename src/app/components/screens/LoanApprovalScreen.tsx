@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
+import { getLastSubmittedApplicationId } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -25,16 +26,21 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const useServer = env.USE_API && !!token;
   const [app, setApp] = useState<LoanApplication | null>(null);
+  const [fetchError, setFetchError] = useState(false);
+  const [submittedId] = useState(getLastSubmittedApplicationId);
 
   const refresh = useCallback(async () => {
     if (!useServer || !token) return;
     try {
       const { applications } = await api.getApplications(token);
-      if (applications.length) setApp(applications[0]);
+      const chosen = submittedId ? applications.find(application => application.id === submittedId) : applications[0];
+      if (chosen) setApp(chosen);
+      setFetchError(false);
     } catch {
-      // Preserve the last known server state during a temporary network failure.
+      // Do not invent a loan decision when the server cannot be reached.
+      setFetchError(true);
     }
-  }, [useServer, token]);
+  }, [useServer, token, submittedId]);
 
   useEffect(() => {
     if (!useServer) return;
@@ -51,7 +57,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
     return "pending";
   };
 
-  const status: Status = useServer ? toDisplayStatus(app?.status) : "approved";
+  const status: Status = useServer ? toDisplayStatus(app?.status) : "pending";
   const phone = state.user?.phone ?? "";
   const isDirectPayee = Boolean(app?.partnerFinancingRequestId || app?.payeeName || app?.partnerName);
   const settlementTarget = app?.payeeName || app?.partnerName || "the verified partner";
@@ -125,6 +131,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
         </span>
       </div>
 
+      {fetchError && <p role="alert" style={{ margin: 12, padding: 12, background: "#FFF3D8", borderRadius: 12, color: "#705510", fontSize: 12 }}>Unable to refresh application status. The last confirmed information is shown; please retry once connected.</p>}
       <div style={{ width: "100%", flex: 1, overflowY: "auto", padding: "20px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
         {status === "approved" && (
           <div style={{ background: "#EEF7F2", borderRadius: 16, padding: "16px", border: "1px solid #C9E2D4" }}>
