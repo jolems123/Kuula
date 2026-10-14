@@ -1,6 +1,10 @@
 /** Business declarations are a credit-review snapshot, NOT verified financial statements. */
 export interface BusinessProfile {
   businessName: string;
+  applicantPosition: string;
+  locationSource: "gps" | "manual" | "none";
+  locationCapturedAt: string | null;
+  locationAccuracyMeters: number | null;
   sector: string;
   tradingAs: "registered" | "informal";
   registrationNumber: string;
@@ -53,8 +57,19 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
   const latitude = coordinate(obj.latitude, "Latitude", -90, 90);
   const longitude = coordinate(obj.longitude, "Longitude", -180, 180);
   if ((latitude === null) !== (longitude === null)) throw new RangeError("Both business location coordinates are required");
+  const locationSource = obj.locationSource == null ? "none" : obj.locationSource;
+  if (!["gps", "manual", "none"].includes(String(locationSource))) throw new RangeError("Business location source is invalid");
+  const locationCapturedAt = obj.locationCapturedAt == null ? null : String(obj.locationCapturedAt);
+  if (locationCapturedAt !== null && (!Number.isFinite(Date.parse(locationCapturedAt)) || new Date(locationCapturedAt) > new Date())) throw new RangeError("Business location capture time is invalid");
+  const locationAccuracyMeters = obj.locationAccuracyMeters == null ? null : Number(obj.locationAccuracyMeters);
+  if (locationAccuracyMeters !== null && (!Number.isFinite(locationAccuracyMeters) || locationAccuracyMeters < 0 || locationAccuracyMeters > 100_000)) throw new RangeError("Business location accuracy is invalid");
+  if (locationSource !== "none" && (latitude === null || longitude === null)) throw new RangeError("Pinned business coordinates are required");
   const profile: BusinessProfile = {
     businessName,
+    applicantPosition: optional(obj.applicantPosition, "Applicant role in business", 80),
+    locationSource: locationSource as BusinessProfile["locationSource"],
+    locationCapturedAt,
+    locationAccuracyMeters,
     sector: required(obj.sector, "Business sector", 80),
     tradingAs,
     registrationNumber,
