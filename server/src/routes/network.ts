@@ -265,6 +265,8 @@ router.get("/credit-pass", authenticateToken, async (req: Request, res: Response
       maxScore: profile.credit.maxScore,
       tier: profile.credit.tier,
       percentile: profile.credit.percentile,
+      provisional: profile.credit.provisional,
+      factors: profile.credit.factors,
       kycLevel: profile.creditPass.kycLevel,
       repaymentRate: Number(profile.creditPass.repaymentRate),
       availableLimit: number(profile.creditPass.availableLimit),
