@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { testPng } from "./test-business-photo-fixtures.mjs";
 
 const API = process.env.LIFECYCLE_API_URL || "http://localhost:3000";
 const FAKE = (process.env.MARZPAY_BASE_URL || "http://127.0.0.1:3999/api/v1").replace(/\/api\/v1\/?$/, "");
@@ -72,6 +73,20 @@ try {
     body: { amount: 200000, purpose: "Business: Working capital", termDays: 60, channel: "MTN MoMo", employmentStatus: "Business owner", occupationOrBusiness: "Hardware shop", employerOrBusinessName: "Staged Hardware", workDuration: "2+ years", incomeSource: "Business sales", repaymentSource: "Daily sales", declaredMonthlyIncome: 1500000, declaredMonthlyExpenses: 400000, existingDebtPayment: 0, business },
   });
   const id = created.application.id;
+  const photoPath = `/api/loans/applications/${id}/business-photos`;
+  await call("POST", `/api/loans/applications/${id}/business-review`, {
+    token: admin.token, body: { status: "verified", notes: "Cannot verify without business photos" }, expect: 422,
+  });
+  await call("GET", photoPath, { token: finance.token, expect: 404 });
+  const photoPayload = {
+    exterior: testPng(220, 30, 30),
+    interior: testPng(30, 220, 30),
+    applicant_at_business: testPng(30, 30, 220),
+  };
+  await call("POST", photoPath, { token: customer.token, body: { photoConsent: true, photos: photoPayload }, expect: 201 });
+  const receipt = await call("GET", photoPath, { token: customer.token });
+  assert.equal(receipt.photos.length, 3);
+  await call("GET", photoPath, { token: officer.token });
   await call("POST", `/api/loans/applications/${id}/business-review`, { token: admin.token, body: { status: "verified", notes: "Staged CI verified the business premises and turnover records" } });
   await call("POST", "/api/loans/applications/decision", { token: approver.token, body: { id, decision: "approved", notes: "Attempt before the staged review" }, expect: 409 });
 
