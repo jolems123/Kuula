@@ -32,7 +32,7 @@ router.put("/avatar", async (req: Request, res: Response) => {
     throw error;
   }
   if (existing.avatarRef && existing.avatarRef !== uploaded.key
-      && /^credit-evidence\\/[a-z0-9-]+\\/[a-z0-9-]+\\/[a-z0-9-]+-customer-avatar\\.jpg$/i.test(existing.avatarRef)) {
+      && /^credit-evidence\/[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+-customer-avatar\.jpg$/i.test(existing.avatarRef)) {
     await deleteFieldEvidence(existing.avatarRef).catch(() => console.warn("Old profile photo requires cleanup"));
   }
   await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "customer.avatar_updated", resourceType: "user", resourceId: userId }).catch(() => undefined);
