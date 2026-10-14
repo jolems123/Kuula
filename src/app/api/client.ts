@@ -93,6 +93,20 @@ const query = (values: Record<string, string | undefined>) => {
 
 const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
+  uploadCustomerAvatar: (token: string, image: string) =>
+    request<{ ok: boolean }>("/api/customer-profile/avatar", { method: "PUT", headers: auth(token), body: JSON.stringify({ image }) }, 90000),
+  fetchCustomerAvatar: async (token: string): Promise<Blob | null> => {
+    const response = await fetch(apiBaseUrl + "/api/customer-profile/avatar", { headers: auth(token), cache: "no-store" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("Unable to load your profile photo.");
+    const mime = response.headers.get("content-type") || "";
+    if (mime.startsWith("image/")) return await response.blob();
+    const json = await response.json() as { url?: string };
+    if (!json.url) throw new Error("Unable to retrieve your profile photo.");
+    const signed = await fetch(json.url, { cache: "no-store" });
+    if (!signed.ok) throw new Error("Unable to retrieve your profile photo.");
+    return await signed.blob();
+  },
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
   adminLogin: (identifier: string, password: string) => request<SessionPayload & { mfaRequired?: boolean }>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
