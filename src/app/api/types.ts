@@ -121,6 +121,7 @@ export interface CreditScore {
     weightPercent: number;
     contribution: number;
     ratingPercent: number;
+    available?: boolean;
   }>;
 }
 
@@ -152,6 +153,8 @@ export interface GrowthLine {
 
 export interface CreditPass {
   score: number;
+  provisional?: boolean;
+  factors?: CreditScore["factors"];
   maxScore: number;
   tier: string;
   percentile: number;
@@ -163,10 +166,10 @@ export interface CreditPass {
     phoneVerified?: boolean;
     kycVerified?: boolean;
     mobileMoneyEvidence?: boolean;
-    crbEvidence?: boolean;
     mobileMoneyMonths?: number;
     mobileMoneyTransactions?: number;
-    crbStatus?: string;
+    scoreProvisional?: boolean;
+    scoringModel?: string;
     loansRepaid?: number;
     loansTotal?: number;
     [key: string]: unknown;

@@ -80,7 +80,7 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
   const credit = computeCreditScore({
     momoMonths: input.evidence.momoMonths,
     momoTxnCount: input.evidence.momoTxnCount,
-    crbStatus: input.evidence.crbStatus,
+    momoVerified: input.evidence.momoVerified,
     kycVerified: input.kycVerified,
     loansRepaid: input.loansRepaid,
     loansTotal: input.loansTotal,
@@ -89,15 +89,17 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
   const flags: string[] = [];
   if (!input.phoneVerified) flags.push("phone_not_verified");
   if (!input.kycVerified) flags.push("kyc_not_verified");
-  if (!input.evidence.momoVerified) flags.push("mobile_money_evidence_missing_or_expired");
-  if (!input.evidence.crbVerified) flags.push("crb_evidence_missing_or_expired");
   if (declaredMonthlyIncome < MIN_MONTHLY_INCOME_UGX) flags.push("income_below_minimum");
   if (disposableIncome <= 0) flags.push("no_disposable_income");
   if (totalRepayment > maxAffordablePayment) flags.push("repayment_not_affordable");
 
   const repaidLoans = Math.max(0, Math.floor(input.loansRepaid || 0));
   const historyCap = FIRST_LOAN_CAP_UGX * (1 + repaidLoans);
-  const scoreBasedLimit = Math.min(scoreLimit(credit.score), historyCap);
+  // A first-time business may be assessed through verified identity and independently
+  // reviewed business/cash-flow evidence without requiring a CRB or MoMo report.
+  // Keep the unsecured first-time ceiling conservative until actual repayment data exists.
+  const firstTimeEvidenceLimit = input.loansTotal === 0 && input.kycVerified && input.phoneVerified ? 200_000 : 0;
+  const scoreBasedLimit = Math.min(Math.max(scoreLimit(credit.score), firstTimeEvidenceLimit), historyCap);
   const affordabilityPrincipalLimit = totalRepayment > 0
     ? Math.floor(requestedAmount * Math.min(1, maxAffordablePayment / totalRepayment))
     : 0;

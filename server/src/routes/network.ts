@@ -47,14 +47,14 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
   const credit = computeCreditScore({
     momoMonths: evidence.momoMonths,
     momoTxnCount: evidence.momoTxnCount,
-    crbStatus: evidence.crbStatus,
+    momoVerified: evidence.momoVerified,
     kycVerified: user.kycVerified,
     loansRepaid: user.loansRepaid,
     loansTotal: user.loansTotal,
   });
 
   const identityReady = user.phoneVerified && user.kycVerified;
-  const evidenceReady = evidence.momoVerified && evidence.crbVerified;
+  const evidenceReady = evidence.momoVerified;
   const baseLimit = identityReady && evidenceReady ? scoreLimit(credit.score) : 0;
   // Until Kuula supports multiple simultaneous facilities, an open facility uses
   // the customer's Growth Line. The total line remains visible while available
@@ -115,10 +115,11 @@ async function refreshNetworkProfile(userId: string, marketCode = "UG") {
     phoneVerified: user.phoneVerified,
     kycVerified: user.kycVerified,
     mobileMoneyEvidence: evidence.momoVerified,
-    crbEvidence: evidence.crbVerified,
     mobileMoneyMonths: evidence.momoMonths,
     mobileMoneyTransactions: evidence.momoTxnCount,
-    crbStatus: evidence.crbStatus,
+    scoreProvisional: credit.provisional,
+    scoringModel: "kuula-evidence-v2-no-crb",
+    momoVerified: evidence.momoVerified,
     loansRepaid: user.loansRepaid,
     loansTotal: user.loansTotal,
   };
@@ -264,6 +265,8 @@ router.get("/credit-pass", authenticateToken, async (req: Request, res: Response
       maxScore: profile.credit.maxScore,
       tier: profile.credit.tier,
       percentile: profile.credit.percentile,
+      provisional: profile.credit.provisional,
+      factors: profile.credit.factors,
       kycLevel: profile.creditPass.kycLevel,
       repaymentRate: Number(profile.creditPass.repaymentRate),
       availableLimit: number(profile.creditPass.availableLimit),

@@ -80,3 +80,34 @@ test("a first-time borrower is capped until they have repaid loans", () => {
   const proven = evaluateUnderwriting({ ...base, declaredMonthlyIncome: 10_000_000, declaredMonthlyExpenses: 1_000_000, requestedAmount: 1_000_000, totalRepayment: 1_080_000, loansRepaid: 1, loansTotal: 1 });
   assert.ok(proven.approvedLimit >= 1_000_000);
 });
+
+test("CRB is neither scored nor a condition for a reviewed business loan", () => {
+  const withoutCrb = {
+    ...base,
+    evidence: { ...evidence, crbVerified: false, crbStatus: "not_used" },
+    declaredMonthlyIncome: 1_000_000,
+    declaredMonthlyExpenses: 100_000,
+  };
+  const checked = evaluateUnderwriting(withoutCrb);
+  const oldCrbRecord = evaluateUnderwriting({ ...withoutCrb, evidence: { ...withoutCrb.evidence, crbVerified: true, crbStatus: "clean" } });
+  assert.equal(checked.creditScore, oldCrbRecord.creditScore);
+  assert.equal(checked.approved, true);
+  assert.ok(!checked.flags.some(flag => /crb/i.test(flag)));
+});
+
+test("new borrowers without CRB or MoMo evidence can be considered conservatively based on KYC and cash flow", () => {
+  const result = evaluateUnderwriting({
+    ...base,
+    evidence: { ...evidence, momoMonths: 0, momoTxnCount: 0, momoVerified: false, crbStatus: "not_used", crbVerified: false },
+    loansRepaid: 0,
+    loansTotal: 0,
+    requestedAmount: 100_000,
+    totalRepayment: 108_000,
+    declaredMonthlyIncome: 1_000_000,
+    declaredMonthlyExpenses: 100_000,
+  });
+  assert.equal(result.creditScore, 410);
+  assert.equal(result.approvedLimit, 100_000);
+  assert.equal(result.approved, true);
+  assert.ok(!result.flags.some(flag => /crb|mobile_money_evidence_missing/.test(flag)));
+});

@@ -1,50 +1,59 @@
-/** Kuula credit scoring engine based on verified credit and repayment evidence. */
-
+/** Kuula's internal, provisional evidence score. NOT a bureau score or a calibrated default prediction.
+ * No CRB data is used. Missing evidence earns no points; first-time borrowers are not treated as late payers.
+ */
 interface ScoreInput {
   momoMonths: number;
   momoTxnCount: number;
-  crbStatus: string;
+  momoVerified?: boolean;
   kycVerified: boolean;
   loansRepaid: number;
   loansTotal: number;
+  /** Legacy input ignored deliberately while Kuula does not use CRB reports. */
+  crbStatus?: string;
 }
-
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const round = (n: number) => Math.round(n);
 
 export function computeCreditScore(d: ScoreInput) {
+  const hasRepaymentHistory = (d.loansTotal ?? 0) > 0;
+  const momoVerified = d.momoVerified === true;
   const factors = [
     {
-      key: "momo", label: "Mobile Money History", weight: 0.30,
-      value: (clamp((d.momoMonths ?? 0) / 12, 0, 1) + clamp((d.momoTxnCount ?? 0) / 100, 0, 1)) / 2,
-      detail: `${d.momoMonths ?? 0} months · ${d.momoTxnCount ?? 0} transactions`,
-    },
-    {
-      key: "crb", label: "Credit Reference Bureau", weight: 0.20,
-      value: d.crbStatus === "clean" ? 1 : d.crbStatus === "thin" ? 0.6 : 0.25,
-      detail: `CRB: ${d.crbStatus ?? "unknown"}`,
-    },
-    {
-      key: "kyc", label: "Identity Verification", weight: 0.15,
+      key: "kyc", label: "Identity Verification", weight: 0.20,
       value: d.kycVerified ? 1 : 0,
-      detail: d.kycVerified ? "Fully verified" : "Unverified",
+      detail: d.kycVerified ? "Identity verified" : "Identity not verified",
+      available: true,
     },
     {
-      key: "repayment", label: "Repayment History", weight: 0.35,
-      value: (d.loansTotal ?? 0) > 0 ? clamp((d.loansRepaid ?? 0) / d.loansTotal, 0, 1) : 0.5,
-      detail: `${d.loansRepaid ?? 0}/${d.loansTotal ?? 0} facilities repaid on time (a payoff more than 7 days late does not count)`,
+      key: "momo", label: "Verified Mobile Money Activity", weight: 0.40,
+      value: momoVerified
+        ? (clamp((d.momoMonths ?? 0) / 12, 0, 1) + clamp((d.momoTxnCount ?? 0) / 100, 0, 1)) / 2
+        : 0,
+      detail: momoVerified
+        ? `${d.momoMonths ?? 0} verified months · ${d.momoTxnCount ?? 0} transactions`
+        : "No verified mobile money activity on file; no points assigned",
+      available: momoVerified,
+    },
+    {
+      key: "repayment", label: "Kuula Repayment History", weight: 0.40,
+      value: hasRepaymentHistory ? clamp((d.loansRepaid ?? 0) / d.loansTotal, 0, 1) : 0,
+      detail: hasRepaymentHistory
+        ? `${d.loansRepaid ?? 0}/${d.loansTotal} Kuula facilities paid on time`
+        : "New borrower: no repayment history, no assumed performance",
+      available: hasRepaymentHistory,
     },
   ];
-
   const weighted = factors.reduce((acc, factor) => acc + factor.value * factor.weight, 0);
   const score = round(300 + 550 * weighted);
-  const tier = score >= 800 ? "Excellent" : score >= 740 ? "Very Good" : score >= 670 ? "Good" : score >= 580 ? "Fair" : "Poor";
-
+  const provisional = !momoVerified && !hasRepaymentHistory;
+  const tier = provisional ? "Building" : score >= 800 ? "Excellent" : score >= 740 ? "Very Good" : score >= 670 ? "Good" : score >= 580 ? "Fair" : score >= 500 ? "Developing" : "Limited evidence";
   return {
     score,
     maxScore: 850,
     tier,
-    percentile: clamp(round(weighted * 100), 1, 99),
+    provisional,
+    /** Index progress, not population percentile (which would require population calibration). */
+    percentile: round(weighted * 100),
     factors: factors.map((factor) => ({
       key: factor.key,
       label: factor.label,
@@ -52,6 +61,7 @@ export function computeCreditScore(d: ScoreInput) {
       weightPercent: round(factor.weight * 100),
       contribution: round(factor.value * factor.weight * 550),
       ratingPercent: round(factor.value * 100),
+      available: factor.available,
     })),
   };
 }

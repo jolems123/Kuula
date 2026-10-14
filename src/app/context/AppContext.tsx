@@ -79,7 +79,9 @@ export interface UserProfile {
 export interface CreditProfile {
   score: number;
   maxScore: number;
-  tier: "Poor" | "Fair" | "Good" | "Very Good" | "Excellent";
+  tier: string;
+  provisional?: boolean;
+  factors?: Array<{ key: string; label: string; detail: string; weightPercent: number; contribution: number; ratingPercent: number; available?: boolean }>;
   percentile: number;
   improvementSinceStart?: number;
 }

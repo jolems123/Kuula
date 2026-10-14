@@ -1,17 +1,20 @@
 import { ArrowLeft, CheckCircle, Clock, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useAppContext } from "../../context/AppContext";
 
 interface Props { onNavigate: (s: string) => void; }
 
-const TIPS = [
-  { done: true, title: "Pay loans on time", impact: "+High", desc: "Every on-time payment boosts your score. Never miss a due date.", icon: "✓" },
-  { done: true, title: "Keep utilization below 30%", impact: "+High", desc: "Currently at 32%. Paying down your balance will help.", icon: "📊" },
-  { done: false, title: "Build a longer credit history", impact: "+Medium", desc: "Continue borrowing responsibly. History length improves over time.", icon: "📅" },
-  { done: false, title: "Avoid multiple loan applications", impact: "+Low", desc: "Multiple applications in a short period can lower your score temporarily.", icon: "📋" },
-  { done: true, title: "Complete full KYC verification", impact: "+Low", desc: "Your identity is fully verified. This adds trust to your profile.", icon: "🆔" },
-];
-
 export function ImproveCreditScreen({ onNavigate }: Props) {
+  const { state } = useAppContext();
+  const factors = state.credit?.factors ?? [];
+  const kyc = factors.find((f) => f.key === "kyc");
+  const momo = factors.find((f) => f.key === "momo");
+  const repayment = factors.find((f) => f.key === "repayment");
+  const TIPS = [
+    { done: kyc?.ratingPercent === 100, title: "Verify your identity", impact: "20%", desc: kyc?.detail ?? "Complete identity verification to build your profile.", icon: "🆔" },
+    { done: Boolean(momo?.ratingPercent), title: "Provide verified mobile-money history", impact: "40%", desc: momo?.detail ?? "Unverified activity earns no score points.", icon: "📱" },
+    { done: Boolean(repayment?.ratingPercent), title: "Build a Kuula repayment record", impact: "40%", desc: repayment?.detail ?? "New borrowers are not given assumed repayment points.", icon: "✓" },
+  ];
   const done = TIPS.filter((t) => t.done).length;
 
   const { t } = useTranslation();
@@ -34,7 +37,7 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
           <div style={{ height: 8, background: "#F3F4F6", borderRadius: 4 }}>
             <div style={{ width: `${(done / TIPS.length) * 100}%`, height: "100%", background: "#F59E0B", borderRadius: 4 }} />
           </div>
-          <p style={{ fontSize: 12, color: "#6B7280", margin: "8px 0 0" }}>Complete all actions to maximize your credit score potential.</p>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: "8px 0 0" }}>This shows evidence recorded by Kuula, not a guaranteed approval or a credit bureau report.</p>
         </div>
 
         {/* Tips */}
@@ -46,7 +49,7 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>{tip.title}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: tip.impact === "+High" ? "#178654" : tip.impact === "+Medium" ? "#F59E0B" : "#9CA3AF", background: "#F3F4F6", padding: "2px 6px", borderRadius: 6 }}>{tip.impact}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: tip.impact === "40%" ? "#178654" : "#9CA3AF", background: "#F3F4F6", padding: "2px 6px", borderRadius: 6 }}>{tip.impact}</span>
               </div>
               <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.5 }}>{tip.desc}</p>
             </div>

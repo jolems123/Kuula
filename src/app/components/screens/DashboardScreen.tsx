@@ -243,7 +243,7 @@ export function DashboardScreen({ onNavigate }: Props) {
         {tab === "credit" && (
           <>
             <div style={{ background: "white", borderRadius: 20, padding: "24px 20px", boxShadow: "0 4px 16px rgba(0,0,0,0.07)", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <CreditScoreGauge score={credit?.score ?? 0} size={220} />
+              <CreditScoreGauge score={credit?.score ?? 0} tier={credit?.tier} size={220} />
               <p style={{ fontSize: 12, color: "#6B7280", marginTop: 8, textAlign: "center" }}>
                 {credit?.tier
                   ? t("dashboard.creditTierMsg", { tier: credit.tier, max: credit?.maxScore ?? 850 })
