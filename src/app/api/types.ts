@@ -121,6 +121,7 @@ export interface CreditScore {
     weightPercent: number;
     contribution: number;
     ratingPercent: number;
+    available?: boolean;
   }>;
 }
 
