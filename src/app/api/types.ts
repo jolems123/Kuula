@@ -41,6 +41,10 @@ export interface StaffMember {
 
 export interface BusinessProfile {
   businessName: string;
+  applicantPosition: string;
+  locationSource: "gps" | "manual" | "none";
+  locationCapturedAt: string | null;
+  locationAccuracyMeters: number | null;
   sector: string;
   tradingAs: "registered" | "informal";
   registrationNumber: string;
