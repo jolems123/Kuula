@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   BadgeCheck,
   Smartphone,
-  Landmark,
   History,
   TrendingUp,
   ChevronRight,
@@ -16,7 +15,7 @@ import { useAppContext } from "../../context/AppContext";
 
 interface Props { onNavigate: (screen: string) => void; }
 
-function signalLabel(value: unknown) { return value ? "Verified" : "Needs attention"; }
+function signalLabel(value: unknown) { return value ? "Verified / recorded" : "Not yet assessed"; }
 function signalColor(value: unknown) { return value ? "#0B5E3A" : "#9B6F15"; }
 
 export function CreditPassScreen({ onNavigate }: Props) {
@@ -35,8 +34,7 @@ export function CreditPassScreen({ onNavigate }: Props) {
   const checks = [
     { label: "Identity", detail: "Phone and KYC", value: Boolean(signals.identityVerified), icon: BadgeCheck, action: "profile" },
     { label: "Mobile Money history", detail: `${Number(signals.mobileMoneyMonths ?? 0)} verified months`, value: Boolean(signals.mobileMoneyEvidence), icon: Smartphone, action: "credit-breakdown" },
-    { label: "Credit bureau", detail: String(signals.crbStatus ?? "Not verified"), value: Boolean(signals.crbEvidence), icon: Landmark, action: "credit-breakdown" },
-    { label: "Repayment history", detail: `${Number(signals.loansRepaid ?? 0)} of ${Number(signals.loansTotal ?? 0)} completed`, value: Number(signals.loansTotal ?? 0) === 0 ? true : Number(signals.loansRepaid ?? 0) > 0, icon: History, action: "loan-history" },
+    { label: "Kuula repayment history", detail: Number(signals.loansTotal ?? 0) === 0 ? "New borrower — no history yet" : `${Number(signals.loansRepaid ?? 0)} of ${Number(signals.loansTotal ?? 0)} repaid on time`, value: Number(signals.loansTotal ?? 0) > 0 && Number(signals.loansRepaid ?? 0) > 0, icon: History, action: "loan-history" },
   ];
 
   return (
@@ -45,16 +43,16 @@ export function CreditPassScreen({ onNavigate }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button className="kx-credit-pass__back" onClick={() => onNavigate("home")} aria-label="Back"><ArrowLeft size={19} /></button>
           <div>
-            <div className="kx-credit-pass__eyebrow">YOUR FINANCIAL IDENTITY</div>
+            <div className="kx-credit-pass__eyebrow">YOUR KUULA CREDIT PROFILE</div>
             <h1 className="kx-credit-pass__title">Kuula Credit Pass</h1>
           </div>
         </div>
 
         <div className="kx-credit-pass__score">
           <div>
-            <div className="kx-credit-pass__score-label">Kuula Score</div>
+            <div className="kx-credit-pass__score-label">Internal evidence score</div>
             <div className="kx-credit-pass__score-value">{pass?.score ?? "—"}<span> / {pass?.maxScore ?? 850}</span></div>
-            <div className="kx-credit-pass__tier">{pass?.tier ?? "Building"}</div>
+            <div className="kx-credit-pass__tier">{pass?.tier ?? "Building"} · Not a bureau score</div>
           </div>
           <div className="kx-credit-pass__badge"><ShieldCheck size={28} /></div>
         </div>
@@ -68,10 +66,10 @@ export function CreditPassScreen({ onNavigate }: Props) {
             <span style={{ width: 42, height: 42, borderRadius: 14, background: "#EAF5EF", display: "grid", placeItems: "center", color: "#0B5E3A" }}><TrendingUp size={21} /></span>
             <div>
               <div style={{ fontSize: 11, color: "#768279", fontWeight: 700 }}>REPAYMENT RATE</div>
-              <div style={{ fontSize: 21, fontWeight: 900, color: "#15271D" }}>{pass?.repaymentRate ?? 0}%</div>
+              <div style={{ fontSize: 21, fontWeight: 900, color: "#15271D" }}>{Number(signals.loansTotal ?? 0) > 0 ? `${pass?.repaymentRate ?? 0}%` : "New borrower"}</div>
             </div>
           </div>
-          <p style={{ margin: "12px 0 0", fontSize: 11.5, lineHeight: 1.5, color: "#68776E" }}>Your Credit Pass becomes stronger when Kuula can verify your identity, economic activity and repayment behaviour. Kuula does not need your phone contacts to build this profile.</p>
+          <p style={{ margin: "12px 0 0", fontSize: 11.5, lineHeight: 1.5, color: "#68776E" }}>This provisional Kuula score uses verified identity, reviewed mobile money evidence (where available) and Kuula repayment records. Missing data earns no assumed points. Business cash flow and affordability are reviewed separately before any credit decision. No CRB report is used.</p>
         </section>
 
         <h2 style={{ margin: "20px 0 10px", fontSize: 16, color: "#18271E" }}>What builds your Credit Pass</h2>
@@ -94,7 +92,7 @@ export function CreditPassScreen({ onNavigate }: Props) {
 
         <section style={{ marginTop: 16, borderRadius: 18, background: "#FFF7D8", padding: 16, border: "1px solid #F1E1A3" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}><LockKeyhole size={19} color="#806919" /><strong style={{ fontSize: 13, color: "#493E1E" }}>Private by design</strong></div>
-          <p style={{ margin: "7px 0 0", fontSize: 11.5, lineHeight: 1.5, color: "#716437" }}>Your Credit Pass is built from verified information and Kuula repayment history. Sensitive identity and financial evidence remains access-controlled and auditable.</p>
+          <p style={{ margin: "7px 0 0", fontSize: 11.5, lineHeight: 1.5, color: "#716437" }}>Your Credit Pass is an internal progress indicator, not a CRB rating, guaranteed credit limit or approval. Individual loan decisions require business checks and affordability review.</p>
         </section>
       </main>
 
