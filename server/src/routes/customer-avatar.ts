@@ -19,16 +19,12 @@ router.put("/avatar", async (req: Request, res: Response) => {
   if (parsed.mime !== "image/jpeg" || parsed.buffer.length > 1_000_000) throw new AppError("Cropped photo must be JPG under 1MB", 400);
 
   const uploaded = await saveFieldEvidence({ applicationId: userId, evaluationId: userId, evidenceType: "customer-avatar", dataUrl: photo });
-  let previous: string | null = null;
   try {
-    const old = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: { avatarRef: uploaded.key },
       select: { avatarRef: true },
     });
-    // Previous key is intentionally not read from updated row. Old photo cleanup
-    // occurs only after a safely identified old key.
-    void old;
   } catch (error) {
     await deleteFieldEvidence(uploaded.key).catch(() => undefined);
     throw error;
