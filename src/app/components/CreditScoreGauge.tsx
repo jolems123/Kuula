@@ -4,17 +4,15 @@ interface Props {
   score: number;       // 300–850
   size?: number;
   showLabel?: boolean;
+  tier?: string;
 }
 
-function scoreLabel(s: number) {
-  if (s >= 750) return { text: "Excellent", color: "#178654" };
-  if (s >= 700) return { text: "Good", color: "#064A2E" };
-  if (s >= 650) return { text: "Fair", color: "#F59E0B" };
-  if (s >= 580) return { text: "Poor", color: "#EF4444" };
-  return { text: "Very Poor", color: "#DC2626" };
+function scoreLabel(s: number, tier?: string) {
+  const text = tier || (s >= 800 ? "Excellent" : s >= 740 ? "Very Good" : s >= 670 ? "Good" : s >= 580 ? "Fair" : s >= 500 ? "Developing" : "Limited evidence");
+  return { text, color: text === "Building" || text === "Limited evidence" ? "#9B6F15" : s >= 670 ? "#178654" : "#B87512" };
 }
 
-export function CreditScoreGauge({ score, size = 180, showLabel = true }: Props) {
+export function CreditScoreGauge({ score, size = 180, showLabel = true, tier }: Props) {
   const [animated, setAnimated] = useState(300);
 
   useEffect(() => {
@@ -32,7 +30,7 @@ export function CreditScoreGauge({ score, size = 180, showLabel = true }: Props)
     requestAnimationFrame(frame);
   }, [score]);
 
-  const { text, color } = scoreLabel(animated);
+  const { text, color } = scoreLabel(animated, tier);
 
   // SVG arc params — 240° sweep starting from 150° (bottom-left)
   const cx = size / 2;
