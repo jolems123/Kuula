@@ -1,0 +1,76 @@
+/* Kuula shared finish layer — customer, auth and staff surfaces.
+   Keep component-level layout ownership; this file supplies consistent tokens
+   and accessibility defaults without overriding payment or form state logic. */
+:root {
+  --kuula-focus: #e9b92f;
+  --kuula-control-radius: 12px;
+  --kuula-panel-radius: 18px;
+  --kuula-touch-target: 44px;
+  --kuula-content-gap: 16px;
+  --kuula-type-small: 0.875rem;
+  --kuula-type-body: 1rem;
+  --kuula-type-heading: clamp(1.3rem, 1.1rem + 0.8vw, 1.85rem);
+}
+.kx {
+  --kx-radius: var(--kuula-control-radius);
+  --kx-radius-xl: var(--kuula-panel-radius);
+  --kx-gold: var(--kuula-gold);
+  --kx-canvas: var(--kuula-bg);
+  --kx-ink: var(--kuula-ink);
+  --kx-line: var(--kuula-line);
+  --kx-surface: var(--kuula-surface);
+}
+.kuula-route-viewport :is(button, a, input, select, textarea, [role="button"]):focus-visible,
+.kuula-customer-sidebar :is(button, a):focus-visible {
+  outline: 3px solid var(--kuula-focus);
+  outline-offset: 3px;
+}
+.kuula-route-viewport :is(button, a, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+.kuula-route-viewport :is(button, [role="button"]) {
+  touch-action: manipulation;
+}
+.kuula-route-viewport :is(.kx-btn, .kx-icon-btn, .kx-tabbar__tab, .kuula-primary, .kuula-secondary),
+.kuula-customer-sidebar__item {
+  min-height: var(--kuula-touch-target);
+}
+.kuula-route-viewport :is(input, select, textarea) {
+  max-width: 100%;
+}
+.kuula-route-viewport :is(.kx-card, .kx-line, .kuula-card) {
+  overflow-wrap: anywhere;
+}
+.kuula-route-viewport [role="alert"] {
+  overflow-wrap: anywhere;
+}
+.kuula-route-viewport .kuula-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid var(--kuula-line);
+  border-radius: var(--kuula-panel-radius);
+  background: var(--kuula-surface);
+  color: var(--kuula-ink);
+}
+.kuula-route-viewport .kuula-empty-state p {
+  margin: 0;
+  color: var(--kuula-muted);
+  font-size: var(--kuula-type-small);
+}
+@media (max-width: 520px) {
+  .kuula-route-viewport :is(.kx-app__body, .kx-home__body) {
+    min-width: 0;
+  }
+  .kuula-route-viewport :is(.kx-tabbar__tab, .kx-icon-btn) {
+    min-width: var(--kuula-touch-target);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kuula-route-viewport *, .kuula-route-viewport *::before, .kuula-route-viewport *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
