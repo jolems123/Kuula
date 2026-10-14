@@ -10,6 +10,7 @@ import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting, UNDERWRITING_POLICY } from "../lib/underwriting.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { isBusinessLoanPurpose } from "../lib/business-loan-purpose.js";
+import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
 import {
   buildMarzPayWebhookUrl,
   collectMoney,
@@ -319,6 +320,7 @@ router.post(
     if (decision === "approved") {
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
+      await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
       const current = await recheckUnderwriting(application, application.applicant, application.underwriting);
       await persistAssessment(application.id, req.user!.userId, current);
       if (!current.approved) throw new AppError(`Application is no longer eligible: ${current.flags.join(", ")}`, 422);

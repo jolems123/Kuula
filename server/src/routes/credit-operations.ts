@@ -7,6 +7,7 @@ import { AppError } from "../middleware/error-handler.js";
 import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
+import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
 
 const router = Router();
 router.use(authenticateToken, requirePermissions("loan.review"));
@@ -315,6 +316,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (!["return", "reject", "approve"].includes(action)) throw new AppError("Action must be return, reject, or approve", 400);
   if (narrative.length < 40) throw new AppError("A substantive decision narrative of at least 40 characters is required", 400);
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
+  if (action === "approve") await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
   await assertIndependentOfOtherLevels(applicationId, req.user!.userId, level);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
     throw new AppError("A documented, verified business assessment is required before final approval", 422);

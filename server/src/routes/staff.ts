@@ -10,6 +10,8 @@ import { AppError } from "../middleware/error-handler.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import { issueOtpForUser } from "../lib/otp-service.js";
 import { writeAuditEvent } from "../lib/audit.js";
+import { listAuthorityLimits, setAuthorityLimit } from "../lib/credit-authority.js";
+import { roleLevel } from "../lib/credit-roles.js";
 
 const router = Router();
 
@@ -17,6 +19,24 @@ const router = Router();
 // super_admin itself: a second super admin can only be created by seeding,
 // never through an invite, so staff.manage cannot be used to clone itself.
 router.use(authenticateToken, requirePermissions("staff.manage"));
+
+// Credit approval authority per role (super admin only). Omit or null to remove a limit.
+router.get("/authority-limits", async (_req: Request, res: Response) => {
+  res.json({ limits: await listAuthorityLimits() });
+});
+
+router.put("/authority-limits/:role", async (req: Request, res: Response) => {
+  const role = String(req.params.role || "").toLowerCase();
+  if (!roleLevel(role)) throw new AppError("Authority limits apply only to credit approval roles", 400);
+  const raw = req.body?.maxAmount;
+  const maxAmount = raw === null || raw === undefined || raw === "" ? null : Math.round(Number(raw));
+  if (maxAmount !== null && (!Number.isFinite(maxAmount) || maxAmount <= 0)) throw new AppError("maxAmount must be a positive amount in UGX, or null to remove the limit", 400);
+  const reason = String(req.body?.reason || "").trim();
+  if (reason.length < 10) throw new AppError("Record why the limit is changing (at least 10 characters)", 400);
+  await setAuthorityLimit(role, maxAmount, req.user!.userId);
+  await writeAuditEvent({ actorId: req.user!.userId, action: "credit.authority_limit_changed", resourceType: "credit_authority_limit", resourceId: role, metadata: { maxAmount, reason } });
+  res.json({ ok: true, role, maxAmount });
+});
 
 function normalizedPhone(value: unknown): string {
   try {
