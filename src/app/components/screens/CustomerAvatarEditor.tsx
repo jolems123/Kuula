@@ -13,7 +13,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export function CustomerAvatarEditor() {
-  const { state, updateProfile } = useAppContext();
+  const { state } = useAppContext();
   const token = state.session.token;
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
@@ -96,7 +96,6 @@ export function CustomerAvatarEditor() {
       if (savedObject.current) URL.revokeObjectURL(savedObject.current);
       savedObject.current = url;
       setSavedUrl(url);
-      updateProfile({ avatarUrl: url });
       if (currentSource.current) URL.revokeObjectURL(currentSource.current);
       currentSource.current = null;
       setSourceUrl(null);
