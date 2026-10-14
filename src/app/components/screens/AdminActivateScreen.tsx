@@ -7,12 +7,7 @@ import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (s: string) => void; }
 
-/**
- * Staff invitation acceptance. The Super Admin invites a staff member by phone
- * number; here the invitee proves ownership of that number with the SMS code
- * and chooses their password. Afterwards they sign in with email + password +
- * SMS code like every other staff member.
- */
+/** Staff activation through an emailed one-time code. */
 export function AdminActivateScreen({ onNavigate }: Props) {
   const { login } = useAppContext();
   const [email, setEmail] = useState("");
@@ -41,8 +36,8 @@ export function AdminActivateScreen({ onNavigate }: Props) {
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     setError(""); setNotice("");
-    const staffPhone = toUgandaPhone(phone);
-    if (!staffPhone) { setError("Enter the work email address the invitation was sent to."); return; }
+    const staffEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail)) { setError("Enter the work email address the invitation was sent to."); return; }
     if (!/^\d{6}$/.test(code.trim())) { setError("Enter the 6-digit activation code from your email."); return; }
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) { setError("Password must be at least 8 characters with a letter and a number."); return; }
     if (pw !== pw2) { setError("Passwords do not match."); return; }
