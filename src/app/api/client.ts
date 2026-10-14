@@ -114,6 +114,21 @@ const nodeApi = {
   verifyPhone: (phone: string, code: string) => request<SessionPayload>("/api/auth/verify-phone", { method: "POST", body: JSON.stringify({ phone, code }) }),
   resendOtp: (phone: string) => request<{ ok: boolean }>("/api/auth/resend-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   me: (token: string) => request<SessionPayload>("/api/auth/me", { headers: auth(token) }),
+  saveProfilePhoto: (token: string, photo: string) => request<{ ok: boolean; photoUpdated: boolean }>(
+    "/api/profile/me/photo", { method: "PUT", headers: auth(token), body: JSON.stringify({ photo }) }, 90000),
+  deleteProfilePhoto: (token: string) => request<{ ok: boolean }>(
+    "/api/profile/me/photo", { method: "DELETE", headers: auth(token) }),
+  async getProfilePhoto(token: string): Promise<string | null> {
+    const response = await fetch(apiBaseUrl + "/api/profile/me/photo", { headers: auth(token), cache: "no-store" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("Could not load profile photo");
+    if ((response.headers.get("content-type") ?? "").startsWith("image/")) {
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    }
+    const payload = await response.json() as { url?: string };
+    return payload.url || null;
+  },
   updateProfile: (token: string, input: { fullName: string; email?: string; dateOfBirth: string; district: string; occupation: string; physicalAddress: string }) => request<{ user: UserProfile }>("/api/auth/me", { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   markets: () => request<{ markets: KuulaMarket[] }>("/api/network/markets"),
   networkOverview: (token: string, market = "UG") => request<NetworkOverview>(`/api/network/overview${query({ market })}`, { headers: auth(token) }),
