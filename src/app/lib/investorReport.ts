@@ -17,6 +17,7 @@ function kpiRows(r: InvestorReport): [string, string][] {
     ["Active loans", r.loans.active.toLocaleString()],
     ["Paid loans", r.loans.paid.toLocaleString()],
     ["Overdue loans", r.loans.overdue.toLocaleString()],
+    ...(r.portfolio ? r.portfolio.par.map((b): [string, string] => [`PAR${b.days} (balance > ${b.days} days late)`, `${b.pct}%`]) : []),
     ["Rejected loans", r.loans.rejected.toLocaleString()],
     ["Principal disbursed", formatUGX(r.loans.disbursedPrincipal)],
     ["Outstanding balance", formatUGX(r.loans.outstanding)],
@@ -114,6 +115,12 @@ export async function exportInvestorFundingOverviewPdf(r: InvestorReport): Promi
       { title: "Loan portfolio indicators", head: ["Metric", "Value"], rows: kpiRows(r) },
       { title: "Monthly performance (UGX)", head: ["Month", "Disbursed", "Collected", "New customers"],
         rows: monthlyRows(r).map(row => row.map(String)) },
+      ...(r.portfolio ? [
+        { title: "Portfolio at risk", head: ["Days past due", "Loans", "Outstanding (UGX)", "Share of book"],
+          rows: r.portfolio.par.map(b => [`More than ${b.days}`, b.loans.toLocaleString(), formatUGX(b.outstanding), `${b.pct}%`]) },
+        { title: "Loan vintages (by disbursement month)", head: ["Vintage", "Loans", "Principal", "Repaid", "Outstanding", "PAR30", "PAR90"],
+          rows: r.portfolio.vintages.map(v => [v.vintage, v.loans.toLocaleString(), formatUGX(v.principal), `${v.repaidPct}%`, formatUGX(v.outstanding), `${v.par30Pct}%`, `${v.par90Pct}%`]) },
+      ] : []),
     ],
     meta: [
       { label: "Scope", value: "Aggregated lending metrics only; not an audited financial statement" },

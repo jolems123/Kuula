@@ -73,6 +73,13 @@ export type InvestorReport = {
     repaymentRatePct: number;
     parPct: number;
   };
+  /** Portfolio quality from due dates and unpaid balances (added October 2026). */
+  portfolio?: {
+    par: Array<{ days: number; outstanding: number; loans: number; pct: number }>;
+    overdueOutstanding: number;
+    vintages: Array<{ vintage: string; loans: number; principal: number; repaid: number; repaidPct: number; outstanding: number; par30Pct: number; par90Pct: number }>;
+    sectors: Array<{ sector: string; loans: number; outstanding: number; par30Pct: number }>;
+  };
   monthly: Array<{
     month: string;
     disbursed: number;

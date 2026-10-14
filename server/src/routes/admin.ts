@@ -2,9 +2,34 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { summarizePortfolio, type BookedLoan } from "../lib/portfolio.js";
 
 const router = Router();
 const CUSTOMER_ROLES = ["user", "customer"];
+// Single-leg (legacy) and split (current) payouts are both disbursements.
+const DISBURSEMENT_TYPES = new Set(["loan_disbursement", "loan_disbursement_leg"]);
+
+/** Every loan that was actually paid out, with its repayment position. */
+async function bookedLoans(): Promise<BookedLoan[]> {
+  const rows = await prisma.$queryRaw<Array<{ id: string; amount: bigint; interest: bigint; total: bigint; amount_paid: bigint | null; repayment_total: bigint | null; due_date: Date | null; disbursed_at: Date | null; sector: string | null }>>`
+    SELECT a.id, a.amount, a.interest, a.total, r.amount_paid, r.total AS repayment_total, COALESCE(r.due_date, a.due_date) AS due_date,
+           COALESCE(b.completed_at, r.created_at) AS disbursed_at, a.business_profile->>'sector' AS sector
+    FROM loan_applications a
+    LEFT JOIN repayments r ON r.user_id=a.applicant_id AND r.loan_id=a.loan_id
+    LEFT JOIN disbursement_batches b ON b.application_id=a.id AND b.status='settled'
+    WHERE a.status IN ('active','paid','overdue')
+  `;
+  return rows.map((row) => ({
+    applicationId: row.id,
+    principal: Number(row.amount),
+    interest: Number(row.interest),
+    total: Number(row.repayment_total ?? row.total),
+    amountPaid: Number(row.amount_paid ?? 0),
+    disbursedAt: row.disbursed_at,
+    dueDate: row.due_date,
+    sector: row.sector,
+  }));
+}
 
 function mapApplication(a: any) {
   return {
@@ -25,10 +50,10 @@ function mapApplication(a: any) {
 }
 
 router.get("/stats", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
-  const [customerCount, pendingCount, overdueCount, recentApps, allRecent] = await Promise.all([
+  const [customerCount, pendingCount, booked, recentApps, allRecent] = await Promise.all([
     prisma.user.count({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null } }),
     prisma.loanApplication.count({ where: { status: "pending" } }),
-    prisma.loanApplication.count({ where: { status: "overdue" } }),
+    bookedLoans(),
     prisma.loanApplication.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.loanApplication.findMany({
       where: { createdAt: { gte: new Date(Date.now() - 180 * 86400000) } },
@@ -47,7 +72,7 @@ router.get("/stats", authenticateToken, requirePermissions("report.view"), async
   res.json({
     totalCustomers: customerCount,
     pendingApprovals: pendingCount,
-    overdueLoans: overdueCount,
+    overdueLoans: summarizePortfolio(booked).overdueLoans,
     recentApplications: recentApps.map(mapApplication),
     monthlyChart: Object.entries(monthMap).map(([month, value]) => ({ month, ...value })),
   });
@@ -96,10 +121,10 @@ export function reportRange(req: Request): { start?: Date; end?: Date; label: st
 
 async function buildInvestorReportPayload(range: { start?: Date; end?: Date; label: string }) {
   const dateFilter = range.start || range.end ? { gte: range.start, lte: range.end } : undefined;
-  const [transactions, applications, repayments, profiles] = await Promise.all([
+  const [transactions, applications, booked, profiles] = await Promise.all([
     prisma.transaction.findMany({ where: dateFilter ? { createdAt: dateFilter } : undefined, select: { id: true, type: true, amount: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } }),
     prisma.loanApplication.findMany({ where: dateFilter ? { createdAt: dateFilter } : undefined, select: { id: true, applicantName: true, amount: true, interest: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } }),
-    prisma.repayment.findMany({ select: { total: true, amountPaid: true, status: true } }),
+    bookedLoans(),
     prisma.user.findMany({ where: { role: { in: CUSTOMER_ROLES }, deletedAt: null, ...(dateFilter ? { createdAt: dateFilter } : {}) }, select: { verified: true, createdAt: true } }),
   ]);
 
@@ -108,7 +133,9 @@ async function buildInvestorReportPayload(range: { start?: Date; end?: Date; lab
   const sumTransactions = (type: string) => completedTransactions
     .filter((transaction) => transaction.type === type)
     .reduce((sum, transaction) => sum + number(transaction.amount), 0);
-  const totalDisbursed = sumTransactions("loan_disbursement");
+  const totalDisbursed = completedTransactions
+    .filter((transaction) => DISBURSEMENT_TYPES.has(transaction.type))
+    .reduce((sum, transaction) => sum + number(transaction.amount), 0);
   const totalCollected = sumTransactions("loan_payment");
 
   const countBy = (status: string) => applications.filter((application) => application.status === status).length;
@@ -117,18 +144,17 @@ async function buildInvestorReportPayload(range: { start?: Date; end?: Date; lab
   const disbursing = countBy("disbursing");
   const active = countBy("active");
   const paid = countBy("paid");
-  const overdue = countBy("overdue");
+  // Loan applications are never moved to an "overdue" status; lateness comes from due dates.
+  const portfolio = summarizePortfolio(booked, new Date());
+  const overdue = portfolio.overdueLoans;
   const rejected = countBy("rejected");
   const bookedStatuses = ["active", "paid", "overdue"];
 
   const disbursedPrincipal = applications.filter((application) => bookedStatuses.includes(application.status)).reduce((sum, application) => sum + number(application.amount), 0);
   const realizedInterest = applications.filter((application) => application.status === "paid").reduce((sum, application) => sum + number(application.interest), 0);
   const expectedInterest = applications.filter((application) => bookedStatuses.includes(application.status)).reduce((sum, application) => sum + number(application.interest), 0);
-  const outstanding = repayments.filter((repayment) => repayment.status !== "paid").reduce((sum, repayment) => sum + Math.max(number(repayment.total) - number(repayment.amountPaid), 0), 0);
-  const parOutstanding = repayments.filter((repayment) => repayment.status === "overdue").reduce((sum, repayment) => sum + Math.max(number(repayment.total) - number(repayment.amountPaid), 0), 0);
+  const outstanding = portfolio.outstanding;
 
-  const concludedOrLive = active + paid + overdue;
-  const percent = (numerator: number, denominator: number) => denominator > 0 ? Math.round((numerator / denominator) * 1000) / 10 : 0;
   const now = new Date();
   const months: { key: string; monthLabel: string; disbursed: number; collected: number; newCustomers: number }[] = [];
   for (let index = 11; index >= 0; index -= 1) {
@@ -139,7 +165,7 @@ async function buildInvestorReportPayload(range: { start?: Date; end?: Date; lab
     const date = new Date(transaction.createdAt);
     const bucket = months.find((month) => month.key === `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
     if (!bucket) continue;
-    if (transaction.type === "loan_disbursement") bucket.disbursed += number(transaction.amount);
+    if (DISBURSEMENT_TYPES.has(transaction.type)) bucket.disbursed += number(transaction.amount);
     else if (transaction.type === "loan_payment") bucket.collected += number(transaction.amount);
   }
   for (const profile of profiles) {
@@ -167,7 +193,7 @@ async function buildInvestorReportPayload(range: { start?: Date; end?: Date; lab
   for (const transaction of completedTransactions) {
     const bucket = dayBuckets.find((day) => day.key === dayKey(transaction.createdAt));
     if (!bucket) continue;
-    if (transaction.type === "loan_disbursement") bucket.disbursed += number(transaction.amount);
+    if (DISBURSEMENT_TYPES.has(transaction.type)) bucket.disbursed += number(transaction.amount);
     else if (transaction.type === "loan_payment") bucket.collected += number(transaction.amount);
   }
 
@@ -178,13 +204,14 @@ async function buildInvestorReportPayload(range: { start?: Date; end?: Date; lab
     customers: { total: profiles.length, verified: profiles.filter((profile) => profile.verified).length, newThisMonth: profiles.filter((profile) => new Date(profile.createdAt).getTime() >= new Date(now.getFullYear(), now.getMonth(), 1).getTime()).length },
     loans: { total: applications.length, pending, offered, disbursing, active, paid, overdue, rejected, disbursedPrincipal, outstanding },
     revenue: { totalDisbursed, totalCollected, realizedInterest, expectedInterest },
-    ratios: { defaultRatePct: percent(overdue, concludedOrLive), repaymentRatePct: percent(paid, concludedOrLive), parPct: percent(parOutstanding, outstanding) },
+    ratios: { defaultRatePct: portfolio.defaultRatePct, repaymentRatePct: portfolio.repaymentRatePct, parPct: portfolio.par[0]?.pct ?? 0 },
+    portfolio: { par: portfolio.par, overdueOutstanding: portfolio.overdueOutstanding, vintages: portfolio.vintages, sectors: portfolio.sectors },
     monthly: months.map((month) => ({ month: month.monthLabel, disbursed: month.disbursed, collected: month.collected, newCustomers: month.newCustomers })),
     today: {
       applications: applicationsToday.length,
       approved: applicationsToday.filter((application) => bookedStatuses.includes(application.status)).length,
       rejected: applicationsToday.filter((application) => application.status === "rejected").length,
-      disbursed: transactionsToday.filter((transaction) => transaction.type === "loan_disbursement").reduce((sum, transaction) => sum + number(transaction.amount), 0),
+      disbursed: transactionsToday.filter((transaction) => DISBURSEMENT_TYPES.has(transaction.type)).reduce((sum, transaction) => sum + number(transaction.amount), 0),
       collected: transactionsToday.filter((transaction) => transaction.type === "loan_payment").reduce((sum, transaction) => sum + number(transaction.amount), 0),
     },
     daily: dayBuckets.map((bucket) => ({ day: bucket.day, applications: bucket.applications, approved: bucket.approved, disbursed: bucket.disbursed, collected: bucket.collected })),
