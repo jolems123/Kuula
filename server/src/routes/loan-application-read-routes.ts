@@ -161,6 +161,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
     where,
     include: {
       underwriting: true,
+      agreementAcceptance: true,
       partnerFinancing: {
         include: { partner: true, partnerLocation: true, product: true },
       },
@@ -212,7 +213,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
         status: application.status,
         reviewLevel: stages.get(application.id)?.current_level ?? null,
         reviewStage: stages.get(application.id)?.status ?? null,
-        agreementAccepted: application.acceptedAt != null,
+        agreementAccepted: application.agreementAcceptance != null,
         total: Number(application.total),
         apr: Number(application.apr),
         interest: Number(application.interest),
