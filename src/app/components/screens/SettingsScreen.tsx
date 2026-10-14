@@ -1,7 +1,8 @@
 import {
   ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, Globe,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../api/client";
 import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
 import { useAppContext } from "../../context/AppContext";
@@ -21,7 +22,93 @@ const menuItems = [
 export function SettingsScreen({ onNavigate }: Props) {
   const { t, i18n } = useTranslation();
   const { state } = useAppContext();
+  const token = state.session.token;
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const [photoPreview, setPhotoPreview] = useState(false);
   const user = state.user;
+
+  useEffect(() => {
+    if (!token || !user?.id) return;
+    let active = true;
+    void api.customerPhoto(token).then(url => {
+      if (!active) { if (url) URL.revokeObjectURL(url); return; }
+      setProfilePhoto(previous => { if (previous) URL.revokeObjectURL(previous); return url; });
+    }).catch(() => { if (active) setPhotoError("Your saved profile photo is unavailable right now."); });
+    return () => { active = false; };
+  }, [token, user?.id]);
+
+  useEffect(() => {
+    if (!sourceImage || !photoPreview) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const canvas = cropCanvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+      canvas.width = 320; canvas.height = 320;
+      const shortest = Math.min(img.naturalWidth, img.naturalHeight);
+      const cropSize = shortest / cropZoom;
+      const maxX = Math.max(0, img.naturalWidth - cropSize);
+      const maxY = Math.max(0, img.naturalHeight - cropSize);
+      const left = maxX * ((cropX + 100) / 200);
+      const top = maxY * ((cropY + 100) / 200);
+      ctx.clearRect(0, 0, 320, 320);
+      ctx.drawImage(img, left, top, cropSize, cropSize, 0, 0, 320, 320);
+    };
+    img.src = sourceImage;
+    return () => { cancelled = true; };
+  }, [sourceImage, photoPreview, cropZoom, cropX, cropY]);
+
+  const choosePhoto = (file?: File) => {
+    if (!file) return;
+    setPhotoError("");
+    if (file.size > 20 * 1024 * 1024 || !file.type.startsWith("image/")) {
+      setPhotoError("Choose an image smaller than 20MB."); return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setPhotoError("Unable to read that image.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      setSourceImage(reader.result);
+      setCropX(0); setCropY(0); setCropZoom(1);
+      setPhotoPreview(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveProfilePhoto = async () => {
+    if (!token || !cropCanvasRef.current || photoBusy) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      const photo = cropCanvasRef.current.toDataURL("image/jpeg", 0.82);
+      await api.updateCustomerPhoto(token, photo);
+      const saved = await api.customerPhoto(token);
+      setProfilePhoto(prev => { if (prev) URL.revokeObjectURL(prev); return saved; });
+      setPhotoPreview(false); setSourceImage(null);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Photo upload failed; retry.");
+    } finally { setPhotoBusy(false); }
+  };
+
+  const removeProfilePhoto = async () => {
+    if (!token || photoBusy) return;
+    setPhotoBusy(true); setPhotoError("");
+    try {
+      await api.removeCustomerPhoto(token);
+      setProfilePhoto(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    } catch (err) { setPhotoError(err instanceof Error ? err.message : "Could not remove your photo."); }
+    finally { setPhotoBusy(false); }
+  };
 
   const menuItemI18n: Record<string, { label: string; subtitle: string }> = {
     "personal-info": { label: t("settings.personalInfo"), subtitle: t("settings.personalInfoSub") },
@@ -77,7 +164,7 @@ export function SettingsScreen({ onNavigate }: Props) {
             border: "3px solid #DFF2E9",
           }}
         >
-          <span style={{ fontSize: 24, fontWeight: 800, color: "white" }}>{user?.initials ?? "?"}</span>
+          {profilePhoto ? <img src={profilePhoto} alt="Your profile" style={{ width: 58, height: 58, borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ fontSize: 24, fontWeight: 800, color: "white" }}>{user?.initials ?? "?"}</span>}
         </div>
         <div className="flex-1">
           <p style={{ fontSize: 17, fontWeight: 700, color: "#1F2937" }}>{user?.fullName ?? "—"}</p>
@@ -102,6 +189,38 @@ export function SettingsScreen({ onNavigate }: Props) {
         >
           {t("settings.edit")}
         </button>
+      </div>
+
+      <div className="mx-4 mt-3 p-4 rounded-2xl" style={{ background: "white" }}>
+        <strong style={{ color: "#173A27", fontSize: 14 }}>Profile photo</strong>
+        <p style={{ color: "#66766B", fontSize: 12, margin: "7px 0" }}>Take a photo or choose one from your gallery, adjust the square crop, then save it privately.</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <button type="button" disabled={photoBusy} onClick={() => cameraRef.current?.click()} style={{ padding: "9px 12px", borderRadius: 9, background: "#0B5E3A", border: 0, color: "white" }}>Take photo</button>
+          <button type="button" disabled={photoBusy} onClick={() => galleryRef.current?.click()} style={{ padding: "9px 12px", borderRadius: 9, background: "#E5F2EA", border: 0, color: "#0B5E3A" }}>Choose from gallery</button>
+          {profilePhoto && <button type="button" disabled={photoBusy} onClick={() => void removeProfilePhoto()} style={{ padding: "9px 12px", borderRadius: 9, border: "1px solid #D8B7B7", background: "white", color: "#A12626" }}>Remove photo</button>}
+        </div>
+        <input aria-label="Capture profile photo" ref={cameraRef} type="file" accept="image/*" capture="user" style={{ display: "none" }}
+          onChange={event => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
+        <input aria-label="Choose profile photo from gallery" ref={galleryRef} type="file" accept="image/*" style={{ display: "none" }}
+          onChange={event => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
+        {photoPreview && <div style={{ marginTop: 16 }}>
+          <strong style={{ display: "block", fontSize: 12, marginBottom: 8 }}>Crop and preview</strong>
+          <canvas aria-label="Square photo crop preview" ref={cropCanvasRef} width={320} height={320}
+            style={{ width: "min(100%, 280px)", aspectRatio: "1", borderRadius: "50%", border: "2px solid #C7E1D2" }} />
+          {([
+            ["Zoom", cropZoom, 1, 3, 0.1, setCropZoom],
+            ["Move left/right", cropX, -100, 100, 5, setCropX],
+            ["Move up/down", cropY, -100, 100, 5, setCropY],
+          ] as const).map(([name, value, min, max, step, setter]) =>
+            <label key={name} style={{ display: "block", maxWidth: 320, marginTop: 10, fontSize: 12 }}>{name}
+              <input aria-label={name} type="range" min={min} max={max} step={step} value={value} onChange={event => setter(Number(event.target.value))} style={{ display: "block", width: "100%" }} />
+            </label>)}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button type="button" disabled={photoBusy} onClick={() => void saveProfilePhoto()} style={{ padding: "9px 14px", background: "#0B5E3A", color: "white", border: 0, borderRadius: 9 }}>{photoBusy ? "Saving…" : "Save profile photo"}</button>
+            <button type="button" disabled={photoBusy} onClick={() => { setSourceImage(null); setPhotoPreview(false); }} style={{ padding: "9px 14px", background: "#E8EBE9", border: 0, borderRadius: 9 }}>Cancel</button>
+          </div>
+        </div>}
+        {photoError && <p role="alert" style={{ color: "#A12626", fontSize: 12, marginTop: 10 }}>{photoError}</p>}
       </div>
 
       {/* Language picker */}
