@@ -64,7 +64,7 @@ router.post("/applications/:id/business-photos", authenticateToken, async (req: 
           VALUES (${crypto.randomUUID()}::uuid, ${id}::uuid, ${userId}::uuid, ${photo.kind}, ${photo.key}, ${photo.mime}, ${photo.bytes}, now(), now())`);
       }
     });
-    await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "business_photos.submitted", resourceType: "loan_application", resourceId: id, metadata: { kinds: saved.map(x => x.kind), consent: true } });
+    await writeAuditEvent({ actorId: userId, subjectUserId: userId, action: "business_photos.submitted", resourceType: "loan_application", resourceId: id, metadata: { kinds: saved.map(x => x.kind), consent: true } }).catch(() => console.warn("Secondary business-photo audit unavailable; persisted evidence remains intact"));
     res.status(201).json({ ok: true, applicationId: id, photoTypes: saved.map(x => x.kind), reviewStatus: "pending" });
   } catch (error) {
     await Promise.allSettled(saved.map(file => deleteFieldEvidence(file.key)));
