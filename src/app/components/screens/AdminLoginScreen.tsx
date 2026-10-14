@@ -16,7 +16,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const { login } = useAppContext();
   useTranslation();
   const [show, setShow] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [pw, setPw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,11 +42,11 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
   const resetPw = async () => {
     setError(""); setNotice("");
-    const identifier = toUgandaPhone(phone);
-    if (!identifier) { setError("Enter your staff phone number first, then choose Forgot password."); return; }
+    const resetPhone = toUgandaPhone(identifier);
+    if (!resetPhone) { setError("Password recovery currently requires your verified staff phone number. Ask your administrator for help if you sign in by email."); return; }
     try {
-      await api.resetPassword(identifier);
-      setResetFor(identifier);
+      await api.resetPassword(resetPhone);
+      setResetFor(resetPhone);
       setNotice("If that account is eligible, a reset code has been sent to its verified phone.");
     }
     catch (e) { setError(e instanceof ApiError ? e.message : "Could not request a reset."); }
@@ -79,13 +79,15 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     setError(""); setNotice("");
-    const identifier = toUgandaPhone(phone);
-    if (!identifier || !pw) { setError("Enter your staff phone number and password."); return; }
+    const staffIdentifier = identifier.trim().toLowerCase();
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffIdentifier);
+    const validPhone = !!toUgandaPhone(staffIdentifier);
+    if ((!validEmail && !validPhone) || !pw) { setError("Enter your staff email address or verified phone number and password."); return; }
     const rateCheck = adminLoginLimiter.check();
     if (!rateCheck.allowed) { setLockoutRemaining(rateCheck.retryAfterMs); setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`); return; }
     setLoading(true);
     try {
-      const result = await api.adminLogin(identifier, pw);
+      const result = await api.adminLogin(staffIdentifier.includes("@") ? staffIdentifier : toUgandaPhone(staffIdentifier)!, pw);
       adminLoginLimiter.reset();
       if ("requiresMfa" in result && result.requiresMfa) {
         setAdminMfaChallenge({ challengeToken: result.challengeToken, destination: result.destination });
@@ -104,15 +106,14 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     <AuthLayout logoSubtitle="Staff portal" onBack={() => onNavigate("welcome")}>
       <div className="kx-auth-head">
         <h2>Sign in</h2>
-        <p>Use the phone number linked to your staff account.</p>
+        <p>Use your staff email address and password. A verified phone is still required for SMS security codes.</p>
       </div>
 
       <form onSubmit={submit} noValidate>
         <div className="kx-field">
-          <label className="kx-label" htmlFor="staff-phone">Phone number</label>
-          <div className={`kx-control${error && !toUgandaPhone(phone) ? " is-invalid" : ""}`}>
-            <span className="kx-control__prefix">+256</span>
-            <input id="staff-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder="7XX XXX XXX" autoFocus />
+          <label className="kx-label" htmlFor="staff-phone">Staff email address</label>
+          <div className={`kx-control${error && !(/^\S+@\S+\.\S+$/.test(identifier.trim()) || toUgandaPhone(identifier)) ? " is-invalid" : ""}`}>
+            <input id="staff-phone" className="kx-input" value={identifier} onChange={(e) => setIdentifier(e.target.value)} type="text" inputMode="email" autoCapitalize="none" autoComplete="username" placeholder="you@kuulapp.com" autoFocus />
           </div>
         </div>
 
