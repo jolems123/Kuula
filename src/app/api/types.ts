@@ -98,6 +98,9 @@ export interface LoanApplication {
   workDuration?: string | null;
   incomeSource?: string | null;
   repaymentSource?: string | null;
+  reviewLevel?: number | null;
+  reviewStage?: string | null;
+  agreementAccepted?: boolean;
   status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
   apr?: number;
