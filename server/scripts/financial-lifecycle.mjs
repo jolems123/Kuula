@@ -86,8 +86,8 @@ try {
   const financePassword = "Finance-CI-Password-Only-2026";
   await prisma.user.upsert({
     where: { email: financeEmail },
-    update: { role: "finance", passwordHash: await bcrypt.hash(financePassword, 10), deletedAt: null },
-    create: { email: financeEmail, fullName: "CI Finance Officer", role: "finance", passwordHash: await bcrypt.hash(financePassword, 10) },
+    update: { role: "finance", passwordHash: await bcrypt.hash(financePassword, 10), phoneVerified: true, deletedAt: null },
+    create: { email: financeEmail, fullName: "CI Finance Officer", role: "finance", phoneVerified: true, passwordHash: await bcrypt.hash(financePassword, 10) },
   });
   const finance = await call("POST", "/api/auth/admin-login", { body: { email: financeEmail, password: financePassword } });
   const waiting = await call("GET", "/api/loans/disbursements/awaiting-release", { token: finance.token });
