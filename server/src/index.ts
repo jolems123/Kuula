@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestContext } from "./middleware/request-context.js";
 import authRoutes from "./routes/auth.js";
+import customerAvatarRoutes from "./routes/customer-avatar.js";
 import authPrivacyGuardRoutes from "./routes/auth-privacy-guard.js";
 import httpsEnforcementRoutes from "./routes/https-enforcement.js";
 import operationsAuditGuardRoutes from "./routes/operations-audit-guard.js";
@@ -148,6 +149,7 @@ const jsonVerify = (req: express.Request, _res: express.Response, buffer: Buffer
 };
 // Three identity photos may use up to 5 MB each (base64 transport overhead).
 app.use("/api/kyc", express.json({ limit: "22mb", verify: jsonVerify }));
+app.use("/api/customer-profile/avatar", express.json({ limit: "2mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "30mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
@@ -220,6 +222,7 @@ app.use("/api/admin/refunds", adminRefundRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/kyc", kycRoutes);
+app.use("/api/customer-profile", customerAvatarRoutes);
 
 app.get("/api/credit/score", authenticateToken, async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
