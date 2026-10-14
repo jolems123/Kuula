@@ -142,6 +142,17 @@ const nodeApi = {
     request<{ photos: Array<{ id: string; type: string; mime: string; bytes: number; uploadedAt: string }> }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
       { headers: auth(token) }),
+  accessBusinessPhoto: async (token: string, id: string, photoId: string): Promise<{url: string; temporary: boolean}> => {
+    const response = await fetch(env.API_URL + "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos/" + encodeURIComponent(photoId), { headers: auth(token) });
+    if (!response.ok) throw new Error("You are not authorized to open this photo or the image is unavailable.");
+    if ((response.headers.get("content-type") ?? "").startsWith("image/")) {
+      const blob = await response.blob();
+      return { url: URL.createObjectURL(blob), temporary: true };
+    }
+    const body = await response.json() as { url?: string };
+    if (!body.url) throw new Error("Private photo link unavailable");
+    return { url: body.url, temporary: false };
+  },
   uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string>) =>
     request<{ ok: boolean; photoTypes: string[] }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
