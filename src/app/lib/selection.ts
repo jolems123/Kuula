@@ -108,6 +108,7 @@ export function getCustomer360Id(): string | null { return _customer360Id; }
 
 export function clearSelectionState(): void {
   clearAllSavedLoanApplicationDrafts();
+  clearBusinessPhotos();
   _selectedTransaction = null;
   _lastPayment = null;
   _loanDraft = null;
@@ -119,3 +120,4 @@ export function clearSelectionState(): void {
   _customer360Id = null;
 }
 import { clearAllSavedLoanApplicationDrafts } from "./loan-application-autosave";
+\nimport { clearBusinessPhotos } from "./business-photos";\n
