@@ -32,8 +32,8 @@ async function staff(role, label) {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.upsert({
     where: { email },
-    update: { role, passwordHash, deletedAt: null },
-    create: { email, fullName: `CI ${label}`, role, passwordHash },
+    update: { role, passwordHash, phoneVerified: true, deletedAt: null },
+    create: { email, fullName: `CI ${label}`, role, passwordHash, phoneVerified: true },
   });
   const session = await call("POST", "/api/auth/admin-login", { body: { email, password } });
   return { id: user.id, token: session.token };
