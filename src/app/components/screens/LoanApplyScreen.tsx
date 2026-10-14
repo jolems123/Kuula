@@ -22,7 +22,7 @@ const METHODS = [
 const EMPTY_BUSINESS: BusinessDetails = {
   businessName: "", applicantPosition: "", locationSource: "none", locationCapturedAt: null, locationAccuracyMeters: null, sector: "", tradingAs: "informal", registrationNumber: "",
   tradingMonths: 0, district: "", physicalAddress: "", latitude: null, longitude: null, goodsOrServices: "",
-  customerType: "", primarySuppliers: "", supplierPaymentTerms: "", salesFrequency: "unknown", seasonalPattern: "", lowSeasonMonthlySales: 0, inventoryCost: 0, rentCost: 0, wagesCost: 0, otherOperatingCosts: 0, otherDebtDetails: "", staffCount: 0, loanUse: "", repaymentPlan: "",
+  customerType: "", primarySuppliers: "", supplierPaymentTerms: "", salesFrequency: "unknown", seasonalPattern: "", lowSeasonMonthlySales: 0, inventoryCost: 0, rentCost: 0, wagesCost: 0, otherOperatingCosts: 0, otherDebtDetails: "", staffCount: 0, preferredRepaymentFrequency: "at_maturity", useOfFunds: { stock: 0, equipment: 0, operations: 0, expansion: 0, other: 0 }, loanUse: "", repaymentPlan: "",
 };
 function durationBand(months: number): string {
   if (months < 6) return "Less than 6 months";
@@ -104,6 +104,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   }, [canApply, maxEligibleAmount]);
 
   const quote = localQuote(amount, term);
+  const allocationsTotal = Object.values(businessDetails.useOfFunds).reduce((sum, value) => sum + value, 0);
   const businessCoordinatesAvailable = Number.isFinite(businessDetails.latitude) && Number.isFinite(businessDetails.longitude);
   const businessMapUrl = businessCoordinatesAvailable
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${businessDetails.longitude! - 0.003}%2C${businessDetails.latitude! - 0.003}%2C${businessDetails.longitude! + 0.003}%2C${businessDetails.latitude! + 0.003}&layer=mapnik&marker=${businessDetails.latitude}%2C${businessDetails.longitude}`
@@ -167,6 +168,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const continueToReview = () => {
     setError("");
     if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within the advertised business-loan range."); return; }
+    if (!Number.isSafeInteger(allocationsTotal) || allocationsTotal !== amount) { setError("Allocate the full requested loan amount across the use-of-funds categories."); return; }
     if (purpose === "Other" && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
       if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
@@ -282,6 +284,45 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             <textarea value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Tell us what your business will use the loan for" rows={3} style={{ width: "100%", border: "1px solid #D8E2DC", borderRadius: 12, padding: 12, background: "white", color: "#13251C", resize: "vertical" }} />
           </label>}
         </div>
+
+        <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label="Loan spending plan">
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 8px" }}>How will you spend this loan?</h2>
+          <p style={{ fontSize: 12, color: "#68766F", lineHeight: 1.5 }}>Distribute the full requested amount across the categories below. Your breakdown must total {formatUGX(amount)}.</p>
+          {([
+            ["stock", "Stock and inventory"],
+            ["equipment", "Equipment and tools"],
+            ["operations", "Working capital and operating costs"],
+            ["expansion", "Expansion"],
+            ["other", "Other business needs"],
+          ] as const).map(([key, label]) => (
+            <label key={key} style={{ display: "block", marginTop: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}>{label} (UGX)</span>
+              <input type="number" min={0} max={amount} step={1000} inputMode="numeric"
+                className="kx-input" style={{ display: "block", width: "100%", marginTop: 5 }}
+                value={businessDetails.useOfFunds[key]}
+                onChange={event => setBusinessDetails(current => ({
+                  ...current,
+                  useOfFunds: { ...current.useOfFunds, [key]: Number(event.target.value) },
+                }))} />
+            </label>
+          ))}
+          <p role="status" style={{ fontSize: 12, fontWeight: 700, marginTop: 12, color: allocationsTotal === amount ? "#0B5E3A" : "#A13A3A" }}>
+            Allocated: {formatUGX(allocationsTotal)} · {allocationsTotal === amount ? "Complete" : allocationsTotal < amount ? `Unallocated: ${formatUGX(amount - allocationsTotal)}` : `Overallocated: ${formatUGX(allocationsTotal - amount)}`}
+          </p>
+          <label style={{ display: "block", marginTop: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}>Preferred repayment frequency</span>
+            <select className="kx-input" style={{ display: "block", width: "100%", marginTop: 5 }}
+              value={businessDetails.preferredRepaymentFrequency}
+              onChange={event => setBusinessDetails(current => ({ ...current, preferredRepaymentFrequency: event.target.value as BusinessDetails["preferredRepaymentFrequency"] }))}>
+              <option value="daily">Daily</option><option value="weekly">Weekly</option>
+              <option value="biweekly">Every two weeks</option><option value="monthly">Monthly</option>
+              <option value="at_maturity">Single payment at maturity</option>
+            </select>
+          </label>
+          <p style={{ fontSize: 11, color: "#68766F", lineHeight: 1.5, marginTop: 7 }}>
+            This is your preference, not a repayment schedule or an approved offer. Actual instalments and dates will be provided in the final loan agreement.
+          </p>
+        </section>
 
         <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label="Business profile">
           <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 5px" }}>Tell us about your business</h2>
