@@ -47,11 +47,13 @@ try {
   const finance = await staff("finance", "finance");
   const admin = await call("POST", "/api/auth/admin-login", { body: { email: process.env.ADMIN_EMAIL || "admin-ci@kuula.test", password: process.env.ADMIN_PASSWORD || "Admin-CI-Password-Only-2026" } });
 
-  const phone = "+256700000099";
+  // A number no other CI script uses (the KYC smoke test uses ...099).
+  const phone = "+256700000077";
+  const pinHash = await bcrypt.hash("7391", 10);
   const customerUser = await prisma.user.upsert({
     where: { phone },
-    update: {},
-    create: { phone, fullName: "Staged Trader", role: "customer", pinHash: await bcrypt.hash("7391", 10), phoneVerified: true, kycVerified: true, termsAcceptedAt: new Date() },
+    update: { pinHash, phoneVerified: true, kycVerified: true, role: "customer", deletedAt: null },
+    create: { phone, fullName: "Staged Trader", role: "customer", pinHash, phoneVerified: true, kycVerified: true, termsAcceptedAt: new Date() },
   });
   const expiresAt = new Date(Date.now() + 30 * 86_400_000);
   for (const [sourceType, extra] of [["mobile_money", { momoMonths: 12, momoTxnCount: 150 }], ["crb", { crbStatus: "clean" }]]) {
