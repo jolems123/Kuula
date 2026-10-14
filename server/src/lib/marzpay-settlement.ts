@@ -4,6 +4,7 @@ import type { MarzPayWebhookEvent } from "./marzpay.js";
 import { allocateRepayment, postSettlementJournal, type RepaymentAllocation } from "./ledger.js";
 import { dispatchNextDisbursementLeg } from "./disbursements.js";
 import { writeAuditEvent } from "./audit.js";
+import { refundForTransaction } from "./refunds.js";
 
 /**
  * Applies one final or interim MarzPay status (from an authenticated callback, a status
@@ -269,6 +270,10 @@ async function settleTransaction(event: MarzPayWebhookEvent, ledger: Transaction
     // balances and accounting either all commit or all roll back.
     // Repayment journals depend on how the money is allocated, so they are posted in
     // settleRepayment; everything else is posted here.
+    if (ledger.type === "customer_refund") {
+      await settleRefund(tx, { ...ledger, providerFee }, event);
+      return { settled: true, unapplied: false };
+    }
     if (event.isSuccess && ledger.type !== "loan_payment") await postSettlementJournal(tx, { ...ledger, providerFee });
 
     if (ledger.type === "loan_disbursement" && ledger.loanId) {
@@ -387,4 +392,16 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
     },
   });
   return applied < paymentAmount;
+}
+
+async function settleRefund(tx: Prisma.TransactionClient, ledger: Transaction, event: MarzPayWebhookEvent) {
+  const refund = await refundForTransaction(tx, ledger.id);
+  if (!refund) throw new Error("Refund transaction is not linked to a refund request");
+  if (event.isSuccess) {
+    await postSettlementJournal(tx, { ...ledger, refundSourceAccount: refund.sourceAccount });
+    await tx.$executeRaw(Prisma.sql`UPDATE refund_requests SET status='completed', updated_at=CURRENT_TIMESTAMP WHERE id=${refund.id}::uuid`);
+    await tx.notification.create({ data: { userId: refund.userId, title: "Refund Sent", body: `UGX ${Number(ledger.amount).toLocaleString()} has been refunded to your Mobile Money.`, type: "success" } });
+    return;
+  }
+  await tx.$executeRaw(Prisma.sql`UPDATE refund_requests SET status='failed', failure_reason='Provider declined or failed the refund', updated_at=CURRENT_TIMESTAMP WHERE id=${refund.id}::uuid`);
 }
