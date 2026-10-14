@@ -146,6 +146,19 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           {draft.business.latitude != null && draft.business.longitude != null && <Row label="Pinned GPS location" value={`${draft.business.latitude.toFixed(6)}, ${draft.business.longitude.toFixed(6)}`} />}
           <Row label="Months trading" value={String(draft.business.tradingMonths)} />
           <Row label="Customers" value={draft.business.customerType} />
+          <Row label="Sales frequency" value={draft.business.salesFrequency === "unknown" ? "Not specified" : draft.business.salesFrequency} />
+          <Row label="Main suppliers" value={draft.business.primarySuppliers || "Not provided"} />
+          <Row label="Supplier payment terms" value={draft.business.supplierPaymentTerms || "Not provided"} />
+          <Row label="Seasonality / risks" value={draft.business.seasonalPattern || "Not provided"} />
+          <Row label="Low-season monthly sales" value={draft.business.lowSeasonMonthlySales ? ugx(draft.business.lowSeasonMonthlySales) : "Not specified"} />
+          <Row label="Typical monthly business sales" value={ugx(draft.business.monthlySales)} />
+          <Row label="Monthly operating expenses" value={ugx(draft.business.monthlyBusinessExpenses)} />
+          <Row label="Stock purchases" value={ugx(draft.business.inventoryCost)} />
+          <Row label="Rent" value={ugx(draft.business.rentCost)} />
+          <Row label="Wages" value={ugx(draft.business.wagesCost)} />
+          <Row label="Other operating costs" value={ugx(draft.business.otherOperatingCosts)} />
+          <Row label="Existing debt repayments" value={ugx(draft.business.monthlyExistingDebt)} />
+          <Row label="Other creditors / debts" value={draft.business.otherDebtDetails || "Not provided"} />
           <Row label="Workers" value={String(draft.business.staffCount)} />
           <Row label="Loan use" value={draft.business.loanUse} />
           <Row label="Business repayment plan" value={draft.business.repaymentPlan} />
