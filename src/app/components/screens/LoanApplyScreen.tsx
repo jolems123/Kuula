@@ -19,7 +19,7 @@ const METHODS = [
   { id: "Airtel Money", label: "Airtel Money", icon: "📱" },
 ];
 const EMPTY_BUSINESS: BusinessDetails = {
-  businessName: "", sector: "", tradingAs: "informal", registrationNumber: "",
+  businessName: "", applicantPosition: "", locationSource: "none", locationCapturedAt: null, locationAccuracyMeters: null, sector: "", tradingAs: "informal", registrationNumber: "",
   tradingMonths: 0, district: "", physicalAddress: "", latitude: null, longitude: null, goodsOrServices: "",
   customerType: "", staffCount: 0, loanUse: "", repaymentPlan: "",
 };
@@ -52,6 +52,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
   const [saveError, setSaveError] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
+  const [manualLatitude, setManualLatitude] = useState("");
+  const [manualLongitude, setManualLongitude] = useState("");
   const [locationError, setLocationError] = useState("");
   const [error, setError] = useState("");
 
@@ -109,7 +111,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        setBusinessDetails((current) => ({ ...current, latitude: coords.latitude, longitude: coords.longitude }));
+        setBusinessDetails((current) => ({ ...current, latitude: coords.latitude, longitude: coords.longitude, locationSource: "gps", locationCapturedAt: new Date().toISOString(), locationAccuracyMeters: Math.round(coords.accuracy) }));
         setLocationLoading(false);
       },
       (geoError) => {
@@ -125,6 +127,27 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     );
   };
 
+  const setManualPin = () => {
+    setLocationError("");
+    const latitude = Number(manualLatitude);
+    const longitude = Number(manualLongitude);
+    if (!manualLatitude.trim() || !manualLongitude.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      setLocationError("Enter valid latitude (-90 to 90) and longitude (-180 to 180) to place the pin.");
+      return;
+    }
+    setBusinessDetails(current => ({ ...current, latitude, longitude, locationSource: "manual", locationCapturedAt: new Date().toISOString(), locationAccuracyMeters: null }));
+  };
+
+  const adjustPin = (latitudeOffset: number, longitudeOffset: number) => {
+    if (businessDetails.latitude == null || businessDetails.longitude == null) return;
+    setBusinessDetails(current => ({
+      ...current,
+      latitude: Math.max(-90, Math.min(90, current.latitude! + latitudeOffset)),
+      longitude: Math.max(-180, Math.min(180, current.longitude! + longitudeOffset)),
+      locationSource: "manual", locationAccuracyMeters: null, locationCapturedAt: new Date().toISOString(),
+    }));
+  };
+
   const continueToReview = () => {
     setError("");
     if (!canApply) { setError("No Growth Line is currently available. Complete the required Credit Pass steps and try again when Kuula shows available credit."); return; }
@@ -133,6 +156,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
       if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
     }
+    if (!businessDetails.applicantPosition.trim()) { setError("Select your role or position in the business."); return; }
     if (businessDetails.tradingAs === "registered" && !businessDetails.registrationNumber.trim()) {
       setError("Registered businesses must provide their business registration number."); return;
     }
@@ -262,15 +286,34 @@ export function LoanApplyScreen({ onNavigate }: Props) {
               <button type="button" onClick={captureBusinessLocation} disabled={locationLoading} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, minHeight: 42, marginTop: 12, padding: "0 13px", border: "1px solid #B7DEC9", borderRadius: 11, background: "white", color: "#0B5E3A", fontSize: 12, fontWeight: 700, opacity: locationLoading ? 0.65 : 1 }}>
                 <LocateFixed size={16} />{locationLoading ? "Finding your location…" : businessCoordinatesAvailable ? "Update my location" : "Use my current location"}
               </button>
+              <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#F2F8F4" }}>
+                <strong style={{ fontSize: 12, color: "#173D29" }}>Or place the pin using coordinates</strong>
+                <p style={{ margin: "5px 0", color: "#61736A", fontSize: 11 }}>If you are away from the premises, obtain the correct latitude and longitude from your map app. Do not use your home location for a separate business.</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <label style={{ flex: "1 1 110px", fontSize: 11 }}>Latitude
+                    <input aria-label="Business latitude" inputMode="decimal" type="number" step="any" min={-90} max={90} className="kx-input" style={{ width: "100%" }} value={manualLatitude} onChange={event => setManualLatitude(event.target.value)} placeholder="0.347596" />
+                  </label>
+                  <label style={{ flex: "1 1 110px", fontSize: 11 }}>Longitude
+                    <input aria-label="Business longitude" inputMode="decimal" type="number" step="any" min={-180} max={180} className="kx-input" style={{ width: "100%" }} value={manualLongitude} onChange={event => setManualLongitude(event.target.value)} placeholder="32.582520" />
+                  </label>
+                </div>
+                <button type="button" onClick={setManualPin} style={{ marginTop: 8, padding: "9px 13px", border: "1px solid #9CC9B0", background: "white", borderRadius: 9, color: "#0B5E3A", fontSize: 12, fontWeight: 700 }}>Place manual pin</button>
+              </div>
               {locationError && <p role="alert" style={{ margin: "9px 0 0", color: "#A13A3A", fontSize: 11, lineHeight: 1.5 }}>{locationError}</p>}
               {businessCoordinatesAvailable && <>
-                <p style={{ margin: "10px 0 8px", color: "#53635A", fontSize: 11 }}>Pinned coordinates: {businessDetails.latitude!.toFixed(6)}, {businessDetails.longitude!.toFixed(6)}</p>
+                <p style={{ margin: "10px 0 8px", color: "#53635A", fontSize: 11 }}>Pinned coordinates: {businessDetails.latitude!.toFixed(6)}, {businessDetails.longitude!.toFixed(6)} · {businessDetails.locationSource === "gps" ? `GPS accuracy ~${businessDetails.locationAccuracyMeters ?? "unknown"} m` : "Manually positioned"}</p>
                 <div style={{ width: "100%", height: 220, overflow: "hidden", border: "1px solid #DCE7E1", borderRadius: 12, background: "#EAF0EC" }}>
                   <iframe title="Map preview of pinned business location" src={businessMapUrl} loading="lazy" referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", border: 0 }} />
                 </div>
+                <div style={{ marginTop: 9, display: "flex", gap: 7, flexWrap: "wrap" }}>
+                  <button type="button" onClick={() => adjustPin(0.0001, 0)} aria-label="Move business pin north" className="kx-input">↑ North</button>
+                  <button type="button" onClick={() => adjustPin(-0.0001, 0)} aria-label="Move business pin south" className="kx-input">↓ South</button>
+                  <button type="button" onClick={() => adjustPin(0, -0.0001)} aria-label="Move business pin west" className="kx-input">← West</button>
+                  <button type="button" onClick={() => adjustPin(0, 0.0001)} aria-label="Move business pin east" className="kx-input">→ East</button>
+                </div>
                 <a href={`https://www.openstreetmap.org/?mlat=${businessDetails.latitude}&mlon=${businessDetails.longitude}#map=17/${businessDetails.latitude}/${businessDetails.longitude}`} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}>Open pin in map</a>
               </>}
-              <span style={{ display: "block", marginTop: 9, color: "#89948E", fontSize: 10, lineHeight: 1.45 }}>Map preview loads from OpenStreetMap only after you share your location. You can continue using the address without a GPS pin.</span>
+              <span style={{ display: "block", marginTop: 9, color: "#89948E", fontSize: 10, lineHeight: 1.45 }}>Map preview loads from OpenStreetMap only after you share your location. A business address is required; GPS capture is optional at this stage. Confirm the pin matches your real business premises.</span>
             </div>
             {businessTextField("Main products or services", "goodsOrServices", "What does the business sell or provide?")}
             {businessTextField("Who are your customers?", "customerType", "e.g. walk-in shoppers, farmers, contractors")}
