@@ -254,6 +254,8 @@ async function createLoanApplicationForUser(
       resourceId: application.id,
       metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose },
     });
+    await notifyLoanCustomer(userId, "Kuula business loan application submitted",
+      "Your business loan application was received and is awaiting assessment. Follow the review stages in Kuula.");
     return application;
   } catch (error) {
     if ((error as { code?: string })?.code === "P2002") throw new AppError("You already have an open loan or application", 409);
