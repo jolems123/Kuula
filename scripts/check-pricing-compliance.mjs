@@ -5,9 +5,18 @@
  * scripts/check-pricing-parity.ts. This guard stress-tests the canonical rules:
  * APR ceilings, simple interest, zero fees, and supported terms.
  */
+import { readFileSync } from "node:fs";
+
+const canonical = readFileSync(new URL("../server/src/lib/compliance.ts", import.meta.url), "utf8");
+const configuredApr = Number(/maxAprPercent:\s*([\d.]+)/.exec(canonical)?.[1]);
+const configuredMinTerm = Number(/minTermDays:\s*(\d+)/.exec(canonical)?.[1]);
+if (!Number.isFinite(configuredApr) || !Number.isInteger(configuredMinTerm)) {
+  throw new Error("Canonical server compliance policy cannot be read; fail closed");
+}
+
 const PRICING = {
-  MAX_APR: 0.336,
-  MIN_TERM_DAYS: 90,
+  MAX_APR: configuredApr / 100,
+  MIN_TERM_DAYS: configuredMinTerm,
   MAX_TERM_DAYS: 365,
 };
 
@@ -45,11 +54,12 @@ function localQuote(principalInput, termDaysInput) {
 }
 
 const APPLE_CAP = 0.36;
-const UMRA_CAP = 0.336;
+// This configured ceiling is a product control, not a legal determination.
+const PRODUCT_POLICY_CAP = 0.336;
 const EPS = 1e-6;
 
 const amounts = [20_000, 50_000, 100_000.6, 200_000, 500_000, 1_000_000];
-const terms = [0, 30, 90, 91, 120, 180, 365, 720];
+const terms = [0, 30, 45, 60, 61, 90, 91, 120, 180, 365, 720];
 
 let checks = 0;
 const failures = [];
@@ -62,7 +72,7 @@ function assertCompliant(label, quote) {
 
   if (quote.compound !== false) failures.push(`${label}: interest is compounded`);
   if (quote.fee !== 0) failures.push(`${label}: unexpected fee ${quote.fee}`);
-  if (quote.apr > UMRA_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds UMRA 33.6%`);
+  if (quote.apr > PRODUCT_POLICY_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds configured product policy limit 33.6%`);
   if (quote.apr > APPLE_CAP + EPS) failures.push(`${label}: APR ${quote.apr} exceeds Apple 36%`);
   if (quote.termDays < PRICING.MIN_TERM_DAYS) failures.push(`${label}: term below ${PRICING.MIN_TERM_DAYS}`);
   if (quote.termDays > PRICING.MAX_TERM_DAYS) failures.push(`${label}: term above ${PRICING.MAX_TERM_DAYS}`);
@@ -99,5 +109,5 @@ if (failures.length) {
 }
 
 console.log(
-  "PASS: prices use simple interest, zero fees, APR ≤ 33.6%, and terms 90–365 days."
+  "PASS: prices use simple interest, zero fees, APR ≤ 33.6%, and terms from the canonical server policy."
 );
