@@ -51,6 +51,10 @@ describe("loan application autosave", () => {
       ...draft,
       businessDetails: {
         businessName: "Kato Bakery",
+        applicantPosition: "Owner",
+        locationSource: "gps" as const,
+        locationCapturedAt: "2026-10-14T11:00:00.000Z",
+        locationAccuracyMeters: 15,
         sector: "Food and hospitality",
         tradingAs: "informal" as const,
         registrationNumber: "",
