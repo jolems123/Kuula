@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
@@ -282,6 +283,7 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   const application = await prisma.loanApplication.findUnique({ where: { id } });
   if (!application || !application.businessProfile) throw new AppError("Business loan application not found", 404);
   if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Application is no longer pending review", 409);
+  if (status === "verified") await assertBusinessPhotoEvidence(id);
   const updated = await prisma.loanApplication.update({
     where: { id },
     data: {
@@ -327,6 +329,7 @@ router.post(
     if (!application.underwriting) throw new AppError("Application has no underwriting assessment", 409);
 
     if (decision === "approved") {
+      if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
       await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
