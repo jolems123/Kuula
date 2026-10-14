@@ -36,11 +36,13 @@ export async function rotateRefreshSession(rawToken: string, userAgent?: string 
     where: { refreshTokenHash: currentHash },
     include: { user: true },
   });
-  if (!existing || existing.revokedAt || existing.expiresAt <= now || existing.user.deletedAt) return null;
+  if (!existing || existing.revokedAt || existing.expiresAt <= now || existing.user.deletedAt || !existing.user.phoneVerified) return null;
 
   const nextToken = newRefreshToken();
-  const rotated = await prisma.authSession.update({
-    where: { id: existing.id },
+  // Compare-and-swap prevents concurrent replay of the same refresh token and
+  // prevents a logout racing this rotation from reviving a revoked session.
+  const claimed = await prisma.authSession.updateMany({
+    where: { id: existing.id, refreshTokenHash: currentHash, revokedAt: null, expiresAt: { gt: now } },
     data: {
       refreshTokenHash: hashRefreshToken(nextToken),
       userAgent: userAgent?.slice(0, 255) || existing.userAgent,
@@ -48,7 +50,8 @@ export async function rotateRefreshSession(rawToken: string, userAgent?: string 
       expiresAt: refreshExpiry(now),
     },
   });
-  return { session: rotated, user: existing.user, refreshToken: nextToken };
+  if (claimed.count !== 1) return null;
+  return { session: { ...existing, refreshTokenHash: hashRefreshToken(nextToken), lastUsedAt: now, expiresAt: refreshExpiry(now) }, user: existing.user, refreshToken: nextToken };
 }
 
 export async function revokeAuthSession(sessionId: string, userId: string): Promise<void> {

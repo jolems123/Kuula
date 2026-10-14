@@ -68,7 +68,7 @@ runs. Launch it again to apply the PIN to an existing local demo account.
 
 ## Credit operations staff
 
-All staff use MFA code `246810` in the local-only environment.
+Staff sign in with their email and password; no sign-in code is required. New staff create a password from the staff sign-up screen after the Super Admin adds their email, then wait for approval in Staff Management. Customer phone verification and password/PIN recovery still use the local-only code `246810`.
 
 ### Level 1 — Field/Credit Officer
 

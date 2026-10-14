@@ -211,7 +211,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     setInviting(true);
     try {
       await api.inviteStaff(token, { fullName: inviteName.trim(), email: inviteEmail.trim().toLowerCase(), role: inviteRole });
-      setNotice(`Invitation sent to ${inviteEmail.trim()}. They activate it from the staff sign-in screen.`);
+      setNotice(`${inviteEmail.trim()} has been added. They create a password from staff sign-up, then you approve their access.`);
       setInviteName(""); setInviteEmail(""); setInviteRole("loan_officer"); setShowInvite(false);
       await load();
     } catch (e) {
@@ -248,22 +248,30 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     finally { setBusyId(null); }
   };
 
+  const approve = async (member: StaffMember) => {
+    if (!token || !window.confirm(`Approve access for ${member.fullName} (${member.email})? Confirm their identity independently before approving.`)) return;
+    setBusyId(member.id); setError("");
+    try { await api.approveStaff(token, member.id); setNotice(`${member.fullName} can now sign in.`); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not approve staff access."); }
+    finally { setBusyId(null); }
+  };
+
   const statusStyle = (status: StaffMember["status"]) => status === "active"
     ? { color: "#178654", background: "#F0FDF4" }
-    : status === "invited"
+    : status === "invited" || status === "pending_approval"
       ? { color: "#9B7410", background: "#FFF7D8" }
       : { color: "#9CA3AF", background: "#F3F4F6" };
 
   return (
     <AdminLayout activeScreen="admin-staff" onNavigate={onNavigate} title="Staff Management">
       <AdminPageHeader title="Staff Management" subtitle={`${staff.length} staff account${staff.length === 1 ? "" : "s"}`}
-        action={<button onClick={() => setShowInvite((v) => !v)} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Invite Staff</button>}
+        action={<button onClick={() => setShowInvite((v) => !v)} style={{ padding:"8px 14px",borderRadius:8,background:"#0B5E3A",color:"white",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6 }}><Plus size={14}/>Add staff</button>}
       />
       {showInvite && (
         <AdminCard style={{ marginBottom: 14 }}>
-          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 6px" }}>Invite a staff member</h3>
-          <p style={{ fontSize:12,color:"#64748B",margin:"0 0 14px" }}>They receive an SMS activation code on this phone number and choose their own password. The phone number becomes their sign-in.</p>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12 }}>
+          <h3 style={{ fontSize:14,fontWeight:700,margin:"0 0 6px" }}>Add a staff member</h3>
+          <p style={{ fontSize:12,color:"#64748B",margin:"0 0 14px" }}>Add their work email and role. They choose a password on staff sign-up. Confirm their identity, then approve access below. No signup code is required.</p>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 180px), 1fr))",gap:12 }}>
             <div>
               <label style={{ display:"block",fontSize:11,fontWeight:700,color:"#425149",marginBottom:5 }}>Full name</label>
               <input value={inviteName} onChange={(e)=>setInviteName(e.target.value)} placeholder="e.g. Alice Kabanda" style={{ width:"100%",height:42,padding:"0 12px",borderRadius:10,border:"1px solid #D5DED8" }}/>
@@ -280,7 +288,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
             </div>
           </div>
           <button onClick={invite} disabled={inviting} style={{ marginTop:14,padding:"10px 18px",borderRadius:10,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",color:"white",border:"none",fontSize:13,fontWeight:700,cursor:"pointer" }}>
-            {inviting ? "Sending invitation…" : "Send SMS Invitation"}
+            {inviting ? "Adding staff…" : "Add staff member"}
           </button>
         </AdminCard>
       )}
@@ -293,7 +301,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
           {staff.map((s)=>(
             <AdminCard key={s.id}>
-              <div style={{ display:"flex",alignItems:"center",gap:14 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:14,flexWrap:"wrap" }}>
                 <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center" }}>
                   <span style={{ fontSize:16,fontWeight:700,color:"white" }}>{(s.fullName || "KU").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}</span>
                 </div>
@@ -302,8 +310,9 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>{STAFF_ROLE_LABELS[s.role] ?? s.role} · {s.phone || s.email || "—"}</p>
                   <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>Added {new Date(s.createdAt).toLocaleDateString("en-UG", { month:"short", day:"numeric", year:"numeric" })}</p>
                 </div>
-                <div style={{ display:"flex",gap:8,alignItems:"center" }}>
-                  <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status}</span>
+                <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+                  <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status.replace(/_/g, " ")}</span>
+                  {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Approve access</button>}
                   {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
                   {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>void reactivate(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
                   {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (

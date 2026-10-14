@@ -4,11 +4,10 @@ import bcrypt from "bcryptjs";
 import prisma from "../lib/prisma.js";
 import {
   authenticateToken,
-  generateAdminChallenge,
+  INVITABLE_STAFF_ROLES,
   generateToken,
   isStaffRole,
   normalizeRole,
-  verifyAdminChallenge,
 } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { computeCreditScore } from "../lib/credit-score.js";
@@ -346,11 +345,7 @@ router.post("/login", async (req: Request, res: Response) => {
   res.json(await sessionResponse(user, req));
 });
 
-/**
- * Staff sign-in is phone-first: every staff account is invited and verified
- * against its Uganda phone number. An email address is still accepted for
- * legacy staff accounts created before phone-based sign-in.
- */
+/** Staff sign-in accepts work email; phone remains a legacy compatibility path. */
 async function findStaffByIdentifier(req: Request): Promise<User | null> {
   const identifier = String(req.body.identifier ?? req.body.phone ?? req.body.email ?? "").trim();
   if (!identifier) throw new AppError("Staff email and password are required", 400);
@@ -367,103 +362,39 @@ router.post("/admin-login", async (req: Request, res: Response) => {
   const user = await findStaffByIdentifier(req);
   if (!user || !isStaffRole(user.role) || user.deletedAt) throw new AppError("Invalid credentials", 401);
   if (!user.passwordHash) {
-    // Invited but never activated: resend the invite code instead of leaking
-    // the account state with a different error.
     if (user.email && !user.phoneVerified) {
-      await issueOtp(user, "staff_invite");
-      throw new AppError("This staff account is not activated yet. We sent a new activation code to its email — open “First time? Activate account”.", 409);
+      throw new AppError("Create your staff account from the sign-up screen first.", 409);
     }
     throw new AppError("Invalid credentials", 401);
   }
   await assertStaffPassword(user, supplied);
 
-  if (process.env.NODE_ENV === "test") {
-    res.json(await sessionResponse(user, req));
-    return;
-  }
-  if (!user.email || !user.phoneVerified) throw new AppError("Staff sign-in requires an activated work email account. Ask the Super Admin to re-invite this account.", 403);
-
-  await issueOtp(user, "admin_login");
-  const challengeToken = generateAdminChallenge({ userId: user.id, authVersion: user.authVersion });
-  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.admin_mfa_challenge", resourceType: "user", resourceId: user.id });
-  res.json({
-    requiresMfa: true,
-    challengeToken,
-    destination: user.email.replace(/^(.{2}).*(@.*)$/, "$1••••$2"),
-  });
+  if (!user.phoneVerified) throw new AppError("Your staff account is awaiting Super Admin approval.", 403);
+  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_login", resourceType: "user", resourceId: user.id });
+  res.json(await sessionResponse(user, req));
 });
 
-router.post("/admin-login/verify", async (req: Request, res: Response) => {
-  const challengeToken = typeof req.body.challengeToken === "string" ? req.body.challengeToken : "";
-  const challenge = verifyAdminChallenge(challengeToken);
-  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
-  if (!user || user.deletedAt || !isStaffRole(user.role) || user.authVersion !== challenge.authVersion) {
-    throw new AppError("Admin verification challenge is no longer valid", 401);
-  }
-  await assertOtp(user, "admin_login", req.body.code);
-  const updated = await prisma.user.update({ where: { id: user.id }, data: { ...clearOtp } });
-  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.admin_mfa_verified", resourceType: "user", resourceId: user.id });
-  res.json(await sessionResponse(updated, req));
-});
-
-router.post("/admin-login/resend", async (req: Request, res: Response) => {
-  const challengeToken = typeof req.body.challengeToken === "string" ? req.body.challengeToken : "";
-  const challenge = verifyAdminChallenge(challengeToken);
-  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
-  if (!user || user.deletedAt || !isStaffRole(user.role) || user.authVersion !== challenge.authVersion) {
-    throw new AppError("Admin verification challenge is no longer valid", 401);
-  }
-  await issueOtp(user, "admin_login");
-  res.json({ ok: true });
-});
-
-// ── Staff invitation acceptance ─────────────────────────────────────────────
-// The Super Admin invites staff by phone number (see /api/staff/invite). The
-// invitee activates the account here with the SMS code and a password of their
-// choice; afterwards the normal staff sign-in (phone + password + SMS code)
-// applies. Responses stay generic so the endpoint cannot enumerate which
-// phone numbers hold pending staff invitations.
-
-const GENERIC_INVITE_RESPONSE = {
-  ok: true,
-  message: "If that email has a pending staff invitation, a new activation code has been sent.",
-};
-
-router.post("/staff-invite/activate", async (req: Request, res: Response) => {
+// Password-only signup never grants staff access. The Super Admin must confirm
+// the person's identity independently before approving the account.
+router.post("/staff-signup", async (req: Request, res: Response) => {
   const email = normalizedEmail(req.body.email);
-  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
-  if (!user || user.deletedAt || !isStaffRole(user.role) || user.passwordHash || user.phoneVerified) {
-    throw new AppError("Invalid or expired activation code", 401);
-  }
-
+  if (!email) throw new AppError("Enter a valid work email address", 400);
   const newPassword = password(req.body.password);
-  await assertOtp(user, "staff_invite", req.body.code);
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash: await bcrypt.hash(newPassword, 12),
-      phoneVerified: true,
-      authVersion: { increment: 1 },
-      ...clearOtp,
-    },
+  if (req.body.confirmPassword !== newPassword) throw new AppError("Passwords do not match", 400);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const result = await prisma.user.updateMany({
+    where: { email, deletedAt: null, role: { in: [...INVITABLE_STAFF_ROLES] }, passwordHash: null, phoneVerified: false },
+    data: { passwordHash, authVersion: { increment: 1 }, ...clearOtp },
   });
-  await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_invite_activated", resourceType: "user", resourceId: user.id });
-  res.json(await sessionResponse(updated, req));
-});
-
-router.post("/staff-invite/resend", async (req: Request, res: Response) => {
-  const email = normalizedEmail(req.body.email);
-  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
-  if (user && !user.deletedAt && isStaffRole(user.role) && !user.passwordHash && !user.phoneVerified) {
-    await issueOtp(user, "staff_invite");
-  }
-  res.json(GENERIC_INVITE_RESPONSE);
+  if (result.count !== 1) throw new AppError("Ask the Super Admin to add your work email, or sign in if you already created an account.", 409);
+  await writeAuditEvent({ action: "auth.staff_signup_requested", resourceType: "user" });
+  res.status(201).json({ ok: true, message: "Account created. Ask the Super Admin to approve your staff access, then sign in with your email and password." });
 });
 
 router.post("/verify-phone", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
   const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user || user.deletedAt) throw new AppError("Invalid or expired code", 401);
+  if (!user || user.deletedAt || isStaffRole(user.role)) throw new AppError("Invalid or expired code", 401);
   if (user.phoneVerified) throw new AppError("Phone number is already verified", 409);
 
   await assertOtp(user, "phone_verify", req.body.code);
@@ -477,7 +408,7 @@ router.post("/verify-phone", async (req: Request, res: Response) => {
 router.post("/resend-otp", async (req: Request, res: Response) => {
   const phone = normalizedPhone(req.body.phone);
   const user = await prisma.user.findUnique({ where: { phone } });
-  if (!user || user.deletedAt || user.phoneVerified) {
+  if (!user || user.deletedAt || user.phoneVerified || isStaffRole(user.role)) {
     res.json({ ok: true });
     return;
   }

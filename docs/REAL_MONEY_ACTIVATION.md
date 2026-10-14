@@ -17,7 +17,7 @@ Status markers: ☐ not done · ☑ done (record who and when).
 | 1.5 | Railway's outbound IP(s) whitelisted in MarzPay (needed for `send-money` and `GET /balance`). | Engineering | ☐ |
 | 1.6 | MarzPay webhook **signing enabled**; its secret stored as `MARZPAY_WEBHOOK_SIGNATURE_SECRET`. In live mode every callback without a valid `X-MarzPay-Signature` is rejected. | Engineering | ☐ |
 | 1.7 | MarzPay wallet funded with lending capital; capital injection recorded by finance (the ledger does not yet post capital injections; record them in the books manually). | Finance | ☐ |
-| 1.8 | At least one `finance` staff account that is **not** a credit approver, with MFA phone verified. Payouts cannot be released without it. | Super admin | ☐ |
+| 1.8 | At least one `finance` staff account that is **not** a credit approver, with approved staff access and email/password sign-in. Payouts cannot be released without it. | Super admin | ☐ |
 | 1.9 | Branch protection on `main`: pull request required, all CI checks required, no force pushes. | Repository owner | ☐ |
 | 1.10 | Railway API token found in plain text in local scripts and in commit `9463453` (local branch `backup/pre-push-cleanup`) has been **rotated**. | Repository owner | ☐ |
 | 1.11 | Production database backup restored successfully into an isolated database (section 5). | Engineering | ☐ |

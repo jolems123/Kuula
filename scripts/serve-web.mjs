@@ -1,17 +1,24 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, "../dist");
 const port = Number(process.env.PORT || 3000);
+// Reuse the built policy, including its configured API origin. A second,
+// hardcoded header would intersect with the meta policy and block that API.
+const builtHtml = readFileSync(path.join(distDir, "index.html"), "utf8");
+const builtPolicy = builtHtml.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)?.[1];
+if (!builtPolicy) throw new Error("The built app is missing its Content Security Policy. Rebuild before serving.");
+const contentSecurityPolicy = `${builtPolicy}; frame-ancestors 'none'`;
 
 const app = express();
 app.disable("x-powered-by");
 app.use((_req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.kuulapp.com https://o1154186.ingest.us.sentry.io; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests",
+    contentSecurityPolicy,
   );
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Content-Type-Options", "nosniff");

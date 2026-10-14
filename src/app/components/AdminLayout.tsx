@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard, ClipboardCheck, FileText, Users, Building2, Landmark,
   BarChart3, Settings, MessageSquare, ChevronDown,
-  Bell, LogOut, Search, Menu, ArrowLeft, X, type LucideIcon,
+  LogOut, Search, Menu, ArrowLeft, X, type LucideIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAppContext } from "../context/AppContext";
+import { staffCanOpenScreen, staffHome } from "../lib/staff-routing";
 import { KuulaLogo } from "./brand/KuulaLogo";
 
 interface NavItem {
@@ -116,18 +117,13 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
     if (item.id === "admin-support") return ["super_admin", "administrator", "credit_manager", "loan_officer", "collections", "support", "admin", "manager", "officer"].includes(role);
     return false;
   };
-  const canChild = (id: string) => {
-    if (id === "admin-customer-kyc") return ["super_admin", "administrator", "admin", "credit_manager", "manager", "kyc_officer"].includes(role);
-    if (id === "admin-officer-assignment" || id === "admin-approval-workflow") return ["super_admin", "administrator", "admin", "credit_manager", "manager"].includes(role);
-    if (id === "admin-overdue-loans") return ["super_admin", "administrator", "admin", "credit_manager", "manager", "collections"].includes(role);
-    return true;
-  };
-  const sections = NAV.map((s) => ({ ...s, items: s.items.filter(can) })).filter((s) => s.items.length > 0);
+  const canChild = (id: string) => staffCanOpenScreen(id, state.role);
+  const sections = NAV.map((s) => ({ ...s, items: s.items.filter(can).filter(item => item.children ? item.children.some(child => canChild(child.id)) : canChild(item.id)) })).filter((s) => s.items.length > 0);
   const canSearch = ["super_admin", "administrator", "admin", "credit_manager", "final_approver", "loan_officer", "manager", "officer"].includes(role);
   const signOut = () => { logout(); navigate("/admin-login", { replace: true }); };
   const goBack = () => {
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
-    if (idx > 0) navigate(-1); else onNavigate("admin-dashboard");
+    if (idx > 0) navigate(-1); else onNavigate(staffHome(state.role).slice(1));
   };
 
   return (
@@ -199,7 +195,6 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
                 <Search size={16} strokeWidth={1.75} /><span>Search customers</span>
               </button>
             )}
-            <button type="button" className="kx-icon-btn" aria-label="Notifications"><Bell size={18} strokeWidth={1.75} /></button>
           </div>
         </header>
         <main className="kx-admin__content">{children}</main>

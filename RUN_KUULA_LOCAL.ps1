@@ -1,4 +1,4 @@
-﻿param(
+param(
   [switch]$SkipInstall,
   [switch]$NoBrowser,
   [switch]$NativePostgres
@@ -200,17 +200,14 @@ node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173 --strictPort
   Write-Host "Level 1 field officer" -ForegroundColor Cyan
   Write-Host "  Email:    officer-local@kuula.test"
   Write-Host "  Password: LocalOfficerPassword2026!"
-  Write-Host "  OTP:      246810"
   Write-Host ""
   Write-Host "Level 2 senior reviewer" -ForegroundColor Cyan
   Write-Host "  Email:    manager-local@kuula.test"
   Write-Host "  Password: LocalManagerPassword2026!"
-  Write-Host "  OTP:      246810"
   Write-Host ""
   Write-Host "Level 3 / admin" -ForegroundColor Cyan
   Write-Host "  Email:    admin-local@kuula.test"
   Write-Host "  Password: LocalAdminPassword2026!"
-  Write-Host "  OTP:      246810"
   Write-Host ""
   Write-Host "Local-only fake verified partner destinations (no real money):" -ForegroundColor Yellow
   Write-Host "  MTN:    +256700000010"

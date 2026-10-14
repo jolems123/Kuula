@@ -1,10 +1,9 @@
 /**
  * One-off production provisioning for the Kuula Super Admin.
  *
- * Staff accounts are phone-first: the Super Admin signs in with a verified
- * Uganda phone number and invites every other staff member from the staff
- * directory. This script creates (or repairs) that root account so the
- * invitation flow has a bootstrap identity.
+ * The Super Admin signs in with email and password and adds other staff from
+ * Staff Management. New staff choose a password and await independent approval.
+ * This script creates (or repairs) the protected root account.
  *
  * Usage:
  *   DATABASE_URL=... SUPERADMIN_PASSWORD="..." node scripts/provision-superadmin.mjs
@@ -29,8 +28,12 @@ if (!/^\+2567\d{8}$/.test(phone)) {
   console.error("SUPERADMIN_PHONE must be a Uganda number in +2567XXXXXXXX form");
   process.exit(1);
 }
-if (password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-  console.error("SUPERADMIN_PASSWORD must be at least 12 characters with letters and numbers");
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  console.error("SUPERADMIN_EMAIL must be a valid email address");
+  process.exit(1);
+}
+if (password.length < 12 || password.length > 72 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+  console.error("SUPERADMIN_PASSWORD must be 12–72 characters with letters and numbers");
   process.exit(1);
 }
 

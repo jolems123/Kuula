@@ -10,7 +10,6 @@ import { LoginScreen } from "../components/screens/LoginScreen";
 import { SignUpScreen } from "../components/screens/SignUpScreen";
 import { PhoneVerifyScreen } from "../components/screens/PhoneVerifyScreen";
 import { AdminLoginScreen } from "../components/screens/AdminLoginScreen";
-import { AdminOTPScreen } from "../components/screens/AdminOTPScreen";
 import { AdminActivateScreen } from "../components/screens/AdminActivateScreen";
 
 export type ScreenAccess = "public" | "customer" | "admin";
@@ -63,7 +62,7 @@ const SCREENS: Record<string, ScreenEntry> = {
   "customer-terms": { access: "public", load: () => import("../components/screens/ExtraCriticalScreens").then((m) => ({ default: m.CustomerTermsScreen })) },
   "admin-login": { access: "public", component: AdminLoginScreen },
   "admin-activate": { access: "public", component: AdminActivateScreen },
-  "admin-otp": { access: "public", component: AdminOTPScreen },
+  "admin-otp": { access: "public", component: AdminLoginScreen },
   "admin-dashboard": { access: "admin", load: () => import("../components/screens/AdminDashboardScreen").then((m) => ({ default: m.AdminDashboardScreen })) },
   "admin-loan-apps": { access: "admin", load: () => import("../components/screens/AdminLoanScreens").then((m) => ({ default: m.AdminLoanAppsListScreen })) },
   "admin-active-loans": { access: "admin", load: () => import("../components/screens/AdminLoanScreens").then((m) => ({ default: m.AdminActiveLoansListScreen })) },

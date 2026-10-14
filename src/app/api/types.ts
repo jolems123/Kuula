@@ -13,12 +13,6 @@ export interface SessionPayload {
   unreadNotifications: number;
 }
 
-export interface AdminMfaPayload {
-  requiresMfa: true;
-  challengeToken: string;
-  destination: string;
-}
-
 export type StaffRole =
   | "administrator"
   | "credit_manager"
@@ -42,7 +36,7 @@ export interface StaffMember {
   phoneVerified: boolean;
   createdAt: string;
   deletedAt: string | null;
-  status: "active" | "invited" | "deactivated";
+  status: "active" | "invited" | "pending_approval" | "deactivated";
 }
 
 export interface BusinessProfile {

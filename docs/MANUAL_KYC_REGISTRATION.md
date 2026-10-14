@@ -4,6 +4,12 @@ New customers sign up with phone, PIN and NIN, verify the SMS code, then submit
 their Uganda National ID **front**, **back**, and a personal **portrait photograph**.
 No Smile ID loader/token is used in the new customer-facing registration journey.
 
+Before submission, each photo has a **Remove photo** control. Removing a photo
+clears its preview and selection, including a pending conversion. Customers can
+select it again or replace it. Cancelling the file picker preserves the previous
+photo. Removal here applies to unsubmitted photos; submitted identity records
+remain subject to the documented retention and review process.
+
 Images are validated by signature/type and size, transmitted over HTTPS as
 authenticated JSON, stored privately with server-side encryption in S3 in
 production, and referenced by a versioned pending KYC submission.

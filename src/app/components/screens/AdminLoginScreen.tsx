@@ -1,10 +1,10 @@
 import { Eye, EyeOff, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useAppContext } from "../../context/AppContext";
+import { staffHome } from "../../lib/staff-routing";
 import { api, ApiError } from "../../api/client";
 import { useTranslation } from "react-i18next";
 import { adminLoginLimiter } from "../../lib/rate-limiter";
-import { setAdminMfaChallenge } from "../../lib/selection";
 import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
 import { authRecoveryApi } from "../../api/auth-recovery";
@@ -77,6 +77,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
+    if (loading) return;
     setError(""); setNotice("");
     const identifier = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier) || !pw) { setError("Enter your staff email and password."); return; }
@@ -86,13 +87,8 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     try {
       const result = await api.adminLogin(identifier, pw);
       adminLoginLimiter.reset();
-      if ("requiresMfa" in result && result.requiresMfa) {
-        setAdminMfaChallenge({ challengeToken: result.challengeToken, destination: result.destination });
-        onNavigate("admin-otp");
-      } else {
-        finishSession(result);
-        onNavigate("admin-dashboard");
-      }
+      finishSession(result);
+      onNavigate(staffHome(result.role).slice(1));
     } catch (e) { setError(e instanceof ApiError ? e.message : "Sign in failed. Try again."); }
     finally { setLoading(false); }
   };
@@ -125,7 +121,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
         </div>
 
         <div className="kx-auth-row">
-          <button type="button" className="kx-link" onClick={() => onNavigate("admin-activate")}>First time? Activate account</button>
+          <button type="button" className="kx-link" onClick={() => onNavigate("admin-activate")}>New staff member? Create account</button>
           <button type="button" className="kx-link" onClick={resetPw}>Forgot password?</button>
         </div>
 
@@ -133,7 +129,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
           {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>}
           {notice && <div className="kx-alert kx-alert--success" role="status"><CheckCircle2 size={16} />{notice}</div>}
           <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={loading || locked}>
-            {loading ? <><span className="kx-spinner" />Checking…</> : locked ? `Locked · ${formatLockout(lockoutRemaining)}` : "Continue"}
+            {loading ? <><span className="kx-spinner" />Signing in…</> : locked ? `Locked · ${formatLockout(lockoutRemaining)}` : "Sign in"}
           </button>
         </div>
       </form>
@@ -142,7 +138,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
         <form onSubmit={confirmReset} noValidate style={{ marginTop: 18 }}>
           <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Set a new password</h3>
           <div className="kx-field">
-            <label className="kx-label" htmlFor="staff-reset-code">Code from SMS</label>
+            <label className="kx-label" htmlFor="staff-reset-code">Code from email</label>
             <div className="kx-control"><input id="staff-reset-code" className="kx-input" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" /></div>
           </div>
           <div className="kx-field">
@@ -162,7 +158,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
       <div className="kx-auth-foot">
         <ShieldCheck size={16} />
-        <span>We'll email a 6-digit verification code to your registered staff address.</span>
+        <span>Sign in with your approved staff email and password.</span>
       </div>
     </AuthLayout>
   );

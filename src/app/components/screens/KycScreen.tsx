@@ -1,5 +1,5 @@
-import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User, RefreshCcw } from "lucide-react";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User, RefreshCcw, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { api, ApiError } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
 import { isValidUgandaNin, normalizeNin } from "../../lib/nin";
@@ -58,8 +58,8 @@ function readImage(file: File): Promise<string> {
 }
 
 /** Browser or native webview camera capture. Photos remain in memory until submission. */
-function PhotoField({ kind, label, hint, file, onPick }: {
-  kind: ImageSide; label: string; hint: string; file: File | null; onPick: (side: ImageSide, file: File | null) => void;
+export function PhotoField({ kind, label, hint, file, onPick, busy = false, disabled = false }: {
+  kind: ImageSide; label: string; hint: string; file: File | null; onPick: (side: ImageSide, file: File | null) => void; busy?: boolean; disabled?: boolean;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
@@ -69,18 +69,21 @@ function PhotoField({ kind, label, hint, file, onPick }: {
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const change = (e: ChangeEvent<HTMLInputElement>) => {
-    onPick(kind, e.target.files?.[0] ?? null);
+    const selected = e.target.files?.[0];
+    if (selected) onPick(kind, selected);
     e.target.value = "";
   };
   return (
-    <label className="kx-field" style={{ display: "block", border: "1px solid #D5E8DA", borderRadius: 14, padding: 13, background: "rgba(255,255,255,.08)" }}>
-      <span className="kx-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><Camera size={16} />{label}</span>
+    <div className="kx-field" style={{ display: "block", border: "1px solid #D5E8DA", borderRadius: 14, padding: 13, background: "rgba(255,255,255,.08)" }}>
+      <label htmlFor={`kyc-photo-${kind}`} className="kx-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><Camera size={16} />{label}</label>
       <span className="kx-hint" style={{ display: "block", margin: "5px 0 9px" }}>{hint}</span>
-      <input type="file" name={kind} accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture={kind === "portrait" ? "user" : "environment"}
+      <input id={`kyc-photo-${kind}`} type="file" name={kind} disabled={disabled} accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture={kind === "portrait" ? "user" : "environment"}
         onChange={change} aria-label={label} style={{ maxWidth: "100%", fontSize: 13 }} />
       {preview && <img src={preview} alt={label + " preview"} style={{ width: "100%", maxHeight: 170, objectFit: "contain", marginTop: 10, borderRadius: 10 }} />}
       {file && <span className="kx-hint" style={{ display: "block", marginTop: 7 }}>Selected · {(file.size / 1024 / 1024).toFixed(2)} MB</span>}
-    </label>
+      {busy && <span className="kx-hint" role="status">Preparing photo…</span>}
+      {(file || busy) && <button type="button" className="kx-btn kx-btn--secondary" style={{ marginTop: 10 }} disabled={disabled} aria-label={`Remove ${label}`} onClick={() => onPick(kind, null)}><Trash2 size={16} />Remove photo</button>}
+    </div>
   );
 }
 
@@ -92,6 +95,9 @@ export function KycScreen({ onNavigate }: Props) {
   const [dob, setDob] = useState(state.user?.dateOfBirth?.slice(0, 10) ?? "");
   const [step, setStep] = useState(1);
   const [pictures, setPictures] = useState<Pictures>({ front: null, back: null, portrait: null });
+  const photoVersions = useRef<Record<ImageSide, number>>({ front: 0, back: 0, portrait: 0 });
+  const [preparing, setPreparing] = useState<Record<ImageSide, boolean>>({ front: false, back: false, portrait: false });
+  const preparingPhotos = Object.values(preparing).some(Boolean);
   const [photoConsent, setPhotoConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -117,22 +123,28 @@ export function KycScreen({ onNavigate }: Props) {
   }, [token]);
 
   const selectPhoto = async (side: ImageSide, file: File | null) => {
+    if (submitting) return;
+    const version = ++photoVersions.current[side];
     setError("");
+    setPreparing(previous => ({ ...previous, [side]: Boolean(file) }));
     if (!file) { setPictures(previous => ({ ...previous, [side]: null })); return; }
     try {
       if (!CONVERTIBLE_TYPES.has(file.type) || file.size < 32) throw new Error("unsupported");
       const prepared = await prepareIdPhoto(file);
+      if (photoVersions.current[side] !== version) return;
       if (!ALLOWED_TYPES.has(prepared.type) || prepared.size > MAX_BYTES) throw new Error("too large");
       setPictures(previous => ({ ...previous, [side]: prepared }));
     } catch {
+      if (photoVersions.current[side] !== version) return;
       setError("This photo could not be used. Take it again, or choose a JPG or PNG photo.");
-      setPictures(previous => ({ ...previous, [side]: null }));
+    } finally {
+      if (photoVersions.current[side] === version) setPreparing(previous => ({ ...previous, [side]: false }));
     }
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (submitting || checking) return;
+    if (submitting || checking || preparingPhotos) return;
     setError("");
     if (!token) { setError("Please sign in again to submit your identity documents."); return; }
     if (step === 1) {
@@ -196,9 +208,9 @@ export function KycScreen({ onNavigate }: Props) {
         </>}
         {step === 2 && <div className="kx-auth-stack">
           <div className="kx-alert kx-alert--info"><Shield size={18} /><span>Your ID and portrait are private. There is no automatic photo-based identity approval. An authorized Kuula officer reviews your submission.</span></div>
-          <PhotoField kind="front" label="Front of National ID" hint="Show all four corners and readable text." file={pictures.front} onPick={selectPhoto} />
-          <PhotoField kind="back" label="Back of National ID" hint="Keep the reverse side fully visible, without glare." file={pictures.back} onPick={selectPhoto} />
-          <PhotoField kind="portrait" label="Your portrait photograph" hint="Look straight at the camera, without sunglasses, in good lighting." file={pictures.portrait} onPick={selectPhoto} />
+          <PhotoField kind="front" label="Front of National ID" hint="Show all four corners and readable text." file={pictures.front} onPick={selectPhoto} busy={preparing.front} disabled={submitting} />
+          <PhotoField kind="back" label="Back of National ID" hint="Keep the reverse side fully visible, without glare." file={pictures.back} onPick={selectPhoto} busy={preparing.back} disabled={submitting} />
+          <PhotoField kind="portrait" label="Your portrait photograph" hint="Look straight at the camera, without sunglasses, in good lighting." file={pictures.portrait} onPick={selectPhoto} busy={preparing.portrait} disabled={submitting} />
           <label className="kx-terms" style={{ display: "flex", gap: 12, padding: 8 }}>
             <input type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} />
             <span>I consent to Kuula collecting and securely storing my National ID photographs and portrait for manual identity review. I understand that these images are sensitive personal data.</span>
@@ -207,8 +219,8 @@ export function KycScreen({ onNavigate }: Props) {
         {step === 3 && <div className="kx-alert kx-alert--success"><CheckCircle size={20} /><span>{status === "verified" ? "Verified. You can continue with Kuula." : "Under review. You can return to your dashboard and track verification status."}</span></div>}
         <div className="kx-auth-stack" style={{ marginTop: 22 }}>
           {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
-          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={submitting || checking}>
-            {submitting ? "Uploading securely…" : checking ? "Checking status…" : step === 1 ? "Continue to photos" : step === 2 ? "Submit ID and portrait" : "Go to dashboard"} <ArrowRight size={18} />
+          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={submitting || checking || preparingPhotos}>
+            {submitting ? "Uploading securely…" : checking ? "Checking status…" : preparingPhotos ? "Preparing photos…" : step === 1 ? "Continue to photos" : step === 2 ? "Submit ID and portrait" : "Go to dashboard"} <ArrowRight size={18} />
           </button>
         </div>
         <div className="kx-auth-foot"><Shield size={16} /><span>Kuula keeps identity records private and uses them only for lawful identity checks and credit assessment.</span></div>

@@ -8,7 +8,6 @@ import {
 } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
-import { issueOtpForUser } from "../lib/otp-service.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { listAuthorityLimits, setAuthorityLimit } from "../lib/credit-authority.js";
 import { roleLevel } from "../lib/credit-roles.js";
@@ -53,6 +52,7 @@ const STAFF_SELECT = {
   email: true,
   role: true,
   phoneVerified: true,
+  passwordHash: true,
   createdAt: true,
   deletedAt: true,
 } as const;
@@ -64,13 +64,13 @@ router.get("/", async (_req: Request, res: Response) => {
     orderBy: { createdAt: "asc" },
   });
   res.json({
-    staff: staff.map((member) => ({
+    staff: staff.map(({ passwordHash, ...member }) => ({
       ...member,
       status: member.deletedAt
         ? "deactivated"
         : member.phoneVerified
           ? "active"
-          : "invited",
+          : passwordHash ? "pending_approval" : "invited",
     })),
   });
 });
@@ -89,8 +89,7 @@ router.post("/invite", async (req: Request, res: Response) => {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing && !existing.deletedAt) {
     if (isStaffRole(existing.role) && !existing.passwordHash && !existing.phoneVerified) {
-      // Pending invitation for this number — resend the activation code.
-      await issueOtpForUser(existing, "staff_invite");
+      // The staff member creates a password; no expiring invitation is needed.
       await writeAuditEvent({
         actorId: req.user!.userId,
         subjectUserId: existing.id,
@@ -113,7 +112,6 @@ router.post("/invite", async (req: Request, res: Response) => {
       passwordHash: null,
     },
   });
-  await issueOtpForUser(user, "staff_invite");
 
   await writeAuditEvent({
     actorId: req.user!.userId,
@@ -125,7 +123,19 @@ router.post("/invite", async (req: Request, res: Response) => {
   });
 
   const created = await prisma.user.findUnique({ where: { id: user.id }, select: STAFF_SELECT });
-  res.status(201).json({ ok: true, staff: { ...created!, status: "invited" } });
+  const { passwordHash: _passwordHash, ...safeCreated } = created!;
+  res.status(201).json({ ok: true, staff: { ...safeCreated, status: "invited" } });
+});
+
+router.post("/:id/approve", async (req: Request, res: Response) => {
+  const targetId = String(req.params.id ?? "");
+  const result = await prisma.user.updateMany({
+    where: { id: targetId, deletedAt: null, phoneVerified: false, passwordHash: { not: null }, role: { in: [...INVITABLE_STAFF_ROLES] } },
+    data: { phoneVerified: true, authVersion: { increment: 1 } },
+  });
+  if (result.count !== 1) throw new AppError("Staff account is not awaiting approval", 409);
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId });
+  res.json({ ok: true });
 });
 
 router.post("/:id/deactivate", async (req: Request, res: Response) => {
@@ -164,9 +174,14 @@ router.patch("/:id", async (req: Request, res: Response) => {
   if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the staff member's full name", 400);
   if (!(INVITABLE_STAFF_ROLES as readonly string[]).includes(role)) throw new AppError(`Role must be one of: ${INVITABLE_STAFF_ROLES.join(", ")}`, 400);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("Enter a valid email address", 400);
-  const updated = await prisma.user.update({ where: { id: target.id }, data: { fullName, email, role }, select: STAFF_SELECT });
+  const updated = await prisma.$transaction(async tx => {
+    const member = await tx.user.update({ where: { id: target.id }, data: { fullName, email, role, authVersion: { increment: 1 } }, select: STAFF_SELECT });
+    await tx.authSession.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    return member;
+  });
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.updated", resourceType: "user", resourceId: target.id, metadata: { previousRole: target.role, role } });
-  res.json({ staff: { ...updated, status: updated.deletedAt ? "deactivated" : updated.phoneVerified ? "active" : "invited" } });
+  const { passwordHash, ...safeUpdated } = updated;
+  res.json({ staff: { ...safeUpdated, status: updated.deletedAt ? "deactivated" : updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
 });
 
 router.post("/:id/reactivate", async (req: Request, res: Response) => {
@@ -176,7 +191,8 @@ router.post("/:id/reactivate", async (req: Request, res: Response) => {
   if (target.role === "super_admin") throw new AppError("The Super Admin profile is protected", 400);
   const updated = await prisma.user.update({ where: { id: target.id }, data: { deletedAt: null, authVersion: { increment: 1 } }, select: STAFF_SELECT });
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.reactivated", resourceType: "user", resourceId: target.id });
-  res.json({ ok: true, staff: { ...updated, status: updated.phoneVerified ? "active" : "invited" } });
+  const { passwordHash, ...safeUpdated } = updated;
+  res.json({ ok: true, staff: { ...safeUpdated, status: updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
 });
 
 export default router;

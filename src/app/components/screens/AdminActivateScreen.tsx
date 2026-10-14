@@ -1,56 +1,36 @@
 import { Eye, EyeOff, UserRoundCheck, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { staffUiTier, useAppContext } from "../../context/AppContext";
 import { api, ApiError } from "../../api/client";
-import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
 
 interface Props { onNavigate: (s: string) => void; }
 
-/** Staff activation through an emailed one-time code. */
+/** Password-only staff signup, followed by independent Super Admin approval. */
 export function AdminActivateScreen({ onNavigate }: Props) {
-  const { login } = useAppContext();
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const resend = async () => {
-    setError(""); setNotice("");
-    const staffEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail)) { setError("Enter the work email address your invitation was sent to."); return; }
-    setResending(true);
-    try {
-      const r = await api.resendStaffInvite(staffEmail);
-      setNotice(r.message || "If that email has a pending staff invitation, a new activation code has been sent.");
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not send the activation code.");
-    } finally { setResending(false); }
-  };
-
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
+    if (loading || notice) return;
     setError(""); setNotice("");
     const staffEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail)) { setError("Enter the work email address the invitation was sent to."); return; }
-    if (!/^\d{6}$/.test(code.trim())) { setError("Enter the 6-digit activation code from your email."); return; }
-    if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) { setError("Password must be at least 8 characters with a letter and a number."); return; }
+    if (pw.length < 8 || pw.length > 72 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) { setError("Password must be 8–72 characters with a letter and a number."); return; }
     if (pw !== pw2) { setError("Passwords do not match."); return; }
 
     setLoading(true);
     try {
-      const s = await api.activateStaffInvite(staffEmail, code.trim(), pw);
-      const expiresAt = Date.now() + (s.accessExpiresInSeconds ?? 900) * 1000;
-      if (s.refreshToken) storeSessionTokens({ accessToken: s.token, refreshToken: s.refreshToken, accessExpiresAt: expiresAt });
-      login(s.token, s.user, s.credit, s.loan, s.role, s.messages, s.unreadNotifications, expiresAt);
-      onNavigate(staffUiTier(s.role) === "officer" ? "admin-officer-dashboard" : "admin-dashboard");
+      const result = await api.staffSignUp(staffEmail, pw, pw2);
+      setPw(""); setPw2("");
+      setNotice(result.message);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Activation failed. Request a new code and try again.");
+      setError(e instanceof ApiError ? e.message : "Could not create your account. Try again.");
     } finally { setLoading(false); }
   };
 
@@ -58,8 +38,8 @@ export function AdminActivateScreen({ onNavigate }: Props) {
     <AuthLayout logoSubtitle="Staff portal" onBack={() => onNavigate("admin-login")} backLabel="Back to sign in">
       <div className="kx-auth-head">
         <div className="kx-auth-head__icon"><UserRoundCheck size={22} /></div>
-        <h2>Activate your account</h2>
-        <p>Use your invited work email address, then choose a password.</p>
+        <h2>Create your staff account</h2>
+        <p>Enter your work email, choose a password, and confirm it.</p>
       </div>
 
       <form onSubmit={submit} noValidate>
@@ -67,18 +47,6 @@ export function AdminActivateScreen({ onNavigate }: Props) {
           <label className="kx-label" htmlFor="invite-phone">Work email address</label>
           <div className="kx-control">
             <input id="invite-phone" className="kx-input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="you@kuulapp.com" autoFocus />
-          </div>
-        </div>
-
-        <div className="kx-field">
-          <label className="kx-label" htmlFor="invite-code">Activation code</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div className="kx-control" style={{ flex: 1 }}>
-              <input id="invite-code" className="kx-input" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" />
-            </div>
-            <button type="button" className="kx-btn kx-btn--secondary" style={{ height: 46 }} onClick={resend} disabled={resending}>
-              {resending ? "Sending…" : "Send code"}
-            </button>
           </div>
         </div>
 
@@ -103,15 +71,16 @@ export function AdminActivateScreen({ onNavigate }: Props) {
         <div className="kx-auth-stack" style={{ marginTop: 24 }}>
           {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>}
           {notice && <div className="kx-alert kx-alert--success" role="status"><CheckCircle2 size={16} />{notice}</div>}
-          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={loading}>
-            {loading ? <><span className="kx-spinner" />Activating…</> : "Activate account"}
+          <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={loading || Boolean(notice)}>
+            {loading ? <><span className="kx-spinner" />Creating account…</> : "Create account"}
           </button>
+          <button type="button" className="kx-link" onClick={() => onNavigate("admin-login")}>Already have an account? Sign in</button>
         </div>
       </form>
 
       <div className="kx-auth-foot">
         <ShieldCheck size={16} />
-        <span>Only work email addresses invited by the Super Admin can be activated.</span>
+        <span>Your work email must be added by the Super Admin. Staff access requires their approval after signup.</span>
       </div>
     </AuthLayout>
   );

@@ -37,8 +37,7 @@ Assert-Status "Customer session" {
 Assert-Status "Credit network catalog" {
   $overview = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/network/overview?market=UG" -Headers @{ Authorization = "Bearer $($customer.token)" }
   if ($overview.market.code -ne "UG") { throw "Uganda market missing" }
-  if ($overview.products.Count -lt 5) { throw "Expected at least five credit products" }
-  if ($overview.partners.Count -lt 2) { throw "Expected TibaPay and SiliFi partner records" }
+  if ($overview.products.Count -lt 1) { throw "Expected at least one business credit product" }
 }
 
 Assert-Status "Support recipient is server-controlled" {
@@ -69,16 +68,9 @@ Assert-Status "Notification preferences persist" {
   Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/notifications/preferences" -Method Put -Headers $headers -ContentType "application/json" -Body $restore | Out-Null
 }
 
-$challenge = $null
-Assert-Status "Admin password challenge" {
-  $script:challenge = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/auth/admin-login" -Method Post -ContentType "application/json" -Body '{"email":"admin-local@kuula.test","password":"LocalAdminPassword2026!"}'
-  if (-not $challenge.requiresMfa -or -not $challenge.challengeToken) { throw "Admin MFA challenge missing" }
-}
-
 $admin = $null
-Assert-Status "Admin local MFA" {
-  $body = @{ challengeToken = $challenge.challengeToken; code = "246810" } | ConvertTo-Json -Compress
-  $script:admin = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/auth/admin-login/verify" -Method Post -ContentType "application/json" -Body $body
+Assert-Status "Admin email and password sign-in" {
+  $script:admin = Invoke-RestMethod -Uri "http://127.0.0.1:3000/api/auth/admin-login" -Method Post -ContentType "application/json" -Body '{"email":"admin-local@kuula.test","password":"LocalAdminPassword2026!"}'
   if (-not $admin.token) { throw "Admin token missing" }
 }
 

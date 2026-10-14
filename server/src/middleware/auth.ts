@@ -200,14 +200,14 @@ export async function authenticateToken(
     const [user, session] = await Promise.all([
       prisma.user.findUnique({
         where: { id: candidate.userId },
-        select: { role: true, authVersion: true, deletedAt: true },
+        select: { role: true, authVersion: true, deletedAt: true, phoneVerified: true },
       }),
       prisma.authSession.findUnique({
         where: { id: candidate.sessionId },
         select: { userId: true, revokedAt: true, expiresAt: true },
       }),
     ]);
-    if (!user || user.deletedAt || !session || session.userId !== candidate.userId) {
+    if (!user || user.deletedAt || !user.phoneVerified || !session || session.userId !== candidate.userId) {
       res.status(401).json({ error: "Session is no longer valid" });
       return;
     }

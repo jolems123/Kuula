@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import type { ResolvedConfig } from 'vite'
 
 
 function figmaAssetResolver() {
@@ -33,6 +34,30 @@ function robotsMetaPlugin() {
   };
 }
 
+// The packaged app must allow the same API origin that its client uses.
+// Otherwise a valid Railway/custom API URL is silently blocked by the browser.
+function configuredApiCspPlugin() {
+  let apiOrigin = '';
+  return {
+    name: 'configured-api-csp',
+    configResolved(config: ResolvedConfig) {
+      const value = config.env.VITE_API_BASE_URL;
+      if (!value) return;
+      const api = new URL(value);
+      if (!['https:', 'http:'].includes(api.protocol)) throw new Error('API URL must use HTTP or HTTPS');
+      apiOrigin = api.origin;
+    },
+    transformIndexHtml(html: string) {
+      if (!apiOrigin) return html;
+      return html.replace(/connect-src ([^;]+);/, (_match, sources: string) => {
+        const origins = new Set(sources.trim().split(/\s+/));
+        origins.add(apiOrigin);
+        return `connect-src ${[...origins].join(' ')};`;
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
@@ -41,6 +66,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     robotsMetaPlugin(),
+    configuredApiCspPlugin(),
   ],
   resolve: {
     alias: {

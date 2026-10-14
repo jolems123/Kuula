@@ -4,7 +4,6 @@ import type { Message, UserProfile } from "../context/AppContext";
 import {
   ApiError,
   type SessionPayload,
-  type AdminMfaPayload,
   type LoanApplication,
   type LoanQuote,
   type CreditScore,
@@ -23,7 +22,6 @@ import type { AdminStats, InvestorReport, CustomerRow, AppNotification } from ".
 export { ApiError };
 export type {
   SessionPayload,
-  AdminMfaPayload,
   LoanApplication,
   LoanQuote,
   CreditScore,
@@ -39,6 +37,19 @@ export type {
 
 // Large images may require longer on mobile networks.
 const KYC_UPLOAD_TIMEOUT_MS = 90_000;
+type RefreshPayload = { token: string; refreshToken: string; accessExpiresInSeconds: number };
+const pendingRefreshes = new Map<string, Promise<RefreshPayload>>();
+
+// Session bootstrap and scheduled refresh can overlap, including in React
+// StrictMode. Share one rotation so single-use refresh tokens are not replayed.
+function refreshSession(refreshToken: string): Promise<RefreshPayload> {
+  const pending = pendingRefreshes.get(refreshToken);
+  if (pending) return pending;
+  const operation = request<RefreshPayload>("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) })
+    .finally(() => pendingRefreshes.delete(refreshToken));
+  pendingRefreshes.set(refreshToken, operation);
+  return operation;
+}
 
 let apiBaseUrl = env.API_BASE_URL;
 let apiTimeoutMs = env.API_TIMEOUT_MS;
@@ -84,17 +95,15 @@ const nodeApi = {
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
-  adminLogin: (identifier: string, password: string) => request<SessionPayload | AdminMfaPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
-  verifyAdminMfa: (challengeToken: string, code: string) => request<SessionPayload>("/api/auth/admin-login/verify", { method: "POST", body: JSON.stringify({ challengeToken, code }) }),
-  resendAdminMfa: (challengeToken: string) => request<{ ok: boolean }>("/api/auth/admin-login/resend", { method: "POST", body: JSON.stringify({ challengeToken }) }),
-  activateStaffInvite: (email: string, code: string, password: string) => request<SessionPayload>("/api/auth/staff-invite/activate", { method: "POST", body: JSON.stringify({ email, code, password }) }),
-  resendStaffInvite: (email: string) => request<{ ok: boolean; message?: string }>("/api/auth/staff-invite/resend", { method: "POST", body: JSON.stringify({ email }) }),
+  adminLogin: (identifier: string, password: string) => request<SessionPayload>("/api/auth/admin-login", { method: "POST", body: JSON.stringify({ identifier, password }) }),
+  staffSignUp: (email: string, password: string, confirmPassword: string) => request<{ ok: boolean; message: string }>("/api/auth/staff-signup", { method: "POST", body: JSON.stringify({ email, password, confirmPassword }) }),
+  approveStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/approve`, { method: "POST", headers: auth(token) }),
   listStaff: (token: string) => request<{ staff: StaffMember[] }>("/api/staff", { headers: auth(token) }),
   inviteStaff: (token: string, input: { fullName: string; email: string; role: string }) => request<{ ok: boolean; staff: StaffMember }>("/api/staff/invite", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   deactivateStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/deactivate`, { method: "POST", headers: auth(token) }),
   reactivateStaff: (token: string, id: string) => request<{ ok: boolean; staff: StaffMember }>(`/api/staff/${id}/reactivate`, { method: "POST", headers: auth(token) }),
   updateStaff: (token: string, id: string, input: { fullName: string; email: string; role: string }) => request<{ staff: StaffMember }>(`/api/staff/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
-  refresh: (refreshToken: string) => request<{ token: string; refreshToken: string; accessExpiresInSeconds: number }>("/api/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) }),
+  refresh: refreshSession,
   signUp: (input: { name: string; phone: string; pin?: string; password?: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) => request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", { method: "POST", body: JSON.stringify(input) }),
   setCredentials: (token: string, input: { current: string; newPin?: string; newPassword?: string }) => request<{ ok: boolean; hasPin: boolean; hasPassword: boolean }>("/api/auth/credentials", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   signOut: (token: string) => request<{ ok: boolean }>("/api/auth/signout", { method: "POST", headers: auth(token) }),
