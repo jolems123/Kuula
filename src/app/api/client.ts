@@ -143,7 +143,7 @@ const nodeApi = {
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
       { headers: auth(token) }),
   accessBusinessPhoto: async (token: string, id: string, photoId: string): Promise<{url: string; temporary: boolean}> => {
-    const response = await fetch(env.API_URL + "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos/" + encodeURIComponent(photoId), { headers: auth(token) });
+    const response = await fetch(apiBaseUrl + "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos/" + encodeURIComponent(photoId), { headers: auth(token) });
     if (!response.ok) throw new Error("You are not authorized to open this photo or the image is unavailable.");
     if ((response.headers.get("content-type") ?? "").startsWith("image/")) {
       const blob = await response.blob();
