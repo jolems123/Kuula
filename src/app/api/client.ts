@@ -138,6 +138,10 @@ const nodeApi = {
   getCollections: (token: string) => request<{ accounts: Array<Record<string, unknown>>; activities: Array<Record<string, unknown>> }>("/api/admin/collections", { headers: auth(token) }),
   addCollectionActivity: (token: string, repaymentId: string, input: Record<string, unknown>) => request<{ activity: Record<string, unknown> }>(`/api/admin/collections/${repaymentId}/activities`, { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   getApplications: (token: string) => request<{ applications: LoanApplication[] }>("/api/loans/applications", { headers: auth(token) }),
+  getBusinessPhotos: (token: string, id: string) =>
+    request<{ photos: Array<{ id: string; type: string; mime: string; bytes: number; uploadedAt: string }> }>(
+      "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
+      { headers: auth(token) }),
   uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string>) =>
     request<{ ok: boolean; photoTypes: string[] }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
