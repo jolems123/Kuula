@@ -306,6 +306,43 @@ export async function getMarzPayAvailableBalanceUgx(): Promise<number | null> {
   }
 }
 
+export interface MarzPayListedTransaction {
+  uuid: string;
+  /** Every reference MarzPay reports for the row (its own and the merchant's). */
+  references: string[];
+  status: string;
+  amount: number | null;
+  type: string;
+}
+
+/**
+ * All MarzPay transactions created on one calendar day (GET /transactions with
+ * start_date/end_date, paged with page/per_page=100). The list item shape is not
+ * documented in detail, so fields are read defensively. Throws if MarzPay cannot be read.
+ */
+export async function listMarzPayTransactionsForDay(day: string, maxPages = 50): Promise<MarzPayListedTransaction[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new RangeError("day must be YYYY-MM-DD");
+  const rows: MarzPayListedTransaction[] = [];
+  for (let page = 1; page <= maxPages; page += 1) {
+    const { status, body } = await getJson(`/transactions?start_date=${day}&end_date=${day}&per_page=100&page=${page}`);
+    if (status >= 400) throw new Error(`MarzPay transaction list returned HTTP ${status}`);
+    const items = listItems(body);
+    for (const item of items) {
+      rows.push({
+        uuid: asString(item.uuid),
+        references: [asString(item.reference), asString(item.provider_reference)].filter(Boolean),
+        status: asString(item.status).toLowerCase(),
+        amount: readAmount(item.amount),
+        type: asString(item.type).toLowerCase(),
+      });
+    }
+    const pagination = { ...asObject(asObject(body.data).pagination), ...asObject(body.pagination), ...asObject(body.meta) };
+    const lastPage = Number(pagination.last_page);
+    if (items.length < 100 || (Number.isFinite(lastPage) && page >= lastPage)) return rows;
+  }
+  throw new Error(`MarzPay transaction list exceeded ${maxPages} pages for ${day}`);
+}
+
 export function secureTokenEquals(actual: string, expected: string): boolean {
   const actualBuffer = Buffer.from(actual || "", "utf8");
   const expectedBuffer = Buffer.from(expected || "", "utf8");

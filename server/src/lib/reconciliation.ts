@@ -3,6 +3,7 @@ import prisma from "./prisma.js";
 import { startRepaymentReminderSweeper } from "./repayment-reminders.js";
 import { lookupMarzPayTransaction, marzPayLookupConfigured } from "./marzpay.js";
 import { AWAITING_PROVIDER, settleMarzPayEvent, type SettlementOutcome } from "./marzpay-settlement.js";
+import { runDailyReconciliationIfDue } from "./provider-reconciliation.js";
 
 const DEFAULT_STALE_MINUTES = 30;
 const VERIFY_MIN_AGE_MS = 2 * 60_000;
@@ -92,6 +93,8 @@ export function startReconciliationSweeper(): () => void {
         const settled = results.filter((result) => result.settlement?.body.settled === true).length;
         if (results.length > 0) console.log(JSON.stringify({ event: "reconciliation.provider_verified", checked: results.length, settled }));
       })
+      .then(() => runDailyReconciliationIfDue())
+      .then((ran) => { if (ran) console.log(JSON.stringify({ event: "reconciliation.daily_provider_run" })); })
       .catch((error) => {
         console.error(JSON.stringify({ event: "reconciliation.sweeper_failed", message: error instanceof Error ? error.message : String(error) }));
       });
