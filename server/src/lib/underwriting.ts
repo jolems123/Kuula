@@ -95,7 +95,11 @@ export function evaluateUnderwriting(input: UnderwritingInput): UnderwritingResu
 
   const repaidLoans = Math.max(0, Math.floor(input.loansRepaid || 0));
   const historyCap = FIRST_LOAN_CAP_UGX * (1 + repaidLoans);
-  // A first-time business may be assessed through verified identity and independently\n  // reviewed business/cash-flow evidence without requiring a CRB or MoMo report.\n  // Keep the unsecured first-time ceiling conservative until actual repayment data exists.\n  const firstTimeEvidenceLimit = input.loansTotal === 0 && input.kycVerified && input.phoneVerified ? 200_000 : 0;\n  const scoreBasedLimit = Math.min(Math.max(scoreLimit(credit.score), firstTimeEvidenceLimit), historyCap);
+  // A first-time business may be assessed through verified identity and independently
+  // reviewed business/cash-flow evidence without requiring a CRB or MoMo report.
+  // Keep the unsecured first-time ceiling conservative until actual repayment data exists.
+  const firstTimeEvidenceLimit = input.loansTotal === 0 && input.kycVerified && input.phoneVerified ? 200_000 : 0;
+  const scoreBasedLimit = Math.min(Math.max(scoreLimit(credit.score), firstTimeEvidenceLimit), historyCap);
   const affordabilityPrincipalLimit = totalRepayment > 0
     ? Math.floor(requestedAmount * Math.min(1, maxAffordablePayment / totalRepayment))
     : 0;
