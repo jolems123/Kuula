@@ -22,7 +22,7 @@ const METHODS = [
 const EMPTY_BUSINESS: BusinessDetails = {
   businessName: "", applicantPosition: "", locationSource: "none", locationCapturedAt: null, locationAccuracyMeters: null, sector: "", tradingAs: "informal", registrationNumber: "",
   tradingMonths: 0, district: "", physicalAddress: "", latitude: null, longitude: null, goodsOrServices: "",
-  customerType: "", staffCount: 0, loanUse: "", repaymentPlan: "",
+  customerType: "", primarySuppliers: "", supplierPaymentTerms: "", salesFrequency: "unknown", seasonalPattern: "", lowSeasonMonthlySales: 0, inventoryCost: 0, rentCost: 0, wagesCost: 0, otherOperatingCosts: 0, otherDebtDetails: "", staffCount: 0, loanUse: "", repaymentPlan: "",
 };
 function durationBand(months: number): string {
   if (months < 6) return "Less than 6 months";
@@ -185,6 +185,9 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     if (!Number.isFinite(income) || income <= 0) { setError("Enter your average monthly income."); return; }
     if (!Number.isFinite(expenses) || expenses < 0) { setError("Monthly expenses cannot be negative."); return; }
     if (!Number.isFinite(existingDebt) || existingDebt < 0) { setError("Existing monthly debt payments cannot be negative."); return; }
+    if (expenseBreakdown > expenses) { setError("Your expense breakdown cannot exceed total monthly operating expenses."); return; }
+    if (businessDetails.lowSeasonMonthlySales > income) { setError("Low-season sales must not exceed typical monthly sales."); return; }
+    if (businessDetails.salesFrequency === "unknown") { setError("Select how often your business makes sales."); return; }
     if (expenses + existingDebt >= income) { setError("Your expenses and existing debt leave no disposable monthly income for new credit."); return; }
 
     const business: BusinessProfile = {
@@ -226,6 +229,14 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       <input type="number" min={min} step={1} value={businessDetails[key]}
         onChange={(e) => setBusinessDetails((v) => ({ ...v, [key]: Number(e.target.value) }))}
         className="kx-input" style={{ width: "100%" }} />
+    </label>
+  );
+  const expenseBreakdown = businessDetails.inventoryCost + businessDetails.rentCost + businessDetails.wagesCost + businessDetails.otherOperatingCosts;
+  const businessCurrencyField = (label: string, key: "inventoryCost" | "rentCost" | "wagesCost" | "otherOperatingCosts" | "lowSeasonMonthlySales") => (
+    <label style={{ display: "block" }}>
+      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>{label} (UGX/month)</span>
+      <input type="number" inputMode="numeric" min={0} step={1000} value={businessDetails[key]} className="kx-input" style={{ width: "100%" }}
+        onChange={event => setBusinessDetails(v => ({ ...v, [key]: Math.max(0, Number(event.target.value)) }))} />
     </label>
   );
   const moneyInput = (label: string, value: number, setter: (value: number) => void, hint: string) => (
@@ -382,13 +393,47 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 11, color: "#8A7661" }}>Photos are kept only in memory until submission. If you refresh or close the app, take them again. They are not saved in your browser's application draft.</p>
         </section>
 
+        <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label="Business operations">
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 6px" }}>How your business operates</h2>
+          <p style={{ color: "#68766F", fontSize: 11, lineHeight: 1.6 }}>Tell Kuula how your business buys, sells and deals with seasonal changes. These are declarations for staff assessment, not verified accounts.</p>
+          <div style={{ display: "grid", gap: 13 }}>
+            {businessTextField("Main suppliers (optional)", "primarySuppliers", "E.g. wholesalers, distributors or farmers")}
+            {businessTextField("Supplier payment terms (optional)", "supplierPaymentTerms", "Cash on delivery, weekly credit, 30 days")}
+            <label style={{ display: "block" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}>How often do customers buy from you?</span>
+              <select className="kx-input" style={{ width: "100%", marginTop: 6 }} value={businessDetails.salesFrequency}
+                onChange={event => setBusinessDetails(v => ({ ...v, salesFrequency: event.target.value as BusinessDetails["salesFrequency"] }))}>
+                <option value="unknown">Select sales pattern</option>
+                <option value="daily">Every day</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="seasonal">Seasonal</option>
+              </select>
+            </label>
+            {businessTextField("Seasonality or business risks (optional)", "seasonalPattern", "E.g. slower during school holidays or rainy months")}
+            {businessCurrencyField("Sales in a typical low month (if known)", "lowSeasonMonthlySales")}
+          </div>
+        </section>
+
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <p style={{ fontSize: 13, fontWeight: 800, color: "#13251C", margin: "0 0 4px" }}>Affordability information</p>
           <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}>Enter your actual current figures. Kuula uses them together with verified credit evidence, and the server recalculates eligibility before approval and again before disbursement.</p>
           <div style={{ display: "grid", gap: 14 }}>
-            {moneyInput("Average monthly business sales", income, setIncome, "Total monthly sales / business revenue, not your salary.")}
-            {moneyInput("Monthly business expenses", expenses, setExpenses, "Operating costs, stock purchases and business expenses; exclude existing loan instalments.")}
-            {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Use zero only if you have no existing monthly debt repayments.")}
+            {moneyInput("Average monthly business sales", income, setIncome, "Business revenue before any costs; do not enter gross profit or your personal salary.")}
+            {moneyInput("Total monthly operating expenses", expenses, setExpenses, "Include stock purchases, rent, wages, utilities and other operating costs. Exclude loan repayments.")}
+            <div style={{ padding: 12, borderRadius: 12, background: "#F3FAF5", display: "grid", gap: 11 }}>
+              <strong style={{ fontSize: 12, color: "#173A27" }}>Break down your operating expenses</strong>
+              {businessCurrencyField("Stock and inventory purchases", "inventoryCost")}
+              {businessCurrencyField("Business rent", "rentCost")}
+              {businessCurrencyField("Employee wages", "wagesCost")}
+              {businessCurrencyField("Utilities, transport and other costs", "otherOperatingCosts")}
+              <p style={{ fontSize: 12, margin: 0, color: expenseBreakdown > expenses ? "#B91C1C" : "#496257" }}>
+                Breakdown: {formatUGX(expenseBreakdown)} of {formatUGX(expenses)} total monthly expenses.
+              </p>
+            </div>
+            {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Include payments for every other loan or supplier financing arrangement.")}
+            {businessTextField("Existing business debts or creditors (optional)", "otherDebtDetails", "Lender or supplier, balance and due dates")}
+            <div style={{ background: "#F7FAF8", borderRadius: 11, padding: 12, fontSize: 12, color: "#244636" }}>
+              Declared monthly surplus before the proposed Kuula repayment: <strong>{formatUGX(Math.max(0, income - expenses - existingDebt))}</strong>
+              <p style={{ margin: "7px 0 0", fontSize: 11, color: "#68766F" }}>An estimate from your declarations, not your approved repayment capacity. Kuula applies conservative underwriting independently.</p>
+            </div>
           </div>
         </div>
 
