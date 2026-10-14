@@ -124,3 +124,34 @@ export function summarizePortfolio(loans: BookedLoan[], now = new Date()): Portf
     sectors,
   };
 }
+
+export interface InflowWeek { weekStarting: string; expected: number; loans: number }
+
+/**
+ * Expected repayments per week for the next `weeks` weeks, from each open loan's due
+ * date and unpaid balance. Loans already past due are reported separately (they are
+ * not assumed to pay on any particular date), and loans more than 90 days late are
+ * excluded from expected inflows altogether.
+ */
+export function forecastInflows(loans: BookedLoan[], now = new Date(), weeks = 12): { weekly: InflowWeek[]; overdueCollectible: number; excludedOver90: number } {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const weekly: InflowWeek[] = Array.from({ length: weeks }, (_, index) => ({
+    weekStarting: new Date(start.getTime() + index * 7 * DAY_MS).toISOString().slice(0, 10),
+    expected: 0,
+    loans: 0,
+  }));
+  let overdueCollectible = 0;
+  let excludedOver90 = 0;
+  for (const loan of loans) {
+    const outstanding = outstandingOf(loan);
+    if (outstanding <= 0 || !loan.dueDate) continue;
+    const late = daysPastDue(loan, now);
+    if (late > 90) { excludedOver90 += outstanding; continue; }
+    if (late > 0) { overdueCollectible += outstanding; continue; }
+    const index = Math.floor((loan.dueDate.getTime() - start.getTime()) / (7 * DAY_MS));
+    if (index < 0 || index >= weeks) continue;
+    weekly[index].expected += outstanding;
+    weekly[index].loans += 1;
+  }
+  return { weekly, overdueCollectible, excludedOver90 };
+}

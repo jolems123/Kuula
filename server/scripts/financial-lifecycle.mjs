@@ -97,6 +97,9 @@ try {
   await call("POST", `/api/loans/${applicationId}/disbursement/release`, { token: finance.token, expect: 409 });
   const disbursementRef = released.disbursement.legs[0].reference;
   assert.ok(disbursementRef);
+  const liquidity = await call("GET", "/api/admin/liquidity", { token: A });
+  assert.equal(liquidity.wallet.availableUgx, Number(process.env.FAKE_MARZPAY_BALANCE || 50_000_000));
+  assert.equal(liquidity.committed.inFlight, 100000, "a released payout counts as committed until it settles");
   const payoutTx = await prisma.transaction.findUnique({ where: { reference: disbursementRef } });
   assert.equal(payoutTx.providerFee, BigInt(500), "send-money charge from the create response is stored");
   assert.ok(payoutTx.transactionId, "MarzPay transaction uuid is stored");

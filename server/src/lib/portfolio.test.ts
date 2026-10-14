@@ -45,3 +45,17 @@ test("vintages group loans by disbursement month", () => {
     ["2026-08", 1, 0, 0],
   ]);
 });
+
+test("inflow forecast buckets open balances by due week and sets late loans apart", async () => {
+  const { forecastInflows } = await import("./portfolio.js");
+  const result = forecastInflows([
+    loan("due-this-week", { dueDate: daysAgo(-3) }),
+    loan("due-in-two-weeks", { dueDate: daysAgo(-15), amountPaid: 8_000 }),
+    loan("late", { dueDate: daysAgo(10) }),
+    loan("very-late", { dueDate: daysAgo(120) }),
+    loan("repaid", { dueDate: daysAgo(-3), amountPaid: 108_000 }),
+  ], now, 4);
+  assert.deepEqual(result.weekly.map((week) => week.expected), [108_000, 0, 100_000, 0]);
+  assert.equal(result.overdueCollectible, 108_000);
+  assert.equal(result.excludedOver90, 108_000);
+});
