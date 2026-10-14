@@ -50,6 +50,9 @@ export interface LoanCalculatorSelection {
   termDays: number;
   purpose: string;
 }
+let _lastSubmittedApplicationId: string | null = null;
+export function setLastSubmittedApplicationId(id: string | null) { _lastSubmittedApplicationId = id; }
+export function getLastSubmittedApplicationId(): string | null { return _lastSubmittedApplicationId; }
 let _loanDraft: LoanDraft | null = null;
 export function setLoanDraft(value: LoanDraft | null): void { _loanDraft = value; }
 export function getLoanDraft(): LoanDraft | null { return _loanDraft; }
@@ -108,9 +111,12 @@ export function getCustomer360Id(): string | null { return _customer360Id; }
 
 export function clearSelectionState(): void {
   clearAllSavedLoanApplicationDrafts();
+  clearBusinessPhotos();
+  clearAllBusinessPhotoApplicationIds();
   _selectedTransaction = null;
   _lastPayment = null;
   _loanDraft = null;
+  _lastSubmittedApplicationId = null;
   _loanCalculatorSelection = null;
   _creditUseSelection = null;
   _partnerSelection = null;
@@ -119,3 +125,5 @@ export function clearSelectionState(): void {
   _customer360Id = null;
 }
 import { clearAllSavedLoanApplicationDrafts } from "./loan-application-autosave";
+
+import { clearBusinessPhotos, clearAllBusinessPhotoApplicationIds } from "./business-photos";

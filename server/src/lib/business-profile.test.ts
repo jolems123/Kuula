@@ -32,3 +32,45 @@ test("accepts valid business GPS coordinates and rejects invalid or incomplete p
   assert.throws(() => parseBusinessProfile({ ...good, latitude: 91, longitude: 32 }), /latitude/i);
   assert.throws(() => parseBusinessProfile({ ...good, latitude: 0 }), /both business location coordinates/i);
 });
+
+test("records applicant position and provenance for a business map pin", () => {
+  const p = parseBusinessProfile({ ...good, applicantPosition: "Owner", latitude: 0.3476, longitude: 32.5825,
+    locationSource: "gps", locationCapturedAt: "2026-10-14T10:00:00.000Z", locationAccuracyMeters: 19 });
+  assert.equal(p.applicantPosition, "Owner");
+  assert.equal(p.locationSource, "gps");
+  assert.equal(p.locationAccuracyMeters, 19);
+});
+test("rejects invalid location provenance and coordinates", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, locationSource: "gps" }), /pinned business coordinates/i);
+  assert.throws(() => parseBusinessProfile({ ...good, locationSource: "fake" }), /location source/i);
+  assert.throws(() => parseBusinessProfile({ ...good, latitude: 0.3476, longitude: 32.5825, locationSource: "gps", locationAccuracyMeters: -2 }), /accuracy/i);
+});
+
+test("accepts audited small business operating declarations", () => {
+  const p = parseBusinessProfile({ ...good, primarySuppliers: "Kampala wholesalers", supplierPaymentTerms: "Cash",
+    salesFrequency: "daily", seasonalPattern: "School holidays are slower", lowSeasonMonthlySales: 900_000,
+    inventoryCost: 700_000, rentCost: 150_000, wagesCost: 200_000, otherOperatingCosts: 100_000,
+    otherDebtDetails: "Supplier credit paid weekly" });
+  assert.equal(p.salesFrequency, "daily");
+  assert.equal(p.inventoryCost + p.rentCost + p.wagesCost + p.otherOperatingCosts, 1_150_000);
+  assert.equal(p.monthlyBusinessExpenses, good.monthlyBusinessExpenses);
+});
+test("rejects expense breakdowns that exceed declared total, unreasonable low-season sales and bogus frequencies", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, inventoryCost: 1_300_000 }), /breakdown exceeds/i);
+  assert.throws(() => parseBusinessProfile({ ...good, lowSeasonMonthlySales: 2_500_000 }), /low-season monthly sales/i);
+  assert.throws(() => parseBusinessProfile({ ...good, salesFrequency: "hourly" }), /sales frequency/i);
+});
+
+test("parses itemized use of funds and requested repayment frequency", () => {
+  const result = parseBusinessProfile({ ...good,
+    preferredRepaymentFrequency: "weekly",
+    useOfFunds: { stock: 100000, equipment: 0, operations: 50000, expansion: 0, other: 0 },
+  });
+  assert.equal(result.preferredRepaymentFrequency, "weekly");
+  assert.equal(result.useOfFunds.stock + result.useOfFunds.operations, 150000);
+});
+test("rejects invalid instalment preferences and invented loan-use values", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, preferredRepaymentFrequency: "hourly" }), /repayment frequency/i);
+  assert.throws(() => parseBusinessProfile({ ...good, useOfFunds: { stock: -10 } }), /funds for stock/i);
+  assert.throws(() => parseBusinessProfile({ ...good, useOfFunds: { stock: "ten" } }), /funds for stock/i);
+});

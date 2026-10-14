@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { testPng } from "./test-business-photo-fixtures.mjs";
 
 const API = process.env.LIFECYCLE_API_URL || "http://localhost:3000";
 const FAKE = (process.env.MARZPAY_BASE_URL || "http://127.0.0.1:3999/api/v1").replace(/\/api\/v1\/?$/, "");
@@ -57,6 +58,26 @@ try {
   assert.ok(applicationId);
   await call("POST", "/api/loans/applications", { token: C, body: applicationBody, expect: 409 });
   await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "Unverified business test must be denied" }, expect: 422 });
+  await call("POST", `/api/loans/applications/${applicationId}/business-review`, {
+    token: A, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 422,
+  });
+  step("private business photos: ownership, required uploads, distinctness and duplicate protection");
+  const photoPath = `/api/loans/applications/${applicationId}/business-photos`;
+  const photoData = {
+    exterior: testPng(255, 0, 0),
+    interior: testPng(0, 255, 0),
+    applicant_at_business: testPng(0, 0, 255),
+  };
+  await call("GET", photoPath, { expect: 401 });
+  await call("POST", photoPath, { token: C, body: { photoConsent: false, photos: photoData }, expect: 400 });
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { exterior: photoData.exterior } }, expect: 400 });
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { ...photoData, interior: photoData.exterior } }, expect: 400 });
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 201 });
+  const photoList = await call("GET", photoPath, { token: C });
+  assert.equal(photoList.photos.length, 3);
+  assert.ok(["exterior", "interior", "applicant_at_business"].every(kind =>
+    photoList.photos.some(photo => photo.type === kind)));
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 409 });
   const review = await call("POST", `/api/loans/applications/${applicationId}/business-review`, { token: A, body: { status: "verified", notes: "CI verified trading operations and business turnover evidence" } });
   assert.equal(review.application.businessReviewStatus, "verified");
   step("an approval above the approver's configured authority is refused");

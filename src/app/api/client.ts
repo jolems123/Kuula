@@ -138,6 +138,25 @@ const nodeApi = {
   getCollections: (token: string) => request<{ accounts: Array<Record<string, unknown>>; activities: Array<Record<string, unknown>> }>("/api/admin/collections", { headers: auth(token) }),
   addCollectionActivity: (token: string, repaymentId: string, input: Record<string, unknown>) => request<{ activity: Record<string, unknown> }>(`/api/admin/collections/${repaymentId}/activities`, { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   getApplications: (token: string) => request<{ applications: LoanApplication[] }>("/api/loans/applications", { headers: auth(token) }),
+  getBusinessPhotos: (token: string, id: string) =>
+    request<{ photos: Array<{ id: string; type: string; mime: string; bytes: number; uploadedAt: string }> }>(
+      "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
+      { headers: auth(token) }),
+  accessBusinessPhoto: async (token: string, id: string, photoId: string): Promise<{url: string; temporary: boolean}> => {
+    const response = await fetch(apiBaseUrl + "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos/" + encodeURIComponent(photoId), { headers: auth(token) });
+    if (!response.ok) throw new Error("You are not authorized to open this photo or the image is unavailable.");
+    if ((response.headers.get("content-type") ?? "").startsWith("image/")) {
+      const blob = await response.blob();
+      return { url: URL.createObjectURL(blob), temporary: true };
+    }
+    const body = await response.json() as { url?: string };
+    if (!body.url) throw new Error("Private photo link unavailable");
+    return { url: body.url, temporary: false };
+  },
+  uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string>) =>
+    request<{ ok: boolean; photoTypes: string[] }>(
+      "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
+      { method: "POST", headers: auth(token), body: JSON.stringify({ photoConsent: true, photos }) }, 120000),
   submitApplication: (token: string, body: { amount: number; purpose: string; termDays: number; channel?: string; declaredMonthlyIncome: number; declaredMonthlyExpenses: number; existingDebtPayment: number; business: import("./types").BusinessProfile }) => request<{ application: LoanApplication }>("/api/loans/applications", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   reviewBusiness: (token: string, id: string, status: "verified" | "rejected", notes: string) => request<{ application: LoanApplication }>(`/api/loans/applications/${id}/business-review`, { method: "POST", headers: auth(token), body: JSON.stringify({ status, notes }) }),
   decideApplication: (token: string, id: string, decision: "approved" | "rejected", notes = "Decision recorded by authorized staff") => request<{ application: LoanApplication }>("/api/loans/applications/decision", { method: "POST", headers: auth(token), body: JSON.stringify({ id, decision, notes }) }),

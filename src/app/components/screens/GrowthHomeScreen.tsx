@@ -138,6 +138,28 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </div>
           </section>
 
+          {/* Account summary belongs on Overview, not under Settings.
+              Only show values present in the authenticated customer profile. */}
+          <section className="kx-card" aria-label="Account overview" style={{ padding: 16 }}>
+            <div className="kx-section-head" style={{ marginBottom: 12 }}>
+              <div><h2>Account overview</h2><p>Your recorded Kuula account information</p></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+              <div><span className="kx-overline">Member since</span>
+                <strong style={{ display: "block", marginTop: 4 }}>{state.user?.memberSince && !Number.isNaN(new Date(state.user.memberSince).getTime())
+                  ? new Date(state.user.memberSince).toLocaleDateString("en-UG", { month: "short", year: "numeric" }) : "Not available"}</strong>
+              </div>
+              <div><span className="kx-overline">Loans recorded</span>
+                <strong style={{ display: "block", marginTop: 4 }}>{state.loan ? state.loan.totalLoansCount : "Not available"}</strong>
+              </div>
+              <div><span className="kx-overline">Credit Pass</span>
+                <button type="button" className="kx-link" onClick={() => onNavigate("credit-dashboard")} style={{ display: "block", marginTop: 4 }}>
+                  {pass ? `${pass.score} / ${pass.maxScore} · ${pass.tier}` : "View Credit Pass"}
+                </button>
+              </div>
+            </div>
+          </section>
+
           {overview?.nextPayment && (
             <section className="kx-card kx-due">
               <span className="kx-tile-icon kx-tile-icon--gold"><CalendarClock size={20} strokeWidth={1.75} /></span>

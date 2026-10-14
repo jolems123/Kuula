@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
@@ -173,6 +174,15 @@ async function createLoanApplicationForUser(
   catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid business information", 422); }
   if (!Number.isInteger(payload.termDays) || payload.termDays < 30 || payload.termDays > 365)
     throw new AppError("Business loan terms must be between 30 and 365 days", 422);
+  const breakdown = Object.values(business.useOfFunds).reduce((sum, amount) => sum + amount, 0);
+  // Older released clients did not submit itemized funds. Do not turn their
+  // requests into unexpected 422 errors; new clients must always balance.
+  const hasSpendingPlan = payload.business !== null && typeof payload.business === "object"
+    && Object.prototype.hasOwnProperty.call(payload.business, "useOfFunds");
+  if (hasSpendingPlan && (!Number.isSafeInteger(breakdown) || breakdown !== payload.amount))
+    throw new AppError("The itemized use of funds must equal the requested loan amount", 422);
+  // Repayment frequency is only a customer preference. Actual dates, installments
+  // and payment obligations must come from the final authorized loan agreement.
   const quote = quoteForRequest(payload.amount, payload.termDays);
   const declaredMonthlyIncome = money(payload.declaredMonthlyIncome, "Monthly business sales");
   const declaredMonthlyExpenses = money(payload.declaredMonthlyExpenses, "Monthly business expenses", true);
@@ -273,6 +283,7 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   const application = await prisma.loanApplication.findUnique({ where: { id } });
   if (!application || !application.businessProfile) throw new AppError("Business loan application not found", 404);
   if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Application is no longer pending review", 409);
+  if (status === "verified") await assertBusinessPhotoEvidence(id);
   const updated = await prisma.loanApplication.update({
     where: { id },
     data: {
@@ -318,6 +329,7 @@ router.post(
     if (!application.underwriting) throw new AppError("Application has no underwriting assessment", 409);
 
     if (decision === "approved") {
+      if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
       await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));

@@ -15,38 +15,13 @@ const menuItems = [
   { icon: Bell, label: "Notification Settings", subtitle: "SMS and push alerts", color: "#F59E0B", screen: "notification-settings" },
   { icon: Shield, label: "Privacy & Security", subtitle: "PIN, biometric, 2FA", color: "#8B5CF6", screen: "privacy-security" },
   { icon: LifeBuoy, label: "Help & Support", subtitle: "Chat, call, FAQ", color: "#06B6D4", screen: "help-support" },
-  { icon: Info, label: "About App", subtitle: "Version 2.4.1 · UMRA licensed", color: "#6B7280", screen: "about-app" },
+  { icon: Info, label: "About App", subtitle: "Version 2.4.1", color: "#6B7280", screen: "about-app" },
 ];
-
-function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
-  return (
-    <button
-      onClick={onChange}
-      style={{
-        width: 44, height: 26, borderRadius: 13,
-        background: on ? "#0B5E3A" : "#E5E7EB",
-        border: "none", cursor: "pointer", position: "relative",
-        transition: "background 0.2s", flexShrink: 0,
-      }}
-    >
-      <div style={{
-        position: "absolute", top: 3, left: on ? 21 : 3,
-        width: 20, height: 20, borderRadius: 10, background: "white",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
-        transition: "left 0.2s",
-      }} />
-    </button>
-  );
-}
 
 export function SettingsScreen({ onNavigate }: Props) {
   const { t, i18n } = useTranslation();
   const { state } = useAppContext();
   const user = state.user;
-  const credit = state.credit;
-  const loan = state.loan;
-
-  const [toggles, setToggles] = useState({ sms: true, push: true });
 
   const menuItemI18n: Record<string, { label: string; subtitle: string }> = {
     "personal-info": { label: t("settings.personalInfo"), subtitle: t("settings.personalInfoSub") },
@@ -56,7 +31,6 @@ export function SettingsScreen({ onNavigate }: Props) {
     "about-app": { label: t("settings.aboutApp"), subtitle: "Version 2.4.1 · UMRA licensed" },
   };
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const flip = (k: keyof typeof toggles) => setToggles((t) => ({ ...t, [k]: !t[k] }));
 
   return (
     <div className="kuula-settings-screen flex flex-col h-full bg-gray-50">
@@ -109,11 +83,13 @@ export function SettingsScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 17, fontWeight: 700, color: "#1F2937" }}>{user?.fullName ?? "—"}</p>
           <p style={{ fontSize: 13, color: "#6B7280" }}>{user?.phone ?? "—"}</p>
           <div className="flex items-center gap-1 mt-0.5">
-            <div style={{ width: 6, height: 6, borderRadius: 3, background: "#178654" }} />
-            <span style={{ fontSize: 11, color: "#178654", fontWeight: 500 }}>{t("settings.verifiedAccount")}</span>
+            <div style={{ width: 6, height: 6, borderRadius: 3, background: user?.verified ? "#178654" : "#9B6F15" }} />
+            <span style={{ fontSize: 11, color: user?.verified ? "#178654" : "#9B6F15", fontWeight: 500 }}>{user?.verified ? t("settings.verifiedAccount") : "Verification pending"}</span>
           </div>
         </div>
         <button
+          type="button"
+          onClick={() => onNavigate("personal-info")}
           style={{
             padding: "7px 14px",
             borderRadius: 10,
@@ -126,25 +102,6 @@ export function SettingsScreen({ onNavigate }: Props) {
         >
           {t("settings.edit")}
         </button>
-      </div>
-
-      {/* Credit score quick view */}
-      <div className="mx-4 mt-3 flex gap-3">
-        {[
-          { label: t("settings.creditScore"), value: String(credit?.score ?? "—"), sub: credit?.tier ?? "—", color: "#178654" },
-          { label: t("settings.memberSince"), value: "2024", sub: user?.memberSince?.split(" ")[1] ?? "", color: "#0B5E3A" },
-          { label: t("settings.loansTaken"), value: String(loan?.totalLoansCount ?? 0), sub: t("settings.allRepaid"), color: "#8B5CF6" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="flex-1 p-3 rounded-xl text-center"
-            style={{ background: "white", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" }}
-          >
-            <p style={{ fontSize: 16, fontWeight: 800, color: stat.color }}>{stat.value}</p>
-            <p style={{ fontSize: 9, color: "#9CA3AF", marginTop: 1 }}>{stat.label}</p>
-            <p style={{ fontSize: 9, color: stat.color, fontWeight: 600 }}>{stat.sub}</p>
-          </div>
-        ))}
       </div>
 
       {/* Language picker */}
@@ -168,22 +125,14 @@ export function SettingsScreen({ onNavigate }: Props) {
         </button>
       </div>
 
-      {/* Quick toggles */}
-      <div className="mx-4 mt-3 p-4 rounded-2xl" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 12 }}>{t("settings.quickPrefs")}</p>
-        {[
-          { key: "sms" as const, label: t("settings.smsAlerts"), sub: t("settings.smsAlertsSub") },
-          { key: "push" as const, label: t("settings.pushNotifs"), sub: t("settings.pushNotifsSub") },
-        ].map(({ key, label, sub }, i, arr) => (
-          <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid #F9FAFB" : "none" }}>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>{label}</p>
-              <p style={{ fontSize: 11, color: "#9CA3AF", margin: "1px 0 0" }}>{sub}</p>
-            </div>
-            <Toggle on={toggles[key]} onChange={() => flip(key)} />
-          </div>
-        ))}
-      </div>
+      {/* Notification preferences are managed in one persisted settings screen.
+          Do not show non-persistent local toggles that could mislead customers. */}
+      <button type="button" onClick={() => onNavigate("notification-settings")} className="mx-4 mt-3 p-4 rounded-2xl"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", border: 0, textAlign: "left", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+        <span><strong style={{ display: "block", color: "#1F2937", fontSize: 13 }}>Notification preferences</strong>
+          <span style={{ fontSize: 11, color: "#6B7280" }}>Manage SMS and push notifications</span></span>
+        <ChevronRight size={16} color="#6B7280" />
+      </button>
 
       {/* Menu items */}
       <div

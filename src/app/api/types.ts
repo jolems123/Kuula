@@ -41,6 +41,10 @@ export interface StaffMember {
 
 export interface BusinessProfile {
   businessName: string;
+  applicantPosition: string;
+  locationSource: "gps" | "manual" | "none";
+  locationCapturedAt: string | null;
+  locationAccuracyMeters: number | null;
   sector: string;
   tradingAs: "registered" | "informal";
   registrationNumber: string;
@@ -51,10 +55,28 @@ export interface BusinessProfile {
   longitude?: number | null;
   goodsOrServices: string;
   customerType: string;
+  primarySuppliers: string;
+  supplierPaymentTerms: string;
+  salesFrequency: "daily" | "weekly" | "monthly" | "seasonal" | "unknown";
+  seasonalPattern: string;
+  lowSeasonMonthlySales: number;
+  inventoryCost: number;
+  rentCost: number;
+  wagesCost: number;
+  otherOperatingCosts: number;
+  otherDebtDetails: string;
   staffCount: number;
   monthlySales: number;
   monthlyBusinessExpenses: number;
   monthlyExistingDebt: number;
+  preferredRepaymentFrequency: "daily" | "weekly" | "biweekly" | "monthly" | "at_maturity";
+  useOfFunds: {
+    stock: number;
+    equipment: number;
+    operations: number;
+    expansion: number;
+    other: number;
+  };
   loanUse: string;
   repaymentPlan: string;
 }

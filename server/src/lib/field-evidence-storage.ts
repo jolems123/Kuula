@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { parseDataUrl } from "./storage.js";
 
@@ -107,4 +107,15 @@ export async function accessFieldEvidence(key: string, mime: string): Promise<Fi
     return { kind: "url", url: await getSignedUrl(client(), command, { expiresIn: SIGNED_URL_SECONDS }), expiresInSeconds: SIGNED_URL_SECONDS };
   }
   return { kind: "buffer", buffer: await fs.readFile(localPath(key)), mime };
+}
+
+/** Compensation for failed evidence-metadata transactions. Call only for files
+ * created during that same attempt; never delete a previously reviewed photo. */
+export async function deleteFieldEvidence(key: string): Promise<void> {
+  if (!/^credit-evidence\/[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png|webp)$/i.test(key)) throw new Error("Invalid field evidence key");
+  if (provider() === "s3") {
+    await client().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+  } else {
+    await fs.rm(localPath(key), { force: true });
+  }
 }

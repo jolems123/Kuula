@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
@@ -318,6 +319,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
   if (action === "approve") await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
   await assertIndependentOfOtherLevels(applicationId, req.user!.userId, level);
+  if (action === "approve" && application.businessProfile) await assertBusinessPhotoEvidence(applicationId);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
     throw new AppError("A documented, verified business assessment is required before final approval", 422);
 
