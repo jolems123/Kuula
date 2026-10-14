@@ -401,6 +401,16 @@ async function settleRefund(tx: Prisma.TransactionClient, ledger: Transaction, e
     await postSettlementJournal(tx, { ...ledger, refundSourceAccount: refund.sourceAccount });
     await tx.$executeRaw(Prisma.sql`UPDATE refund_requests SET status='completed', updated_at=CURRENT_TIMESTAMP WHERE id=${refund.id}::uuid`);
     await tx.notification.create({ data: { userId: refund.userId, title: "Refund Sent", body: `UGX ${Number(ledger.amount).toLocaleString()} has been refunded to your Mobile Money.`, type: "success" } });
+    // Once everything a payment held has been refunded and confirmed, it no longer needs
+    // a person's attention in the reconciliation queue.
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE transactions s SET reconciliation_status='refunded', reconciled_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
+      FROM refund_requests r
+      WHERE r.id=${refund.id}::uuid AND s.id=r.source_transaction_id AND s.reconciliation_status='reconciliation_required'
+        AND (SELECT COALESCE(SUM(e.amount),0) FROM journals j JOIN journal_entries e ON e.journal_id=j.id
+             WHERE j.transaction_id=s.id AND e.direction='credit' AND e.account_code IN ('UNAPPLIED_CUSTOMER_FUNDS','LOAN_COLLECTIONS_SUSPENSE'))
+          = (SELECT COALESCE(SUM(c.amount),0) FROM refund_requests c WHERE c.source_transaction_id=s.id AND c.status='completed')
+    `);
     return;
   }
   await tx.$executeRaw(Prisma.sql`UPDATE refund_requests SET status='failed', failure_reason='Provider declined or failed the refund', updated_at=CURRENT_TIMESTAMP WHERE id=${refund.id}::uuid`);
