@@ -69,6 +69,14 @@ export interface BusinessProfile {
   monthlySales: number;
   monthlyBusinessExpenses: number;
   monthlyExistingDebt: number;
+  preferredRepaymentFrequency: "daily" | "weekly" | "biweekly" | "monthly" | "at_maturity";
+  useOfFunds: {
+    stock: number;
+    equipment: number;
+    operations: number;
+    expansion: number;
+    other: number;
+  };
   loanUse: string;
   repaymentPlan: string;
 }
