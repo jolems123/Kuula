@@ -116,7 +116,7 @@ export function AdminActivateScreen({ onNavigate }: Props) {
 
       <div className="kx-auth-foot">
         <ShieldCheck size={16} />
-        <span>Only numbers invited by the Super Admin can be activated.</span>
+        <span>Only work email addresses invited by the Super Admin can be activated.</span>
       </div>
     </AuthLayout>
   );
