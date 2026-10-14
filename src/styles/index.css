@@ -4,3 +4,5 @@
 /* Loaded last so every registered screen receives the approved Kuula visual system. */
 @import './brand-theme.css';
 @import './kuula-ui.css';
+/* Shared final layer for customer and staff visual consistency. */
+@import './fintech-finish.css';
