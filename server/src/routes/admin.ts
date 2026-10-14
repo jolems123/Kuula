@@ -2,7 +2,8 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { summarizePortfolio, type BookedLoan } from "../lib/portfolio.js";
+import { forecastInflows, summarizePortfolio, type BookedLoan } from "../lib/portfolio.js";
+import { getMarzPayAvailableBalanceUgx, marzPayLookupConfigured } from "../lib/marzpay.js";
 
 const router = Router();
 const CUSTOMER_ROLES = ["user", "customer"];
@@ -48,6 +49,30 @@ function mapApplication(a: any) {
     offerExpiresAt: a.offerExpiresAt ?? null,
   };
 }
+
+// Liquidity: MarzPay wallet balance, money already committed to payouts, and expected
+// repayments by week from actual due dates. Every figure comes from live records.
+router.get("/liquidity", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
+  const [booked, committedRows, balance] = await Promise.all([
+    bookedLoans(),
+    prisma.$queryRaw<Array<{ awaiting: bigint | null; in_flight: bigint | null }>>`
+      SELECT COALESCE(SUM(approved_amount) FILTER (WHERE status='awaiting_release'),0)::bigint AS awaiting,
+             COALESCE(SUM(total_planned - total_settled) FILTER (WHERE status IN ('planned','processing','partially_disbursed','attention_required')),0)::bigint AS in_flight
+      FROM disbursement_batches`,
+    marzPayLookupConfigured() ? getMarzPayAvailableBalanceUgx() : Promise.resolve(null),
+  ]);
+  const awaitingRelease = Number(committedRows[0]?.awaiting ?? 0);
+  const inFlight = Number(committedRows[0]?.in_flight ?? 0);
+  const forecast = forecastInflows(booked, new Date(), 12);
+  res.json({
+    generatedAt: new Date().toISOString(),
+    wallet: { availableUgx: balance, source: balance === null ? "unavailable" : "marzpay" },
+    committed: { awaitingRelease, inFlight, total: awaitingRelease + inFlight },
+    freeAfterCommitments: balance === null ? null : balance - awaitingRelease - inFlight,
+    expectedInflows: forecast,
+    portfolioOutstanding: summarizePortfolio(booked).outstanding,
+  });
+});
 
 router.get("/stats", authenticateToken, requirePermissions("report.view"), async (_req: Request, res: Response) => {
   const [customerCount, pendingCount, booked, recentApps, allRecent] = await Promise.all([
