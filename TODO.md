@@ -28,11 +28,14 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 
 ## Required before enabling real money
 
-- [ ] Restore GitHub Actions execution by resolving the repository/account Actions billing or spending-limit block, then require all CI/security workflows to pass on the launch commit.
-- [ ] Regenerate `server/package-lock.json` from the current `server/package.json`, verify it in CI, then replace Docker/CI `npm install` with `npm ci`.
+The full, current checklist (prerequisites, sandbox scenarios, go-live, rollback and
+the backup-restore drill) is in [docs/REAL_MONEY_ACTIVATION.md](docs/REAL_MONEY_ACTIVATION.md).
+
+- [x] GitHub Actions runs again (October 2026); all CI/security workflows run on every pull request. Still to do: require them via branch protection.
+- [x] Docker builds install with `npm ci` from committed lockfiles; production dependencies have no known vulnerabilities (`npm audit --omit=dev`, October 2026).
 - [ ] Configure Railway production secrets exactly as documented in `server/.env.example` and run `npm run production:validate` successfully.
 - [ ] Confirm Railway `TRUST_PROXY_HOPS` against the real deployed proxy topology.
-- [ ] Configure and test the production Africa's Talking SMS account/sender.
+- [ ] Test the production EgoSMS account/sender (production requires `SMS_PROVIDER=egosms`).
 - [ ] Configure the production S3 KYC bucket, encryption policy, retention/access controls and credentials/role.
 - [ ] Verify Smile ID in sandbox with approved test identities; switch `SMILE_ENV=production` only after provider approval.
 - [ ] Run MarZPay sandbox/end-to-end tests for disbursement, collection, duplicate/replayed callback, amount mismatch, provider identity mismatch and reconciliation recovery.
