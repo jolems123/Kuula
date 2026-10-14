@@ -50,3 +50,33 @@ test("verified income uses the lower of declared and verified values", () => {
   assert.equal(result.disposableIncome, 300_000);
   assert.equal(result.maxAffordablePayment, 420_000);
 });
+
+const base = {
+  requestedAmount: 100_000,
+  totalRepayment: 108_000,
+  termDays: 90,
+  existingDebtPayment: 0,
+  verifiedMonthlyIncome: null,
+  phoneVerified: true,
+  kycVerified: true,
+  evidence,
+  loansRepaid: 3,
+  loansTotal: 3,
+};
+
+test("a low-margin business is limited by its net cash flow, not its gross sales", () => {
+  // Sales 1,000,000 (600,000 after the haircut), business costs 500,000: net cash flow
+  // is 100,000 a month, so at most 50,000 a month can go to repayments.
+  const result = evaluateUnderwriting({ ...base, declaredMonthlyIncome: 1_000_000, declaredMonthlyExpenses: 500_000, totalRepayment: 200_000, requestedAmount: 185_000 });
+  assert.equal(UNDERWRITING_POLICY.maxNetCashFlowShare, 0.5);
+  assert.equal(result.maxAffordablePayment, 150_000);
+  assert.ok(result.flags.includes("repayment_not_affordable"));
+});
+
+test("a first-time borrower is capped until they have repaid loans", () => {
+  const firstTimer = evaluateUnderwriting({ ...base, declaredMonthlyIncome: 10_000_000, declaredMonthlyExpenses: 1_000_000, requestedAmount: 1_000_000, totalRepayment: 1_080_000, loansRepaid: 0, loansTotal: 0 });
+  assert.equal(firstTimer.approvedLimit, UNDERWRITING_POLICY.firstLoanCapUgx);
+  assert.ok(firstTimer.flags.includes("requested_amount_above_limit"));
+  const proven = evaluateUnderwriting({ ...base, declaredMonthlyIncome: 10_000_000, declaredMonthlyExpenses: 1_000_000, requestedAmount: 1_000_000, totalRepayment: 1_080_000, loansRepaid: 1, loansTotal: 1 });
+  assert.ok(proven.approvedLimit >= 1_000_000);
+});

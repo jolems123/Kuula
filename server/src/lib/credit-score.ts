@@ -32,7 +32,7 @@ export function computeCreditScore(d: ScoreInput) {
     {
       key: "repayment", label: "Repayment History", weight: 0.35,
       value: (d.loansTotal ?? 0) > 0 ? clamp((d.loansRepaid ?? 0) / d.loansTotal, 0, 1) : 0.5,
-      detail: `${d.loansRepaid ?? 0}/${d.loansTotal ?? 0} facilities repaid on time`,
+      detail: `${d.loansRepaid ?? 0}/${d.loansTotal ?? 0} facilities repaid on time (a payoff more than 7 days late does not count)`,
     },
   ];
 
