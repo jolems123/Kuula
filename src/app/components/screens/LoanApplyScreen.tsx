@@ -1,5 +1,6 @@
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { localQuote } from "../../lib/pricing";
@@ -51,6 +52,9 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [expenses, setExpenses] = useState(savedDraft?.expenses ?? 0);
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
   const [saveError, setSaveError] = useState("");
+  const [photos, setPhotos] = useState<BusinessPhotoFiles>(() => getBusinessPhotos().files);
+  const [photoConsent, setPhotoConsent] = useState(() => getBusinessPhotos().consent);
+  const [photoError, setPhotoError] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [manualLatitude, setManualLatitude] = useState("");
   const [manualLongitude, setManualLongitude] = useState("");
@@ -58,6 +62,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
+  useEffect(() => { setBusinessPhotos(photos, photoConsent); }, [photos, photoConsent]);
 
   useEffect(() => {
     if (!state.user) return;
@@ -150,6 +155,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     }));
   };
 
+  const pickPhoto = async (kind: BusinessPhotoType, file?: File) => {
+    setPhotoError("");
+    if (!file) return;
+    try {
+      const prepared = await prepareBusinessPhoto(file);
+      setPhotos(prev => ({ ...prev, [kind]: prepared }));
+    } catch (err) { setPhotoError(err instanceof Error ? err.message : "Unable to prepare photograph"); }
+  };
+
   const continueToReview = () => {
     setError("");
     if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within the advertised business-loan range."); return; }
@@ -157,6 +171,11 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
       if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
     }
+    if (!photos.exterior || !photos.interior || !photos.applicant_at_business) {
+      setError("Capture your business exterior, interior and a photo of yourself at your business before continuing.");
+      return;
+    }
+    if (!photoConsent) { setError("Please consent to secure processing of business evidence photos."); return; }
     if (!businessDetails.applicantPosition.trim()) { setError("Select your role or position in the business."); return; }
     if (businessDetails.tradingAs === "registered" && !businessDetails.registrationNumber.trim()) {
       setError("Registered businesses must provide their business registration number."); return;
@@ -331,6 +350,36 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             {businessTextField("How exactly will you use this loan?", "loanUse", "e.g. purchase 15 cartons of inventory")}
             {businessTextField("How will your business repay the loan?", "repaymentPlan", "e.g. daily sales revenue")}
           </div>
+        </section>
+
+        <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label="Business photographs">
+          <h2 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px", color: "#13251C" }}>Business photos and premises evidence</h2>
+          <p style={{ fontSize: 12, color: "#68766F", lineHeight: 1.5 }}>Take clear, recent photos at your real place of business. A Kuula reviewer will inspect them. Uploading a photo does not verify your business automatically.</p>
+          {([
+            ["exterior", "Business exterior", "Show the entrance and surrounding premises.", "environment"],
+            ["interior", "Inside your business", "Show your workspace, shelves or equipment.", "environment"],
+            ["applicant_at_business", "You at your business", "Include your face AND identifiable business surroundings in one photo.", "user"],
+            ["stock_equipment", "Stock or equipment (optional)", "Photograph merchandise, tools or working equipment.", "environment"],
+          ] as const).map(([kind, label, hint, camera]) => (
+            <div key={kind} style={{ borderTop: "1px solid #E4EBE6", padding: "12px 0" }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#153826" }}>{label}{kind !== "stock_equipment" ? " *" : ""}</label>
+              <p style={{ fontSize: 11, margin: "5px 0", color: "#64766C" }}>{hint}</p>
+              <input type="file" accept="image/*" capture={camera} aria-label={label}
+                onChange={event => { const file = event.target.files?.[0]; if (file) void pickPhoto(kind, file); event.target.value = ""; }}
+                style={{ width: "100%", fontSize: 12 }} />
+              {photos[kind] && <div style={{ marginTop: 8 }}>
+                <img src={URL.createObjectURL(photos[kind]!)} alt={label + " selected preview"} onLoad={event => URL.revokeObjectURL(event.currentTarget.src)}
+                  style={{ display: "block", maxWidth: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 10 }} />
+                <button type="button" onClick={() => setPhotos(prev => { const next = { ...prev }; delete next[kind]; return next; })} style={{ marginTop: 7, padding: 7, border: "1px solid #BBD4C5", background: "white", borderRadius: 8 }}>Remove or retake photo</button>
+              </div>}
+            </div>
+          ))}
+          {photoError && <p role="alert" style={{ color: "#A13A3A", fontSize: 12 }}>{photoError}</p>}
+          <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12, lineHeight: 1.6, color: "#243A2B" }}>
+            <input type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} />
+            I consent to Kuula securely storing these photographs for business verification, underwriting review, fraud prevention and applicable record retention. I confirm the images are of my business and I have permission to submit them.
+          </label>
+          <p style={{ fontSize: 11, color: "#8A7661" }}>Photos are kept only in memory until submission. If you refresh or close the app, take them again. They are not saved in your browser's application draft.</p>
         </section>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
