@@ -5,8 +5,35 @@ let consent = false;
 let submittedApplicationId: string | null = null;
 export function setBusinessPhotos(value: BusinessPhotoFiles, agreed: boolean) { files = value; consent = agreed; }
 export function getBusinessPhotos() { return { files, consent, submittedApplicationId }; }
-export function setBusinessPhotoApplicationId(value: string | null) { submittedApplicationId = value; }
-export function clearBusinessPhotos() { files = {}; consent = false; submittedApplicationId = null; }
+/** Store only the application identifier, never identity/business photos, across refreshes.
+ * The server always enforces application ownership; this key is user-specific.
+ */
+const applicationKey = (userId: string) => "kuula:business-photo-application:" + encodeURIComponent(userId);
+export function getBusinessPhotoApplicationId(userId: string): string | null {
+  if (!userId) return null;
+  try { return sessionStorage.getItem(applicationKey(userId)); }
+  catch { return null; }
+}
+export function setBusinessPhotoApplicationId(value: string | null, userId?: string) {
+  submittedApplicationId = value;
+  if (!userId) return;
+  try {
+    if (value) sessionStorage.setItem(applicationKey(userId), value);
+    else sessionStorage.removeItem(applicationKey(userId));
+  } catch { /* Refresh recovery unavailable; continue with in-memory state. */ }
+}
+export function clearBusinessPhotos(userId?: string) {
+  files = {}; consent = false; submittedApplicationId = null;
+  if (userId) setBusinessPhotoApplicationId(null, userId);
+}
+export function clearAllBusinessPhotoApplicationIds() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index--) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith("kuula:business-photo-application:")) sessionStorage.removeItem(key);
+    }
+  } catch { /* Unavailable storage is not a submission failure. */ }
+}
 export async function prepareBusinessPhoto(file: File): Promise<File> {
   if (file.size > 20 * 1024 * 1024) throw new Error("This photograph is too large (20MB maximum source).");
   if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", ""].includes(file.type)) throw new Error("Choose a photo taken with your camera or saved as JPG, PNG or WEBP.");
