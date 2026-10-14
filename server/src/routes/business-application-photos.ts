@@ -13,7 +13,7 @@ const REQUIRED = ["exterior", "interior", "applicant_at_business"] as const;
 const TYPES = new Set<string>([...REQUIRED, "stock_equipment"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function authorizedApplication(id: string, userId: string, role: string) {
+async function authorizedApplication(id: string, userId: string, role: Parameters<typeof hasPermission>[0]) {
   if (!UUID.test(id)) throw new AppError("Invalid application ID", 400);
   const application = await prisma.loanApplication.findUnique({ where: { id }, select: { id: true, applicantId: true, status: true } });
   if (!application) throw new AppError("Application not found", 404);
