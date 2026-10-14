@@ -7,7 +7,6 @@ import { adminLoginLimiter } from "../../lib/rate-limiter";
 import { setAdminMfaChallenge } from "../../lib/selection";
 import { storeSessionTokens } from "../../lib/session-vault";
 import { AuthLayout } from "../auth/AuthLayout";
-import { toUgandaPhone } from "../../lib/phone";
 import { authRecoveryApi } from "../../api/auth-recovery";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -16,7 +15,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
   const { login } = useAppContext();
   useTranslation();
   const [show, setShow] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,12 +41,12 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
   const resetPw = async () => {
     setError(""); setNotice("");
-    const identifier = toUgandaPhone(phone);
-    if (!identifier) { setError("Enter your staff phone number first, then choose Forgot password."); return; }
+    const identifier = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) { setError("Enter your staff email address first, then choose Forgot password."); return; }
     try {
       await api.resetPassword(identifier);
       setResetFor(identifier);
-      setNotice("If that account is eligible, a reset code has been sent to its verified phone.");
+      setNotice("If that account is eligible, a reset code has been sent to its registered email.");
     }
     catch (e) { setError(e instanceof ApiError ? e.message : "Could not request a reset."); }
   };
@@ -56,7 +55,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     event.preventDefault();
     if (!resetFor || resetBusy) return;
     setError(""); setNotice("");
-    if (!/^\d{6}$/.test(resetCode.trim())) { setError("Enter the 6-digit code from the SMS."); return; }
+    if (!/^\d{6}$/.test(resetCode.trim())) { setError("Enter the 6-digit code from your email."); return; }
     if (resetPassword !== resetConfirm) { setError("The new passwords do not match."); return; }
     setResetBusy(true);
     try {
@@ -80,7 +79,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     event?.preventDefault();
     setError(""); setNotice("");
     const identifier = toUgandaPhone(phone);
-    if (!identifier || !pw) { setError("Enter your staff phone number and password."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier) || !pw) { setError("Enter your staff email and password."); return; }
     const rateCheck = adminLoginLimiter.check();
     if (!rateCheck.allowed) { setLockoutRemaining(rateCheck.retryAfterMs); setError(`Too many attempts. Try again in ${formatLockout(rateCheck.retryAfterMs)}.`); return; }
     setLoading(true);
@@ -104,15 +103,14 @@ export function AdminLoginScreen({ onNavigate }: Props) {
     <AuthLayout logoSubtitle="Staff portal" onBack={() => onNavigate("welcome")}>
       <div className="kx-auth-head">
         <h2>Sign in</h2>
-        <p>Use the phone number linked to your staff account.</p>
+        <p>Use your work email address and password.</p>
       </div>
 
       <form onSubmit={submit} noValidate>
         <div className="kx-field">
-          <label className="kx-label" htmlFor="staff-phone">Phone number</label>
-          <div className={`kx-control${error && !toUgandaPhone(phone) ? " is-invalid" : ""}`}>
-            <span className="kx-control__prefix">+256</span>
-            <input id="staff-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder="7XX XXX XXX" autoFocus />
+          <label className="kx-label" htmlFor="staff-phone">Work email</label>
+          <div className={`kx-control${error && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? " is-invalid" : ""}`}>
+            <input id="staff-phone" className="kx-input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="username" placeholder="you@kuulapp.com" autoFocus />
           </div>
         </div>
 
@@ -164,7 +162,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
       <div className="kx-auth-foot">
         <ShieldCheck size={16} />
-        <span>We'll text a 6-digit code to your phone to confirm it's you.</span>
+        <span>We'll email a 6-digit verification code to your registered staff address.</span>
       </div>
     </AuthLayout>
   );
