@@ -45,3 +45,18 @@ test("rejects invalid location provenance and coordinates", () => {
   assert.throws(() => parseBusinessProfile({ ...good, locationSource: "fake" }), /location source/i);
   assert.throws(() => parseBusinessProfile({ ...good, latitude: 0.3476, longitude: 32.5825, locationSource: "gps", locationAccuracyMeters: -2 }), /accuracy/i);
 });
+
+test("accepts audited small business operating declarations", () => {
+  const p = parseBusinessProfile({ ...good, primarySuppliers: "Kampala wholesalers", supplierPaymentTerms: "Cash",
+    salesFrequency: "daily", seasonalPattern: "School holidays are slower", lowSeasonMonthlySales: 900_000,
+    inventoryCost: 700_000, rentCost: 150_000, wagesCost: 200_000, otherOperatingCosts: 100_000,
+    otherDebtDetails: "Supplier credit paid weekly" });
+  assert.equal(p.salesFrequency, "daily");
+  assert.equal(p.inventoryCost + p.rentCost + p.wagesCost + p.otherOperatingCosts, 1_150_000);
+  assert.equal(p.monthlyBusinessExpenses, good.monthlyBusinessExpenses);
+});
+test("rejects expense breakdowns that exceed declared total, unreasonable low-season sales and bogus frequencies", () => {
+  assert.throws(() => parseBusinessProfile({ ...good, inventoryCost: 1_300_000 }), /breakdown exceeds/i);
+  assert.throws(() => parseBusinessProfile({ ...good, lowSeasonMonthlySales: 2_500_000 }), /low-season monthly sales/i);
+  assert.throws(() => parseBusinessProfile({ ...good, salesFrequency: "hourly" }), /sales frequency/i);
+});
