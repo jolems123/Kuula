@@ -13,12 +13,22 @@ const builtPolicy = builtHtml.match(/<meta\s+http-equiv="Content-Security-Policy
 if (!builtPolicy) throw new Error("The built app is missing its Content Security Policy. Rebuild before serving.");
 const contentSecurityPolicy = `${builtPolicy}; frame-ancestors 'none'`;
 
+// The public website (www.kuulapp.com) and the app (app.kuulapp.com) run on this one
+// service; the Host header decides which is served. The website is a static page with
+// an inline stylesheet and no scripts, so it gets its own, script-free policy.
+const websiteHosts = new Set(
+  (process.env.WEBSITE_HOSTS || "www.kuulapp.com,kuulapp.com").split(",").map((host) => host.trim().toLowerCase()).filter(Boolean),
+);
+const websiteFile = path.join(distDir, "marketing", "index.html");
+const websitePolicy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'none'; connect-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'";
+const isWebsiteHost = (req) => websiteHosts.has(String(req.hostname || "").toLowerCase());
+
 const app = express();
 app.disable("x-powered-by");
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    contentSecurityPolicy,
+    isWebsiteHost(req) ? websitePolicy : contentSecurityPolicy,
   );
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -28,6 +38,13 @@ app.use((_req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
   next();
 });
+// Website pages: the home page, and any unknown path, on a website host.
+const sendWebsite = (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(websiteFile);
+};
+app.get(["/", "/index.html", "/marketing", "/marketing/"], (req, res, next) => (isWebsiteHost(req) ? sendWebsite(req, res) : next()));
+
 app.use(express.static(distDir, {
   index: "index.html",
   maxAge: "1h",
@@ -38,7 +55,7 @@ app.use(express.static(distDir, {
 }));
 
 app.get("/health", (_req, res) => res.status(200).json({ ok: true, service: "kuula-web" }));
-app.use((_req, res) => res.sendFile(path.join(distDir, "index.html")));
+app.use((req, res) => (isWebsiteHost(req) ? sendWebsite(req, res) : res.sendFile(path.join(distDir, "index.html"))));
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Kuula web listening on port ${port}`);
