@@ -31,7 +31,6 @@ export function LandingScreen({ onNavigate }: Props) {
           </button>
         </div>
         <a href="https://www.kuulapp.com/" className="kx-link" style={{ display: "inline-block", marginTop: 18, color: "#fff", textDecoration: "underline", textUnderlineOffset: 4 }}>Learn about Kuula business loans</a>
-        <a href="/marketing/" className="kx-link" style={{ display: "inline-block", marginTop: 18, color: "#fff", textDecoration: "underline", textUnderlineOffset: 4 }}>Learn about Kuula business loans</a>
       </div>
 
       <div className="kx-landing__staff">
