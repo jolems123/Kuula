@@ -104,7 +104,8 @@ export interface LoanApplication {
   status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
   total: number;
   apr?: number;
-  interest?: number;
+  interest?: number | null;
+  serviceFee?: number | null;
   createdAt: string;
   decidedAt: string | null;
   decisionNotes: string | null;
