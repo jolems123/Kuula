@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Bell, BriefcaseBusiness, ShieldCheck, CalendarClock,
+  Bell, BriefcaseBusiness, CalendarClock,
   ChevronRight, RefreshCw, ArrowUpRight, AlertCircle, type LucideIcon,
 } from "lucide-react";
 import { BottomNav } from "../BottomNav";
@@ -18,7 +18,7 @@ const STATUS_COPY: Record<string, string> = {
   identity_required: "Verify your identity to unlock credit",
   data_required: "Refresh your credit data to unlock credit",
 };
-const statusCopy = (status: string) => STATUS_COPY[status] ?? "Keep building your Credit Pass";
+const statusCopy = (status: string) => STATUS_COPY[status] ?? "Your business loan request is being reviewed";
 
 function greeting(now = new Date()) {
   const hour = now.getHours();
@@ -57,7 +57,6 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
   const total = line?.totalLimit ?? 0;
   const availableShare = total > 0 ? Math.min(100, Math.max(0, (available / total) * 100)) : 0;
   const ready = line?.status === "available";
-  const pass = overview?.creditPass;
   const products = (overview?.products ?? []).filter((product) => product.category === "business").slice(0, 1);
 
   return (
@@ -118,9 +117,9 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
               {!loading && !error && products.length === 0 && (
                 <div className="kuula-empty-state" role="status">
                   <strong>No business credit products available yet</strong>
-                  <p>Your eligible business loan options will appear here when available. You can review your Credit Pass in the meantime.</p>
-                  <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("credit-dashboard")}>
-                    View my Credit Pass
+                  <p>Business loan options will appear here when available. You can continue by reviewing your loan applications.</p>
+                  <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("loan-history")}>
+                    View loan applications
                   </button>
                 </div>
               )}
@@ -152,11 +151,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
               <div><span className="kx-overline">Loans recorded</span>
                 <strong style={{ display: "block", marginTop: 4 }}>{state.loan ? state.loan.totalLoansCount : "Not available"}</strong>
               </div>
-              <div><span className="kx-overline">Credit Pass</span>
-                <button type="button" className="kx-link" onClick={() => onNavigate("credit-dashboard")} style={{ display: "block", marginTop: 4 }}>
-                  {pass ? `${pass.score} / ${pass.maxScore} · ${pass.tier}` : "View Credit Pass"}
-                </button>
-              </div>
+
             </div>
           </section>
 
