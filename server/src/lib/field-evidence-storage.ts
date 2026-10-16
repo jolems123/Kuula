@@ -130,7 +130,7 @@ export async function saveFinancialStatement(applicationId: string, kind: string
   const extension = extensions[mime];
   if (!extension || !["mobile_money","bank"].includes(kind) || !/^[a-f0-9-]{36}$/i.test(applicationId))
     throw new Error("Unsupported financial statement");
-  const key = `credit-evidence/${safe(applicationId)}/${safe(applicationId)}/${Date.now()}-${crypto.randomUUID()}-statement-${kind}.${extension}`;
+  const key = `credit-evidence/${safe(applicationId)}/${safe(applicationId)}/${Date.now()}-${crypto.randomUUID()}-statement-${safe(kind)}.${extension}`;
   if (provider() === "s3") {
     const kmsKeyId = process.env.KYC_S3_KMS_KEY_ID?.trim();
     await client().send(new PutObjectCommand({
