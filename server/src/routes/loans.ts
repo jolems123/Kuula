@@ -403,6 +403,19 @@ router.post(
   }
 );
 
+router.get("/:id/offer-charges", authenticateToken, async (req: Request, res: Response) => {
+  const id=String(req.params.id);
+  const app=await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true,serviceFee:true}});
+  if(!app||app.applicantId!==req.user!.userId)throw new AppError("Loan offer not found",404);
+  if(!["offered","approved","disbursing","active","overdue","paid"].includes(app.status))
+    throw new AppError("Pricing is only available after your offer is approved",409);
+  const rows=await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`
+    SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${id}::uuid AND status='approved' LIMIT 1
+  `);
+  if(!rows.length)throw new AppError("Verified offer pricing is unavailable",409);
+  res.set("Cache-Control","private, no-store").json({charges:rows[0].fee_breakdown,feeTotal:Number(app.serviceFee)});
+});
+
 router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res: Response) => {
   const applicationId = String(req.params.id);
   const userId = req.user!.userId;
