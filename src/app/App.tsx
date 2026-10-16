@@ -138,6 +138,9 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
 }
 
 const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  "credit-dashboard": "loan-history",
+  "credit-breakdown": "loan-history",
+  "improve-credit": "loan-history",
   "customer-disbursement-status": "loan-agreement",
   "customer-loan-rejection": "loan-history",
   "customer-credit-limit-increase": "loan-history",
