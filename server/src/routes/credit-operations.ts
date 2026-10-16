@@ -157,6 +157,42 @@ router.post("/applications/:id/assign", requirePermissions("loan.approve"), asyn
   res.json({ ok: true, level, assignee: { id: assignee.id, name: assignee.fullName, role: assignee.role } });
 });
 
+router.post("/applications/:id/pricing-proposal", async (req: Request, res: Response) => {
+  const applicationId = asId(req.params.id, "Application ID");
+  const application = await assertApplication(applicationId);
+  if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Pricing cannot be changed after an offer is issued", 409);
+  await assertAssigned(applicationId, req.user!.userId, 1, req.user!.role);
+  if (!roleFitsLevel(req.user!.role, 1)) throw new AppError("Only the assigned loan officer may propose pricing", 403);
+  const aprPercent = Number(req.body?.aprPercent);
+  const principal = Number(application.amount);
+  const days = application.termDays;
+  const charges = req.body?.charges;
+  if (!Number.isFinite(aprPercent) || aprPercent < 0 || aprPercent > 33.6 || !Array.isArray(charges) || charges.length > 12)
+    throw new AppError("Provide a valid APR and itemized charges", 422);
+  let otherCharges = 0;
+  const breakdown: Array<{label:string;amount:number}> = [];
+  for (const item of charges) {
+    const label = typeof item?.label === "string" ? item.label.trim() : "";
+    const amount = Number(item?.amount);
+    if (!label || label.length > 100 || !Number.isSafeInteger(amount) || amount < 0) throw new AppError("Every charge requires a valid description and amount", 422);
+    otherCharges += amount;
+    breakdown.push({label,amount});
+  }
+  if (!Number.isSafeInteger(otherCharges) || otherCharges > Math.round(principal * 0.336))
+    throw new AppError("Charges exceed the configured risk limit", 422);
+  const apr = Math.round(aprPercent * 100) / 10000;
+  const interest = Math.round(principal * apr * days / 365);
+  const total = principal + interest + otherCharges;
+  if (!Number.isSafeInteger(total)) throw new AppError("Pricing total is out of range", 422);
+  await prisma.$transaction(async tx => {
+    await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='superseded' WHERE application_id=${applicationId}::uuid AND status='proposed'`);
+    await tx.$executeRaw(Prisma.sql`INSERT INTO loan_pricing_proposals(id,application_id,proposed_by,principal,term_days,apr,interest,service_fee,other_charges,total,fee_breakdown)
+      VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,${req.user!.userId}::uuid,${BigInt(principal)},${days},${apr},${BigInt(interest)},0,${BigInt(otherCharges)},${BigInt(total)},${JSON.stringify(breakdown)}::jsonb)`);
+  });
+  await event(applicationId, req.user!.userId, "loan.pricing_proposed", 1, 1, {aprPercent,charges:breakdown,total});
+  res.status(201).json({ok:true, status:"proposed"});
+});
+
 router.get("/applications/:id", async (req: Request, res: Response) => {
   const applicationId = asId(req.params.id, "Application ID");
   const application = await assertApplication(applicationId);
