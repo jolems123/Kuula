@@ -367,26 +367,30 @@ router.post(
     const offerExpiresAt = decision === "approved"
       ? new Date(decidedAt.getTime() + UNDERWRITING_POLICY.offerValidityHours * 3_600_000)
       : null;
-    const updated = await prisma.loanApplication.update({
-      where: { id },
-      data: {
-        status: decision === "approved" ? "offered" : "rejected",
-        decisionNotes: notes,
-        decidedAt,
-        approvedBy: req.user!.userId,
-        offerExpiresAt,
-        ...(officerPricing ? {
-          apr: Number(officerPricing.apr),
-          interest: officerPricing.interest,
-          serviceFee: officerPricing.other_charges,
-          total: officerPricing.total,
-        } : {}),
-      },
-      include: { underwriting: true },
+    const updated = await prisma.$transaction(async tx => {
+      if (officerPricing) {
+        const count = await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='approved',approved_by=${req.user!.userId}::uuid,approved_at=NOW() WHERE id=${officerPricing.id}::uuid AND status='proposed'`);
+        if (count !== 1) throw new AppError("Pricing proposal changed during approval; retry review",409);
+      }
+      const count = await tx.loanApplication.updateMany({
+        where: {id,status:{in:["pending","resubmitted"]}},
+        data: {
+          status: decision === "approved" ? "offered" : "rejected",
+          decisionNotes: notes,
+          decidedAt,
+          approvedBy: req.user!.userId,
+          offerExpiresAt,
+          ...(officerPricing ? {
+            apr: Number(officerPricing.apr),
+            interest: officerPricing.interest,
+            serviceFee: officerPricing.other_charges,
+            total: officerPricing.total,
+          } : {}),
+        },
+      });
+      if (count.count!==1) throw new AppError("Application decision has already been recorded",409);
+      return tx.loanApplication.findUniqueOrThrow({where:{id},include:{underwriting:true}});
     });
-    if (officerPricing) {
-      await prisma.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='approved',approved_by=${req.user!.userId}::uuid,approved_at=NOW() WHERE id=${officerPricing.id}::uuid AND status='proposed'`);
-    }
     await writeAuditEvent({
       actorId: req.user!.userId,
       subjectUserId: application.applicantId,
