@@ -74,12 +74,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </button>
           </div>
 
-          <section className="kx-line" aria-label="Business loan application">
-            <span className="kx-line__label">KUULA BUSINESS LOANS</span>
-            <h2 style={{color:"white",fontSize:25,fontWeight:750,margin:"14px 0"}}>Finance your business</h2>
-            <p style={{color:"#D9F1E1",marginBottom:20}}>Apply for working capital, inventory, equipment or growth. No pre-approved limit is implied.</p>
-            <button type="button" className="kx-btn kx-btn--gold kx-btn--lg kx-btn--block" onClick={() => onNavigate("loan-apply")}>Apply for Business Loan <ArrowUpRight size={18}/></button>
-          </section>
+
         </div>
 
         <div className="kx-app__body kx-home__body">
