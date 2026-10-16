@@ -412,6 +412,7 @@ router.get("/:id/offer-charges", authenticateToken, async (req: Request, res: Re
   const rows=await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`
     SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${id}::uuid AND status='approved' LIMIT 1
   `);
+  if(!rows.length && Number(app.serviceFee)===0) { res.set("Cache-Control","private, no-store").json({charges:[],feeTotal:0,legacyOffer:true}); return; }
   if(!rows.length)throw new AppError("Verified offer pricing is unavailable",409);
   res.set("Cache-Control","private, no-store").json({charges:rows[0].fee_breakdown,feeTotal:Number(app.serviceFee)});
 });
