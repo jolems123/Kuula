@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
  */
 export async function assignInitialLoanOfficer(tx: Prisma.TransactionClient, applicationId: string, customerId: string): Promise<string | null> {
   // Serialize allocation to prevent simultaneous submissions flooding the same officer.
-  await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(65127124)`);
+  await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(65127124)`);
   const officers = await tx.$queryRaw<Array<{id:string}>>(Prisma.sql`
     SELECT u.id
     FROM users u
