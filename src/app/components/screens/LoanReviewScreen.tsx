@@ -126,10 +126,12 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         if (previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
         await api.uploadBusinessPhotos(token, applicationId, photos);
       }
-      const existingStatements = await api.listFinancialStatements(token, applicationId);
-      for (const item of getSelectedStatements()) {
-        if (!existingStatements.statements.some(saved => saved.kind === item.kind)) {
-          await api.uploadFinancialStatement(token, applicationId, {kind:item.kind,periodMonths:item.periodMonths,filename:item.file.name,dataUrl:await statementDataUrl(item.file)});
+      if (getSelectedStatements().length > 0) {
+        const existingStatements = await api.listFinancialStatements(token, applicationId);
+        for (const item of getSelectedStatements()) {
+          if (!existingStatements.statements.some(saved => saved.kind === item.kind)) {
+            await api.uploadFinancialStatement(token, applicationId, {kind:item.kind,periodMonths:item.periodMonths,filename:item.file.name,dataUrl:await statementDataUrl(item.file)});
+          }
         }
       }
       setSubmissionStage("complete");
