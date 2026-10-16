@@ -590,7 +590,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   });
 });
 
-router.post("/quote", authenticateToken, async (req: Request, res: Response) => {
+router.post("/quote", authenticateToken, requirePermissions("loan.review"), async (req: Request, res: Response) => {
   res.json(quoteForRequest(req.body?.amount, req.body?.termDays));
 });
 
