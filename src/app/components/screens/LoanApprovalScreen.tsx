@@ -109,7 +109,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       bg: "#FEF3F2",
       border: "#FECACA",
       title: "Application Not Approved",
-      sub: "Kuula cannot approve this application at this time. Review your Credit Pass and eligibility information before applying again.",
+      sub: "Kuula cannot approve this application at this time. You can review your application status or contact support before applying again.",
       badge: { text: "Not Approved", color: "#991B1B", bg: "#FEE2E2" },
     },
   }[status];
@@ -181,7 +181,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
           <div style={{ background: "#FEF2F2", borderRadius: 12, padding: "14px", border: "1px solid #FECACA" }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", margin: "0 0 6px" }}>What can I do next?</p>
             <p style={{ fontSize: 12, color: "#B91C1C", margin: 0, lineHeight: 1.6 }}>
-              Check your Credit Pass for identity, credit-data and repayment signals. A future application is always reassessed using your current eligibility and affordability.
+              For questions about a rejected application, contact Kuula support. Any future application will be reviewed by a loan officer.
             </p>
           </div>
         )}
@@ -202,8 +202,8 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
           </button>
         )}
         {status === "rejected" && (
-          <button onClick={() => onNavigate("credit-dashboard")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
-            View Credit Pass
+          <button onClick={() => onNavigate("loan-history")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+            View Applications
           </button>
         )}
       </div>
