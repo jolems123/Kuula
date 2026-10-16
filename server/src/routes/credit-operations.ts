@@ -10,6 +10,7 @@ import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-st
 import { writeAuditEvent } from "../lib/audit.js";
 import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
 import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
+import { PRICING } from "../lib/pricing.js";
 
 const router = Router();
 router.use(authenticateToken, requirePermissions("loan.review"));
@@ -167,7 +168,7 @@ router.post("/applications/:id/pricing-proposal", async (req: Request, res: Resp
   const principal = Number(application.amount);
   const days = application.termDays;
   const charges = req.body?.charges;
-  if (!Number.isFinite(aprPercent) || aprPercent < 0 || aprPercent > 33.6 || !Array.isArray(charges) || charges.length > 12)
+  if (!Number.isFinite(aprPercent) || aprPercent < 0 || aprPercent > PRICING.MAX_APR * 100 || !Array.isArray(charges) || charges.length > 12)
     throw new AppError("Provide a valid APR and itemized charges", 422);
   let otherCharges = 0;
   const breakdown: Array<{label:string;amount:number}> = [];
@@ -182,6 +183,9 @@ router.post("/applications/:id/pricing-proposal", async (req: Request, res: Resp
     throw new AppError("Charges exceed the configured risk limit", 422);
   const apr = Math.round(aprPercent * 100) / 10000;
   const interest = Math.round(principal * apr * days / 365);
+  const allInApr = (interest + otherCharges) / principal * 365 / days;
+  if (allInApr > PRICING.MAX_APR + 0.00005)
+    throw new AppError("Total annualized borrowing cost exceeds the configured lending limit",422);
   const total = principal + interest + otherCharges;
   if (!Number.isSafeInteger(total)) throw new AppError("Pricing total is out of range", 422);
   await prisma.$transaction(async tx => {
