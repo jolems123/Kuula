@@ -1,1 +1,1 @@
-export { UseCreditScreen as QuickActionsScreen } from "./UseCreditScreen";
+export { LoanApplyScreen as QuickActionsScreen } from "./LoanApplyScreen";
