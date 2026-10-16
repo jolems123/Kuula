@@ -1,3 +1,4 @@
+import { getSelectedStatements, setSelectedStatements, validateStatement, type StatementKind } from "../../lib/financial-statements";
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
@@ -52,6 +53,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [expenses, setExpenses] = useState(savedDraft?.expenses ?? 0);
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
   const [saveError, setSaveError] = useState("");
+  const [statementError, setStatementError] = useState("");
+  const [statements, setStatements] = useState(getSelectedStatements);
   const [photos, setPhotos] = useState<BusinessPhotoFiles>(() => getBusinessPhotos().files);
   const [photoConsent, setPhotoConsent] = useState(() => getBusinessPhotos().consent);
   const [photoError, setPhotoError] = useState("");
@@ -62,6 +65,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
+  useEffect(() => { setSelectedStatements(statements); }, [statements]);
   useEffect(() => { setBusinessPhotos(photos, photoConsent); }, [photos, photoConsent]);
 
   useEffect(() => {
@@ -163,6 +167,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       const prepared = await prepareBusinessPhoto(file);
       setPhotos(prev => ({ ...prev, [kind]: prepared }));
     } catch (err) { setPhotoError(err instanceof Error ? err.message : "Unable to prepare photograph"); }
+  };
+
+  const addStatement = (kind: StatementKind, file: File | undefined) => {
+    setStatementError("");
+    if (!file) return;
+    try {
+      validateStatement(file);
+      setStatements(prev => [...prev.filter(s => s.kind !== kind), {kind, file, periodMonths: 6}]);
+    } catch (err) { setStatementError(err instanceof Error ? err.message : "Invalid statement"); }
   };
 
   const continueToReview = () => {
