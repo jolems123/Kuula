@@ -173,6 +173,10 @@ const nodeApi = {
     request<{ ok: boolean; photoTypes: string[] }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
       { method: "POST", headers: auth(token), body: JSON.stringify({ photoConsent: true, photos }) }, 120000),
+  uploadFinancialStatement: (token: string, id: string, data: {kind: "bank" | "mobile_money"; periodMonths: number; filename: string; dataUrl: string}) =>
+    request<{ok:boolean;kind:string}>("/api/loans/applications/" + encodeURIComponent(id) + "/financial-statements", {method:"POST",headers:auth(token),body:JSON.stringify(data)},120000),
+  listFinancialStatements: (token: string, id: string) =>
+    request<{statements:Array<{id:string;kind:string;filename:string}>}>("/api/loans/applications/" + encodeURIComponent(id) + "/financial-statements",{headers:auth(token)}),
   submitApplication: (token: string, body: { amount: number; purpose: string; termDays: number; channel?: string; declaredMonthlyIncome: number; declaredMonthlyExpenses: number; existingDebtPayment: number; business: import("./types").BusinessProfile }) => request<{ application: LoanApplication }>("/api/loans/applications", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   reviewBusiness: (token: string, id: string, status: "verified" | "rejected", notes: string) => request<{ application: LoanApplication }>(`/api/loans/applications/${id}/business-review`, { method: "POST", headers: auth(token), body: JSON.stringify({ status, notes }) }),
   decideApplication: (token: string, id: string, decision: "approved" | "rejected", notes = "Decision recorded by authorized staff") => request<{ application: LoanApplication }>("/api/loans/applications/decision", { method: "POST", headers: auth(token), body: JSON.stringify({ id, decision, notes }) }),
