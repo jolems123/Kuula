@@ -353,6 +353,13 @@ router.post(
       if (officerPricing.proposed_by === req.user!.userId) throw new AppError("An independent approver must authorize the officer's terms",403);
       const approval = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM approval_actions WHERE application_id=${id}::uuid AND level=3 AND action='approve' AND actor_id <> ${officerPricing.proposed_by}::uuid LIMIT 1`);
       if (!approval.length) throw new AppError("Pricing cannot be offered before independent Level 3 approval",409);
+      const fresh = await recheckUnderwriting(
+        {...application, total: officerPricing.total},
+        application.applicant,
+        application.underwriting,
+      );
+      await persistAssessment(application.id, req.user!.userId, fresh);
+      if (!fresh.approved) throw new AppError("Proposed terms do not pass the final affordability assessment",422);
     }
 
     const decidedAt = new Date();
