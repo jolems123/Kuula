@@ -20,7 +20,7 @@ function ErrorBox({ value }: { value: string | null }) {
   return value ? <div style={{ padding: 11, borderRadius: 9, background: "#FEF2F2", color: "#991B1B", marginBottom: 12, fontSize: 12 }}>{value}</div> : null;
 }
 
-function OfficerPricingForm({token,applicationId}:{token:string|null;applicationId:string}) {
+export function OfficerPricingForm({token,applicationId}:{token:string|null;applicationId:string}) {
   const [rate,setRate]=useState("");
   const [charges,setCharges]=useState<Array<{label:string;amount:string}>>([]);
   const [saving,setSaving]=useState(false);
