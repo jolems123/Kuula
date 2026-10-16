@@ -20,7 +20,6 @@ import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib
 import {
   ArrowRightLeft,
   Bell,
-  CreditCard,
   HandCoins,
   House,
   LogOut,
@@ -31,7 +30,6 @@ import { KuulaLogo } from "./components/brand/KuulaLogo";
 
 const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Overview", icon: House },
-  { id: "credit-dashboard", label: "Credit Pass", icon: CreditCard },
   { id: "quick-actions", label: "Borrow", icon: HandCoins },
   { id: "transaction-history", label: "Transactions", icon: ArrowRightLeft },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -141,9 +139,12 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
 }
 
 const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
+  "credit-dashboard": "loan-history",
+  "credit-breakdown": "loan-history",
+  "improve-credit": "loan-history",
   "customer-disbursement-status": "loan-agreement",
   "customer-loan-rejection": "loan-history",
-  "customer-credit-limit-increase": "credit-dashboard",
+  "customer-credit-limit-increase": "loan-history",
   "customer-loan-refinance": "loan-detail",
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
