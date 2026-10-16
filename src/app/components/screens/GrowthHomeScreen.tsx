@@ -166,18 +166,10 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </section>
           )}
 
-          <button type="button" className="kx-card kx-row" onClick={() => onNavigate("credit-dashboard")}>
-            <span className="kx-tile-icon"><ShieldCheck size={20} strokeWidth={1.75} /></span>
-            <div className="kx-row__text">
-              <span className="kx-overline">Kuula Credit Pass</span>
-              <div className="kx-pass">
-                <strong>{pass ? pass.score : "—"}</strong>
-                {pass && <span>/ {pass.maxScore}</span>}
-                {pass?.tier && <span className="kx-pill kx-pill--soft">{pass.tier}</span>}
-              </div>
-              {pass && <div className="kx-pass__meter" aria-hidden="true"><span style={{ width: `${Math.min(100, (pass.score / Math.max(1, pass.maxScore)) * 100)}%` }} /></div>}
-            </div>
-            <ChevronRight size={18} strokeWidth={1.75} className="kx-row__chevron" />
+          <button type="button" className="kx-card kx-row" onClick={() => onNavigate("loan-history")}>
+            <span className="kx-tile-icon"><ClipboardList size={20} strokeWidth={1.75} /></span>
+            <div className="kx-row__text"><strong>My loan applications</strong><p>Track decisions, agreements and repayments</p></div>
+            <ChevronRight size={18} className="kx-row__chevron" />
           </button>
 
         </div>
