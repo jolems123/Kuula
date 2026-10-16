@@ -20,6 +20,34 @@ function ErrorBox({ value }: { value: string | null }) {
   return value ? <div style={{ padding: 11, borderRadius: 9, background: "#FEF2F2", color: "#991B1B", marginBottom: 12, fontSize: 12 }}>{value}</div> : null;
 }
 
+function OfficerPricingForm({token,applicationId}:{token:string|null;applicationId:string}) {
+  const [rate,setRate]=useState("");
+  const [charges,setCharges]=useState<Array<{label:string;amount:string}>>([]);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("");
+  const propose=async()=>{
+    if(!token)return;
+    setSaving(true);setMessage("");
+    try {
+      const parsed=charges.map(c=>({label:c.label.trim(),amount:Number(c.amount)}));
+      if(rate.trim()==="" || parsed.some(c=>!c.label||!Number.isSafeInteger(c.amount)||c.amount<0))throw new Error("Enter a valid interest rate and describe each additional charge.");
+      await creditOperationsApi.proposePricing(token,applicationId,Number(rate),parsed);
+      setMessage("Pricing proposal saved for independent review.");
+    } catch(err){setMessage(err instanceof Error?err.message:"Could not save pricing proposal");}
+    finally{setSaving(false);}
+  };
+  return <AdminCard><h3>Proposed interest and charges</h3><p style={{fontSize:12,color:"#64748B"}}>Enter the proposed annual simple interest rate and each additional fee. The customer will only see terms after independent approval.</p>
+    <label>Annual interest rate (%)<input type="number" min={0} max={33.6} step="0.01" style={input} value={rate} onChange={e=>setRate(e.target.value)}/></label>
+    {charges.map((charge,index)=><div key={index} style={{display:"flex",gap:8,marginTop:8}}>
+      <input aria-label="Charge description" placeholder="Charge description" style={input} value={charge.label} onChange={e=>setCharges(prev=>prev.map((v,i)=>i===index?{...v,label:e.target.value}:v))}/>
+      <input aria-label="Charge amount UGX" type="number" min={0} step={1} style={input} value={charge.amount} onChange={e=>setCharges(prev=>prev.map((v,i)=>i===index?{...v,amount:e.target.value}:v))}/>
+      <button type="button" onClick={()=>setCharges(prev=>prev.filter((_,i)=>i!==index))}>Remove</button>
+    </div>)}
+    <div style={{display:"flex",gap:8,marginTop:12}}><button type="button" style={button} onClick={()=>setCharges(prev=>[...prev,{label:"",amount:""}])} disabled={charges.length>=12}>Add charge</button><button type="button" style={primary} onClick={()=>void propose()} disabled={saving}>{saving?"Saving...":"Save pricing proposal"}</button></div>
+    {message&&<p role="status" style={{fontSize:12,marginTop:8}}>{message}</p>}
+  </AdminCard>;
+}
+
 export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
   const token = useAppContext().state.session.token;
   const selected = getCreditOperationsSelection();
@@ -148,7 +176,7 @@ export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
 
     {tab === "evidence" && <AdminCard><h3 style={{ marginTop: 0 }}>Supporting evidence</h3><p style={{ fontSize: 12, color: "#64748B" }}>Upload only evidence relevant to the application. At least two field evidence items are required before Level 1 submission.</p><div style={{ display: "flex", gap: 8, marginBottom: 12 }}><select style={{ ...input, maxWidth: 250 }} value={evidenceType} onChange={(e) => setEvidenceType(e.target.value)}>{["storefront","business_interior","stock","equipment","licence","supplier_invoice","applicant_at_business","other"].map((item) => <option key={item} value={item}>{item.replace(/_/g, " ")}</option>)}</select><label style={{ ...primary, display: "inline-flex", gap: 7, alignItems: "center" }}><Upload size={14}/>{busy ? "Uploading…" : "Upload evidence"}<input hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy} onChange={(e) => { const file=e.target.files?.[0]; if(file) void uploadEvidence(file); e.currentTarget.value=""; }}/></label></div><div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9 }}>{evidence.map((item) => <button key={item.id} style={{ ...button, textAlign: "left" }} onClick={() => void openEvidence(String(item.id))}><Camera size={16} color={GREEN}/><div style={{ marginTop: 5, fontSize: 12, fontWeight: 700 }}>{String(item.evidence_type).replace(/_/g, " ")}</div><div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>{Math.round(Number(item.bytes || 0)/1024)} KB · {fmt(item.created_at)}</div></button>)}</div></AdminCard>}
 
-    {tab === "review" && <AdminCard><h3 style={{ marginTop: 0 }}>Officer recommendation & escalation</h3><p style={{ fontSize: 12, color: "#64748B" }}>Your narrative becomes part of the permanent credit audit trail. The manager and final approver will see the system underwriting separately from your judgement.</p><textarea style={textarea} value={narrative} onChange={(e) => setNarrative(e.target.value)} placeholder="Explain evidence considered, affordability, risks, mitigants and why you recommend the amount/term…"/><label style={{ display: "block", fontSize: 12, color: "#475569", marginTop: 10 }}>Level 2 reviewer<select style={{ ...input, marginTop: 5 }} value={nextAssignee} onChange={(e) => setNextAssignee(e.target.value)}><option value="">Select Level 2 reviewer…</option>{managers.map((staff) => <option key={staff.id} value={staff.id}>{staff.fullName} · {staff.activeCases} active</option>)}</select></label><button style={{ ...primary, marginTop: 10 }} disabled={busy} onClick={() => void submitToManager()}>{busy ? "Submitting…" : "Submit to Level 2"}</button></AdminCard>}
+    {tab === "review" && <><OfficerPricingForm token={token} applicationId={applicationId}/><AdminCard><h3 style={{ marginTop: 0 }}>Officer recommendation & escalation</h3><p style={{ fontSize: 12, color: "#64748B" }}>Your narrative becomes part of the permanent credit audit trail. The manager and final approver will see the system underwriting separately from your judgement.</p><textarea style={textarea} value={narrative} onChange={(e) => setNarrative(e.target.value)} placeholder="Explain evidence considered, affordability, risks, mitigants and why you recommend the amount/term…"/><label style={{ display: "block", fontSize: 12, color: "#475569", marginTop: 10 }}>Level 2 reviewer<select style={{ ...input, marginTop: 5 }} value={nextAssignee} onChange={(e) => setNextAssignee(e.target.value)}><option value="">Select Level 2 reviewer…</option>{managers.map((staff) => <option key={staff.id} value={staff.id}>{staff.fullName} · {staff.activeCases} active</option>)}</select></label><button style={{ ...primary, marginTop: 10 }} disabled={busy} onClick={() => void submitToManager()}>{busy ? "Submitting…" : "Submit to Level 2"}</button></AdminCard></>}
 
     {tab === "thread" && <AdminCard><h3 style={{ marginTop: 0 }}>Application communication</h3><div style={{ display: "flex", gap: 7, marginBottom: 10 }}><button style={channel === "internal" ? primary : button} onClick={() => setChannel("internal")}>Internal reviewers</button><button style={channel === "customer" ? primary : button} onClick={() => setChannel("customer")}>Customer-visible</button><button style={button} onClick={() => void load()}><RefreshCw size={13}/> Refresh</button></div><div style={{ maxHeight: 280, overflowY: "auto" }}>{messages.filter((item) => item.message_type === channel).map((item) => <div key={item.id} style={{ padding: "8px 0", borderBottom: `1px solid ${BORDER}` }}><strong style={{ fontSize: 11 }}>{item.sender_name} · {item.sender_role}</strong><div style={{ fontSize: 12, marginTop: 3 }}>{item.content}</div><div style={{ color: "#94A3B8", fontSize: 10 }}>{fmt(item.created_at)}</div></div>)}</div><textarea style={{ ...textarea, minHeight: 64, marginTop: 10 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={channel === "internal" ? "Message another reviewer…" : "Send an update to the customer…"}/><button style={{ ...primary, marginTop: 8 }} onClick={() => void postMessage()}><Send size={14}/> Send</button></AdminCard>}
 
