@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
-import { localQuote } from "../../lib/pricing";
 import { getLoanCalculatorSelection, setLoanCalculatorSelection, setLoanDraft } from "../../lib/selection";
 import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurpose, parseBusinessLoanPurpose, type BusinessLoanPurposeOption } from "../../lib/business-loan-purpose";
 import { getSavedLoanApplicationDraft, saveLoanApplicationDraft } from "../../lib/loan-application-autosave";
@@ -107,7 +106,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     setAmount((current) => Math.min(Math.max(current, MIN_AMOUNT), maxEligibleAmount));
   }, [canApply, maxEligibleAmount]);
 
-  const quote = localQuote(amount, term);
   const allocationsTotal = Object.values(businessDetails.useOfFunds).reduce((sum, value) => sum + value, 0);
   const businessCoordinatesAvailable = Number.isFinite(businessDetails.latitude) && Number.isFinite(businessDetails.longitude);
   const businessMapUrl = businessCoordinatesAvailable
@@ -510,7 +508,10 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           </div>)}
           {statementError && <p role="alert">{statementError}</p>}
         </section>
-        <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}><div className="flex justify-between py-1.5"><span>Principal</span><strong>{formatUGX(amount)}</strong></div><div className="flex justify-between py-1.5"><span>Interest ({quote.aprPercent}% APR, simple)</span><strong>{formatUGX(quote.interest)}</strong></div><div className="flex justify-between py-2" style={{ borderTop: "1px solid #EAD277", marginTop: 5 }}><strong>Total repayment</strong><strong style={{ color: "#0B5E3A" }}>{formatUGX(quote.total)}</strong></div></div>
+        <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}>
+          <div className="flex justify-between py-1.5"><span>Requested loan amount</span><strong>{formatUGX(amount)}</strong></div>
+          <p style={{ fontSize: 12, marginTop: 8 }}>Interest, fees, charges and the final repayment amount will be disclosed in the approved loan offer, before you decide whether to accept it.</p>
+        </div>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3" style={{ background: "white", borderTop: "1px solid #E8EEEA" }}>{error && <p style={{ fontSize: 11.5, color: "#B91C1C", textAlign: "center", marginBottom: 8 }}>{error}</p>}<button disabled={!canApply} onClick={continueToReview} className="kuula-primary" style={{ width: "100%", height: 52, opacity: canApply ? 1 : 0.55, cursor: canApply ? "pointer" : "not-allowed" }}>Review Application</button></div>
