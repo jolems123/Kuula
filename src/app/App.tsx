@@ -20,7 +20,6 @@ import { clearSessionTokens, readSessionTokens, storeSessionTokens } from "./lib
 import {
   ArrowRightLeft,
   Bell,
-  CreditCard,
   HandCoins,
   House,
   LogOut,
@@ -31,7 +30,6 @@ import { KuulaLogo } from "./components/brand/KuulaLogo";
 
 const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Overview", icon: House },
-  { id: "credit-dashboard", label: "Credit Pass", icon: CreditCard },
   { id: "quick-actions", label: "Borrow", icon: HandCoins },
   { id: "transaction-history", label: "Transactions", icon: ArrowRightLeft },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -41,7 +39,7 @@ const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
 const CUSTOMER_TITLES: Record<string, string> = {
   home: "Overview",
   dashboard: "Dashboard",
-  "credit-dashboard": "Credit Pass",
+  "credit-dashboard": "Loan applications",
   "credit-breakdown": "Credit details",
   "improve-credit": "Improve your credit",
   "quick-actions": "Use your Growth Line",
@@ -94,7 +92,6 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
         <nav className="kuula-customer-sidebar__nav" aria-label="Customer navigation">
           {CUSTOMER_NAV.map(({ id, label, icon: Icon }) => {
             const active = id === screenId
-              || (id === "credit-dashboard" && ["credit-breakdown", "improve-credit"].includes(screenId))
               || (id === "quick-actions" && ["loan-calculator", "loan-apply", "loan-review", "loan-approval", "loan-detail", "loan-history", "make-payment", "payment-confirm", "loan-agreement", "customer-officer-assigned"].includes(screenId))
               || (id === "transaction-history" && screenId === "transaction-detail")
               || (id === "settings" && ["profile", "personal-info", "notification-settings", "privacy-security", "help-support", "contact-support", "about-app", "delete-account"].includes(screenId));
@@ -143,7 +140,7 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
 const LEGACY_ROUTE_REDIRECTS: Record<string, string> = {
   "customer-disbursement-status": "loan-agreement",
   "customer-loan-rejection": "loan-history",
-  "customer-credit-limit-increase": "credit-dashboard",
+  "customer-credit-limit-increase": "loan-history",
   "customer-loan-refinance": "loan-detail",
   "loan-purpose": "loan-apply",
   "loan-disbursement": "loan-apply",
