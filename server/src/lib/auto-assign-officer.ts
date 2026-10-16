@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 /** Select an eligible Level 1 officer at random among the least-loaded officers.
  * This function must be called within the loan application's database transaction.
@@ -26,7 +26,7 @@ export async function assignInitialLoanOfficer(tx: Prisma.TransactionClient, app
   `);
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO approval_assignments (id, application_id, level, assignee_id, assigned_by)
-    VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, 1, ${officerId}::uuid, ${officerId}::uuid)
+    VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, 1, ${officerId}::uuid, NULL)
   `);
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO credit_operation_events (id, application_id, actor_id, event_type, to_level, detail)
