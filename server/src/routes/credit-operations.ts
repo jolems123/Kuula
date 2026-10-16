@@ -209,6 +209,10 @@ router.get("/applications/:id", async (req: Request, res: Response) => {
     prisma.$queryRaw<any[]>(Prisma.sql`SELECT m.*, u.full_name AS sender_name, u.role AS sender_role FROM application_messages m JOIN users u ON u.id = m.sender_id WHERE m.application_id = ${applicationId}::uuid ORDER BY m.created_at`),
     prisma.$queryRaw<any[]>(Prisma.sql`SELECT e.*, u.full_name AS actor_name FROM credit_operation_events e LEFT JOIN users u ON u.id = e.actor_id WHERE e.application_id = ${applicationId}::uuid ORDER BY e.created_at`),
   ]);
+  const pricingProposals=await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;service_fee:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;status:string}>>(Prisma.sql`
+    SELECT id,proposed_by,apr,interest,service_fee,other_charges,total,fee_breakdown,status
+    FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid ORDER BY created_at DESC
+  `);
   res.json({
     application: {
       id: application.id, applicantId: application.applicantId, applicantName: application.applicantName,
@@ -218,6 +222,7 @@ router.get("/applications/:id", async (req: Request, res: Response) => {
       underwriting: application.underwriting ? { creditScore: application.underwriting.creditScore, approvedLimit: Number(application.underwriting.approvedLimit), disposableIncome: Number(application.underwriting.disposableIncome), maxAffordablePayment: Number(application.underwriting.maxAffordablePayment), status: application.underwriting.status, flags: application.underwriting.flags } : null,
     },
     case: caseData,
+    pricingProposals: pricingProposals.map(p=>({...p,apr:Number(p.apr),interest:Number(p.interest),service_fee:Number(p.service_fee),other_charges:Number(p.other_charges),total:Number(p.total)})),
     evaluations: evaluations.map((r) => ({ ...r, estimated_monthly_sales: r.estimated_monthly_sales == null ? null : Number(r.estimated_monthly_sales), estimated_stock_value: r.estimated_stock_value == null ? null : Number(r.estimated_stock_value), monthly_operating_expenses: r.monthly_operating_expenses == null ? null : Number(r.monthly_operating_expenses), existing_business_debt: r.existing_business_debt == null ? null : Number(r.existing_business_debt), recommended_amount: r.recommended_amount == null ? null : Number(r.recommended_amount) })),
     evidence, actions: actions.map((r) => ({ ...r, recommended_amount: r.recommended_amount == null ? null : Number(r.recommended_amount) })), assignments, messages, events,
   });
