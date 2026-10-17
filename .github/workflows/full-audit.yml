@@ -1,4 +1,5 @@
 name: Full Application and Dependency Audit
+# Verification after patched-lock refresh on 2026-10-17
 
 on:
   push:
