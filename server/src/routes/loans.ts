@@ -1,3 +1,4 @@
+import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
 import { Router, Request, Response } from "express";
@@ -244,6 +245,7 @@ async function createLoanApplicationForUser(
           flags: underwriting.flags as Prisma.InputJsonValue,
         },
       });
+      await assignInitialLoanOfficer(tx, created.id, userId);
       return created;
     });
     await writeAuditEvent({
