@@ -112,10 +112,36 @@ export async function accessFieldEvidence(key: string, mime: string): Promise<Fi
 /** Compensation for failed evidence-metadata transactions. Call only for files
  * created during that same attempt; never delete a previously reviewed photo. */
 export async function deleteFieldEvidence(key: string): Promise<void> {
-  if (!/^credit-evidence\/[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png|webp)$/i.test(key)) throw new Error("Invalid field evidence key");
+  if (!/^credit-evidence\/[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+\.(jpg|png|webp|pdf|csv|xlsx)$/i.test(key)) throw new Error("Invalid field evidence key");
   if (provider() === "s3") {
     await client().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
   } else {
     await fs.rm(localPath(key), { force: true });
   }
+}
+
+/** Private financial documents share the encrypted evidence store, never the public filesystem. */
+export async function saveFinancialStatement(applicationId: string, kind: string, mime: string, bytes: Buffer): Promise<StoredFieldEvidence> {
+  const extensions: Record<string, string> = {
+    "application/pdf": "pdf",
+    "text/csv": "csv",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  };
+  const extension = extensions[mime];
+  if (!extension || !["mobile_money","bank"].includes(kind) || !/^[a-f0-9-]{36}$/i.test(applicationId))
+    throw new Error("Unsupported financial statement");
+  const key = `credit-evidence/${safe(applicationId)}/${safe(applicationId)}/${Date.now()}-${crypto.randomUUID()}-statement-${safe(kind)}.${extension}`;
+  if (provider() === "s3") {
+    const kmsKeyId = process.env.KYC_S3_KMS_KEY_ID?.trim();
+    await client().send(new PutObjectCommand({
+      Bucket: bucket(), Key: key, Body: bytes, ContentType: mime, ContentLength: bytes.length,
+      ServerSideEncryption: kmsKeyId ? "aws:kms" : "AES256", SSEKMSKeyId: kmsKeyId || undefined,
+      Metadata: {"kuula-data-class":"financial-statement","kuula-application-id":applicationId},
+    }));
+  } else {
+    const target=localPath(key);
+    await fs.mkdir(path.dirname(target),{recursive:true,mode:0o700});
+    await fs.writeFile(target,bytes,{mode:0o600});
+  }
+  return {key,mime,bytes:bytes.length};
 }

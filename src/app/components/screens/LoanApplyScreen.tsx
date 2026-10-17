@@ -1,3 +1,4 @@
+import { getSelectedStatements, setSelectedStatements, validateStatement, type StatementKind } from "../../lib/financial-statements";
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
@@ -52,6 +53,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [expenses, setExpenses] = useState(savedDraft?.expenses ?? 0);
   const [existingDebt, setExistingDebt] = useState(savedDraft?.existingDebt ?? 0);
   const [saveError, setSaveError] = useState("");
+  const [statementError, setStatementError] = useState("");
+  const [statements, setStatements] = useState(getSelectedStatements);
   const [photos, setPhotos] = useState<BusinessPhotoFiles>(() => getBusinessPhotos().files);
   const [photoConsent, setPhotoConsent] = useState(() => getBusinessPhotos().consent);
   const [photoError, setPhotoError] = useState("");
@@ -62,6 +65,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
+  useEffect(() => { setSelectedStatements(statements); }, [statements]);
   useEffect(() => { setBusinessPhotos(photos, photoConsent); }, [photos, photoConsent]);
 
   useEffect(() => {
@@ -163,6 +167,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       const prepared = await prepareBusinessPhoto(file);
       setPhotos(prev => ({ ...prev, [kind]: prepared }));
     } catch (err) { setPhotoError(err instanceof Error ? err.message : "Unable to prepare photograph"); }
+  };
+
+  const addStatement = (kind: StatementKind, file: File | undefined) => {
+    setStatementError("");
+    if (!file) return;
+    try {
+      validateStatement(file);
+      setStatements(prev => [...prev.filter(s => s.kind !== kind), {kind, file, periodMonths: 6}]);
+    } catch (err) { setStatementError(err instanceof Error ? err.message : "Invalid statement"); }
   };
 
   const continueToReview = () => {
@@ -480,6 +493,23 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.disbursementMethod").toUpperCase()}</label><p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>Approved business credit is sent to your verified mobile-money account. Kuula may request business or supplier details during review.</p><div className="flex flex-col gap-2 mt-3">{METHODS.map((m) => <button key={m.id} onClick={() => setMethod(m.id)} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: method === m.id ? "#EDF8F2" : "#F9FAFB", border: method === m.id ? "1.5px solid #B7DEC9" : "1.5px solid transparent", textAlign: "left" }}><span style={{ fontSize: 20 }}>{m.icon}</span><span style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", flex: 1 }}>{m.label}</span><span style={{ width: 20, height: 20, borderRadius: 10, border: method === m.id ? "6px solid #0B5E3A" : "2px solid #D1D5DB" }} /></button>)}</div></div>
 
+        <section className="p-4 rounded-2xl" style={{ background: "white" }}>
+          <strong>Financial statements (optional)</strong>
+          <p>Attach a mobile money or bank statement if available. PDF, CSV or XLSX, up to 5 MB each. You may continue without statements.</p>
+          {(["mobile_money", "bank"] as const).map(kind => <div key={kind} style={{ padding: 10 }}>
+            <label>{kind === "bank" ? "Bank statement" : "Mobile money statement"}
+              <input type="file" accept=".pdf,.csv,.xlsx" onChange={e => addStatement(kind, e.target.files?.[0])} />
+            </label>
+            {statements.filter(s => s.kind === kind).map(s => <div key={kind}>
+              <span>{s.file.name}</span>
+              <select value={s.periodMonths} aria-label="Statement period" onChange={e => setStatements(prev => prev.map(item => item.kind === kind ? {...item, periodMonths: Number(e.target.value)} : item))}>
+                <option value={3}>3 months</option><option value={6}>6 months</option><option value={12}>12 months</option>
+              </select>
+              <button type="button" onClick={() => setStatements(prev => prev.filter(item => item.kind !== kind))}>Remove</button>
+            </div>)}
+          </div>)}
+          {statementError && <p role="alert">{statementError}</p>}
+        </section>
         <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}><div className="flex justify-between py-1.5"><span>Principal</span><strong>{formatUGX(amount)}</strong></div><div className="flex justify-between py-1.5"><span>Interest ({quote.aprPercent}% APR, simple)</span><strong>{formatUGX(quote.interest)}</strong></div><div className="flex justify-between py-2" style={{ borderTop: "1px solid #EAD277", marginTop: 5 }}><strong>Total repayment</strong><strong style={{ color: "#0B5E3A" }}>{formatUGX(quote.total)}</strong></div></div>
       </div>
 

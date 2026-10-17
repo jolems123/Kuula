@@ -207,7 +207,7 @@ export function DashboardScreen({ onNavigate }: Props) {
               {[
                 { label: t("dashboard.applyLoan"), screen: "loan-calculator", color: "#0B5E3A", bg: "linear-gradient(135deg, #0B5E3A, #064A2E)", border: "none" },
                 { label: t("dashboard.makePayment"), screen: "make-payment", color: "white", bg: "linear-gradient(135deg, #178654, #059669)", border: "none" },
-                { label: t("dashboard.creditReport"), screen: "credit-dashboard", color: "#0B5E3A", bg: "white", border: "1.5px solid #DFF2E9" },
+                { label: "Loan history", screen: "loan-history", color: "#0B5E3A", bg: "white", border: "1.5px solid #DFF2E9" },
               ].map((a) => (
                 <button
                   key={a.label}
@@ -252,7 +252,7 @@ export function DashboardScreen({ onNavigate }: Props) {
             </div>
 
             <button
-              onClick={() => onNavigate("improve-credit")}
+              onClick={() => onNavigate("loan-history")}
               style={{ width: "100%", height: 50, borderRadius: 14, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(11,94,58,0.3)" }}
             >
               {t("dashboard.improveScore")}

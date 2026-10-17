@@ -39,7 +39,7 @@ const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
 const CUSTOMER_TITLES: Record<string, string> = {
   home: "Overview",
   dashboard: "Dashboard",
-  "credit-dashboard": "Loan applications",
+  "credit-dashboard": "Credit Pass",
   "credit-breakdown": "Credit details",
   "improve-credit": "Improve your credit",
   "quick-actions": "Use your Growth Line",
@@ -92,6 +92,7 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
         <nav className="kuula-customer-sidebar__nav" aria-label="Customer navigation">
           {CUSTOMER_NAV.map(({ id, label, icon: Icon }) => {
             const active = id === screenId
+              || (id === "credit-dashboard" && ["credit-breakdown", "improve-credit"].includes(screenId))
               || (id === "quick-actions" && ["loan-calculator", "loan-apply", "loan-review", "loan-approval", "loan-detail", "loan-history", "make-payment", "payment-confirm", "loan-agreement", "customer-officer-assigned"].includes(screenId))
               || (id === "transaction-history" && screenId === "transaction-detail")
               || (id === "settings" && ["profile", "personal-info", "notification-settings", "privacy-security", "help-support", "contact-support", "about-app", "delete-account"].includes(screenId));

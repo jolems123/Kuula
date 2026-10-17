@@ -1,3 +1,4 @@
+import financialStatementRoutes from "./routes/financial-statements.js";
 import customerAvatarRoutes from "./routes/customer-avatar.js";
 import "dotenv/config";
 import express from "express";
@@ -152,6 +153,7 @@ app.use("/api/kyc", express.json({ limit: "22mb", verify: jsonVerify }));
 app.use("/api/profile/me/photo", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "30mb", verify: jsonVerify }));
+app.use("/api/loans/applications/:id/financial-statements", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
 
 app.use("/api", httpsEnforcementRoutes);
@@ -197,6 +199,7 @@ app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkFinancialFallbackGuard);
 app.use("/api/network", networkRoutes);
 app.use("/api/loans", businessApplicationPhotoRoutes);
+app.use("/api/loans", financialStatementRoutes);
 app.use("/api/loans", loanApplicationReadRoutes);
 app.use("/api/loans", partnerOfferGuardRoutes);
 app.use("/api/loans", creditReviewPrerequisiteRoutes);

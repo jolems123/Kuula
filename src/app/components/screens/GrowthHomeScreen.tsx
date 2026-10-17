@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Bell, BriefcaseBusiness, ClipboardList, CalendarClock,
+  Bell, BriefcaseBusiness, CalendarClock,
   ChevronRight, RefreshCw, ArrowUpRight, AlertCircle, type LucideIcon,
 } from "lucide-react";
 import { BottomNav } from "../BottomNav";
@@ -10,7 +10,7 @@ import { setCreditUseSelection } from "../../lib/selection";
 
 interface Props { onNavigate: (screen: string) => void; }
 
-const ICONS: Record<string, LucideIcon> = { business: BriefcaseBusiness };
+
 const money = (value: number, currency = "UGX") => `${currency} ${Math.round(value).toLocaleString("en-UG")}`;
 const STATUS_COPY: Record<string, string> = {
   available: "Ready to use",
@@ -18,7 +18,7 @@ const STATUS_COPY: Record<string, string> = {
   identity_required: "Verify your identity to unlock credit",
   data_required: "Refresh your credit data to unlock credit",
 };
-const statusCopy = (status: string) => STATUS_COPY[status] ?? "Keep building your Credit Pass";
+const statusCopy = (status: string) => STATUS_COPY[status] ?? "Your business loan request is being reviewed";
 
 function greeting(now = new Date()) {
   const hour = now.getHours();
@@ -58,7 +58,6 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
   const availableShare = total > 0 ? Math.min(100, Math.max(0, (available / total) * 100)) : 0;
   const ready = line?.status === "available";
   
-  const products = (overview?.products ?? []).filter((product) => product.category === "business").slice(0, 1);
 
   return (
     <div className="kx kx-app">
@@ -75,25 +74,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </button>
           </div>
 
-          <section className="kx-line" aria-label="Your Kuula Growth Line">
-            <span className="kx-line__label">Available to use</span>
-            <div className="kx-line__amount">{loading ? <span className="kx-skeleton" style={{ width: 170, height: 34 }} /> : money(available, currency)}</div>
-            <p className={`kx-line__status${ready ? " is-ready" : ""}`}>{loading ? "Checking your line…" : line ? statusCopy(line.status) : "Unavailable right now"}</p>
-            <div className="kx-line__meter" aria-hidden="true"><span style={{ width: `${availableShare}%` }} /></div>
-            <div className="kx-line__meta">
-              <span>Growth Line total</span>
-              <strong>{money(total, currency)}</strong>
-            </div>
-            {line?.status === "identity_required" ? (
-              <button type="button" className="kx-btn kx-btn--gold kx-btn--lg kx-btn--block" onClick={() => onNavigate("kyc")}>
-                Verify my identity <ArrowUpRight size={18} strokeWidth={2} />
-              </button>
-            ) : (
-              <button type="button" className="kx-btn kx-btn--gold kx-btn--lg kx-btn--block" onClick={() => onNavigate("quick-actions")} disabled={!ready}>
-                Use my Growth Line <ArrowUpRight size={18} strokeWidth={2} />
-              </button>
-            )}
-          </section>
+
         </div>
 
         <div className="kx-app__body kx-home__body">
@@ -105,37 +86,11 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </div>
           )}
 
-          <section>
-            <div className="kx-section-head">
-              <div>
-                <h2>Kuula Business</h2>
-                <p>Business credit for stock, equipment, working capital and growth.</p>
-              </div>
-              <button type="button" className="kx-link" onClick={() => onNavigate("quick-actions")}>See all</button>
-            </div>
-            <div className="kx-uses">
-              {loading && products.length === 0 && <div className="kx-use kx-use--loading"><span className="kx-skeleton" style={{ width: 36, height: 36 }} /><span className="kx-skeleton" style={{ width: "70%", height: 14 }} /><span className="kx-skeleton" style={{ width: "50%", height: 12 }} /></div>}
-              {!loading && !error && products.length === 0 && (
-                <div className="kuula-empty-state" role="status">
-                  <strong>No business credit products available yet</strong>
-                  <p>Your eligible business loan options will appear here when available. You can check your loan applications in the meantime.</p>
-                  <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onNavigate("loan-history")}>
-                    View my applications
-                  </button>
-                </div>
-              )}
-              {products.map((product) => {
-                const Icon = ICONS[product.category] ?? BriefcaseBusiness;
-                return (
-                  <button key={product.id} type="button" className="kx-use" onClick={() => select(product)}>
-                    <span className="kx-use__icon"><Icon size={20} strokeWidth={1.75} /></span>
-                    <ChevronRight className="kx-use__go" size={16} strokeWidth={1.75} />
-                    <strong>Kuula Business</strong>
-                    <span>Up to {money(product.customerLimit, currency)}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <section className="kx-card" style={{padding:18}}>
+            <h2>Apply for a business loan</h2>
+            <p>Tell us about your business, the amount you need and how you will repay. Your application will be independently assessed.</p>
+            <button type="button" className="kx-btn kx-btn--primary kx-btn--block" onClick={() => onNavigate("loan-apply")}>Apply for Business Loan</button>
+            <button type="button" className="kx-link" onClick={() => onNavigate("loan-history")} style={{marginTop:12}}>Track My Application</button>
           </section>
 
           {/* Account summary belongs on Overview, not under Settings.
@@ -152,6 +107,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
               <div><span className="kx-overline">Loans recorded</span>
                 <strong style={{ display: "block", marginTop: 4 }}>{state.loan ? state.loan.totalLoansCount : "Not available"}</strong>
               </div>
+
             </div>
           </section>
 
@@ -166,11 +122,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </section>
           )}
 
-          <button type="button" className="kx-card kx-row" onClick={() => onNavigate("loan-history")}>
-            <span className="kx-tile-icon"><ClipboardList size={20} strokeWidth={1.75} /></span>
-            <div className="kx-row__text"><strong>My loan applications</strong><p>Track decisions, agreements and repayments</p></div>
-            <ChevronRight size={18} className="kx-row__chevron" />
-          </button>
+
 
         </div>
       </div>

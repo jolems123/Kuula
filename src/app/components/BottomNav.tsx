@@ -1,4 +1,4 @@
-import { House, ClipboardList, HandCoins, LayoutGrid } from "lucide-react";
+import { House, HandCoins, LayoutGrid } from "lucide-react";
 
 interface BottomNavProps {
   active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet" | "borrow";
@@ -7,12 +7,11 @@ interface BottomNavProps {
 
 const TABS = [
   { id: "home", icon: House, label: "Home", screen: "home" },
-  { id: "credit", icon: ClipboardList, label: "My Loans", screen: "loan-history" },
   { id: "borrow", icon: HandCoins, label: "Borrow", screen: "quick-actions" },
   { id: "settings", icon: LayoutGrid, label: "More", screen: "settings" },
 ] as const;
 
-const ALIASES: Record<string, string> = { loans: "credit", wallet: "borrow", more: "settings" };
+const ALIASES: Record<string, string> = { loans: "borrow", credit: "borrow", wallet: "borrow", more: "settings" };
 
 /** Customer tab bar: four equal tabs, one icon style, a single active marker. */
 export function BottomNav({ active, onNavigate }: BottomNavProps) {

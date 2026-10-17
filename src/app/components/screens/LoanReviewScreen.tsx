@@ -1,3 +1,4 @@
+import {getSelectedStatements,clearSelectedStatements,statementDataUrl} from "../../lib/financial-statements";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAppContext } from "../../context/AppContext";
@@ -125,9 +126,18 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         if (previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
         await api.uploadBusinessPhotos(token, applicationId, photos);
       }
+      if (getSelectedStatements().length > 0) {
+        const existingStatements = await api.listFinancialStatements(token, applicationId);
+        for (const item of getSelectedStatements()) {
+          if (!existingStatements.statements.some(saved => saved.kind === item.kind)) {
+            await api.uploadFinancialStatement(token, applicationId, {kind:item.kind,periodMonths:item.periodMonths,filename:item.file.name,dataUrl:await statementDataUrl(item.file)});
+          }
+        }
+      }
       setSubmissionStage("complete");
       setLastSubmittedApplicationId(applicationId);
       clearBusinessPhotos(state.user.id);
+      clearSelectedStatements();
       clearSavedLoanApplicationDraft(state.user.id);
       setLoanDraft(null);
       onNavigate("loan-approval");
