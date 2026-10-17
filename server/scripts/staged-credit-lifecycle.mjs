@@ -102,6 +102,13 @@ try {
   for (const evidenceType of ["storefront", "stock"]) {
     await call("POST", `/api/operations/applications/${id}/evidence`, { token: officer.token, body: { evidenceType, dataUrl: PNG }, expect: 201 });
   }
+  step("Level 1 pricing: assigned officer sets interest and itemized fees before escalation");
+  await call("POST", `/api/operations/applications/${id}/pricing-proposal`, {
+    token: customer.token, body: {aprPercent: 9,charges:[]}, expect:403,
+  });
+  await call("POST", `/api/operations/applications/${id}/pricing-proposal`, {
+    token: officer.token, body: {aprPercent: 9,charges:[{label:"Loan processing",amount:100}]}, expect:201,
+  });
   await call("POST", `/api/operations/applications/${id}/submit`, { token: officer.token, body: { narrative: NARRATIVE, nextAssigneeId: manager.id } });
 
   step("Level 2: the credit manager recommends; a Level 1 officer cannot be made the final approver");

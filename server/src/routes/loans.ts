@@ -83,9 +83,10 @@ const mapApplication = (application: any) => ({
   termDays: application.termDays,
   channel: application.channel,
   status: application.status,
-  total: Number(application.total),
-  apr: Number(application.apr),
-  interest: Number(application.interest),
+  total: ["offered","approved","disbursing","active","overdue","paid"].includes(application.status) ? Number(application.total) : null,
+  apr: ["offered","approved","disbursing","active","overdue","paid"].includes(application.status) ? Number(application.apr) : null,
+  interest: ["offered","approved","disbursing","active","overdue","paid"].includes(application.status) ? Number(application.interest) : null,
+  serviceFee: ["offered","approved","disbursing","active","overdue","paid"].includes(application.status) ? Number(application.serviceFee) : null,
   createdAt: application.createdAt,
   decidedAt: application.decidedAt ?? null,
   decisionNotes: application.decisionNotes ?? null,
@@ -343,20 +344,54 @@ router.post(
       if (!current.approved) throw new AppError(`Application is no longer eligible: ${current.flags.join(", ")}`, 422);
     }
 
+    let officerPricing: {id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown} | null = null;
+    if (decision === "approved") {
+      const cases = await prisma.$queryRaw<Array<{status:string}>>(Prisma.sql`SELECT status FROM credit_cases WHERE application_id=${id}::uuid LIMIT 1`);
+      if (cases[0]?.status !== "ready_for_offer") throw new AppError("Independent final credit review must be completed before approval", 409);
+      const proposals = await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown}>>(Prisma.sql`
+        SELECT id,proposed_by,apr,interest,other_charges,total,fee_breakdown FROM loan_pricing_proposals
+        WHERE application_id=${id}::uuid AND status='proposed' LIMIT 1`);
+      officerPricing = proposals[0] ?? null;
+      if (!officerPricing) throw new AppError("Assigned loan officer must prepare an itemized pricing proposal",409);
+      if (officerPricing.proposed_by === req.user!.userId) throw new AppError("An independent approver must authorize the officer's terms",403);
+      const approval = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM approval_actions WHERE application_id=${id}::uuid AND level=3 AND action='approve' AND actor_id <> ${officerPricing.proposed_by}::uuid LIMIT 1`);
+      if (!approval.length) throw new AppError("Pricing cannot be offered before independent Level 3 approval",409);
+      const fresh = await recheckUnderwriting(
+        {...application, total: officerPricing.total},
+        application.applicant,
+        application.underwriting,
+      );
+      await persistAssessment(application.id, req.user!.userId, fresh);
+      if (!fresh.approved) throw new AppError("Proposed terms do not pass the final affordability assessment",422);
+    }
+
     const decidedAt = new Date();
     const offerExpiresAt = decision === "approved"
       ? new Date(decidedAt.getTime() + UNDERWRITING_POLICY.offerValidityHours * 3_600_000)
       : null;
-    const updated = await prisma.loanApplication.update({
-      where: { id },
-      data: {
-        status: decision === "approved" ? "offered" : "rejected",
-        decisionNotes: notes,
-        decidedAt,
-        approvedBy: req.user!.userId,
-        offerExpiresAt,
-      },
-      include: { underwriting: true },
+    const updated = await prisma.$transaction(async tx => {
+      if (officerPricing) {
+        const count = await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='approved',approved_by=${req.user!.userId}::uuid,approved_at=NOW() WHERE id=${officerPricing.id}::uuid AND status='proposed'`);
+        if (count !== 1) throw new AppError("Pricing proposal changed during approval; retry review",409);
+      }
+      const count = await tx.loanApplication.updateMany({
+        where: {id,status:{in:["pending","resubmitted"]}},
+        data: {
+          status: decision === "approved" ? "offered" : "rejected",
+          decisionNotes: notes,
+          decidedAt,
+          approvedBy: req.user!.userId,
+          offerExpiresAt,
+          ...(officerPricing ? {
+            apr: Number(officerPricing.apr),
+            interest: officerPricing.interest,
+            serviceFee: officerPricing.other_charges,
+            total: officerPricing.total,
+          } : {}),
+        },
+      });
+      if (count.count!==1) throw new AppError("Application decision has already been recorded",409);
+      return tx.loanApplication.findUniqueOrThrow({where:{id},include:{underwriting:true}});
     });
     await writeAuditEvent({
       actorId: req.user!.userId,
@@ -373,6 +408,20 @@ router.post(
     res.json({ application: mapApplication(updated) });
   }
 );
+
+router.get("/:id/offer-charges", authenticateToken, async (req: Request, res: Response) => {
+  const id=String(req.params.id);
+  const app=await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true,serviceFee:true}});
+  if(!app||app.applicantId!==req.user!.userId)throw new AppError("Loan offer not found",404);
+  if(!["offered","approved","disbursing","active","overdue","paid"].includes(app.status))
+    throw new AppError("Pricing is only available after your offer is approved",409);
+  const rows=await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`
+    SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${id}::uuid AND status='approved' LIMIT 1
+  `);
+  if(!rows.length && Number(app.serviceFee)===0) { res.set("Cache-Control","private, no-store").json({charges:[],feeTotal:0,legacyOffer:true}); return; }
+  if(!rows.length)throw new AppError("Verified offer pricing is unavailable",409);
+  res.set("Cache-Control","private, no-store").json({charges:rows[0].fee_breakdown,feeTotal:Number(app.serviceFee)});
+});
 
 router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res: Response) => {
   const applicationId = String(req.params.id);
@@ -412,7 +461,8 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     disbursementChannel: application.channel,
     offerExpiresAt: application.offerExpiresAt.toISOString(),
     interestType: "simple",
-    serviceFee: 0,
+    serviceFee: Number(application.serviceFee),
+    feeBreakdown: await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${application.id}::uuid AND status='approved' LIMIT 1`).then(rows => rows[0]?.fee_breakdown ?? []),
   };
   const agreementHash = crypto.createHash("sha256").update(JSON.stringify(termsSnapshot)).digest("hex");
   const signature = req.body?.clientContext;
@@ -542,7 +592,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   });
 });
 
-router.post("/quote", authenticateToken, async (req: Request, res: Response) => {
+router.post("/quote", authenticateToken, requirePermissions("loan.review"), async (req: Request, res: Response) => {
   res.json(quoteForRequest(req.body?.amount, req.body?.termDays));
 });
 

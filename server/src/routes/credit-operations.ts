@@ -10,6 +10,7 @@ import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-st
 import { writeAuditEvent } from "../lib/audit.js";
 import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
 import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
+import { PRICING } from "../lib/pricing.js";
 
 const router = Router();
 router.use(authenticateToken, requirePermissions("loan.review"));
@@ -157,6 +158,45 @@ router.post("/applications/:id/assign", requirePermissions("loan.approve"), asyn
   res.json({ ok: true, level, assignee: { id: assignee.id, name: assignee.fullName, role: assignee.role } });
 });
 
+router.post("/applications/:id/pricing-proposal", async (req: Request, res: Response) => {
+  const applicationId = asId(req.params.id, "Application ID");
+  const application = await assertApplication(applicationId);
+  if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Pricing cannot be changed after an offer is issued", 409);
+  await assertAssigned(applicationId, req.user!.userId, 1, req.user!.role);
+  if (!roleFitsLevel(req.user!.role, 1)) throw new AppError("Only the assigned loan officer may propose pricing", 403);
+  const aprPercent = Number(req.body?.aprPercent);
+  const principal = Number(application.amount);
+  const days = application.termDays;
+  const charges = req.body?.charges;
+  if (!Number.isFinite(aprPercent) || aprPercent < 0 || aprPercent > PRICING.MAX_APR * 100 || !Array.isArray(charges) || charges.length > 12)
+    throw new AppError("Provide a valid APR and itemized charges", 422);
+  let otherCharges = 0;
+  const breakdown: Array<{label:string;amount:number}> = [];
+  for (const item of charges) {
+    const label = typeof item?.label === "string" ? item.label.trim() : "";
+    const amount = Number(item?.amount);
+    if (!label || label.length > 100 || !Number.isSafeInteger(amount) || amount < 0) throw new AppError("Every charge requires a valid description and amount", 422);
+    otherCharges += amount;
+    breakdown.push({label,amount});
+  }
+  if (!Number.isSafeInteger(otherCharges) || otherCharges > Math.round(principal * 0.336))
+    throw new AppError("Charges exceed the configured risk limit", 422);
+  const apr = Math.round(aprPercent * 100) / 10000;
+  const interest = Math.round(principal * apr * days / 365);
+  const allInApr = (interest + otherCharges) / principal * 365 / days;
+  if (allInApr > PRICING.MAX_APR + 0.00005)
+    throw new AppError("Total annualized borrowing cost exceeds the configured lending limit",422);
+  const total = principal + interest + otherCharges;
+  if (!Number.isSafeInteger(total)) throw new AppError("Pricing total is out of range", 422);
+  await prisma.$transaction(async tx => {
+    await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='superseded' WHERE application_id=${applicationId}::uuid AND status='proposed'`);
+    await tx.$executeRaw(Prisma.sql`INSERT INTO loan_pricing_proposals(id,application_id,proposed_by,principal,term_days,apr,interest,service_fee,other_charges,total,fee_breakdown)
+      VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,${req.user!.userId}::uuid,${BigInt(principal)},${days},${apr},${BigInt(interest)},0,${BigInt(otherCharges)},${BigInt(total)},${JSON.stringify(breakdown)}::jsonb)`);
+  });
+  await event(applicationId, req.user!.userId, "loan.pricing_proposed", 1, 1, {aprPercent,charges:breakdown,total});
+  res.status(201).json({ok:true, status:"proposed"});
+});
+
 router.get("/applications/:id", async (req: Request, res: Response) => {
   const applicationId = asId(req.params.id, "Application ID");
   const application = await assertApplication(applicationId);
@@ -169,6 +209,10 @@ router.get("/applications/:id", async (req: Request, res: Response) => {
     prisma.$queryRaw<any[]>(Prisma.sql`SELECT m.*, u.full_name AS sender_name, u.role AS sender_role FROM application_messages m JOIN users u ON u.id = m.sender_id WHERE m.application_id = ${applicationId}::uuid ORDER BY m.created_at`),
     prisma.$queryRaw<any[]>(Prisma.sql`SELECT e.*, u.full_name AS actor_name FROM credit_operation_events e LEFT JOIN users u ON u.id = e.actor_id WHERE e.application_id = ${applicationId}::uuid ORDER BY e.created_at`),
   ]);
+  const pricingProposals=await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;service_fee:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;status:string}>>(Prisma.sql`
+    SELECT id,proposed_by,apr,interest,service_fee,other_charges,total,fee_breakdown,status
+    FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid ORDER BY created_at DESC
+  `);
   res.json({
     application: {
       id: application.id, applicantId: application.applicantId, applicantName: application.applicantName,
@@ -178,6 +222,7 @@ router.get("/applications/:id", async (req: Request, res: Response) => {
       underwriting: application.underwriting ? { creditScore: application.underwriting.creditScore, approvedLimit: Number(application.underwriting.approvedLimit), disposableIncome: Number(application.underwriting.disposableIncome), maxAffordablePayment: Number(application.underwriting.maxAffordablePayment), status: application.underwriting.status, flags: application.underwriting.flags } : null,
     },
     case: caseData,
+    pricingProposals: pricingProposals.map(p=>({...p,apr:Number(p.apr),interest:Number(p.interest),service_fee:Number(p.service_fee),other_charges:Number(p.other_charges),total:Number(p.total)})),
     evaluations: evaluations.map((r) => ({ ...r, estimated_monthly_sales: r.estimated_monthly_sales == null ? null : Number(r.estimated_monthly_sales), estimated_stock_value: r.estimated_stock_value == null ? null : Number(r.estimated_stock_value), monthly_operating_expenses: r.monthly_operating_expenses == null ? null : Number(r.monthly_operating_expenses), existing_business_debt: r.existing_business_debt == null ? null : Number(r.existing_business_debt), recommended_amount: r.recommended_amount == null ? null : Number(r.recommended_amount) })),
     evidence, actions: actions.map((r) => ({ ...r, recommended_amount: r.recommended_amount == null ? null : Number(r.recommended_amount) })), assignments, messages, events,
   });

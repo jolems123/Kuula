@@ -70,6 +70,7 @@ export const creditOperationsApi = {
   staff: (token: string, role?: string) => opRequest<{ staff: OperationsStaff[] }>(token, `/staff${role ? `?role=${encodeURIComponent(role)}` : ""}`),
   assign: (token: string, applicationId: string, assigneeId: string, level = 1) => opRequest<{ ok: boolean }>(token, `/applications/${applicationId}/assign`, { method: "POST", body: JSON.stringify({ assigneeId, level }) }),
   caseDetail: (token: string, applicationId: string) => opRequest<Record<string, any>>(token, `/applications/${applicationId}`),
+  proposePricing: (token: string, applicationId: string, aprPercent: number, charges: Array<{label:string;amount:number}>) => opRequest<{ok:boolean;status:string}>(token, `/applications/${applicationId}/pricing-proposal`, {method:"POST",body:JSON.stringify({aprPercent,charges})}),
   saveEvaluation: (token: string, applicationId: string, body: Record<string, unknown>) => opRequest<{ ok: boolean; evaluationId: string; version: number }>(token, `/applications/${applicationId}/evaluation`, { method: "POST", body: JSON.stringify(body) }),
   uploadEvidence: (token: string, applicationId: string, body: Record<string, unknown>) => opRequest<{ evidence: Record<string, unknown> }>(token, `/applications/${applicationId}/evidence`, { method: "POST", body: JSON.stringify(body) }),
   submit: (token: string, applicationId: string, body: Record<string, unknown>) => opRequest<{ ok: boolean; fromLevel: number; toLevel: number }>(token, `/applications/${applicationId}/submit`, { method: "POST", body: JSON.stringify(body) }),

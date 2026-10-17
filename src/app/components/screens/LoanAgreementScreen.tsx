@@ -19,6 +19,8 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const user = state.user;
   const [offer, setOffer] = useState<LoanApplication | null>(null);
+  const [charges, setCharges] = useState<Array<{label:string;amount:number}> | null>(null);
+  const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,6 +50,16 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   }, [token]);
 
   useEffect(() => {
+    if (!token || !offer || !["offered","approved","disbursing","active","overdue","paid"].includes(offer.status)) return;
+    let active=true;
+    setCharges(null);setChargeError(null);
+    api.getOfferCharges(token,offer.id)
+      .then(result=>{if(active)setCharges(result.charges);})
+      .catch(err=>{if(active)setChargeError(err instanceof Error?err.message:"Could not verify offer charges");});
+    return ()=>{active=false;};
+  },[token,offer?.id,offer?.status]);
+
+  useEffect(() => {
     if (!token || !offer || !disbursement) return;
     if (["settled", "failed", "attention_required"].includes(disbursement.status)) return;
     const timer = window.setInterval(async () => {
@@ -67,6 +79,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const principal = offer?.amount ?? 0;
   const total = offer?.total ?? 0;
   const interest = offer?.interest ?? Math.max(0, total - principal);
+  const serviceFee = offer?.serviceFee ?? 0;
   const aprPercent = offer?.apr != null ? Number((offer.apr * 100).toFixed(1)) : null;
   const isPartnerFacility = Boolean(offer?.partnerFinancingRequestId);
   const payee = offer?.payeeName || offer?.partnerLocationName || offer?.partnerName || "the verified partner";
@@ -75,7 +88,8 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
     { title: "1. Parties", body: `This agreement is between Kuula Microfinance Limited (the lender) and ${borrower} (the borrower).` },
     { title: "2. Principal", body: `Principal: ${formatUGX(principal)}. Settlement is requested only after this agreement is accepted and all eligibility checks still pass.` },
     { title: "3. Pricing", body: `${aprPercent != null ? `${aprPercent}% annual percentage rate` : "The disclosed annual percentage rate"}, using simple interest. Interest shown for this offer: ${formatUGX(interest)}.` },
-    { title: "4. Total Repayment", body: `Total repayment for this offer: ${formatUGX(total)} over ${offer?.termDays ?? "the disclosed"} days.` },
+    { title: "4. Additional charges", body: `Approved charges: ${charges ? (charges.length ? charges.map(item => `${item.label}: ${formatUGX(item.amount)}`).join("; ") : "None") : "Pending verification"}. Total additional charges: ${formatUGX(serviceFee)}.` },
+    { title: "5. Total Repayment", body: `Total repayment for this offer: ${formatUGX(total)} over ${offer?.termDays ?? "the disclosed"} days.` },
     {
       title: "5. Disbursement / Settlement",
       body: isPartnerFacility
@@ -88,6 +102,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
 
   const acceptAgreement = async () => {
     if (!token || !offer || busy) return;
+    if (!charges || chargeError) { setError("Approved pricing details must load before you can accept the loan."); return; }
     if (!understoodTerms || !signatureName.trim() || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()) {
       setError("Please confirm that you understand the agreement and type your registered name to sign.");
       return;
@@ -205,6 +220,10 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
               I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement.
             </label>
           </div>}
+          <div style={{fontSize:12,color:"#374151",padding:12,background:"#F0FDF4",borderRadius:10}}>
+            <strong>Additional approved charges: {formatUGX(serviceFee)}</strong>
+            {charges ? (charges.length ? charges.map((charge,i)=><p key={i}>{charge.label}: {formatUGX(charge.amount)}</p>) : <p>No additional charges.</p>) : <p>{chargeError || "Verifying final fees..."}</p>}
+          </div>
           {serverAccepted && <div style={{ border: "2px solid #0B5E3A", borderRadius: 12, padding: 16, background: "#EDF8F2" }}><p style={{ fontSize: 13, fontWeight: 700, color: "#0B5E3A", margin: "0 0 4px" }}>Server-recorded Acceptance</p><p style={{ fontSize: 15, color: "#1F2937", margin: "0 0 4px", fontWeight: 700 }}>{borrower}</p><p style={{ fontSize: 11, color: "#0B5E3A", margin: 0 }}>Accepted {fmtDate(acceptedAt)} · App {env.APP_VERSION}</p></div>}
         </div>
       </div>
@@ -214,7 +233,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         {!offer ? <button disabled style={{ width: "100%", height: 52, borderRadius: 14, border: 0 }}>Loading offer…</button> : disbursement ? (
           <button onClick={() => onNavigate(disbursement.status === "settled" ? "loan-detail" : "home")} className="kuula-primary" style={{ width: "100%", height: 52 }}>{disbursement.status === "settled" ? "View Active Loan" : "Return Home"}</button>
         ) : !serverAccepted ? (
-          <button onClick={acceptAgreement} disabled={busy || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Recording acceptance…" : "Accept Credit Agreement"}</button>
+          <button onClick={acceptAgreement} disabled={busy || !charges || !!chargeError || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Recording acceptance…" : "Accept Credit Agreement"}</button>
         ) : (
           <button onClick={requestDisbursement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Starting secure settlement…" : isPartnerFacility ? `Pay ${payee}` : "Request Mobile-Money Disbursement"}</button>
         )}
