@@ -1,0 +1,46 @@
+name: Full Application and Dependency Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: Dependency security - ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [web, api]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin npm
+        run: npm install --global npm@10.9.2
+      - name: Install locked dependencies
+        working-directory: ${{ matrix.package == 'api' && 'server' || '.' }}
+        run: npm ci ${{ matrix.package == 'web' && '--legacy-peer-deps' || '' }} --ignore-scripts --no-fund
+      - name: Audit production dependencies
+        working-directory: ${{ matrix.package == 'api' && 'server' || '.' }}
+        run: npm audit --omit=dev --audit-level=high --json > dependency-audit.json || { cat dependency-audit.json; exit 1; }
+      - name: Audit complete dependency tree
+        working-directory: ${{ matrix.package == 'api' && 'server' || '.' }}
+        run: npm audit --audit-level=high --json > all-dependencies-audit.json || { cat all-dependencies-audit.json; exit 1; }
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-${{ matrix.package }}
+          path: |
+            ${{ matrix.package == 'api' && 'server' || '.' }}/dependency-audit.json
+            ${{ matrix.package == 'api' && 'server' || '.' }}/all-dependencies-audit.json
+          retention-days: 14
