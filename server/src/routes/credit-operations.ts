@@ -89,6 +89,16 @@ async function assertAssigned(applicationId: string, userId: string, level: numb
   if (!rows[0]) throw new AppError("This application is not assigned to you at the current review level", 403);
 }
 
+async function assertCaseReadAccess(applicationId: string, userId: string, role: string) {
+  if (["admin","administrator","super_admin"].includes(role)) return;
+  const assignment = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`
+    SELECT id FROM approval_assignments
+    WHERE application_id=${applicationId}::uuid AND assignee_id=${userId}::uuid
+    LIMIT 1
+  `);
+  if (!assignment.length) throw new AppError("Application not found",404);
+}
+
 async function event(applicationId: string, actorId: string | null, eventType: string, fromLevel?: number | null, toLevel?: number | null, detail: Record<string, unknown> = {}) {
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO credit_operation_events (id, application_id, actor_id, event_type, from_level, to_level, detail)
@@ -199,6 +209,7 @@ router.post("/applications/:id/pricing-proposal", async (req: Request, res: Resp
 
 router.get("/applications/:id", async (req: Request, res: Response) => {
   const applicationId = asId(req.params.id, "Application ID");
+  await assertCaseReadAccess(applicationId,req.user!.userId,req.user!.role);
   const application = await assertApplication(applicationId);
   const [caseData, evaluations, evidence, actions, assignments, messages, events] = await Promise.all([
     caseRow(applicationId),
@@ -415,6 +426,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
 
 router.get("/applications/:id/messages", async (req: Request, res: Response) => {
   const applicationId = asId(req.params.id, "Application ID");
+  await assertCaseReadAccess(applicationId,req.user!.userId,req.user!.role);
   await assertApplication(applicationId);
   const rows = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT m.id, m.sender_id, m.recipient_id, m.message_type, m.content, m.created_at, u.full_name AS sender_name, u.role AS sender_role FROM application_messages m JOIN users u ON u.id=m.sender_id WHERE m.application_id=${applicationId}::uuid ORDER BY m.created_at`);
   res.json({ messages: rows });
