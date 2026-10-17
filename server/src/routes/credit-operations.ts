@@ -434,6 +434,7 @@ router.get("/applications/:id/messages", async (req: Request, res: Response) => 
 
 router.post("/applications/:id/messages", async (req: Request, res: Response) => {
   const applicationId = asId(req.params.id, "Application ID");
+  await assertCaseReadAccess(applicationId,req.user!.userId,req.user!.role);
   const application = await assertApplication(applicationId);
   const content = text(req.body?.content, 3000);
   if (!content) throw new AppError("Message is required", 400);
