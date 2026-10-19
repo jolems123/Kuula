@@ -1,4 +1,4 @@
-import { BUSINESS_LOAN_PURPOSES, type BusinessLoanPurposeOption } from "./business-loan-purpose";
+import { BUSINESS_LOAN_PURPOSES, parseBusinessLoanPurpose, type BusinessLoanPurposeOption } from "./business-loan-purpose";
 import type { BusinessDetails } from "../api/types";
 
 const STORAGE_PREFIX = "kuula:loan-application-draft:v1:";
@@ -82,7 +82,10 @@ export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFor
   }
   if (serialized === null) return null;
   try {
-    const parsed: unknown = JSON.parse(serialized);
+    const parsed = JSON.parse(serialized);
+    if (parsed && typeof parsed.purpose === "string") {
+      parsed.purpose = parseBusinessLoanPurpose(`Business: ${parsed.purpose}`)?.option ?? parsed.purpose;
+    }
     if (isDraft(parsed)) return parsed;
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;

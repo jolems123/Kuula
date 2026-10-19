@@ -1,3 +1,4 @@
+import { ExpenditureDetails, expenditureError } from "../ExpenditureDetails";
 import { getSelectedStatements, setSelectedStatements, validateStatement, type StatementKind } from "../../lib/financial-statements";
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -168,6 +169,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const continueToReview = () => {
     setError("");
     if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within the advertised business-loan range."); return; }
+    const detailsError = expenditureError(businessDetails.expenditureItems ?? [], businessDetails.useOfFunds);
+    if (detailsError) { setError(detailsError); return; }
     if (!Number.isSafeInteger(allocationsTotal) || allocationsTotal !== amount) { setError("Allocate the full requested loan amount across the use-of-funds categories."); return; }
     if (purpose === "Other" && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
@@ -275,9 +278,9 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.repaymentTerm").toUpperCase()}</label><div className="flex gap-2 flex-wrap mt-3">{TERMS.map((d) => <button key={d} onClick={() => setTerm(d)} style={{ padding: "8px 14px", borderRadius: 10, border: term === d ? "none" : "1.5px solid #DDE5E0", background: term === d ? "#0B5E3A" : "white", color: term === d ? "white" : "#374151", fontSize: 13, fontWeight: 600 }}>{d} {t("loanApply.days")}</button>)}</div></div>
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>BUSINESS LOAN PURPOSE</label>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>Choose how your business plans to use this credit.</p>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>Choose the primary reason for borrowing. Allocate the full loan across spending categories below.</p>
           <div className="flex gap-2 flex-wrap mt-3">
-            {BUSINESS_LOAN_PURPOSES.map((option) => <button key={option} type="button" onClick={() => setPurpose(option)} style={{ padding: "7px 12px", borderRadius: 20, border: purpose === option ? "1px solid #0B5E3A" : "1.5px solid #E5E7EB", background: purpose === option ? "#EDF8F2" : "white", color: purpose === option ? "#0B5E3A" : "#6B7280", fontSize: 12, fontWeight: 600 }}>{option}</button>)}
+            {BUSINESS_LOAN_PURPOSES.map((option) => <button key={option} type="button" onClick={() => setPurpose(option)} style={{ padding: "7px 12px", borderRadius: 20, border: purpose === option ? "1px solid #0B5E3A" : "1.5px solid #E5E7EB", background: purpose === option ? "#EDF8F2" : "white", color: purpose === option ? "#0B5E3A" : "#6B7280", fontSize: 12, fontWeight: 600 }}>{option === "Other" ? "Other business purpose" : option}</button>)}
           </div>
           {purpose === "Other" && <label style={{ display: "block", marginTop: 14 }}>
             <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Describe your business use</span>
@@ -309,6 +312,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           <p role="status" style={{ fontSize: 12, fontWeight: 700, marginTop: 12, color: allocationsTotal === amount ? "#0B5E3A" : "#A13A3A" }}>
             Allocated: {formatUGX(allocationsTotal)} · {allocationsTotal === amount ? "Complete" : allocationsTotal < amount ? `Unallocated: ${formatUGX(amount - allocationsTotal)}` : `Overallocated: ${formatUGX(allocationsTotal - amount)}`}
           </p>
+          <ExpenditureDetails items={businessDetails.expenditureItems ?? []} funds={businessDetails.useOfFunds} onChange={expenditureItems => setBusinessDetails(current => ({ ...current, expenditureItems }))} />
           <label style={{ display: "block", marginTop: 12 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}>Preferred repayment frequency</span>
             <select className="kx-input" style={{ display: "block", width: "100%", marginTop: 5 }}

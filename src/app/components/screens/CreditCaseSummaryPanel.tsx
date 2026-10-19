@@ -1,3 +1,4 @@
+import { ExpenditureSummary } from "../ExpenditureDetails";
 import { AlertTriangle, CheckCircle2, FileCheck2, ShieldCheck } from "lucide-react";
 import { AdminCard } from "../AdminLayout";
 
@@ -25,6 +26,7 @@ export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any>
   const missing = (risk.missingRequiredEvidence || []) as string[];
 
   return <div style={{ display: "grid", gap: 14, marginBottom: 14 }}>
+    <ExpenditureSummary business={application.businessProfile} />
     <AdminCard>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         {risk.status === "clear" ? <ShieldCheck size={18} color={GREEN}/> : <AlertTriangle size={18} color="#B45309"/>}

@@ -117,3 +117,7 @@
 .kx-btn.kx-kyc-reject { background: #fff5f5; color: #a61b1b; border: 1px solid #e9aaaa; }
 .kx-btn.kx-kyc-reject:hover:not(:disabled) { background: #fee2e2; }
 @media (max-width: 900px) { .kx-kyc-review-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.kuula-expenditure { margin-top: 20px; padding: 18px; border: 1px solid #b8cdbf; border-radius: 14px; background: #f6faf7; overflow-wrap: anywhere; }
+.kuula-expenditure summary { min-height: 44px; font-weight: 700; color: #0b5e3a; cursor: pointer; }
+.kuula-expenditure p, .kuula-expenditure li { font-size: 14px; line-height: 1.6; }

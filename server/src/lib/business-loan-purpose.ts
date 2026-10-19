@@ -1,4 +1,13 @@
 const STANDARD_PURPOSES = new Set([
+  "Business: Stock and inventory",
+  "Business: Raw materials and supplies",
+  "Business: Equipment, tools and machinery",
+  "Business: Agriculture and livestock",
+  "Business: Transport and delivery",
+  "Business: Business premises and improvements",
+  "Business: Business operating expenses",
+  "Business: Marketing and sales",
+  "Business: Technology and digital tools",
   "Business: Inventory and stock",
   "Business: Equipment and tools",
   "Business: Working capital",

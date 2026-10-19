@@ -233,6 +233,7 @@ router.get("/applications/:id", async (req: Request, res: Response) => {
     application: {
       id: application.id, applicantId: application.applicantId, applicantName: application.applicantName,
       amount: Number(application.amount), purpose: application.purpose, termDays: application.termDays,
+      businessProfile: application.businessProfile,
       status: application.status, createdAt: application.createdAt,
       customer: { id: application.applicant.id, name: application.applicant.fullName, phone: application.applicant.phone, email: application.applicant.email, district: application.applicant.district, occupation: application.applicant.occupation, kycVerified: application.applicant.kycVerified },
       underwriting: application.underwriting ? { creditScore: application.underwriting.creditScore, approvedLimit: Number(application.underwriting.approvedLimit), disposableIncome: Number(application.underwriting.disposableIncome), maxAffordablePayment: Number(application.underwriting.maxAffordablePayment), status: application.underwriting.status, flags: application.underwriting.flags } : null,

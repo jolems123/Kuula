@@ -1,8 +1,15 @@
 export const BUSINESS_LOAN_PURPOSES = [
-  "Inventory and stock",
-  "Equipment and tools",
+  "Stock and inventory",
+  "Raw materials and supplies",
+  "Equipment, tools and machinery",
   "Working capital",
   "Business expansion",
+  "Agriculture and livestock",
+  "Transport and delivery",
+  "Business premises and improvements",
+  "Business operating expenses",
+  "Marketing and sales",
+  "Technology and digital tools",
   "Other",
 ] as const;
 
@@ -17,7 +24,9 @@ export function formatBusinessLoanPurpose(option: BusinessLoanPurposeOption, oth
 export function parseBusinessLoanPurpose(value: string): { option: BusinessLoanPurposeOption; otherDetails: string } | null {
   const prefix = "Business: ";
   if (!value.startsWith(prefix)) return null;
-  const detail = value.slice(prefix.length);
+  const legacy: Record<string, string> = { "Inventory and stock": "Stock and inventory", "Equipment and tools": "Equipment, tools and machinery" };
+  const original = value.slice(prefix.length);
+  const detail = legacy[original] ?? original;
   if (detail.startsWith("Other - ")) {
     const otherDetails = detail.slice("Other - ".length);
     return otherDetails.trim() ? { option: "Other", otherDetails } : { option: "Other", otherDetails: "" };

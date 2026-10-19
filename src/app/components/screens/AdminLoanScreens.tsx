@@ -1,3 +1,4 @@
+import { ExpenditureSummary } from "../ExpenditureDetails";
 /**
  * Admin Loan Management Screens
  * A3.1 LoanAppsList | A3.2 LoanAppDetail | A3.3 LoanApproval | A3.4 LoanRejection
@@ -190,6 +191,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
             </div>
             <button type="button" onClick={() => setSelectedId(null)} style={{ border: 0, background: "transparent", fontWeight: 700 }}>Close</button>
           </div>
+          <ExpenditureSummary business={selected.businessProfile} />
           {selected.businessProfile ? (
             <>
               <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, fontSize: 13 }}>

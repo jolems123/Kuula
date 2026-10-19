@@ -38,6 +38,7 @@ export interface BusinessProfile {
     other: number;
   };
   loanUse: string;
+  expenditureItems?: { category: "stock" | "equipment" | "operations" | "expansion" | "other"; description: string; amount: number }[];
   repaymentPlan: string;
 }
 function required(value: unknown, label: string, max = 200): string {
@@ -125,6 +126,21 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
   };
   if (!["daily", "weekly", "monthly", "seasonal", "unknown"].includes(profile.salesFrequency))
     throw new RangeError("Select a valid sales frequency");
+  if (obj.expenditureItems !== undefined) {
+    if (!Array.isArray(obj.expenditureItems) || obj.expenditureItems.length > 30) throw new RangeError("Provide at most 30 expenditure items");
+    profile.expenditureItems = obj.expenditureItems.map((item: unknown) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) throw new RangeError("Invalid expenditure item");
+      const row = item as Record<string, unknown>;
+      if (typeof row.category !== "string" || !Object.keys(profile.useOfFunds).includes(row.category)) throw new RangeError("Invalid expenditure category");
+      return { category: row.category as keyof BusinessProfile["useOfFunds"], description: required(row.description, "Expenditure description", 120), amount: numeric(row.amount, "Expenditure amount", 1, 100000000000) };
+    });
+    if (profile.expenditureItems.length) {
+      for (const category of Object.keys(profile.useOfFunds) as (keyof BusinessProfile["useOfFunds"])[]) {
+        const total = profile.expenditureItems.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
+        if (!Number.isSafeInteger(total) || total !== profile.useOfFunds[category]) throw new RangeError("Expenditure details must match every spending category total");
+      }
+    }
+  }
   if (!["daily", "weekly", "biweekly", "monthly", "at_maturity"].includes(profile.preferredRepaymentFrequency)) throw new RangeError("Invalid preferred repayment frequency");
   const expenseParts = profile.inventoryCost + profile.rentCost + profile.wagesCost + profile.otherOperatingCosts;
   if (!Number.isSafeInteger(expenseParts) || expenseParts > profile.monthlyBusinessExpenses)

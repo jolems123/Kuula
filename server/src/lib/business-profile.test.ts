@@ -9,6 +9,20 @@ const good = {
   monthlyExistingDebt: 100_000, loanUse: "Buy fast moving inventory",
   repaymentPlan: "Repay from daily stock turnover",
 };
+test("optional expenditure details reconcile each category and preserve old profiles", () => {
+  assert.equal(parseBusinessProfile(good).expenditureItems, undefined);
+  const useOfFunds = { stock: 100000, equipment: 0, operations: 50000, expansion: 0, other: 0 };
+  const expenditureItems = [{ category: "stock", description: "Rice", amount: 100000 }, { category: "operations", description: "Rent", amount: 50000 }];
+  assert.equal(parseBusinessProfile({ ...good, useOfFunds, expenditureItems }).expenditureItems?.length, 2);
+  for (const invalid of [
+    [{ category: "stock", description: "Rice", amount: 150000 }],
+    [{ category: "stock", description: "", amount: 100000 }],
+    [{ category: "__proto__", description: "Rice", amount: 100000 }],
+    [{ category: "stock", description: "Rice", amount: "100000" }],
+    [{ category: "stock", description: "Rice", amount: -1 }],
+    Array(31).fill(expenditureItems[0]), {},
+  ]) assert.throws(() => parseBusinessProfile({ ...good, useOfFunds, expenditureItems: invalid }), /expenditure/i);
+});
 test("accepts a small business snapshot", () => {
   const p = parseBusinessProfile(good);
   assert.equal(p.businessName, good.businessName);

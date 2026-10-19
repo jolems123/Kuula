@@ -36,6 +36,14 @@ const draft: LoanApplicationFormDraft = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("restores previous loan purpose names without losing a saved application", () => {
+  const sessionStorage = new MemoryStorage();
+  vi.stubGlobal("window", { sessionStorage });
+  sessionStorage.setItem("kuula:loan-application-draft:v1:legacy-user", JSON.stringify({ ...draft, purpose: "Inventory and stock" }));
+  expect(getSavedLoanApplicationDraft("legacy-user")?.purpose).toBe("Stock and inventory");
+  expect(getSavedLoanApplicationDraft("legacy-user")?.amount).toBe(draft.amount);
+});
+
 describe("loan application autosave", () => {
   it("restores the saved draft only for the matching user", () => {
     vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });

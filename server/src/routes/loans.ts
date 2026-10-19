@@ -255,7 +255,7 @@ async function createLoanApplicationForUser(
       action: "loan.application_submitted",
       resourceType: "loan_application",
       resourceId: application.id,
-      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose },
+      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose, useOfFunds: business.useOfFunds, expenditureItems: business.expenditureItems ?? [] },
     });
     await notifyLoanCustomer(userId, "Kuula business loan application submitted",
       "Your business loan application was received and is awaiting assessment. Follow the review stages in Kuula.");

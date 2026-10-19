@@ -78,6 +78,7 @@ export interface BusinessProfile {
     other: number;
   };
   loanUse: string;
+  expenditureItems?: { category: "stock" | "equipment" | "operations" | "expansion" | "other"; description: string; amount: number }[];
   repaymentPlan: string;
 }
 

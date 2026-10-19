@@ -177,6 +177,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
             {BUSINESS_LOAN_PURPOSES.map((option) => (
               <button
                 key={option}
+                type="button"
+                aria-pressed={purpose === option}
                 onClick={() => setPurpose(option)}
                 style={{
                   padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
@@ -186,7 +188,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                   cursor: "pointer",
                 }}
               >
-                {option}
+                {option === "Other" ? "Other business purpose" : option}
               </button>
             ))}
           </div>
