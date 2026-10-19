@@ -485,18 +485,21 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <section className="p-4 rounded-2xl" style={{ background: "white" }}>
           <strong>Financial statements (optional)</strong>
           <p>Attach a mobile money or bank statement if available. PDF, CSV or XLSX, up to 5 MB each. You may continue without statements.</p>
-          {(["mobile_money", "bank"] as const).map(kind => <div key={kind} style={{ padding: 10 }}>
-            <label>{kind === "bank" ? "Bank statement" : "Mobile money statement"}
-              <input type="file" accept=".pdf,.csv,.xlsx" onChange={e => addStatement(kind, e.target.files?.[0])} />
-            </label>
-            {statements.filter(s => s.kind === kind).map(s => <div key={kind}>
-              <span>{s.file.name}</span>
-              <select value={s.periodMonths} aria-label="Statement period" onChange={e => setStatements(prev => prev.map(item => item.kind === kind ? {...item, periodMonths: Number(e.target.value)} : item))}>
+          <div className="kuula-statement-grid">
+          {(["mobile_money", "bank"] as const).map(kind => <div key={kind} className="kuula-statement-card">
+            <label htmlFor={`statement-${kind}`}>{kind === "bank" ? "Bank statement" : "Mobile money statement"}</label>
+            <p id={`statement-help-${kind}`}>Choose one PDF, CSV or XLSX file, up to 5 MB.</p>
+            <input id={`statement-${kind}`} aria-describedby={`statement-help-${kind}`} type="file" accept=".pdf,.csv,.xlsx" onChange={e => { addStatement(kind, e.target.files?.[0]); e.target.value = ""; }} />
+            {statements.filter(s => s.kind === kind).map(s => <div key={kind} className="kuula-statement-selected">
+              <span role="status">Attached: {s.file.name}</span>
+              <label htmlFor={`period-${kind}`}>Statement covers</label>
+              <select id={`period-${kind}`} className="kx-input" value={s.periodMonths} onChange={e => setStatements(prev => prev.map(item => item.kind === kind ? {...item, periodMonths: Number(e.target.value)} : item))}>
                 <option value={3}>3 months</option><option value={6}>6 months</option><option value={12}>12 months</option>
               </select>
-              <button type="button" onClick={() => setStatements(prev => prev.filter(item => item.kind !== kind))}>Remove</button>
+              <button className="kuula-statement-remove" type="button" aria-label={`Remove ${kind === "bank" ? "bank" : "mobile money"} statement`} onClick={() => setStatements(prev => prev.filter(item => item.kind !== kind))}>Remove file</button>
             </div>)}
           </div>)}
+          </div>
           {statementError && <p role="alert">{statementError}</p>}
         </section>
         <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}>

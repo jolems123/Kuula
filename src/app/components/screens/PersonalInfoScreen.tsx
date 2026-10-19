@@ -45,7 +45,7 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
     }
   };
 
-  const inputStyle: React.CSSProperties = { width: "100%", height: 46, borderRadius: 10, border: "1.5px solid #E5E7EB", padding: "0 14px", fontSize: 13, color: "#1F2937", background: "white", outline: "none", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = { width: "100%", height: 48, borderRadius: 10, border: "1.5px solid #9CAFA3", padding: "0 14px", fontSize: 16, color: "#1F2937", background: "white", boxSizing: "border-box" };
   const fields: Array<{ key: keyof typeof form; label: string; type: string; disabled?: boolean }> = [
     { key: "fullName", label: "Full Name", type: "text", disabled: Boolean(user?.verified) },
     { key: "dateOfBirth", label: "Date of Birth", type: "date" },
@@ -63,9 +63,9 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
       <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFF7ED", border: "1px solid #FED7AA", fontSize: 12, color: "#92400E" }}>Phone and NIN changes require identity re-verification. A verified legal name is also locked.</div>
       {error && <div role="alert" style={{ padding: 11, borderRadius: 10, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>{error}</div>}
       {saved && <div role="status" style={{ padding: 11, borderRadius: 10, background: "#F0FDF4", color: "#166534", fontSize: 12 }}>Your changes were saved.</div>}
-      <div style={{ background: "white", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div><label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4 }}>Phone Number</label><input value={user?.phone || ""} disabled style={{ ...inputStyle, color: "#9CA3AF", background: "#F9FAFB" }} /></div>
-        {fields.map(({ key, label, type, disabled }) => <div key={key}><label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4 }}>{label}</label><input type={type} value={form[key]} disabled={disabled} onChange={(event) => set(key, event.target.value)} style={{ ...inputStyle, ...(disabled ? { color: "#9CA3AF", background: "#F9FAFB" } : {}) }} /></div>)}
+      <div style={{ background: "white", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div><label htmlFor="profile-phone" style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}>Phone Number</label><input id="profile-phone" value={user?.phone || ""} disabled style={{ ...inputStyle, color: "#9CA3AF", background: "#F9FAFB" }} /></div>
+        {fields.map(({ key, label, type, disabled }) => <div key={key}><label htmlFor={`profile-${key}`} style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}>{label}</label><input id={`profile-${key}`} type={type} value={form[key]} disabled={disabled} onChange={(event) => set(key, event.target.value)} style={{ ...inputStyle, ...(disabled ? { color: "#9CA3AF", background: "#F9FAFB" } : {}) }} /></div>)}
       </div>
       <div style={{ background: "white", borderRadius: 14, padding: "14px 16px", display: "flex", justifyContent: "space-between" }}><div><strong style={{ fontSize: 13 }}>National ID (NIN)</strong><div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}>{user?.nationalId ? `${user.nationalId.slice(0, 5)}••••${user.nationalId.slice(-3)}` : "Not supplied"}</div></div><span style={{ fontSize: 11, fontWeight: 700, color: user?.verified ? "#178654" : "#B45309" }}>{user?.verified ? "Verified" : "Pending"}</span></div>
     </div>

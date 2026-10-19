@@ -8,6 +8,21 @@ export class AppError extends Error {
 }
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
+  if (res.headersSent) { _next(err); return; }
+  const parserType = (err as Error & { type?: string }).type;
+  const parserErrors: Record<string, [number, string]> = {
+    "entity.parse.failed": [400, "Request contains invalid JSON"],
+    "entity.too.large": [413, "Request is too large. Reduce the attachment size and try again."],
+    "encoding.unsupported": [415, "Unsupported request encoding"],
+    "charset.unsupported": [415, "Unsupported request character set"],
+    "request.size.invalid": [400, "Invalid request size"],
+    "request.aborted": [400, "Request was interrupted. Please try again."],
+  };
+  if (parserType && parserErrors[parserType]) {
+    const [status, error] = parserErrors[parserType];
+    res.status(status).json({ error, requestId: req.requestId ?? null });
+    return;
+  }
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: err.message, requestId: req.requestId ?? null });
     return;

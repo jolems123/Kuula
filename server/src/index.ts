@@ -155,6 +155,15 @@ app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "30mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/financial-statements", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
+// Every JSON API endpoint accepts a named object, never an array of commands.
+app.use("/api", (req, res, next) => {
+  if (req.is("application/json") && req.body !== undefined &&
+      (req.body === null || typeof req.body !== "object" || Array.isArray(req.body))) {
+    res.status(400).json({ error: "Request body must be a JSON object", requestId: req.requestId ?? null });
+    return;
+  }
+  next();
+});
 
 app.use("/api", httpsEnforcementRoutes);
 app.use("/api", productionSecurityGuardRoutes);
