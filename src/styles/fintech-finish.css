@@ -76,6 +76,13 @@
 }
 
 /* Identity review: visible decision buttons with room for touch and keyboard use. */
+.kx-business-map { margin-top: 12px; }
+.kx-business-map__viewport { position: relative; width: 100%; overflow: hidden; border: 1px solid #ccdcd1; border-radius: 12px; background: #e8efea; touch-action: none; cursor: crosshair; }
+.kx-business-map__attribution { position: absolute; bottom: 0; right: 0; background: rgba(255,255,255,.95); padding: 4px 7px; font-size: 11px; color: #14532d; z-index: 2; }
+.kx-business-map__controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.kx-business-map__controls .kx-btn, .kx-map-toggle, .kx-pin-nudge { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 13px; border: 1px solid #b7cfbf; border-radius: 10px; background: #fff; color: #0b5e3a; font-size: 13px; font-weight: 600; cursor: pointer; }
+.kx-business-map__controls .kx-btn:hover:not(:disabled), .kx-map-toggle:hover { background: #edf7f0; }
+.kx-business-map__controls .kx-btn:disabled { opacity: .5; cursor: not-allowed; }
 .kx-kyc-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
 .kx-kyc-review-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 20px; align-items: start; }
 .kx-kyc-review-grid > * { min-width: 0; }

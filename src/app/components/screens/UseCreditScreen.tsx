@@ -59,7 +59,7 @@ export function UseCreditScreen({ onNavigate }: Props) {
   const steps = [
     { label: "Verify identity", detail: "Complete identity checks", done: identityReady, icon: CheckCircle2 },
     { label: "Business details", detail: "Ownership, trading activity and address", done: Boolean(open?.businessProfile?.businessName), icon: BriefcaseBusiness },
-    { label: "Business location", detail: "Map pin and GPS coordinates (next form enhancement)", done: Boolean(open?.businessProfile?.latitude != null && open.businessProfile.longitude != null), icon: MapPin },
+    { label: "Business location", detail: "Capture GPS or place your business pin on the map", done: Boolean(open?.businessProfile?.latitude != null && open.businessProfile.longitude != null), icon: MapPin },
     { label: "Business evidence", detail: "Premises photos and applicant-at-business photo (next form enhancement)", done: false, icon: Camera },
     { label: "Financial details", detail: "Sales, expenses and other debts", done: Boolean(open?.businessProfile?.monthlySales), icon: ClipboardList },
     { label: "Review and submit", detail: "Confirm and send your application", done: Boolean(open), icon: CheckCircle2 },

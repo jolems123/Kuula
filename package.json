@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "check:env": "node scripts/check-env.mjs",
+    "check:api": "node scripts/check-api.mjs",
     "sync:app-id": "node scripts/sync-native-app-id.mjs",
     "prebuild": "node scripts/check-env.mjs && node scripts/sync-native-app-id.mjs",
     "build": "vite build",

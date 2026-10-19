@@ -36,7 +36,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   // Photo capture is local to the device; third-party identity iframes are retired.
-  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", isWebsiteHost(req) ? "camera=(), microphone=(), geolocation=()" : "camera=(self), microphone=(), geolocation=(self)");
   next();
 });
 // Website pages on a website host: "/" and clean paths such as "/pricing". Older links

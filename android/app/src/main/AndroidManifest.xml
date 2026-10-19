@@ -5,11 +5,12 @@
   Permissions are scoped to the absolute minimum the app needs:
     - INTERNET / ACCESS_NETWORK_STATE — API + WebView
     - CAMERA — KYC ID-photo capture (in-app, user-initiated)
+    - ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION — optional foreground business pin
     - USE_BIOMETRIC — fingerprint / face unlock for app PIN
     - VIBRATE — OTP / payment success haptic feedback
     - POST_NOTIFICATIONS — Android 13+ push notification runtime permission
 
-  No contacts, location, SMS, or call-log permissions — those would conflict
+  No contacts, background location, SMS, or call-log permissions — those would conflict
   with Google Play's Personal Loans policy and are not needed.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -28,8 +29,9 @@
     <!-- These may be injected by Capacitor plugins via manifest merging.
          tools:node="remove" guarantees they NEVER appear in the final APK,
          which prevents Google Play policy flags and reviewer rejections. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+    <!-- Foreground-only, user-initiated business/field-visit location. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />

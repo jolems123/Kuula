@@ -27,16 +27,18 @@ end
 # permission string without the app actually requesting it.  This post_install
 # hook removes every privacy key that is NOT in the explicit allow-list below.
 #
-# Allowed keys (the three the app actually uses):
+# Allowed keys (only the features the app uses):
 #   NSCameraUsageDescription          — KYC ID-photo capture
 #   NSPhotoLibraryUsageDescription    — KYC photo upload
 #   NSFaceIDUsageDescription          — biometric app unlock
+#   NSLocationWhenInUseUsageDescription — optional foreground business/visit pin
 #
 # If you add a new permission, add its key to ALLOWED_PRIVACY_KEYS.
 ALLOWED_PRIVACY_KEYS = %w[
   NSCameraUsageDescription
   NSPhotoLibraryUsageDescription
   NSFaceIDUsageDescription
+  NSLocationWhenInUseUsageDescription
 ].freeze
 
 FORBIDDEN_PRIVACY_PREFIXES = %w[NSLocation NSContacts NSCalendar NSReminders

@@ -5,6 +5,7 @@ import { creditOperationsApi, type OperationsStaff } from "../../api/credit-oper
 import { useAppContext } from "../../context/AppContext";
 import { getCreditOperationsSelection, setCustomer360Id } from "../../lib/selection";
 import { CreditCaseSummaryPanel } from "./CreditCaseSummaryPanel";
+import { captureLocation } from "../../lib/location";
 
 interface Props { onNavigate: (screen: string) => void; }
 const GREEN = "#0B5E3A";
@@ -63,6 +64,7 @@ export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
   const [evidenceType, setEvidenceType] = useState("storefront");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const load = async () => {
     if (!token || !applicationId) return;
@@ -120,18 +122,20 @@ export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
     finally { setBusy(false); }
   };
 
-  const captureGps = () => navigator.geolocation?.getCurrentPosition(
-    (position) => setForm((current) => ({ ...current, gpsLatitude: position.coords.latitude, gpsLongitude: position.coords.longitude })),
-    () => setError("Location permission was not granted."),
-    { enableHighAccuracy: true },
-  );
+  const captureGps = async () => {
+    if (locating) return;
+    setLocating(true); setError(null);
+    try { const point = await captureLocation(); setForm(current => ({ ...current, gpsLatitude: point.latitude, gpsLongitude: point.longitude })); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not capture the visit location."); }
+    finally { setLocating(false); }
+  };
 
   const uploadEvidence = async (file: File) => {
     if (!token) return;
     setBusy(true); setError(null);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); });
-      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType, dataUrl, gpsLatitude: form.gpsLatitude || undefined, gpsLongitude: form.gpsLongitude || undefined, capturedAt: new Date().toISOString() });
+      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType, dataUrl, gpsLatitude: form.gpsLatitude === "" ? undefined : form.gpsLatitude, gpsLongitude: form.gpsLongitude === "" ? undefined : form.gpsLongitude, capturedAt: new Date().toISOString() });
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Could not upload evidence."); }
     finally { setBusy(false); }
@@ -172,7 +176,7 @@ export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
 
     {tab === "overview" && <><CreditCaseSummaryPanel detail={detail}/><AdminCard><h3 style={{ marginTop: 0 }}>Customer & application</h3>{[["Phone",application.customer?.phone],["District",application.customer?.district],["Existing occupation",application.customer?.occupation],["KYC",application.customer?.kycVerified?"Verified":"Not verified"],["Purpose",application.purpose],["Term",`${application.termDays} days`],["Status",application.status]].map(([label,value]) => <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${BORDER}`, fontSize: 12 }}><span style={{ color: "#64748B" }}>{label}</span><strong>{value || "—"}</strong></div>)}</AdminCard></>}
 
-    {tab === "evaluation" && <AdminCard><h3 style={{ marginTop: 0 }}>Field evaluation</h3><div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10 }}>{fieldInputs.map(([key,label]) => <label key={key} style={{ fontSize: 12, color: "#475569" }}>{label}<input style={{ ...input, marginTop: 5 }} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)}/></label>)}</div><div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10, marginTop: 12 }}>{narratives.map(([key,label]) => <label key={key} style={{ fontSize: 12, color: "#475569" }}>{label}<textarea style={{ ...textarea, marginTop: 5 }} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)}/></label>)}</div><div style={{ display: "flex", gap: 8, marginTop: 12 }}><button style={button} onClick={captureGps}>Capture GPS</button><button style={primary} disabled={busy} onClick={() => void saveEvaluation()}>{busy ? "Saving…" : "Save evaluation draft"}</button></div>{form.gpsLatitude && <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>GPS: {Number(form.gpsLatitude).toFixed(6)}, {Number(form.gpsLongitude).toFixed(6)}</div>}</AdminCard>}
+    {tab === "evaluation" && <AdminCard><h3 style={{ marginTop: 0 }}>Field evaluation</h3><div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10 }}>{fieldInputs.map(([key,label]) => <label key={key} style={{ fontSize: 12, color: "#475569" }}>{label}<input style={{ ...input, marginTop: 5 }} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)}/></label>)}</div><div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10, marginTop: 12 }}>{narratives.map(([key,label]) => <label key={key} style={{ fontSize: 12, color: "#475569" }}>{label}<textarea style={{ ...textarea, marginTop: 5 }} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)}/></label>)}</div><div style={{ display: "flex", gap: 8, marginTop: 12 }}><button type="button" style={button} disabled={locating || busy} onClick={() => void captureGps()}>{locating ? "Finding visit location…" : "Capture visit GPS"}</button><button style={primary} disabled={busy} onClick={() => void saveEvaluation()}>{busy ? "Saving…" : "Save evaluation draft"}</button></div>{form.gpsLatitude !== "" && form.gpsLatitude != null && form.gpsLongitude !== "" && form.gpsLongitude != null && <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>GPS: {Number(form.gpsLatitude).toFixed(6)}, {Number(form.gpsLongitude).toFixed(6)}</div>}</AdminCard>}
 
     {tab === "evidence" && <AdminCard><h3 style={{ marginTop: 0 }}>Supporting evidence</h3><p style={{ fontSize: 12, color: "#64748B" }}>Upload only evidence relevant to the application. At least two field evidence items are required before Level 1 submission.</p><div style={{ display: "flex", gap: 8, marginBottom: 12 }}><select style={{ ...input, maxWidth: 250 }} value={evidenceType} onChange={(e) => setEvidenceType(e.target.value)}>{["storefront","business_interior","stock","equipment","licence","supplier_invoice","applicant_at_business","other"].map((item) => <option key={item} value={item}>{item.replace(/_/g, " ")}</option>)}</select><label style={{ ...primary, display: "inline-flex", gap: 7, alignItems: "center" }}><Upload size={14}/>{busy ? "Uploading…" : "Upload evidence"}<input hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy} onChange={(e) => { const file=e.target.files?.[0]; if(file) void uploadEvidence(file); e.currentTarget.value=""; }}/></label></div><div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9 }}>{evidence.map((item) => <button key={item.id} style={{ ...button, textAlign: "left" }} onClick={() => void openEvidence(String(item.id))}><Camera size={16} color={GREEN}/><div style={{ marginTop: 5, fontSize: 12, fontWeight: 700 }}>{String(item.evidence_type).replace(/_/g, " ")}</div><div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>{Math.round(Number(item.bytes || 0)/1024)} KB · {fmt(item.created_at)}</div></button>)}</div></AdminCard>}
 

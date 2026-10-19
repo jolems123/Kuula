@@ -1,5 +1,6 @@
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
+import { parseVisitCoordinates } from "../lib/location.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
@@ -37,6 +38,10 @@ function numberOrNull(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isFinite(n)) throw new AppError("Numeric value is invalid", 400);
   return n;
+}
+function visitCoordinates(latitude: unknown, longitude: unknown) {
+  try { return parseVisitCoordinates(latitude, longitude); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid visit location", 400); }
 }
 export function roleLevel(role: string): number {
   return sharedRoleLevel(role);
@@ -256,7 +261,7 @@ router.post("/applications/:id/evaluation", async (req: Request, res: Response) 
     yearsOperating: numberOrNull(fields.yearsOperating), employeeCount: numberOrNull(fields.employeeCount),
     estimatedMonthlySales: money(fields.estimatedMonthlySales), estimatedStockValue: money(fields.estimatedStockValue), monthlyOperatingExpenses: money(fields.monthlyOperatingExpenses), existingBusinessDebt: money(fields.existingBusinessDebt),
     businessObservations: text(fields.businessObservations), financialObservations: text(fields.financialObservations), characterAssessment: text(fields.characterAssessment), repaymentCapacity: text(fields.repaymentCapacity), risks: text(fields.risks), mitigatingFactors: text(fields.mitigatingFactors), purposeAssessment: text(fields.purposeAssessment), recommendation: text(fields.recommendation),
-    recommendedAmount: money(fields.recommendedAmount), recommendedTermDays: numberOrNull(fields.recommendedTermDays), gpsLatitude: numberOrNull(fields.gpsLatitude), gpsLongitude: numberOrNull(fields.gpsLongitude),
+    recommendedAmount: money(fields.recommendedAmount), recommendedTermDays: numberOrNull(fields.recommendedTermDays), ...visitCoordinates(fields.gpsLatitude, fields.gpsLongitude),
   };
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO credit_evaluations (
@@ -297,11 +302,14 @@ router.post("/applications/:id/evidence", async (req: Request, res: Response) =>
   if (!EVIDENCE_TYPES.has(evidenceType)) throw new AppError("Unsupported evidence type", 400);
   const evaluation = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT id FROM credit_evaluations WHERE application_id = ${applicationId}::uuid ORDER BY version DESC LIMIT 1`);
   if (!evaluation[0]) throw new AppError("Save the field evaluation before uploading evidence", 409);
+  const gps = visitCoordinates(req.body?.gpsLatitude, req.body?.gpsLongitude);
+  const capturedAt = req.body?.capturedAt ? new Date(String(req.body.capturedAt)) : null;
+  if (capturedAt && (Number.isNaN(capturedAt.getTime()) || capturedAt > new Date())) throw new AppError("Evidence capture time is invalid", 400);
   const stored = await saveFieldEvidence({ applicationId, evaluationId: evaluation[0].id, evidenceType, dataUrl: String(req.body?.dataUrl || "") });
   const evidenceId = crypto.randomUUID();
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO evaluation_evidence (id, evaluation_id, application_id, uploaded_by, evidence_type, storage_key, mime, bytes, gps_latitude, gps_longitude, captured_at, metadata)
-    VALUES (${evidenceId}::uuid, ${evaluation[0].id}::uuid, ${applicationId}::uuid, ${req.user!.userId}::uuid, ${evidenceType}, ${stored.key}, ${stored.mime}, ${stored.bytes}, ${numberOrNull(req.body?.gpsLatitude)}, ${numberOrNull(req.body?.gpsLongitude)}, ${req.body?.capturedAt ? new Date(String(req.body.capturedAt)) : null}, ${JSON.stringify({ source: "field_officer" })}::jsonb)
+    VALUES (${evidenceId}::uuid, ${evaluation[0].id}::uuid, ${applicationId}::uuid, ${req.user!.userId}::uuid, ${evidenceType}, ${stored.key}, ${stored.mime}, ${stored.bytes}, ${gps.gpsLatitude}, ${gps.gpsLongitude}, ${capturedAt}, ${JSON.stringify({ source: "field_officer" })}::jsonb)
   `);
   await event(applicationId, req.user!.userId, "evidence.uploaded", 1, 1, { evidenceId, evidenceType });
   res.status(201).json({ evidence: { id: evidenceId, evidenceType, mime: stored.mime, bytes: stored.bytes } });

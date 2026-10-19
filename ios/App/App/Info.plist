@@ -61,6 +61,8 @@
         <string>Kuula can upload an existing photo of your national ID for KYC verification.</string>
 
         <!-- Face ID: biometric unlock of the app. -->
+        <key>NSLocationWhenInUseUsageDescription</key>
+        <string>Kuula uses your location only when you choose to pin your business premises or record an officer's business visit. It does not track you in the background.</string>
         <key>NSFaceIDUsageDescription</key>
         <string>Kuula uses Face ID to securely unlock the app without typing your PIN.</string>
 
