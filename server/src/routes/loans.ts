@@ -1,6 +1,8 @@
 import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
+import { sendNotificationSms } from "../lib/sms.js";
+import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
@@ -354,6 +356,59 @@ router.post("/applications/:id/guarantor-waiver", authenticateToken, requirePerm
   if (result.count !== 1) throw new AppError("Requirement was modified concurrently",409);
   await writeAuditEvent({actorId:req.user!.userId,subjectUserId:original.application.applicantId,action:"loan.guarantor_waived",resourceType:"loan_application",resourceId:id,metadata:{reason}});
   res.json({requirement:{status:"waived",reason}});
+});
+
+// A nominated person only consents to being contacted, not to any debt.
+router.post("/applications/:id/guarantor-invitation", authenticateToken, async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
+  const applicant = await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true}});
+  if (!applicant || applicant.applicantId !== req.user!.userId) throw new AppError("Application not found",404);
+  if (!["pending","resubmitted"].includes(applicant.status)) throw new AppError("Application cannot be modified",409);
+  const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
+  if (!requirement || requirement.status !== "required") throw new AppError("A credit officer must request a guarantor first",409);
+  const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
+  const relationship = typeof req.body?.relationship === "string" ? req.body.relationship.trim() : "";
+  if (fullName.length < 3 || fullName.length > 120 || relationship.length < 3 || relationship.length > 80 || req.body?.permissionToContact !== true)
+    throw new AppError("Name, relationship and explicit permission to contact are required",400);
+  let phone: string;
+  try { phone = normalizeUgandaMobileMoneyPhone(String(req.body?.phone || "")); }
+  catch { throw new AppError("Invalid Uganda phone number",400); }
+  const existing = await prisma.loanGuarantorInvitation.findUnique({where:{requirementId:requirement.id}});
+  if (existing && existing.expiresAt > new Date() && !existing.declinedAt) throw new AppError("An invitation is already pending",409);
+  const token = crypto.randomBytes(32).toString("hex");
+  const invitationTokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const invitation = await prisma.loanGuarantorInvitation.upsert({
+    where:{requirementId:requirement.id},
+    create:{requirementId:requirement.id,fullName,phone,relationship,invitationTokenHash,expiresAt},
+    update:{fullName,phone,relationship,invitationTokenHash,expiresAt,acceptedAt:null,declinedAt:null},
+  });
+  // Do not return an invitation token to the borrower.
+  const baseUrl = process.env.GUARANTOR_INVITE_BASE_URL;
+  const link = baseUrl ? new URL("/guarantor/invitation",baseUrl) : null;
+  if (link) link.searchParams.set("token",token);
+  const sent = link ? await sendNotificationSms(phone,`Kuula: you were nominated as a possible guarantor. This is NOT a loan guarantee. Review securely: ${link.toString()}`) : false;
+  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:req.user!.userId,action:"loan.guarantor_invited",resourceType:"loan_application",resourceId:id,metadata:{invitationId:invitation.id,smsAccepted:sent}});
+  res.status(202).json({invitation:{id:invitation.id,status:"pending",expiresAt},deliveryAccepted:sent,message:sent?"Invitation sent for review":"Invitation recorded; SMS delivery is not confirmed"});
+});
+
+// Unauthenticated invited person can decline; a positive response never marks a guarantee verified.
+router.post("/guarantor-invitations/respond", async (req: Request, res: Response) => {
+  const token = typeof req.body?.token === "string" ? req.body.token : "";
+  if (!/^[a-f0-9]{64}$/.test(token)) throw new AppError("Invalid or expired invitation",404);
+  const invitationTokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const invitation = await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash}});
+  if (!invitation || invitation.expiresAt <= new Date() || invitation.acceptedAt || invitation.declinedAt) throw new AppError("Invalid or expired invitation",404);
+  const response = req.body?.response;
+  if (!["interested","decline"].includes(response)) throw new AppError("Choose interested or decline",400);
+  const changed = await prisma.loanGuarantorInvitation.updateMany({
+    where:{id:invitation.id,acceptedAt:null,declinedAt:null,expiresAt:{gt:new Date()}},
+    data:response === "decline"?{declinedAt:new Date()}:{acceptedAt:new Date()},
+  });
+  if(changed.count!==1) throw new AppError("Invitation already handled",409);
+  await writeAuditEvent({action:response==="decline"?"loan.guarantor_declined":"loan.guarantor_expressed_interest",resourceType:"loan_guarantor_invitation",resourceId:invitation.id});
+  res.json({ok:true,message:response==="decline"?"Invitation declined":"Interest recorded. No guarantee or debt obligation has been created."});
 });
 
 // Fail closed until a guarantor-controlled identity verification, consent, and signed
