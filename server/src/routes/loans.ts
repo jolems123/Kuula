@@ -1,7 +1,7 @@
 import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
-import { sendNotificationSms } from "../lib/sms.js";
+import { sendGuarantorSms } from "../lib/sms.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
@@ -387,7 +387,7 @@ router.post("/applications/:id/guarantor-invitation", authenticateToken, async (
   const baseUrl = process.env.GUARANTOR_INVITE_BASE_URL;
   const link = baseUrl ? new URL(baseUrl) : null;
   if (link) { link.search = ""; link.hash = `/guarantor/invitation?token=${token}`; }
-  const sent = link ? await sendNotificationSms(phone,`Kuula: you were nominated as a possible guarantor. This is NOT a loan guarantee. Review securely: ${link.toString()}`) : false;
+  const sent = link ? await sendGuarantorSms(phone,`Kuula: you were nominated as a possible guarantor. This is NOT a loan guarantee. Review securely: ${link.toString()}`) : false;
   await writeAuditEvent({actorId:req.user!.userId,subjectUserId:req.user!.userId,action:"loan.guarantor_invited",resourceType:"loan_application",resourceId:id,metadata:{invitationId:invitation.id,smsAccepted:sent}});
   res.status(202).json({invitation:{id:invitation.id,status:"pending",expiresAt},deliveryAccepted:sent,message:sent?"Invitation sent for review":"Invitation recorded; SMS delivery is not confirmed"});
 });
@@ -445,7 +445,7 @@ router.post("/guarantor-invitations/sign-otp/request", authenticateToken, async 
   const otpHash=crypto.createHmac("sha256",pepper).update(invite.id+":"+user.id+":"+code).digest("hex");
   const changed=await prisma.loanGuarantorInvitation.updateMany({where:{id:invite.id,signedAt:null,otpSendCount:{lt:10}},data:{otpHash,otpExpiresAt:new Date(Date.now()+10*60000),otpSentAt:new Date(),otpVerifiedAt:null,otpAttempts:0,otpSendCount:{increment:1}}});
   if(changed.count!==1) throw new AppError("Invitation changed, retry safely",409);
-  const sent=await sendNotificationSms(invite.phone,"Kuula guarantee signature verification code: "+code+". Expires in 10 minutes. Never share this code.");
+  const sent=await sendGuarantorSms(invite.phone,"Kuula guarantee signature verification code: "+code+". Expires in 10 minutes. Never share this code.");
   if(!sent) {
     await prisma.loanGuarantorInvitation.updateMany({where:{id:invite.id,otpHash},data:{otpExpiresAt:new Date(0),otpHash:null}});
     throw new AppError("SMS delivery was not confirmed. Signing is unavailable.",503);
