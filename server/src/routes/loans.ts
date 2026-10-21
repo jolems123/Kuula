@@ -413,8 +413,8 @@ router.post("/guarantor-invitations/respond", async (req: Request, res: Response
 // Guarantor signs only after the final loan offer exists and using a separate
 // authenticated, phone-verified and KYC-reviewed Kuula account.
 // This creates an evidentiary record; release of the feature remains subject to legal review.
-router.get("/guarantor-invitations/terms", authenticateToken, async (req: Request, res: Response) => {
-  const token = typeof req.query.token === "string" ? req.query.token : "";
+router.post("/guarantor-invitations/terms", authenticateToken, async (req: Request, res: Response) => {
+  const token = typeof req.body?.token === "string" ? req.body.token : "";
   if (!/^[a-f0-9]{64}$/.test(token)) throw new AppError("Invalid invitation",404);
   const hash = crypto.createHash("sha256").update(token).digest("hex");
   const invite = await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash:hash},include:{requirement:{include:{application:true}}}});
