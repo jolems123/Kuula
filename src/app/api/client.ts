@@ -98,6 +98,8 @@ const nodeApi = {
   guarantorTerms: (token: string, inviteToken: string) =>
     request<{terms:{borrower:string;principal:number;totalLiability:number;termDays:number;offerExpiresAt:string;identityName:string;disclosure:string;requirementStatus:string}}>(
       "/api/loans/guarantor-invitations/terms", {method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken})}),
+  requestGuarantorSignatureCode:(token:string,inviteToken:string)=>request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/sign-otp/request",{method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken})}),
+  verifyGuarantorSignatureCode:(token:string,inviteToken:string,code:string)=>request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/sign-otp/verify",{method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken,code})}),
   signGuarantorUndertaking: (token:string, inviteToken:string, signedName:string) =>
     request<{ok:boolean;signatureHash:string;message:string}>("/api/loans/guarantor-invitations/sign", {
       method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken,signedName,acceptedLiability:true,independentAdviceAcknowledged:true}),
