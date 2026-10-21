@@ -92,6 +92,10 @@ const query = (values: Record<string, string | undefined>) => {
 };
 
 const nodeApi = {
+  getGuarantorRequirement: (token: string, applicationId: string) =>
+    request<{ requirement: { status: string; reason?: string | null; requestedAt?: string | null } }>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-requirement`, { headers: auth(token) }),
+  nominateGuarantor: (token: string, applicationId: string, input: {fullName:string; phone:string; relationship:string; permissionToContact:true}) =>
+    request<{ invitation: {id:string; status:string; expiresAt:string}; deliveryAccepted:boolean }>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-invitation`, { method:"POST", headers: auth(token), body:JSON.stringify(input) }),
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
