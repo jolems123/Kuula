@@ -21,7 +21,7 @@ else {
     if(!res.ok)throw new Error("GitHub HTTP "+res.status+" for "+path.split("?")[0]);
     return res.json();
   };
-  const issuesUrl="/organizations/"+enc(org)+"/issues/?query="+enc("is:unresolved issue.category:error")+"&statsPeriod=24h&sort=date&limit=10";
+  const issuesUrl="/organizations/"+enc(org)+"/issues/?query="+enc("is:unresolved issue.category:error")+"&project="+enc(project)+"&statsPeriod=24h&sort=date&limit=10";
   const issues=await sentry(issuesUrl);
   if(!Array.isArray(issues))throw new Error("Unexpected Sentry response");
   let launched=0;
