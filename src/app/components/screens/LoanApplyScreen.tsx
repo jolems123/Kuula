@@ -506,6 +506,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           </div>
           {statementError && <p role="alert">{statementError}</p>}
         </section>
+        <section aria-labelledby="guarantor-heading" className="p-4 rounded-2xl" style={{ background: "white", border: "1px solid #E1EAE4" }}>
+          <h3 id="guarantor-heading" style={{ fontWeight: 800, fontSize: 15, color: "#184B32" }}>Guarantor information</h3>
+          <p style={{ fontSize: 12, color: "#53635A", marginTop: 8 }}>
+            A guarantor is not required to submit your business loan application. Kuula may request a guarantor following an individual credit assessment. If so, you will be notified and may choose whether to proceed.
+          </p>
+          <p style={{ fontSize: 12, color: "#53635A", marginTop: 8 }}>
+            Do not enter someone else's ID, telephone number or financial details here. A nominated guarantor must be contacted separately, verify their identity and independently agree to the specific legal obligations before a guarantee can be accepted.
+          </p>
+        </section>
         <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}>
           <div className="flex justify-between py-1.5"><span>Requested loan amount</span><strong>{formatUGX(amount)}</strong></div>
           <p style={{ fontSize: 12, marginTop: 8 }}>Interest, fees, charges and the final repayment amount will be disclosed in the approved loan offer, before you decide whether to accept it.</p>
