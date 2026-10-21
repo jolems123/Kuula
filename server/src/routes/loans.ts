@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { guarantorCleared } from "../lib/guarantor-policy.js";
 import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
@@ -743,7 +744,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   const loanId = existing.loanId || existing.id;
 
   const guaranteeHold = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId: existing.id } });
-  if (guaranteeHold?.status === "required" || (guaranteeHold && !["waived", "verified", "not_required"].includes(guaranteeHold.status))) {
+  if (!guarantorCleared(guaranteeHold?.status)) {
     throw new AppError("Disbursement blocked: guarantor requirement is unresolved", 409);
   }
   const claimedApplication = await prisma.$transaction(async (tx) => {
