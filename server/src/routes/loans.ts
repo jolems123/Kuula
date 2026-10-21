@@ -315,7 +315,7 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID", 400);
   const status = String(req.body?.status || "");
   const reason = String(req.body?.reason || "").trim();
-  if (!["required", "waived"].includes(status)) throw new AppError("Status must be required or waived", 400);
+  if (status !== "required") throw new AppError("Only a requirement can be issued here; waivers require independent credit approval", 400);
   if (reason.length < 20 || reason.length > 2000) throw new AppError("Record a specific risk assessment reason (20–2000 characters)", 400);
   const application = await prisma.loanApplication.findUnique({where: {id},select:{id:true,applicantId:true,status:true,businessProfile:true}});
   if (!application?.businessProfile) throw new AppError("Business application not found",404);
@@ -331,19 +331,10 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   res.json({requirement:{status:row.status,reason:row.reason,requestedAt:row.requestedAt}});
 });
 
-router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (req: Request, res: Response) => {
-  const id = String(req.params.id || "");
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
-  const evidenceReference = String(req.body?.evidenceReference || "").trim();
-  const agreementReference = String(req.body?.agreementReference || "").trim();
-  if (evidenceReference.length < 12 || agreementReference.length < 12 || evidenceReference.length > 500 || agreementReference.length > 500)
-    throw new AppError("Verification and signed undertaking references are required",400);
-  const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true}});
-  if (!requirement || requirement.status !== "required" || !["pending","resubmitted"].includes(requirement.application.status)) throw new AppError("No pending required guarantee",409);
-  if (requirement.requestedBy === req.user!.userId) throw new AppError("Independent approval required",403);
-  const row = await prisma.loanGuarantorRequirement.update({where:{id:requirement.id},data:{status:"verified",reviewedBy:req.user!.userId,reviewedAt:new Date(),evidenceReference,agreementReference}});
-  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:requirement.application.applicantId,action:"loan.guarantor_verified",resourceType:"loan_application",resourceId:id,metadata:{evidenceReference,agreementReference}});
-  res.json({requirement:{status:row.status,reviewedAt:row.reviewedAt}});
+// Fail closed until a guarantor-controlled identity verification, consent, and signed
+// undertaking workflow exists. A staff-supplied reference is NOT proof of consent.
+router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (_req: Request, _res: Response) => {
+  throw new AppError("Guarantor verification is unavailable until independent identity, consent and signed undertaking validation are implemented", 503);
 });
 
 router.post("/top-up", authenticateToken, (_req: Request, res: Response) => {
@@ -585,6 +576,10 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     return tx.loanApplication.findUniqueOrThrow({ where: { id: existing.id } });
   });
 
+  const guaranteeHold = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId: existing.id } });
+  if (guaranteeHold?.status === "required" || (guaranteeHold && !["waived", "verified", "not_required"].includes(guaranteeHold.status))) {
+    throw new AppError("Disbursement blocked: guarantor requirement is unresolved", 409);
+  }
   const result = await sendMoney({ phone, amount, reference, description: `Kuula loan ${loanId}`, callbackUrl });
 
   if (!result.accepted) {
