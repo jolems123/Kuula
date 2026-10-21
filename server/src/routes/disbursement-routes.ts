@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { guarantorCleared } from "../lib/guarantor-policy.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting } from "../lib/underwriting.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
@@ -77,7 +78,7 @@ async function recheck(application: any) {
 
 async function assertGuarantorCleared(applicationId: string): Promise<void> {
   const requirement = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId } });
-  if (requirement && !["not_required", "waived", "verified"].includes(requirement.status)) {
+  if (!guarantorCleared(requirement?.status)) {
     throw new AppError("A required guarantor has not completed independent verification and agreement acceptance", 409);
   }
 }
