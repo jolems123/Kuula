@@ -1,6 +1,7 @@
 import { ArrowLeft, ChevronRight, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
+import { GuarantorNomination } from "../GuarantorNomination";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 
@@ -132,6 +133,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                 {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Quoted total repayment</span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
                 {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Offer expires</span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
               </div>
+              {token && <GuarantorNomination applicationId={loan.id} token={token} status={loan.status} />}
               {loan.status === "paid" && <div style={{ marginTop: 9, display: "flex", gap: 5, alignItems: "center", color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}><TrendingUp size={12} /> Fully repaid</div>}
             </Wrapper>
           );
