@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { KuulaLogo } from "./components/brand/KuulaLogo";
+import { GuarantorInvitationPage } from "./components/GuarantorInvitationPage";
 
 const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Overview", icon: House },
@@ -290,13 +291,14 @@ function Shell() {
   const screenId = location.pathname.replace(/^\//, "") || "root";
   const isAuthScreen = AUTH_SCREENS.has(screenId);
   const isAdminScreen = screenId.startsWith("admin-") && !isAuthScreen;
-  const isPublicScreen = isAuthScreen || screenId === "language" || screenId === "customer-privacy-policy" || screenId === "customer-terms";
+  const isPublicScreen = isAuthScreen || screenId === "guarantor/invitation" || screenId === "language" || screenId === "customer-privacy-policy" || screenId === "customer-terms";
   const isCustomerScreen = !isAuthScreen && !isAdminScreen && !isPublicScreen;
   const shellClass = isAuthScreen ? "kuula-auth-shell" : isAdminScreen ? "kuula-admin-shell" : "kuula-mobile-shell";
   const routeContent = <main className="kuula-route-viewport">
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
+        <Route path="/guarantor/invitation" element={<GuarantorInvitationPage />} />
         <Route path="/onboarding" element={<Navigate to="/welcome" replace />} />
         <Route path="/admin-partner-financing" element={<Guard access="admin" screenId="admin-partner-financing"><ScreenRoute Component={AdminPartnerFinancingScreen} /></Guard>} />
         <Route path="/partner-network" element={<Guard access="customer" screenId="partner-network"><Navigate to="/quick-actions" replace /></Guard>} />
