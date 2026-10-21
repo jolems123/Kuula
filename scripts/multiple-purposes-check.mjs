@@ -13,7 +13,12 @@ try {
   await context.addInitScript(()=>sessionStorage.setItem('kuula_ephemeral_session_v2',JSON.stringify({accessToken:'synthetic',refreshToken:'synthetic',accessExpiresAt:Date.now()+900000})));
   await context.route('**/api/**',route=>!new URL(route.request().url()).pathname.startsWith('/api/') ? route.continue() : route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'application/json',body:JSON.stringify({token:'synthetic',refreshToken:'synthetic',user:{id:'test',role:'customer',initials:'FT',fullName:'Form Test',phone:'+256770000001',email:'synthetic@example.com',nationalId:'CM900000000001',dateOfBirth:'1990-01-01',memberSince:'2026-01-01',verified:true},role:'customer',credit:null,loan:null,messages:[],unreadNotifications:0})}));
   const page=await context.newPage(); page.on("pageerror",e=>console.log(e.message)); page.on("console",m=>{if(m.type()==="error")console.log(m.text());});
-  await page.goto(base+'/#/loan-apply');
+  await page.goto(base+'/#/loan-calculator');
+  await page.getByRole('button',{name:'Stock and inventory',exact:true}).click();
+  await page.getByRole('button',{name:'Equipment, tools and machinery',exact:true}).click();
+  await page.getByRole('button',{name:/^Apply/}).click();
+  await page.getByText('BUSINESS LOAN PURPOSES',{exact:true}).waitFor();
+  for(const name of ['Stock and inventory','Equipment, tools and machinery']) assert.equal(await page.getByRole('button',{name,exact:true}).getAttribute('aria-pressed'),'true');
   const working=page.getByRole('button',{name:'Working capital',exact:true});
   const agriculture=page.getByRole('button',{name:'Agriculture and livestock',exact:true});
   await agriculture.click().catch(async error=>{console.log(await page.locator("body").innerText());throw error;});
@@ -66,7 +71,7 @@ try {
    sessionStorage.setItem(key,JSON.stringify(d));
   });
   await page.goto(base+'/#/loan-review');
-  await page.getByText(/Business: Working capital; Agriculture and livestock; Other - Buy supplies; pay rent/).waitFor();
+  await page.getByText(/Business: Working capital; Stock and inventory; Equipment, tools and machinery; Agriculture and livestock; Other - Buy supplies; pay rent/).waitFor();
   await context.close();console.log(`PASS customer fields and repeat upload/removal at ${width}px`);
  }
 } finally {await browser.close();}

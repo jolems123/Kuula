@@ -14,14 +14,18 @@ import { setLoanCalculatorSelection } from "../../lib/selection";
 // underwritten application. Keep the button hidden until top-ups are underwritten too.
 const TOP_UPS_ENABLED = false;
 
-interface Props { onNavigate: (s: string) => void; }
+interface Props { onNavigate: (s: string) => void; initialTab?: Tab; }
 
 type Tab = "overview" | "loan" | "credit";
 
 function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString(); }
 
-export function DashboardScreen({ onNavigate }: Props) {
-  const [tab, setTab] = useState<Tab>("overview");
+export function LoanCalculatorScreen(props: Props) {
+  return <DashboardScreen {...props} initialTab="loan" />;
+}
+
+export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const { state } = useAppContext();
   const credit = state.credit;
   const loan = state.loan;

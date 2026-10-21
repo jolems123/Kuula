@@ -31,7 +31,7 @@ const SCREENS: Record<string, ScreenEntry> = {
   "phone-verify": { access: "public", component: PhoneVerifyScreen },
   "home": { access: "customer", load: () => import("../components/screens/HomeScreen").then((m) => ({ default: m.HomeScreen })) },
   "dashboard": { access: "customer", load: () => import("../components/screens/DashboardScreen").then((m) => ({ default: m.DashboardScreen })) },
-  "loan-calculator": { access: "customer", load: () => import("../components/screens/DashboardScreen").then((m) => ({ default: m.DashboardScreen })) },
+  "loan-calculator": { access: "customer", load: () => import("../components/screens/DashboardScreen").then((m) => ({ default: m.LoanCalculatorScreen })) },
   "quick-actions": { access: "customer", load: () => import("../components/screens/QuickActionsScreen").then((m) => ({ default: m.QuickActionsScreen })) },
   "loan-apply": { access: "customer", load: () => import("../components/screens/LoanApplyScreen").then((m) => ({ default: m.LoanApplyScreen })) },
   "loan-review": { access: "customer", load: () => import("../components/screens/LoanReviewScreen").then((m) => ({ default: m.LoanReviewScreen })) },
