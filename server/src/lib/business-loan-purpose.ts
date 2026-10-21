@@ -17,8 +17,21 @@ const STANDARD_PURPOSES = new Set([
 const OTHER_PREFIX = "Business: Other - ";
 
 export function isBusinessLoanPurpose(purpose: string): boolean {
-  if (STANDARD_PURPOSES.has(purpose)) return true;
-  if (!purpose.startsWith(OTHER_PREFIX)) return false;
-  const detail = purpose.slice(OTHER_PREFIX.length).trim();
-  return detail.length > 0 && detail.length <= 100 && purpose.slice(OTHER_PREFIX.length) === detail;
+  if (typeof purpose !== "string" || purpose.length > 700 || !purpose.startsWith("Business: ")) return false;
+  const parts = purpose.slice(10).split("; ");
+  const seen = new Set<string>();
+  while (parts.length) {
+    let part = parts.shift()!;
+    if (part.startsWith("Other - ")) {
+      part += parts.length ? "; " + parts.join("; ") : "";
+      parts.length = 0;
+      const detail = part.slice(8);
+      if (!detail.trim() || detail !== detail.trim() || detail.length > 100) return false;
+      part = "Other";
+    } else if (!STANDARD_PURPOSES.has("Business: " + part)) return false;
+    const normalized = part === "Inventory and stock" ? "Stock and inventory" : part === "Equipment and tools" ? "Equipment, tools and machinery" : part;
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+  }
+  return seen.size > 0 && seen.size <= 12;
 }

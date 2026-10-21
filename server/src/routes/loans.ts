@@ -161,7 +161,7 @@ async function createLoanApplicationForUser(
   }
 ) {
   if (!isBusinessLoanPurpose(payload.purpose)) {
-    throw new AppError("Choose a valid business loan purpose and describe Other when selected", 400);
+    throw new AppError("Choose one or more valid business loan purposes and describe Other when selected", 400);
   }
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || user.deletedAt) throw new AppError("User not found", 404);

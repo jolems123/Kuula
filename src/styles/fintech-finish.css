@@ -121,3 +121,5 @@
 .kuula-expenditure { margin-top: 20px; padding: 18px; border: 1px solid #b8cdbf; border-radius: 14px; background: #f6faf7; overflow-wrap: anywhere; }
 .kuula-expenditure summary { min-height: 44px; font-weight: 700; color: #0b5e3a; cursor: pointer; }
 .kuula-expenditure p, .kuula-expenditure li { font-size: 14px; line-height: 1.6; }
+
+.kuula-purpose-choice { min-height: 44px; text-align: left; cursor: pointer; }

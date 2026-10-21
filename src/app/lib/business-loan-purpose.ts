@@ -15,6 +15,26 @@ export const BUSINESS_LOAN_PURPOSES = [
 
 export type BusinessLoanPurposeOption = (typeof BUSINESS_LOAN_PURPOSES)[number];
 
+export function formatBusinessLoanPurposes(options: BusinessLoanPurposeOption[], otherDetails = ""): string {
+  return "Business: " + [...new Set(options)].map(option => option === "Other" ? `Other - ${otherDetails.trim()}` : option).sort((a, b) => Number(a.startsWith("Other - ")) - Number(b.startsWith("Other - "))).join("; ");
+}
+
+export function parseBusinessLoanPurposes(value: string): { options: BusinessLoanPurposeOption[]; otherDetails: string } | null {
+  if (!value.startsWith("Business: ")) return null;
+  const parts = value.slice(10).split("; ");
+  const options: BusinessLoanPurposeOption[] = [];
+  let otherDetails = "";
+  while (parts.length) {
+    let part = parts.shift()!;
+    if (part.startsWith("Other - ")) { part += parts.length ? "; " + parts.join("; ") : ""; parts.length = 0; }
+    const parsed = parseBusinessLoanPurpose("Business: " + part);
+    if (!parsed || options.includes(parsed.option)) return null;
+    options.push(parsed.option);
+    if (parsed.option === "Other") otherDetails = parsed.otherDetails;
+  }
+  return options.length ? { options, otherDetails } : null;
+}
+
 export function formatBusinessLoanPurpose(option: BusinessLoanPurposeOption, otherDetails = ""): string {
   return option === "Other"
     ? `Business: Other - ${otherDetails.trim()}`

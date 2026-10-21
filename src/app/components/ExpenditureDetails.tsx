@@ -11,7 +11,7 @@ export function ExpenditureDetails({ items, funds, onChange }: { items: Item[]; 
   const error = expenditureError(items, funds);
   return <details className="kuula-expenditure" open={items.length ? true : undefined}>
     <summary>Add expenditure details (optional)</summary>
-    <p>One primary purpose can cover several business needs. If you add items, detail the full allocation in every funded category. No receipts or quotations are required here.</p>
+    <p>Your selected purposes can cover several business needs. If you add items, detail the full allocation in every funded category. No receipts or quotations are required here.</p>
     {items.map((item, index) => <fieldset key={index} className="kuula-statement-card" style={{ marginTop: 16 }}>
       <legend>Expenditure item {index + 1}</legend>
       <label>Spending category<select className="kx-input" value={item.category} onChange={event => update(index, { category: event.target.value as Item["category"] })}>{Object.entries(spendingCategories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>

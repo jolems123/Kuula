@@ -6,7 +6,7 @@ import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type Busine
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { getLoanCalculatorSelection, setLoanCalculatorSelection, setLoanDraft } from "../../lib/selection";
-import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurpose, parseBusinessLoanPurpose, type BusinessLoanPurposeOption } from "../../lib/business-loan-purpose";
+import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurposes, parseBusinessLoanPurposes, type BusinessLoanPurposeOption } from "../../lib/business-loan-purpose";
 import { getSavedLoanApplicationDraft, saveLoanApplicationDraft } from "../../lib/loan-application-autosave";
 import { getLoanTermOptions } from "../../lib/loan-terms";
 import type { BusinessDetails, BusinessProfile } from "../../api/types";
@@ -42,12 +42,12 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const TERMS = getLoanTermOptions();
   const [calculatorSelection] = useState(getLoanCalculatorSelection);
   const [savedDraft] = useState(() => state.user ? getSavedLoanApplicationDraft(state.user.id) : null);
-  const calculatorPurpose = calculatorSelection ? parseBusinessLoanPurpose(calculatorSelection.purpose) : null;
+  const calculatorPurpose = calculatorSelection ? parseBusinessLoanPurposes(calculatorSelection.purpose) : null;
   const [amount, setAmount] = useState(savedDraft?.amount ?? calculatorSelection?.amount ?? MIN_AMOUNT);
   const validSavedTerm = savedDraft && TERMS.includes(savedDraft.termDays) ? savedDraft.termDays : undefined;
   const validCalculatorTerm = calculatorSelection && TERMS.includes(calculatorSelection.termDays) ? calculatorSelection.termDays : undefined;
   const [term, setTerm] = useState(validSavedTerm ?? validCalculatorTerm ?? TERMS[0]);
-  const [purpose, setPurpose] = useState<BusinessLoanPurposeOption>(savedDraft?.purpose ?? calculatorPurpose?.option ?? "Working capital");
+  const [purposes, setPurposes] = useState<BusinessLoanPurposeOption[]>(savedDraft?.purposes ?? (savedDraft ? [savedDraft.purpose] : calculatorPurpose?.options ?? ["Working capital"]));
   const [otherPurpose, setOtherPurpose] = useState(savedDraft?.otherPurpose ?? calculatorPurpose?.otherDetails ?? "");
   const [method, setMethod] = useState(savedDraft?.method ?? "MTN MoMo");
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails>({ ...EMPTY_BUSINESS, ...savedDraft?.businessDetails });
@@ -77,7 +77,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       saveLoanApplicationDraft(state.user.id, {
         amount,
         termDays: term,
-        purpose,
+        purpose: purposes[0] ?? "Working capital",
+        purposes,
         otherPurpose,
         method,
         employmentStatus: "Business owner",
@@ -96,7 +97,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       console.error("Could not save the loan application draft.", saveFailure);
       setSaveError("Kuula could not save this draft in your browser. Keep this page open so you do not lose your changes.");
     }
-  }, [state.user, amount, term, purpose, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
+  }, [state.user, amount, term, purposes, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
 
   const availableCredit = Math.max(0, state.loan?.availableCredit ?? 0);
   // Growth Line indicates a pre-assessed offer, not eligibility to START a
@@ -169,10 +170,11 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const continueToReview = () => {
     setError("");
     if (amount < MIN_AMOUNT || amount > maxEligibleAmount) { setError("Choose an amount within the advertised business-loan range."); return; }
+    if (!purposes.length) { setError("Select at least one business loan purpose."); return; }
     const detailsError = expenditureError(businessDetails.expenditureItems ?? [], businessDetails.useOfFunds);
     if (detailsError) { setError(detailsError); return; }
     if (!Number.isSafeInteger(allocationsTotal) || allocationsTotal !== amount) { setError("Allocate the full requested loan amount across the use-of-funds categories."); return; }
-    if (purpose === "Other" && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
+    if (purposes.includes("Other") && !otherPurpose.trim()) { setError("Describe the other business use for this loan."); return; }
     for (const key of ["businessName", "sector", "district", "physicalAddress", "goodsOrServices", "customerType", "loanUse", "repaymentPlan"] as const) {
       if (!businessDetails[key].trim()) { setError("Complete all business information, including " + key + "."); return; }
     }
@@ -205,7 +207,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
       business,
       amount,
       termDays: term,
-      purpose: formatBusinessLoanPurpose(purpose, otherPurpose),
+      purpose: formatBusinessLoanPurposes(purposes, otherPurpose),
       channel: method,
       employmentStatus: "Business owner",
       occupationOrBusiness: business.goodsOrServices,
@@ -277,14 +279,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.repaymentTerm").toUpperCase()}</label><div className="flex gap-2 flex-wrap mt-3">{TERMS.map((d) => <button key={d} onClick={() => setTerm(d)} style={{ padding: "8px 14px", borderRadius: 10, border: term === d ? "none" : "1.5px solid #DDE5E0", background: term === d ? "#0B5E3A" : "white", color: term === d ? "white" : "#374151", fontSize: 13, fontWeight: 600 }}>{d} {t("loanApply.days")}</button>)}</div></div>
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>BUSINESS LOAN PURPOSE</label>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>Choose the primary reason for borrowing. Allocate the full loan across spending categories below.</p>
+          <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>BUSINESS LOAN PURPOSES</label>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}>Select all business purposes that apply. Allocate the full loan once across the spending categories below.</p>
           <div className="flex gap-2 flex-wrap mt-3">
-            {BUSINESS_LOAN_PURPOSES.map((option) => <button key={option} type="button" onClick={() => setPurpose(option)} style={{ padding: "7px 12px", borderRadius: 20, border: purpose === option ? "1px solid #0B5E3A" : "1.5px solid #E5E7EB", background: purpose === option ? "#EDF8F2" : "white", color: purpose === option ? "#0B5E3A" : "#6B7280", fontSize: 12, fontWeight: 600 }}>{option === "Other" ? "Other business purpose" : option}</button>)}
+            {BUSINESS_LOAN_PURPOSES.map((option) => <button key={option} type="button" className="kuula-purpose-choice" aria-label={option === "Other" ? "Other business purpose" : option} aria-pressed={purposes.includes(option)} onClick={() => setPurposes(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])} style={{ padding: "7px 12px", borderRadius: 20, border: purposes.includes(option) ? "1px solid #0B5E3A" : "1.5px solid #E5E7EB", background: purposes.includes(option) ? "#EDF8F2" : "white", color: purposes.includes(option) ? "#0B5E3A" : "#6B7280", fontSize: 12, fontWeight: 600 }}>{purposes.includes(option) ? "✓ " : ""}{option === "Other" ? "Other business purpose" : option}</button>)}
           </div>
-          {purpose === "Other" && <label style={{ display: "block", marginTop: 14 }}>
+          <p role="status" style={{ marginTop: 12, fontSize: 13 }}>{purposes.length} purposes selected. Click a selected purpose to remove it.</p>
+          {purposes.includes("Other") && <label style={{ display: "block", marginTop: 14 }}>
             <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}>Describe your business use</span>
-            <textarea value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Tell us what your business will use the loan for" rows={3} style={{ width: "100%", border: "1px solid #D8E2DC", borderRadius: 12, padding: 12, background: "white", color: "#13251C", resize: "vertical" }} />
+            <textarea aria-label="Describe your business use" value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Tell us what your business will use the loan for" rows={3} style={{ width: "100%", border: "1px solid #D8E2DC", borderRadius: 12, padding: 12, background: "white", color: "#13251C", resize: "vertical" }} />
           </label>}
         </div>
 

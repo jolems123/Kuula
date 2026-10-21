@@ -7,7 +7,7 @@ import { api, ApiError } from "../../api/client";
 import { env } from "../../config/env";
 import { getBusinessPhotos, getBusinessPhotoApplicationId, setBusinessPhotoApplicationId, clearBusinessPhotos, fileToDataUrl } from "../../lib/business-photos";
 import { clearSavedLoanApplicationDraft, getSavedLoanApplicationDraft } from "../../lib/loan-application-autosave";
-import { formatBusinessLoanPurpose } from "../../lib/business-loan-purpose";
+import { formatBusinessLoanPurposes } from "../../lib/business-loan-purpose";
 import { getLoanDraft, setLoanDraft, setLastSubmittedApplicationId, type LoanDraft } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -22,6 +22,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     const saved = state.user ? getSavedLoanApplicationDraft(state.user.id) : null;
     if (
       !saved?.businessDetails
+      || saved.purposes?.length === 0
       || !saved?.employmentStatus
       || !saved.occupationOrBusiness.trim()
       || !saved.workDuration
@@ -29,7 +30,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       || !saved.repaymentSource.trim()
       || saved.income <= 0
       || saved.expenses + saved.existingDebt >= saved.income
-      || (saved.purpose === "Other" && !saved.otherPurpose.trim())
+      || ((saved.purposes ?? [saved.purpose]).includes("Other") && !saved.otherPurpose.trim())
     ) return null;
     const restoredDraft: LoanDraft = {
       business: {
@@ -40,7 +41,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       },
       amount: saved.amount,
       termDays: saved.termDays,
-      purpose: formatBusinessLoanPurpose(saved.purpose, saved.otherPurpose),
+      purpose: formatBusinessLoanPurposes(saved.purposes ?? [saved.purpose], saved.otherPurpose),
       channel: saved.method,
       employmentStatus: saved.employmentStatus,
       occupationOrBusiness: saved.occupationOrBusiness,

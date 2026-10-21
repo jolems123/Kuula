@@ -11,6 +11,7 @@ export interface LoanApplicationFormDraft {
   amount: number;
   termDays: number;
   purpose: BusinessLoanPurposeOption;
+  purposes?: BusinessLoanPurposeOption[];
   otherPurpose: string;
   method: string;
   employmentStatus: string;
@@ -56,6 +57,9 @@ function isDraft(value: unknown): value is LoanApplicationFormDraft {
   return isAmount(draft.amount, 2_000_000)
     && isAmount(draft.termDays, 365)
     && BUSINESS_LOAN_PURPOSES.some((purpose) => purpose === draft.purpose)
+    && (draft.purposes === undefined || (Array.isArray(draft.purposes) && draft.purposes.length <= 12
+      && new Set(draft.purposes).size === draft.purposes.length
+      && draft.purposes.every(purpose => BUSINESS_LOAN_PURPOSES.includes(purpose))))
     && isString(draft.otherPurpose, 100)
     && METHODS.includes(String(draft.method))
     && (draft.employmentStatus === "" || EMPLOYMENT.includes(String(draft.employmentStatus)))

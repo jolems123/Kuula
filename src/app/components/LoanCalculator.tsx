@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { localQuote } from "../lib/pricing";
-import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurpose, type BusinessLoanPurposeOption } from "../lib/business-loan-purpose";
+import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurposes, type BusinessLoanPurposeOption } from "../lib/business-loan-purpose";
 import { getLoanTermOptions } from "../lib/loan-terms";
 
 interface Props {
@@ -38,7 +38,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
   const [amount, setAmount] = useState(500_000);
   const [termIdx, setTermIdx] = useState(0);
-  const [purpose, setPurpose] = useState<BusinessLoanPurposeOption>("Working capital");
+  const [purposes, setPurposes] = useState<BusinessLoanPurposeOption[]>(["Working capital"]);
   const [otherPurpose, setOtherPurpose] = useState("");
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -172,27 +172,29 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
         {/* Purpose */}
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Business loan purpose</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Business loan purposes — select all that apply</p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {BUSINESS_LOAN_PURPOSES.map((option) => (
               <button
                 key={option}
+                className="kuula-purpose-choice"
+                aria-label={option === "Other" ? "Other business purpose" : option}
                 type="button"
-                aria-pressed={purpose === option}
-                onClick={() => setPurpose(option)}
+                aria-pressed={purposes.includes(option)}
+                onClick={() => setPurposes(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}
                 style={{
                   padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  border: `1.5px solid ${purpose === option ? "#0B5E3A" : "#E5E7EB"}`,
-                  background: purpose === option ? "#F3FAF7" : "white",
-                  color: purpose === option ? "#064A2E" : "#6B7280",
+                  border: `1.5px solid ${purposes.includes(option) ? "#0B5E3A" : "#E5E7EB"}`,
+                  background: purposes.includes(option) ? "#F3FAF7" : "white",
+                  color: purposes.includes(option) ? "#064A2E" : "#6B7280",
                   cursor: "pointer",
                 }}
               >
-                {option === "Other" ? "Other business purpose" : option}
+                {purposes.includes(option) ? "✓ " : ""}{option === "Other" ? "Other business purpose" : option}
               </button>
             ))}
           </div>
-          {purpose === "Other" && <textarea value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Describe your business use" rows={2} style={{ boxSizing: "border-box", width: "100%", marginTop: 10, border: "1px solid #D8E2DC", borderRadius: 10, padding: 10, resize: "vertical" }} />}
+          {purposes.includes("Other") && <textarea aria-label="Describe your business use" value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Describe your business use" rows={2} style={{ boxSizing: "border-box", width: "100%", marginTop: 10, border: "1px solid #D8E2DC", borderRadius: 10, padding: 10, resize: "vertical" }} />}
         </div>
 
         {/* Summary */}
@@ -243,8 +245,8 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
         {/* CTA */}
         <button
-          disabled={purpose === "Other" && !otherPurpose.trim()}
-          onClick={() => onApply?.(amount, termDays, formatBusinessLoanPurpose(purpose, otherPurpose))}
+          disabled={!purposes.length || (purposes.includes("Other") && !otherPurpose.trim())}
+          onClick={() => onApply?.(amount, termDays, formatBusinessLoanPurposes(purposes, otherPurpose))}
           style={{
             width: "100%", height: 52, borderRadius: 14,
             background: "linear-gradient(135deg, #0B5E3A, #064A2E)",
