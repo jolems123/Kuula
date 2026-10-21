@@ -322,7 +322,7 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   if (!application?.businessProfile) throw new AppError("Business application not found",404);
   if (!["pending","resubmitted"].includes(application.status)) throw new AppError("Application cannot be changed after decision",409);
   const current = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
-  if (current?.status === "verified") throw new AppError("Verified guarantee cannot be replaced by this route",409);
+  if (current && ["verified","signed_pending_review"].includes(current.status)) throw new AppError("Signed or verified guarantee cannot be replaced by this route",409);
   const row = await prisma.loanGuarantorRequirement.upsert({
     where:{applicationId:id},
     create:{applicationId:id,status,reason,requestedBy:req.user!.userId,requestedAt:new Date()},
@@ -339,7 +339,8 @@ router.get("/applications/:id/guarantor-requirement", authenticateToken, async (
   const application = await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true}});
   if (!application || (application.applicantId !== req.user!.userId && !hasPermission(req.user!.role,"loan.review"))) throw new AppError("Application not found",404);
   const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
-  res.json({requirement:requirement?{status:requirement.status,requestedAt:requirement.requestedAt,reviewedAt:requirement.reviewedAt,reason:requirement.reason}: {status:"not_required"}});
+  const staff = hasPermission(req.user!.role,"loan.review");
+  res.json({requirement:requirement?{status:requirement.status,requestedAt:requirement.requestedAt,reviewedAt:requirement.reviewedAt,...(staff?{reason:requirement.reason}:{})}: {status:"not_required"}});
 });
 
 // A waiver cannot be granted by the officer who requested the guarantor.
@@ -472,6 +473,7 @@ router.post("/guarantor-invitations/sign-otp/verify", authenticateToken, async (
 });
 
 router.post("/guarantor-invitations/sign", authenticateToken, async (req: Request, res: Response) => {
+  if (process.env.GUARANTOR_LEGAL_TERMS_APPROVED !== "true") throw new AppError("Guarantor legal terms have not yet been authorized for live signing",503);
   const token = typeof req.body?.token==="string" ? req.body.token : "";
   if (!/^[a-f0-9]{64}$/.test(token)) throw new AppError("Invalid invitation",404);
   if(req.body?.acceptedLiability!==true || req.body?.independentAdviceAcknowledged!==true)
@@ -504,12 +506,15 @@ router.post("/guarantor-invitations/sign", authenticateToken, async (req: Reques
 // The credit approver verifies internal identity and signed evidence; no self-reported
 // external reference can mark a guarantor as verified.
 router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (req: Request, res: Response) => {
+  if (process.env.GUARANTOR_LEGAL_TERMS_APPROVED !== "true") throw new AppError("Guarantor legal terms require compliance approval",503);
   const id = String(req.params.id || "");
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
   const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : "";
   if(notes.length<30 || notes.length>2000) throw new AppError("Document verification findings (30–2000 characters) required",400);
   const row = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true,invitation:true}});
   if (!row || row.status!=="signed_pending_review" || !row.invitation?.signedAt || !row.invitation.guarantorUserId || !row.invitation.signatureHash || !row.invitation.agreementSnapshot) throw new AppError("A independently signed guarantor undertaking is required",409);
+  const recordedHash=crypto.createHash("sha256").update(JSON.stringify(row.invitation.agreementSnapshot)).digest("hex");
+  if (recordedHash !== row.invitation.signatureHash || recordedHash !== row.agreementReference) throw new AppError("Stored guarantee evidence failed integrity verification",409);
   if (row.requestedBy===req.user!.userId || row.invitation.guarantorUserId===req.user!.userId || row.application.applicantId===req.user!.userId) throw new AppError("Independent approver required",403);
   if(row.application.status!=="offered" || !row.application.offerExpiresAt || row.application.offerExpiresAt<=new Date()) throw new AppError("Loan offer expired or unavailable",409);
   const guarantor=await prisma.user.findUnique({where:{id:row.invitation.guarantorUserId},select:{phoneVerified:true,kycVerified:true,phone:true,deletedAt:true}});
