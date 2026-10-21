@@ -574,6 +574,10 @@ model LoanGuarantorInvitation {
   expiresAt DateTime @map("expires_at")
   acceptedAt DateTime? @map("accepted_at")
   declinedAt DateTime? @map("declined_at")
+  guarantorUserId String? @map("guarantor_user_id") @db.Uuid
+  signatureHash String? @map("signature_hash")
+  signedAt DateTime? @map("signed_at")
+  agreementSnapshot Json? @map("agreement_snapshot")
   createdAt DateTime @default(now()) @map("created_at")
   requirement LoanGuarantorRequirement @relation(fields:[requirementId], references:[id], onDelete:Cascade)
   @@index([phone])
