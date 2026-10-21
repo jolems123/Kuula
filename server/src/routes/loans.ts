@@ -385,8 +385,8 @@ router.post("/applications/:id/guarantor-invitation", authenticateToken, async (
   });
   // Do not return an invitation token to the borrower.
   const baseUrl = process.env.GUARANTOR_INVITE_BASE_URL;
-  const link = baseUrl ? new URL("/guarantor/invitation",baseUrl) : null;
-  if (link) link.searchParams.set("token",token);
+  const link = baseUrl ? new URL(baseUrl) : null;
+  if (link) { link.search = ""; link.hash = `/guarantor/invitation?token=${token}`; }
   const sent = link ? await sendNotificationSms(phone,`Kuula: you were nominated as a possible guarantor. This is NOT a loan guarantee. Review securely: ${link.toString()}`) : false;
   await writeAuditEvent({actorId:req.user!.userId,subjectUserId:req.user!.userId,action:"loan.guarantor_invited",resourceType:"loan_application",resourceId:id,metadata:{invitationId:invitation.id,smsAccepted:sent}});
   res.status(202).json({invitation:{id:invitation.id,status:"pending",expiresAt},deliveryAccepted:sent,message:sent?"Invitation sent for review":"Invitation recorded; SMS delivery is not confirmed"});
