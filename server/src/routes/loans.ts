@@ -331,6 +331,31 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   res.json({requirement:{status:row.status,reason:row.reason,requestedAt:row.requestedAt}});
 });
 
+// Access is scoped to the borrower or authorised credit staff; do not expose third-party identity evidence.
+router.get("/applications/:id/guarantor-requirement", authenticateToken, async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
+  const application = await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true}});
+  if (!application || (application.applicantId !== req.user!.userId && !hasPermission(req.user!.role,"loan.review"))) throw new AppError("Application not found",404);
+  const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
+  res.json({requirement:requirement?{status:requirement.status,requestedAt:requirement.requestedAt,reviewedAt:requirement.reviewedAt,reason:requirement.reason}: {status:"not_required"}});
+});
+
+// A waiver cannot be granted by the officer who requested the guarantor.
+router.post("/applications/:id/guarantor-waiver", authenticateToken, requirePermissions("loan.approve"), async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (reason.length < 30 || reason.length > 2000) throw new AppError("Independent documented waiver rationale (30–2000 characters) required",400);
+  const original = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true}});
+  if (!original || original.status !== "required" || !["pending","resubmitted"].includes(original.application.status)) throw new AppError("No open guarantor requirement",409);
+  if (original.requestedBy === req.user!.userId) throw new AppError("Independent credit approver required",403);
+  const result = await prisma.loanGuarantorRequirement.updateMany({where:{id:original.id,status:"required"},data:{status:"waived",reason,reviewedBy:req.user!.userId,reviewedAt:new Date(),evidenceReference:null,agreementReference:null}});
+  if (result.count !== 1) throw new AppError("Requirement was modified concurrently",409);
+  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:original.application.applicantId,action:"loan.guarantor_waived",resourceType:"loan_application",resourceId:id,metadata:{reason}});
+  res.json({requirement:{status:"waived",reason}});
+});
+
 // Fail closed until a guarantor-controlled identity verification, consent, and signed
 // undertaking workflow exists. A staff-supplied reference is NOT proof of consent.
 router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (_req: Request, _res: Response) => {
