@@ -553,6 +553,10 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
   const reference = createPaymentReference();
   const loanId = existing.loanId || existing.id;
 
+  const guaranteeHold = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId: existing.id } });
+  if (guaranteeHold?.status === "required" || (guaranteeHold && !["waived", "verified", "not_required"].includes(guaranteeHold.status))) {
+    throw new AppError("Disbursement blocked: guarantor requirement is unresolved", 409);
+  }
   const claimedApplication = await prisma.$transaction(async (tx) => {
     const claim = await tx.loanApplication.updateMany({
       where: { id: existing.id, applicantId: userId, status: "offered", acceptedAt: null, offerExpiresAt: { gt: new Date() } },
@@ -576,10 +580,6 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     return tx.loanApplication.findUniqueOrThrow({ where: { id: existing.id } });
   });
 
-  const guaranteeHold = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId: existing.id } });
-  if (guaranteeHold?.status === "required" || (guaranteeHold && !["waived", "verified", "not_required"].includes(guaranteeHold.status))) {
-    throw new AppError("Disbursement blocked: guarantor requirement is unresolved", 409);
-  }
   const result = await sendMoney({ phone, amount, reference, description: `Kuula loan ${loanId}`, callbackUrl });
 
   if (!result.accepted) {
