@@ -142,7 +142,7 @@ export async function sendNotificationSms(phoneInput: string, content: string): 
 export async function sendGuarantorSms(phoneInput: string, content: string): Promise<boolean> {
   if (process.env.GUARANTOR_SMS_ENABLED !== "true" || !smsConfigured()) return false;
   const phone = normalizeUgandaMobileMoneyPhone(phoneInput);
-  const message = content.replace(/[\\r\\n]+/g, " ").slice(0, 300);
+  const message = content.replaceAll("\r", " ").replaceAll("\n", " ").slice(0, 300);
   if (provider() === "test" && process.env.NODE_ENV === "test") return true;
   if (provider() !== "egosms") return false;
   return (await sendViaEgoSms(phone, message)).accepted;
