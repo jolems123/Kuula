@@ -6,6 +6,7 @@ import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
+import { assertLoanIdentityApproved } from "../lib/loan-identity.js";
 import { AppError } from "../middleware/error-handler.js";
 import { guarantorCleared } from "../lib/guarantor-policy.js";
 import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
@@ -165,8 +166,7 @@ async function createLoanApplicationForUser(
   }
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
-  if (!user.phoneVerified) throw new AppError("Verify your phone before applying for a loan", 403);
-  if (!user.kycVerified) throw new AppError("Complete identity verification before applying for a loan", 403);
+  await assertLoanIdentityApproved(user, () => prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { status: true } }));
 
   const open = await prisma.loanApplication.findFirst({
     where: { applicantId: userId, status: { in: OPEN_STATUSES } },

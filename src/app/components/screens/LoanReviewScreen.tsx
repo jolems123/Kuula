@@ -78,6 +78,8 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         throw new Error("Your required photos or photo consent are missing. Return to the application, take the photographs, and review again.");
       }
       if (!env.USE_API) throw new Error("Submitting a business application requires a live Kuula server connection.");
+      const { kyc } = await api.getKycStatus(token);
+      if (kyc.loanEligible !== true) throw new Error("Your identity documents must be verified and approved before applying. Open Identity Verification to check their status.");
       setSubmissionStage("checking");
       let applicationId = pendingApplicationId ?? getBusinessPhotoApplicationId(state.user.id);
       if (!applicationId) {

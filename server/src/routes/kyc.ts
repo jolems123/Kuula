@@ -33,7 +33,7 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
     select: { id: true, version: true, status: true, provider: true, submittedAt: true, reviewedAt: true, decisionReason: true },
   });
 
-  res.json({
+  res.set("Cache-Control", "private, no-store").json({
     kyc: {
       userId: user.id,
       fullName: user.fullName ?? "",
@@ -41,6 +41,7 @@ router.get("/status", authenticateToken, async (req: Request, res: Response) => 
       dateOfBirth: user.dateOfBirth?.toISOString().slice(0, 10) ?? "",
       status: latest?.status ?? (user.kycVerified ? "verified" : "not_submitted"),
       verified: !!user.kycVerified,
+      loanEligible: !!user.kycVerified && latest?.status === "verified",
       profileVerified: !!user.verified,
       submissionId: latest?.id ?? null,
       version: latest?.version ?? 0,
