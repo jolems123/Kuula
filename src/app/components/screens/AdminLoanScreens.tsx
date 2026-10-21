@@ -1,4 +1,5 @@
 import { ExpenditureSummary } from "../ExpenditureDetails";
+import { GuarantorStaffReview } from "../GuarantorStaffReview";
 /**
  * Admin Loan Management Screens
  * A3.1 LoanAppsList | A3.2 LoanAppDetail | A3.3 LoanApproval | A3.4 LoanRejection
@@ -191,6 +192,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
             </div>
             <button type="button" onClick={() => setSelectedId(null)} style={{ border: 0, background: "transparent", fontWeight: 700 }}>Close</button>
           </div>
+          {token && <GuarantorStaffReview token={token} applicationId={selected.id} applicationStatus={selected.status} />}
           <ExpenditureSummary business={selected.businessProfile} />
           {selected.businessProfile ? (
             <>
