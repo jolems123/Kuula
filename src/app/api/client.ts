@@ -92,6 +92,8 @@ const query = (values: Record<string, string | undefined>) => {
 };
 
 const nodeApi = {
+  respondToGuarantorInvitation: (token: string, response: "interested" | "decline") =>
+    request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/respond", {method:"POST",body:JSON.stringify({token,response})}),
   getGuarantorRequirement: (token: string, applicationId: string) =>
     request<{ requirement: { status: string; reason?: string | null; requestedAt?: string | null } }>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-requirement`, { headers: auth(token) }),
   nominateGuarantor: (token: string, applicationId: string, input: {fullName:string; phone:string; relationship:string; permissionToContact:true}) =>
