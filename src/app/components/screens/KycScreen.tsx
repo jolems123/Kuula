@@ -1,3 +1,5 @@
+import { LocalizedFileInput } from "../LocalizedFileInput";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { AlertCircle, ArrowRight, Camera, CheckCircle, Shield, User, RefreshCcw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { api, ApiError } from "../../api/client";
@@ -75,14 +77,14 @@ export function PhotoField({ kind, label, hint, file, onPick, busy = false, disa
   };
   return (
     <div className="kx-field" style={{ display: "block", border: "1px solid #D5E8DA", borderRadius: 14, padding: 13, background: "rgba(255,255,255,.08)" }}>
-      <label htmlFor={`kyc-photo-${kind}`} className="kx-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><Camera size={16} />{label}</label>
-      <span className="kx-hint" style={{ display: "block", margin: "5px 0 9px" }}>{hint}</span>
-      <input id={`kyc-photo-${kind}`} type="file" name={kind} disabled={disabled} accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture={kind === "portrait" ? "user" : "environment"}
-        onChange={change} aria-label={label} style={{ maxWidth: "100%", fontSize: 13 }} />
+      <label htmlFor={`kyc-photo-${kind}`} className="kx-label" style={{ display: "flex", alignItems: "center", gap: 7 }}><Camera size={16} /><UiText text={label} /></label>
+      <span className="kx-hint" style={{ display: "block", margin: "5px 0 9px" }}><UiText text={hint} /></span>
+      <LocalizedFileInput id={`kyc-photo-${kind}`} type="file" name={kind} disabled={disabled} accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture={kind === "portrait" ? "user" : "environment"}
+        onChange={change} aria-label={uiText(label)} style={{ maxWidth: "100%", fontSize: 13 }} />
       {preview && <img src={preview} alt={label + " preview"} style={{ width: "100%", maxHeight: 170, objectFit: "contain", marginTop: 10, borderRadius: 10 }} />}
-      {file && <span className="kx-hint" style={{ display: "block", marginTop: 7 }}>Selected · {(file.size / 1024 / 1024).toFixed(2)} MB</span>}
-      {busy && <span className="kx-hint" role="status">Preparing photo…</span>}
-      {(file || busy) && <button type="button" className="kx-btn kx-btn--secondary" style={{ marginTop: 10 }} disabled={disabled} aria-label={`Remove ${label}`} onClick={() => onPick(kind, null)}><Trash2 size={16} />Remove photo</button>}
+      {file && <span className="kx-hint" style={{ display: "block", marginTop: 7 }}><UiText text={"Selected · "} />{(file.size / 1024 / 1024).toFixed(2)}<UiText text={" MB"} /></span>}
+      {busy && <span className="kx-hint" role="status"><UiText text={"Preparing photo…"} /></span>}
+      {(file || busy) && <button type="button" className="kx-btn kx-btn--secondary" style={{ marginTop: 10 }} disabled={disabled} aria-label={uiText(`Remove ${label}`)} onClick={() => onPick(kind, null)}><Trash2 size={16} /><UiText text={"Remove photo"} /></button>}
     </div>
   );
 }
@@ -183,47 +185,45 @@ export function KycScreen({ onNavigate }: Props) {
       if (step === 2) setStep(1);
       else onNavigate("home");
     }} backLabel={step === 2 ? "Back to ID details" : "Back to dashboard"}>
-      <div className="kx-steps" aria-label={`Step ${step} of 3`}>
+      <div className="kx-steps" aria-label={uiText(`Step ${step} of 3`)}>
         <div className="kx-steps__bars" aria-hidden="true">
           {[1, 2, 3].map(n => <span key={n} className={step >= n ? "is-done" : ""} />)}
-        </div>
-        Step {step} of 3
-      </div>
+        </div><UiText text={" Step "} />{step}<UiText text={" of 3 "} /></div>
       <form onSubmit={submit} noValidate aria-busy={submitting || checking}>
         <div className="kx-auth-head">
           <div className="kx-auth-head__icon" aria-hidden="true">
             {step === 1 ? <User size={22} /> : step === 2 ? <Camera size={22} /> : <CheckCircle size={22} />}
           </div>
-          <h2>{step === 1 ? "Confirm your National ID" : step === 2 ? "Capture your ID and portrait" : status === "verified" ? "Identity verified" : "Documents submitted"}</h2>
-          <p>{step === 1 ? "Enter the details printed on your Uganda National ID." : step === 2 ? "Photograph the front and back of the original card, then take a clear portrait of yourself." : status === "verified" ? "Your identity verification has been completed." : "Your photographs are securely submitted for review by an authorized Kuula officer."}</p>
+          <h2><UiText text={step === 1 ? "Confirm your National ID" : step === 2 ? "Capture your ID and portrait" : status === "verified" ? "Identity verified" : "Documents submitted"} /></h2>
+          <p><UiText text={step === 1 ? "Enter the details printed on your Uganda National ID." : step === 2 ? "Photograph the front and back of the original card, then take a clear portrait of yourself." : status === "verified" ? "Your identity verification has been completed." : "Your photographs are securely submitted for review by an authorized Kuula officer."} /></p>
         </div>
         {step === 1 && <>
-          {rejectionReason && <div className="kx-alert kx-alert--error" role="status"><RefreshCcw size={16} /><span>Previous submission rejected: {rejectionReason}. Please resubmit clear photos.</span></div>}
-          <div className="kx-field"><label htmlFor="kyc-nin" className="kx-label">National ID number (NIN)</label>
-            <input id="kyc-nin" className="kx-input" value={idNumber} maxLength={14} autoComplete="off" onChange={e => setIdNumber(normalizeNin(e.target.value))} placeholder="14-character NIN" /></div>
-          <div className="kx-field"><label htmlFor="kyc-name" className="kx-label">Full legal name</label>
+          {rejectionReason && <div className="kx-alert kx-alert--error" role="status"><RefreshCcw size={16} /><span><UiText text={"Previous submission rejected: "} />{rejectionReason}<UiText text={". Please resubmit clear photos."} /></span></div>}
+          <div className="kx-field"><label htmlFor="kyc-nin" className="kx-label"><UiText text={"National ID number (NIN)"} /></label>
+            <input id="kyc-nin" className="kx-input" value={idNumber} maxLength={14} autoComplete="off" onChange={e => setIdNumber(normalizeNin(e.target.value))} placeholder={uiText("14-character NIN")} /></div>
+          <div className="kx-field"><label htmlFor="kyc-name" className="kx-label"><UiText text={"Full legal name"} /></label>
             <input id="kyc-name" className="kx-input" value={fullName} maxLength={120} autoComplete="name" onChange={e => setFullName(e.target.value)} /></div>
-          <div className="kx-field"><label htmlFor="kyc-dob" className="kx-label">Date of birth</label>
+          <div className="kx-field"><label htmlFor="kyc-dob" className="kx-label"><UiText text={"Date of birth"} /></label>
             <input id="kyc-dob" className="kx-input" type="date" value={dob} onChange={e => setDob(e.target.value)} autoComplete="bday" /></div>
         </>}
         {step === 2 && <div className="kx-auth-stack">
-          <div className="kx-alert kx-alert--info"><Shield size={18} /><span>Your ID and portrait are private. There is no automatic photo-based identity approval. An authorized Kuula officer reviews your submission.</span></div>
+          <div className="kx-alert kx-alert--info"><Shield size={18} /><span><UiText text={"Your ID and portrait are private. There is no automatic photo-based identity approval. An authorized Kuula officer reviews your submission."} /></span></div>
           <PhotoField kind="front" label="Front of National ID" hint="Show all four corners and readable text." file={pictures.front} onPick={selectPhoto} busy={preparing.front} disabled={submitting} />
           <PhotoField kind="back" label="Back of National ID" hint="Keep the reverse side fully visible, without glare." file={pictures.back} onPick={selectPhoto} busy={preparing.back} disabled={submitting} />
           <PhotoField kind="portrait" label="Your portrait photograph" hint="Look straight at the camera, without sunglasses, in good lighting." file={pictures.portrait} onPick={selectPhoto} busy={preparing.portrait} disabled={submitting} />
           <label className="kx-terms" style={{ display: "flex", gap: 12, padding: 8 }}>
             <input type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} />
-            <span>I consent to Kuula collecting and securely storing my National ID photographs and portrait for manual identity review. I understand that these images are sensitive personal data.</span>
+            <span><UiText text={"I consent to Kuula collecting and securely storing my National ID photographs and portrait for manual identity review. I understand that these images are sensitive personal data."} /></span>
           </label>
         </div>}
-        {step === 3 && <div className="kx-alert kx-alert--success"><CheckCircle size={20} /><span>{status === "verified" ? "Verified. You can continue with Kuula." : "Under review. You can return to your dashboard and track verification status."}</span></div>}
+        {step === 3 && <div className="kx-alert kx-alert--success"><CheckCircle size={20} /><span><UiText text={status === "verified" ? "Verified. You can continue with Kuula." : "Under review. You can return to your dashboard and track verification status."} /></span></div>}
         <div className="kx-auth-stack" style={{ marginTop: 22 }}>
-          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><span><UiText text={error} /></span></div>}
           <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={submitting || checking || preparingPhotos}>
-            {submitting ? "Uploading securely…" : checking ? "Checking status…" : preparingPhotos ? "Preparing photos…" : step === 1 ? "Continue to photos" : step === 2 ? "Submit ID and portrait" : "Go to dashboard"} <ArrowRight size={18} />
+            <UiText text={submitting ? "Uploading securely…" : checking ? "Checking status…" : preparingPhotos ? "Preparing photos…" : step === 1 ? "Continue to photos" : step === 2 ? "Submit ID and portrait" : "Go to dashboard"} /> <ArrowRight size={18} />
           </button>
         </div>
-        <div className="kx-auth-foot"><Shield size={16} /><span>Kuula keeps identity records private and uses them only for lawful identity checks and credit assessment.</span></div>
+        <div className="kx-auth-foot"><Shield size={16} /><span><UiText text={"Kuula keeps identity records private and uses them only for lawful identity checks and credit assessment."} /></span></div>
       </form>
     </AuthLayout>
   );

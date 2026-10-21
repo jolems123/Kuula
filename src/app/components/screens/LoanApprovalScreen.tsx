@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { Clock, CheckCircle, XCircle, Home, FileText, Send } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "../../context/AppContext";
@@ -88,7 +89,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       border: "#BFDBFE",
       title: isDirectPayee ? "Paying the Verified Partner" : "Sending Your Funds",
       sub: isDirectPayee
-        ? `Kuula is processing payment to ${settlementTarget}. We will confirm here only after the payment provider settles it.`
+        ? uiText("Kuula is processing payment to {{payee}}. We will confirm here only after the payment provider settles it.", { payee: settlementTarget })
         : "Your Mobile Money disbursement is processing. We will confirm here only after the payment provider settles it.",
       badge: { text: "Settlement Pending", color: "#1E40AF", bg: "#DBEAFE" },
     },
@@ -99,7 +100,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       border: "#BFE1CD",
       title: isDirectPayee ? "Partner Payment Confirmed" : "Disbursement Confirmed",
       sub: isDirectPayee
-        ? `The payment provider has confirmed settlement to ${settlementTarget}.`
+        ? uiText("The payment provider has confirmed settlement to {{payee}}.", { payee: settlementTarget })
         : "The payment provider has confirmed that your Mobile Money disbursement settled successfully.",
       badge: { text: "Settled", color: "#064A2E", bg: "#DDEFE5" },
     },
@@ -124,19 +125,19 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
         </div>
         <div style={{ textAlign: "center" }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1F2937", margin: 0 }}>{config.title}</h1>
-          <p style={{ fontSize: 13, color: "#5F6F66", marginTop: 8, lineHeight: 1.6 }}>{config.sub}</p>
+          <p style={{ fontSize: 13, color: "#5F6F66", marginTop: 8, lineHeight: 1.6 }}><UiText text={config.sub} /></p>
         </div>
         <span style={{ fontSize: 12, fontWeight: 700, color: config.badge.color, background: config.badge.bg, padding: "4px 16px", borderRadius: 20 }}>
-          ● {config.badge.text}
+          ● <UiText text={config.badge.text} />
         </span>
       </div>
 
-      {fetchError && <p role="alert" style={{ margin: 12, padding: 12, background: "#FFF3D8", borderRadius: 12, color: "#705510", fontSize: 12 }}>Unable to refresh application status. The last confirmed information is shown; please retry once connected.</p>}
+      {fetchError && <p role="alert" style={{ margin: 12, padding: 12, background: "#FFF3D8", borderRadius: 12, color: "#705510", fontSize: 12 }}><UiText text={"Unable to refresh application status. The last confirmed information is shown; please retry once connected."} /></p>}
       <div style={{ width: "100%", flex: 1, overflowY: "auto", padding: "20px 16px 120px", display: "flex", flexDirection: "column", gap: 14 }}>
         {status === "approved" && (
           <div style={{ background: "#EEF7F2", borderRadius: 16, padding: "16px", border: "1px solid #C9E2D4" }}>
-            <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}>Amount Settled</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
+            <p style={{ fontSize: 12, color: "#374151", fontWeight: 600, margin: "0 0 4px" }}><UiText text={"Amount Settled"} /></p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}><UiText text={app ? ugx(app.amount) : "—"} /></p>
             <p style={{ fontSize: 12, color: "#5F6F66", margin: "4px 0 0" }}>
               {isDirectPayee ? `Provider-confirmed payment to ${settlementTarget}` : phone ? `Provider-confirmed payment to ${phone}` : "Provider-confirmed Mobile Money payment"}
             </p>
@@ -145,8 +146,8 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
         {status === "offered" && (
           <div style={{ background: "#EEF7F2", borderRadius: 16, padding: "16px", border: "1px solid #C9E2D4" }}>
-            <p style={{ fontSize: 12, color: "#064A2E", fontWeight: 600, margin: "0 0 4px" }}>Approved Amount</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
+            <p style={{ fontSize: 12, color: "#064A2E", fontWeight: 600, margin: "0 0 4px" }}><UiText text={"Approved Amount"} /></p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "#0B5E3A", margin: 0 }}><UiText text={app ? ugx(app.amount) : "—"} /></p>
             <p style={{ fontSize: 12, color: "#37644F", margin: "4px 0 0" }}>
               {isDirectPayee
                 ? `Accept the agreement to request settlement to ${settlementTarget}.`
@@ -157,9 +158,9 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
         {status === "disbursing" && (
           <div style={{ background: "#EFF6FF", borderRadius: 16, padding: "16px", border: "1px solid #BFDBFE" }}>
-            <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: "0 0 4px" }}>Processing Amount</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: "#1D4ED8", margin: 0 }}>{app ? ugx(app.amount) : "—"}</p>
-            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}>Do not submit the offer again. This screen refreshes automatically when the payment provider responds.</p>
+            <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: "0 0 4px" }}><UiText text={"Processing Amount"} /></p>
+            <p style={{ fontSize: 32, fontWeight: 900, color: "#1D4ED8", margin: 0 }}><UiText text={app ? ugx(app.amount) : "—"} /></p>
+            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}><UiText text={"Do not submit the offer again. This screen refreshes automatically when the payment provider responds."} /></p>
           </div>
         )}
 
@@ -171,7 +172,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
             { label: "Total Repayment", value: app && app.total > 0 ? ugx(app.total) : "—" },
           ].map((row, index, rows) => (
             <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: index < rows.length - 1 ? "1px solid #F3F4F6" : "none" }}>
-              <span style={{ fontSize: 13, color: "#6B7280" }}>{row.label}</span>
+              <span style={{ fontSize: 13, color: "#6B7280" }}><UiText text={row.label} /></span>
               <span style={{ fontSize: 13, fontWeight: 600, color: "#1F2937" }}>{row.value}</span>
             </div>
           ))}
@@ -179,32 +180,25 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
 
         {status === "rejected" && (
           <div style={{ background: "#FEF2F2", borderRadius: 12, padding: "14px", border: "1px solid #FECACA" }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", margin: "0 0 6px" }}>What can I do next?</p>
-            <p style={{ fontSize: 12, color: "#B91C1C", margin: 0, lineHeight: 1.6 }}>
-              For questions about a rejected application, contact Kuula support. Any future application will be reviewed by a loan officer.
-            </p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#991B1B", margin: "0 0 6px" }}><UiText text={"What can I do next?"} /></p>
+            <p style={{ fontSize: 12, color: "#B91C1C", margin: 0, lineHeight: 1.6 }}><UiText text={" For questions about a rejected application, contact Kuula support. Any future application will be reviewed by a loan officer. "} /></p>
           </div>
         )}
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #E8EEEA", display: "flex", gap: 10 }}>
         <button onClick={() => onNavigate("home")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <Home size={16} /> Home
-        </button>
+          <Home size={16} /><UiText text={" Home "} /></button>
         {status === "offered" && (
           <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <FileText size={16} /> Review &amp; Accept Terms
-          </button>
+            <FileText size={16} /><UiText text={" Review & Accept Terms "} /></button>
         )}
         {status === "approved" && (
           <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <FileText size={16} /> View Credit
-          </button>
+            <FileText size={16} /><UiText text={" View Credit "} /></button>
         )}
         {status === "rejected" && (
-          <button onClick={() => onNavigate("loan-history")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
-            View Applications
-          </button>
+          <button onClick={() => onNavigate("loan-history")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}><UiText text={" View Applications "} /></button>
         )}
       </div>
     </div>

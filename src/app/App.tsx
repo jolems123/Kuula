@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../i18n/ui-text";
 import { Suspense, useEffect, useState } from "react";
 import {
   HashRouter,
@@ -85,12 +86,12 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
 
   return (
     <div className="kuula-customer-workspace">
-      <aside className="kuula-customer-sidebar" aria-label="Customer workspace">
+      <aside className="kuula-customer-sidebar" aria-label={uiText("Customer workspace")}>
         <div className="kuula-customer-sidebar__brand">
           <KuulaLogo tone="light" size={34} subtitle="Customer workspace" />
         </div>
-        <p className="kuula-customer-sidebar__label">YOUR KUULA</p>
-        <nav className="kuula-customer-sidebar__nav" aria-label="Customer navigation">
+        <p className="kuula-customer-sidebar__label"><UiText text={"YOUR KUULA"} /></p>
+        <nav className="kuula-customer-sidebar__nav" aria-label={uiText("Customer navigation")}>
           {CUSTOMER_NAV.map(({ id, label, icon: Icon }) => {
             const active = id === screenId
               || (id === "credit-dashboard" && ["credit-breakdown", "improve-credit"].includes(screenId))
@@ -106,7 +107,7 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
                 onClick={() => navigate(`/${id}`)}
               >
                 <Icon size={19} strokeWidth={1.8} />
-                <span>{label}</span>
+                <span><UiText text={label} /></span>
               </button>
             );
           })}
@@ -115,9 +116,9 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
           <span className="kuula-customer-sidebar__avatar" aria-hidden="true">{initials}</span>
           <span className="kuula-customer-sidebar__identity">
             <strong>{state.user?.fullName || "Kuula customer"}</strong>
-            <small>Customer account</small>
+            <small><UiText text={"Customer account"} /></small>
           </span>
-          <button type="button" onClick={() => { logout(); navigate("/welcome", { replace: true }); }} aria-label="Log out" title="Log out">
+          <button type="button" onClick={() => { logout(); navigate("/welcome", { replace: true }); }} aria-label={uiText("Log out")} title={uiText("Log out")}>
             <LogOut size={17} />
           </button>
         </div>
@@ -125,8 +126,8 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
       <div className="kuula-customer-workspace__main">
         <header className="kuula-customer-topbar">
           <div>
-            <span className="kuula-customer-topbar__eyebrow">Customer workspace</span>
-            <h1>{title}</h1>
+            <span className="kuula-customer-topbar__eyebrow"><UiText text={"Customer workspace"} /></span>
+            <h1><UiText text={title} /></h1>
           </div>
           <div className="kuula-customer-topbar__account">
             <span>{state.user?.fullName || "Kuula customer"}</span>
@@ -242,7 +243,7 @@ function useSessionRefresh(): void {
 
 /** Shown while a lazily-loaded screen downloads: a thin bar, not a full-screen splash. */
 function PageLoader() {
-  return <div className="kx-page-loader" role="progressbar" aria-label="Loading" />;
+  return <div className="kx-page-loader" role="progressbar" aria-label={uiText("Loading")} />;
 }
 
 function Guard({ access, screenId, children }: { access: ScreenAccess; screenId: string; children: React.ReactNode }) {
@@ -262,7 +263,8 @@ function Guard({ access, screenId, children }: { access: ScreenAccess; screenId:
 
 function ScreenRoute({ Component }: { Component: React.ComponentType<{ onNavigate: (id: string) => void }> }) {
   const navigate = useNavigate();
-  return <Component onNavigate={(id) => navigate(`/${id}`)} />;
+  const location = useLocation();
+  return <Component onNavigate={(id) => navigate(`/${id}`, { state: { returnTo: location.pathname } })} />;
 }
 
 /** Screens drawn over the shared photo backdrop instead of the app chrome. */

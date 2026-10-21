@@ -1,3 +1,5 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { ArrowLeft, MessageCircle, Phone, Mail, ChevronRight, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -14,13 +16,14 @@ const FAQS = [
 import { useState } from "react";
 
 export function HelpSupportScreen({ onNavigate }: Props) {
+  const goBack = useReturnNavigation("settings");
   const { t } = useTranslation();
   const [open, setOpen] = useState<number | null>(null);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
       <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
-        <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <button onClick={goBack} aria-label={uiText("Back")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
         <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>{t("support.title")}</span>
@@ -41,7 +44,7 @@ export function HelpSupportScreen({ onNavigate }: Props) {
                 <Icon size={20} color={color} />
               </div>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}>{label}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0 }}><UiText text={label} /></p>
                 <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}>{sub}</p>
               </div>
             </button>

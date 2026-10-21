@@ -1,3 +1,4 @@
+import { UiText, uiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, ChevronRight, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
@@ -11,7 +12,7 @@ function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG");
 function fmtDate(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-UG", { day: "numeric", month: "short", year: "numeric" });
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString(uiLocale(), { day: "numeric", month: "short", year: "numeric" });
 }
 
 const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }> = {
@@ -70,8 +71,8 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9" }}>
       <div style={{ display: "flex", alignItems: "center", padding: "16px", background: "#0B5E3A" }}>
-        <button aria-label="Back home" onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>Credit History</span>
+        <button aria-label={uiText("Back home")} onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
+        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}><UiText text={"Credit History"} /></span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, padding: "14px 12px", background: "white", borderBottom: "1px solid #E8EEEA" }}>
@@ -80,18 +81,18 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
           { label: "Active", value: loading ? "—" : String(activeCount) },
           { label: "Paid", value: loading ? "—" : String(completedCount) },
           { label: "Funded", value: loading ? "—" : formatTotal(totalBorrowed) },
-        ].map((item) => <div key={item.label} style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#1F2937" }}>{item.value}</div><div style={{ fontSize: 9, color: "#87968E", marginTop: 2 }}>{item.label}</div></div>)}
+        ].map((item) => <div key={item.label} style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#1F2937" }}>{item.value}</div><div style={{ fontSize: 9, color: "#87968E", marginTop: 2 }}><UiText text={item.label} /></div></div>)}
       </div>
 
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "white", overflowX: "auto", borderBottom: "1px solid #E8EEEA" }}>
         {(["all", "active", "completed", "rejected"] as FilterType[]).map((item) => (
-          <button key={item} onClick={() => setFilter(item)} style={{ padding: "7px 13px", borderRadius: 20, border: filter === item ? "1px solid #0B5E3A" : "1px solid #E1E7E3", background: filter === item ? "#EDF8F2" : "#F8FAF9", color: filter === item ? "#0B5E3A" : "#68766F", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{item === "all" ? "All" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"}</button>
+          <button key={item} onClick={() => setFilter(item)} style={{ padding: "7px 13px", borderRadius: 20, border: filter === item ? "1px solid #0B5E3A" : "1px solid #E1E7E3", background: filter === item ? "#EDF8F2" : "#F8FAF9", color: filter === item ? "#0B5E3A" : "#68766F", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}><UiText text={item === "all" ? "All" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"} /></button>
         ))}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 84px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {loading && <p style={{ textAlign: "center", padding: 32, color: "#87968E" }}>Loading your credit history…</p>}
-        {error && <p role="alert" style={{ textAlign: "center", padding: 24, color: "#B42318" }}>{error}</p>}
+        {loading && <p style={{ textAlign: "center", padding: 32, color: "#87968E" }}><UiText text={"Loading your credit history…"} /></p>}
+        {error && <p role="alert" style={{ textAlign: "center", padding: 24, color: "#B42318" }}><UiText text={error} /></p>}
 
         {!loading && !error && filtered.map((loan) => {
           const style = STATUS_STYLE[loan.status] ?? { color: "#425149", bg: "#F3F5F4", label: loan.status.replace(/_/g, " ") };
@@ -103,15 +104,15 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 800, color: "#1F2937", margin: 0 }}>{ugx(loan.amount)}</p>
-                  <p style={{ fontSize: 11, color: "#87968E", margin: "3px 0 0" }}>{loan.purpose} · {loan.termDays} days · {fmtDate(loan.createdAt)}</p>
+                  <p style={{ fontSize: 11, color: "#87968E", margin: "3px 0 0" }}><UiText text={loan.purpose} /> · {loan.termDays}<UiText text={" days · "} />{fmtDate(loan.createdAt)}</p>
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 800, color: style.color, background: style.bg, padding: "4px 9px", borderRadius: 20 }}>{style.label}</span>{action && <ChevronRight size={14} color="#A6B1AB" />}</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 800, color: style.color, background: style.bg, padding: "4px 9px", borderRadius: 20 }}><UiText text={style.label} /></span>{action && <ChevronRight size={14} color="#A6B1AB" />}</div>
               </div>
-              {action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}>View application details</button>}
+              {action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}><UiText text={"View application details"} /></button>}
               <div style={{ marginTop: 10, borderTop: "1px solid #F0F3F1", paddingTop: 9, display: "grid", gap: 5 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Application</span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
-                <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label="Loan application progress">
-                  <strong style={{ fontSize: 12, color: "#184B32" }}>Application progress</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Application"} /></span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
+                <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label={uiText("Loan application progress")}>
+                  <strong style={{ fontSize: 12, color: "#184B32" }}><UiText text={"Application progress"} /></strong>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
                     {([
                       ["Submitted", true],
@@ -123,23 +124,23 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                       ["Disbursement", ["active", "paid", "overdue"].includes(loan.status)],
                     ] as Array<[string, boolean]>).map(([name, done]) => (
                       <span key={name} style={{ borderRadius: 12, padding: "5px 8px", fontSize: 10, color: done ? "#12613D" : "#68766F", background: done ? "#E5F5EA" : "#F2F4F3" }}>
-                        {done ? "✓ " : "○ "}{name}
+                        <UiText text={done ? "✓ " : "○ "} /><UiText text={name} />
                       </span>
                     ))}
                   </div>
-                  {loan.status === "offered" && <span style={{ fontSize: 11, color: "#0B5E3A", display: "block", marginTop: 6 }}>Offer available: open it to review and accept your agreement.</span>}
-                  {loan.status === "disbursing" && <span style={{ fontSize: 11, color: "#72570B", display: "block", marginTop: 6 }}>Payment processing or awaiting independent Kuula release; not yet confirmed received.</span>}
+                  {loan.status === "offered" && <span style={{ fontSize: 11, color: "#0B5E3A", display: "block", marginTop: 6 }}><UiText text={"Offer available: open it to review and accept your agreement."} /></span>}
+                  {loan.status === "disbursing" && <span style={{ fontSize: 11, color: "#72570B", display: "block", marginTop: 6 }}><UiText text={"Payment processing or awaiting independent Kuula release; not yet confirmed received."} /></span>}
                 </div>
-                {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Quoted total repayment</span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
-                {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Offer expires</span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
+                {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Quoted total repayment"} /></span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
+                {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Offer expires"} /></span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
               </div>
               {token && <GuarantorNomination applicationId={loan.id} token={token} status={loan.status} />}
-              {loan.status === "paid" && <div style={{ marginTop: 9, display: "flex", gap: 5, alignItems: "center", color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}><TrendingUp size={12} /> Fully repaid</div>}
+              {loan.status === "paid" && <div style={{ marginTop: 9, display: "flex", gap: 5, alignItems: "center", color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}><TrendingUp size={12} /><UiText text={" Fully repaid"} /></div>}
             </div>
           );
         })}
 
-        {!loading && !error && filtered.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: "#87968E" }}><p style={{ fontSize: 15, margin: 0 }}>No records in this category</p></div>}
+        {!loading && !error && filtered.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: "#87968E" }}><p style={{ fontSize: 15, margin: 0 }}><UiText text={"No records in this category"} /></p></div>}
       </div>
 
       <BottomNav active="home" onNavigate={onNavigate} />

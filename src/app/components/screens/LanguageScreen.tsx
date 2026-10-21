@@ -1,3 +1,6 @@
+import { uiText } from "../../../i18n/ui-text";
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { useAppContext } from "../../context/AppContext";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Globe, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,20 +12,17 @@ interface Props {
 
 export function LanguageScreen({ onNavigate }: Props) {
   const { i18n, t } = useTranslation();
-  const [current, setCurrent] = useState<LanguageCode>(i18n.language as LanguageCode);
+  const { state } = useAppContext();
+  const goBack = useReturnNavigation(state.session.isAuthenticated ? "settings" : "welcome");
+  const [current, setCurrent] = useState<LanguageCode>((i18n.resolvedLanguage || "en") as LanguageCode);
 
   useEffect(() => {
-    setCurrent(i18n.language as LanguageCode);
-  }, [i18n.language]);
+    setCurrent((i18n.resolvedLanguage || "en") as LanguageCode);
+  }, [i18n.resolvedLanguage]);
 
-  const handleSelect = (code: LanguageCode) => {
-    if (BUNDLED_LANGS.includes(code)) {
-      i18n.changeLanguage(code);
-      setCurrent(code);
-    }
-    // For non-bundled languages, we still save the preference so when
-    // translations are added later, the user's choice is remembered.
-    i18n.changeLanguage(code);
+  const handleSelect = async (code: LanguageCode) => {
+    if (!BUNDLED_LANGS.includes(code)) return;
+    await i18n.changeLanguage(code);
     setCurrent(code);
   };
 
@@ -42,7 +42,8 @@ export function LanguageScreen({ onNavigate }: Props) {
         }}
       >
         <button
-          onClick={() => onNavigate("welcome")}
+          onClick={goBack}
+          aria-label={t("common.back")}
           style={{
             width: 36,
             height: 36,
@@ -98,6 +99,8 @@ export function LanguageScreen({ onNavigate }: Props) {
             return (
               <button
                 key={lang.code}
+                aria-pressed={isActive}
+                data-language-code={lang.code}
                 onClick={() => handleSelect(lang.code as LanguageCode)}
                 style={{
                   display: "flex",
@@ -153,7 +156,9 @@ export function LanguageScreen({ onNavigate }: Props) {
             return (
               <button
                 key={lang.code}
-                onClick={() => handleSelect(lang.code as LanguageCode)}
+                disabled
+                data-language-code={lang.code}
+                aria-disabled="true"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -191,7 +196,7 @@ export function LanguageScreen({ onNavigate }: Props) {
                   </div>
                 </div>
                 <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", background: "#F3F4F6", padding: "3px 8px", borderRadius: 8 }}>
-                  SOON
+                  {uiText("SOON")}
                 </span>
               </button>
             );

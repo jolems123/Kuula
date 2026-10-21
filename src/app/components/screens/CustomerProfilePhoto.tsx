@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 
@@ -68,54 +69,49 @@ export function CustomerProfilePhoto({ token, initials }: Props) {
     finally { setBusy(false); }
   };
   const dimension = source ? "180px" : "64px";
-  return <section aria-label="Customer profile photo" style={{ display: "grid", gap: 10 }}>
+  return <section aria-label={uiText("Customer profile photo")} style={{ display: "grid", gap: 10 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#0B5E3A", border: "3px solid #DFF2E9",
         display: "grid", placeItems: "center", overflow: "hidden", flexShrink: 0 }}>
-        {saved ? <img src={saved} alt="Your profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {saved ? <img src={saved} alt={uiText("Your profile")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           : <span style={{ fontSize: 23, fontWeight: 800, color: "white" }}>{initials || "?"}</span>}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, padding: "8px 10px", background: "#EDF8F2", color: "#0B5E3A", borderRadius: 9, cursor: "pointer" }}>
-          Take photo <input aria-label="Take profile photo" type="file" accept="image/*" capture="user" style={{ display: "none" }}
+        <label style={{ fontSize: 12, fontWeight: 700, padding: "8px 10px", background: "#EDF8F2", color: "#0B5E3A", borderRadius: 9, cursor: "pointer" }}><UiText text={" Take photo "} /><input aria-label={uiText("Take profile photo")} type="file" accept="image/*" capture="user" style={{ display: "none" }}
             onChange={e => { selectPhoto(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
-        <label style={{ fontSize: 12, fontWeight: 700, padding: "8px 10px", background: "#EDF8F2", color: "#0B5E3A", borderRadius: 9, cursor: "pointer" }}>
-          Gallery <input aria-label="Choose profile photo from gallery" type="file" accept="image/*" style={{ display: "none" }}
+        <label style={{ fontSize: 12, fontWeight: 700, padding: "8px 10px", background: "#EDF8F2", color: "#0B5E3A", borderRadius: 9, cursor: "pointer" }}><UiText text={" Gallery "} /><input aria-label={uiText("Choose profile photo from gallery")} type="file" accept="image/*" style={{ display: "none" }}
             onChange={e => { selectPhoto(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
         {saved && <button type="button" onClick={() => void remove()} disabled={busy}
-          style={{ fontSize: 12, border: 0, background: "transparent", color: "#A13A3A" }}>Remove</button>}
+          style={{ fontSize: 12, border: 0, background: "transparent", color: "#A13A3A" }}><UiText text={"Remove"} /></button>}
       </div>
     </div>
     {source && <div style={{ borderTop: "1px solid #EDF1EE", paddingTop: 12 }}>
-      <p style={{ color: "#374151", fontSize: 12, fontWeight: 700 }}>Preview and crop</p>
+      <p style={{ color: "#374151", fontSize: 12, fontWeight: 700 }}><UiText text={"Preview and crop"} /></p>
       <div style={{ width: dimension, height: dimension, margin: "8px auto", borderRadius: "50%", overflow: "hidden",
         border: "3px solid #DFF2E9", background: "#E6EDEA" }}>
-        <img ref={imageRef} src={source} alt="Photo crop preview" style={{
+        <img ref={imageRef} src={source} alt={uiText("Photo crop preview")} style={{
           width: "100%", height: "100%", objectFit: "cover",
           objectPosition: horizontal + "% " + vertical + "%", transform: "scale(" + zoom + ")",
         }}/>
       </div>
-      <label style={{ display: "block", fontSize: 12 }}>Zoom
-        <input aria-label="Crop zoom" style={{ width: "100%" }} type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} />
+      <label style={{ display: "block", fontSize: 12 }}><UiText text={"Zoom "} /><input aria-label={uiText("Crop zoom")} style={{ width: "100%" }} type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} />
       </label>
-      <label style={{ display: "block", fontSize: 12 }}>Move horizontally
-        <input aria-label="Crop horizontal position" style={{ width: "100%" }} type="range" min={0} max={100} value={horizontal} onChange={e => setHorizontal(Number(e.target.value))} />
+      <label style={{ display: "block", fontSize: 12 }}><UiText text={"Move horizontally "} /><input aria-label={uiText("Crop horizontal position")} style={{ width: "100%" }} type="range" min={0} max={100} value={horizontal} onChange={e => setHorizontal(Number(e.target.value))} />
       </label>
-      <label style={{ display: "block", fontSize: 12 }}>Move vertically
-        <input aria-label="Crop vertical position" style={{ width: "100%" }} type="range" min={0} max={100} value={vertical} onChange={e => setVertical(Number(e.target.value))} />
+      <label style={{ display: "block", fontSize: 12 }}><UiText text={"Move vertically "} /><input aria-label={uiText("Crop vertical position")} style={{ width: "100%" }} type="range" min={0} max={100} value={vertical} onChange={e => setVertical(Number(e.target.value))} />
       </label>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <button type="button" disabled={busy || !token} onClick={() => void crop()}
           style={{ borderRadius: 9, background: "#0B5E3A", color: "white", border: 0, padding: "10px 13px", fontSize: 12 }}>
-          {busy ? "Uploading…" : "Crop and save"}
+          <UiText text={busy ? "Uploading…" : "Crop and save"} />
         </button>
         <button type="button" disabled={busy} onClick={() => setSource(null)}
-          style={{ borderRadius: 9, background: "#F2F4F3", border: 0, padding: "10px 13px", fontSize: 12 }}>Cancel</button>
+          style={{ borderRadius: 9, background: "#F2F4F3", border: 0, padding: "10px 13px", fontSize: 12 }}><UiText text={"Cancel"} /></button>
       </div>
     </div>}
     {notice && <p role="status" style={{ color: "#0B5E3A", fontSize: 12 }}>{notice}</p>}
-    {error && <p role="alert" style={{ color: "#B42318", fontSize: 12 }}>{error}</p>}
+    {error && <p role="alert" style={{ color: "#B42318", fontSize: 12 }}><UiText text={error} /></p>}
   </section>;
 }

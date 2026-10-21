@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
@@ -82,36 +83,36 @@ export function LoginScreen({ onNavigate }: Props) {
     setError("");
   };
 
-  const errorBox = error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>;
+  const errorBox = error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><UiText text={error} /></div>;
 
   if (pendingSession) {
     return (
       <AuthLayout onBack={() => enter(pendingSession)} backLabel="Skip for now">
         <div className="kx-auth-head">
           <div className="kx-auth-head__icon"><KeyRound size={22} /></div>
-          <h2>Create your PIN</h2>
-          <p>Next time, log in with your phone number and this {PIN_LENGTH}-digit PIN. Your password stays as a backup.</p>
+          <h2><UiText text={"Create your PIN"} /></h2>
+          <p><UiText text={"Next time, log in with your phone number and this "} />{PIN_LENGTH}<UiText text={"-digit PIN. Your password stays as a backup."} /></p>
         </div>
         <form onSubmit={createPin} noValidate>
           <div className="kx-field">
-            <label className="kx-label" htmlFor="login-new-pin">New {PIN_LENGTH}-digit PIN</label>
+            <label className="kx-label" htmlFor="login-new-pin"><UiText text={"New "} />{PIN_LENGTH}<UiText text={"-digit PIN"} /></label>
             <div className="kx-control">
-              <input id="login-new-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} autoFocus />
-              <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={showSecret ? "Hide PIN" : "Show PIN"}>
+              <input id="login-new-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder={uiText("4 digits")} style={{ letterSpacing: ".3em" }} autoFocus />
+              <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={uiText(showSecret ? "Hide PIN" : "Show PIN")}>
                 {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <span className="kx-hint">Don't reuse your Mobile Money PIN.</span>
+            <span className="kx-hint"><UiText text={"Don't reuse your Mobile Money PIN."} /></span>
           </div>
           <div className="kx-auth-stack" style={{ marginTop: 22 }}>
             {errorBox}
             <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={busy}>
-              {busy ? <><span className="kx-spinner" />Saving…</> : "Save PIN and continue"}
+              <UiText text={busy ? <><span className="kx-spinner" />Saving…</> : "Save PIN and continue"} />
             </button>
           </div>
         </form>
         <div className="kx-auth-foot">
-          <button type="button" className="kx-link" onClick={() => enter(pendingSession)} disabled={busy}>Skip for now</button>
+          <button type="button" className="kx-link" onClick={() => enter(pendingSession)} disabled={busy}><UiText text={"Skip for now"} /></button>
         </div>
       </AuthLayout>
     );
@@ -120,49 +121,49 @@ export function LoginScreen({ onNavigate }: Props) {
   return (
     <AuthLayout onBack={() => onNavigate("welcome")}>
       <div className="kx-auth-head">
-        <h2>Log in</h2>
-        <p>Use the phone number you signed up with.</p>
+        <h2><UiText text={"Log in"} /></h2>
+        <p><UiText text={"Use the phone number you signed up with."} /></p>
       </div>
 
       <form onSubmit={submit} noValidate>
         <div className="kx-field">
-          <label className="kx-label" htmlFor="login-phone">Phone number</label>
+          <label className="kx-label" htmlFor="login-phone"><UiText text={"Phone number"} /></label>
           <div className="kx-control">
             <span className="kx-control__prefix">+256</span>
-            <input id="login-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder="7XX XXX XXX" />
+            <input id="login-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder={uiText("7XX XXX XXX")} />
           </div>
         </div>
 
         <div className="kx-field">
-          <label className="kx-label" htmlFor="login-secret">{usePassword ? "Password" : "PIN"}</label>
+          <label className="kx-label" htmlFor="login-secret"><UiText text={usePassword ? "Password" : "PIN"} /></label>
           <div className="kx-control">
             {usePassword ? (
-              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(e.target.value)} type={showSecret ? "text" : "password"} autoComplete="current-password" placeholder="Enter your password" />
+              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(e.target.value)} type={showSecret ? "text" : "password"} autoComplete="current-password" placeholder={uiText("Enter your password")} />
             ) : (
-              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="current-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
+              <input id="login-secret" className="kx-input" value={secret} onChange={(e) => setSecret(digitsOnly(e.target.value))} type={showSecret ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="current-password" placeholder={uiText("4 digits")} style={{ letterSpacing: ".3em" }} />
             )}
-            <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={showSecret ? "Hide" : "Show"}>
+            <button type="button" className="kx-control__action" onClick={() => setShowSecret((v) => !v)} aria-label={uiText(showSecret ? "Hide" : "Show")}>
               {showSecret ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
 
         <div className="kx-auth-row">
-          <button type="button" className="kx-link" onClick={switchMode}>{usePassword ? "Use PIN instead" : "Use password instead"}</button>
-          <button type="button" className="kx-link" onClick={() => setRecovering(true)}>Forgot PIN?</button>
+          <button type="button" className="kx-link" onClick={switchMode}><UiText text={usePassword ? "Use PIN instead" : "Use password instead"} /></button>
+          <button type="button" className="kx-link" onClick={() => setRecovering(true)}><UiText text={"Forgot PIN?"} /></button>
         </div>
 
         <div className="kx-auth-stack">
           {errorBox}
           <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={busy}>
-            {busy ? <><span className="kx-spinner" />Logging in…</> : "Log in"}
+            <UiText text={busy ? <><span className="kx-spinner" />Logging in…</> : "Log in"} />
           </button>
         </div>
       </form>
 
       <div className="kx-auth-foot">
-        <span>New to Kuula?</span>
-        <button type="button" className="kx-link" onClick={() => onNavigate("create-account")}>Create an account</button>
+        <span><UiText text={"New to Kuula?"} /></span>
+        <button type="button" className="kx-link" onClick={() => onNavigate("create-account")}><UiText text={"Create an account"} /></button>
       </div>
     </AuthLayout>
   );

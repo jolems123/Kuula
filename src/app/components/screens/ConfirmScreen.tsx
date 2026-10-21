@@ -1,3 +1,4 @@
+import { UiText, uiLocale } from "../../../i18n/ui-text";
 import { CheckCircle, Clock3, AlertTriangle, Download } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
@@ -23,8 +24,8 @@ export function ConfirmScreen({ onNavigate }: Props) {
   const reference = payment?.reference ?? "—";
   const method = payment?.method ?? "Verified Mobile Money";
   const when = payment ? new Date(payment.dateISO) : new Date();
-  const dateStr = when.toLocaleDateString("en-UG", { day: "numeric", month: "long", year: "numeric" });
-  const timeStr = when.toLocaleTimeString("en-UG", { hour: "2-digit", minute: "2-digit" });
+  const dateStr = when.toLocaleDateString(uiLocale(), { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = when.toLocaleTimeString(uiLocale(), { hour: "2-digit", minute: "2-digit" });
 
   useEffect(() => {
     if (!token || !payment?.reference || payment.reference === "—") return;
@@ -139,17 +140,17 @@ export function ConfirmScreen({ onNavigate }: Props) {
           <Icon size={54} color={visual.icon} strokeWidth={1.6} />
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: visual.text, letterSpacing: -0.5, margin: 0 }}>{visual.title}</h1>
-        <p style={{ fontSize: 13, color: visual.text, opacity: 0.85, marginTop: 6, textAlign: "center", padding: "0 24px", lineHeight: 1.55 }}>{visual.subtitle}</p>
+        <p style={{ fontSize: 13, color: visual.text, opacity: 0.85, marginTop: 6, textAlign: "center", padding: "0 24px", lineHeight: 1.55 }}><UiText text={visual.subtitle} /></p>
       </div>
 
       <div className="w-full px-6 -mt-6">
         <div className="rounded-2xl p-5" style={{ background: "white", boxShadow: "0 8px 32px rgba(0,0,0,0.1)" }}>
-          <p style={{ fontSize: 12, color: "#7A8B82", textAlign: "center", margin: 0 }}>{providerState === "settled" ? "Amount Settled" : "Amount Requested"}</p>
+          <p style={{ fontSize: 12, color: "#7A8B82", textAlign: "center", margin: 0 }}><UiText text={providerState === "settled" ? "Amount Settled" : "Amount Requested"} /></p>
           <p style={{ fontSize: 40, fontWeight: 900, color: "#1F2937", textAlign: "center", letterSpacing: -1, margin: "4px 0 0" }}>{formatUGX(amount)}</p>
           <div style={{ borderTop: "1px dashed #DCE6E0", margin: "16px 0" }} />
           {rows.map((row) => (
             <div key={row.label} className="flex justify-between py-2" style={{ gap: 12 }}>
-              <span style={{ fontSize: 13, color: "#6B7280" }}>{row.label}</span>
+              <span style={{ fontSize: 13, color: "#6B7280" }}><UiText text={row.label} /></span>
               <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", textAlign: "right" }}>{row.value}</span>
             </div>
           ))}
@@ -158,10 +159,10 @@ export function ConfirmScreen({ onNavigate }: Props) {
 
       <div className="flex-1 flex flex-col justify-end px-6 pb-12 gap-3 w-full">
         <button onClick={saveRecord} style={{ width: "100%", height: 52, borderRadius: 14, background: providerState === "settled" ? "#0B5E3A" : "#425149", color: "white", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <Download size={18} /> {providerState === "settled" ? "Download Receipt" : "Download Request Record"}
+          <Download size={18} /> <UiText text={providerState === "settled" ? "Download Receipt" : "Download Request Record"} />
         </button>
         <button onClick={() => onNavigate(providerState === "failed" ? "make-payment" : "loan-detail")} style={{ width: "100%", height: 52, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer" }}>
-          {providerState === "failed" ? "Try Again" : "View Credit"}
+          <UiText text={providerState === "failed" ? "Try Again" : "View Credit"} />
         </button>
       </div>
     </div>

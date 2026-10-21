@@ -1,3 +1,5 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { ArrowLeft, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 const kuulaLogo = "/kuula-logo.svg";
@@ -14,6 +16,7 @@ const FALLBACK_COMPLIANCE: Compliance = {
 };
 
 export function AboutAppScreen({ onNavigate }: Props) {
+  const goBack = useReturnNavigation("settings");
   const [c, setC] = useState<Compliance>(FALLBACK_COMPLIANCE);
   const minimumTermDays = Capacitor.getPlatform() === "android" ? c.googleMinTermDays : c.minTermDays;
   const { t } = useTranslation();
@@ -22,32 +25,30 @@ export function AboutAppScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB", paddingTop: 0 }}>
       <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
-        <button onClick={() => onNavigate("settings")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <button onClick={goBack} aria-label={uiText("Back")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>About Kuula</span>
+        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}><UiText text={"About Kuula"} /></span>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 30px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
         {/* Logo */}
         <div style={{ width: 180, maxWidth: "62%" }}>
-          <ImageWithFallback src={kuulaLogo} alt="Kuula" style={{ width: "100%", height: "auto", objectFit: "contain" }} />
+          <ImageWithFallback src={kuulaLogo} alt={uiText("Kuula")} style={{ width: "100%", height: "auto", objectFit: "contain" }} />
         </div>
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0" }}>Version 2.4.1 (Build 241)</p>
+          <p style={{ fontSize: 13, color: "#6B7280", margin: "4px 0" }}><UiText text={"Version 2.4.1 (Build 241)"} /></p>
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginTop: 4 }}>
             <Shield size={14} color="#178654" />
-            <span style={{ fontSize: 12, color: "#178654", fontWeight: 600 }}>UMRA Licensed · BOU Regulated</span>
+            <span style={{ fontSize: 12, color: "#178654", fontWeight: 600 }}><UiText text={"UMRA Licensed · BOU Regulated"} /></span>
           </div>
         </div>
 
-        <p style={{ fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 1.7, maxWidth: 300 }}>
-          Kuula is Uganda's trusted mobile credit platform, providing transparent loans and repayments via MTN MoMo and Airtel Money.
-        </p>
+        <p style={{ fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 1.7, maxWidth: 300 }}><UiText text={" Kuula is Uganda's trusted mobile credit platform, providing transparent loans and repayments via MTN MoMo and Airtel Money. "} /></p>
 
         {/* Transparent, compliant lending facts */}
         <div style={{ width: "100%", background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: "#1F2937", margin: "0 0 10px" }}>Transparent Lending</p>
+          <p style={{ fontSize: 13, fontWeight: 800, color: "#1F2937", margin: "0 0 10px" }}><UiText text={"Transparent Lending"} /></p>
           {[
             ["Maximum APR (all-in)", `${c.maxAprPercent}% / year`],
             ["Interest type", c.compound ? "Compound" : "Simple — never compounded"],
@@ -71,16 +72,16 @@ export function AboutAppScreen({ onNavigate }: Props) {
           ].map((item, i) => (
             <button key={i} onClick={() => item.screen && onNavigate(item.screen)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "transparent", border: "none", borderBottom: i < 4 ? "1px solid #F3F4F6" : "none", cursor: "pointer", textAlign: "left" }}>
               <span style={{ fontSize: 18 }}>{item.icon}</span>
-              <span style={{ fontSize: 14, color: "#374151", flex: 1 }}>{item.label}</span>
+              <span style={{ fontSize: 14, color: "#374151", flex: 1 }}><UiText text={item.label} /></span>
               <ExternalLink size={14} color="#D1D5DB" />
             </button>
           ))}
         </div>
 
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>© 2026 Kuula Microfinance Ltd.</p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>Kampala, Uganda · support@kuula.ug</p>
-          <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}>0800 123 456 (toll-free)</p>
+          <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}><UiText text={"© 2026 Kuula Microfinance Ltd."} /></p>
+          <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}><UiText text={"Kampala, Uganda · support@kuula.ug"} /></p>
+          <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0" }}><UiText text={"0800 123 456 (toll-free)"} /></p>
         </div>
       </div>
     </div>

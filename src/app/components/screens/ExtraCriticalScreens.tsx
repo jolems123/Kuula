@@ -1,3 +1,6 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { useAppContext } from "../../context/AppContext";
+import { UiText, uiText } from "../../../i18n/ui-text";
 /**
  * Group 6 — Critical Screens (82–100)
  * Customer: 82, 83, 84, 86, 93, 96, 97
@@ -16,18 +19,20 @@ function ugx(n: number) { return "UGX " + n.toLocaleString(); }
 
 // ─── 82. Customer: Loan Disbursement Status ───────────────────────────────────
 export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
+  const { state } = useAppContext();
+  const goBack = useReturnNavigation(state.session.isAuthenticated ? "about-app" : "welcome");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
       <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
-        <button onClick={()=>onNavigate("about-app")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
-        <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Privacy Policy</span>
+        <button onClick={goBack} aria-label={uiText("Back")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
+        <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}><UiText text={"Privacy Policy"} /></span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 30px" }}>
         <div style={{ background:"white",borderRadius:16,padding:"20px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:16 }}>
           <div style={{ textAlign:"center",borderBottom:"1px solid #F3F4F6",paddingBottom:12 }}>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:0 }}>KUULA MICROFINANCE LIMITED</p>
-            <h2 style={{ fontSize:18,fontWeight:800,color:"#1F2937",margin:"4px 0" }}>Privacy Policy</h2>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:0 }}>Effective: January 1, 2024 · Last updated: Jun 11, 2026</p>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:0 }}><UiText text={"KUULA MICROFINANCE LIMITED"} /></p>
+            <h2 style={{ fontSize:18,fontWeight:800,color:"#1F2937",margin:"4px 0" }}><UiText text={"Privacy Policy"} /></h2>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:0 }}><UiText text={"Effective: January 1, 2024 · Last updated: Jun 11, 2026"} /></p>
           </div>
           {[
             { title:"1. Information We Collect", body:"We collect information you provide when creating your account (name, NIN, phone, email), transaction data (loan amounts, repayment history), device information (device ID, OS version), and location data (only when explicitly permitted)." },
@@ -39,14 +44,14 @@ export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
             { title:"7. Children's Privacy", body:"Kuula is intended for users aged 18 and above. We do not knowingly collect data from minors." },
           ].map(({title,body})=>(
             <div key={title}>
-              <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:"0 0 6px" }}>{title}</p>
-              <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}>{body}</p>
+              <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:"0 0 6px" }}><UiText text={title} /></p>
+              <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}><UiText text={body} /></p>
             </div>
           ))}
           <div style={{ borderTop:"1px solid #F3F4F6", paddingTop:12, marginTop:4, textAlign:"center" }}>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}>This policy is also published at:</p>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}><UiText text={"This policy is also published at:"} /></p>
             <p style={{ fontSize:12,color:"#0B5E3A",fontWeight:700,margin:0 }}>https://kuula.ug/privacy</p>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}>Questions? privacy@kuula.ug · 0800 123 456 (toll-free)</p>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}><UiText text={"Questions? privacy@kuula.ug · 0800 123 456 (toll-free)"} /></p>
           </div>
         </div>
       </div>
@@ -56,17 +61,19 @@ export function CustomerPrivacyPolicyScreen({ onNavigate }: Props) {
 
 // ─── 97. Customer: Terms of Service ──────────────────────────────────────────
 export function CustomerTermsScreen({ onNavigate }: Props) {
+  const { state } = useAppContext();
+  const goBack = useReturnNavigation(state.session.isAuthenticated ? "about-app" : "welcome");
   return (
     <div style={{ display:"flex",flexDirection:"column",height:"100%",background:"#F9FAFB",paddingTop: 0 }}>
       <div style={{ display:"flex",alignItems:"center",padding:"16px 16px 14px",background:"linear-gradient(135deg,#0B5E3A,#064A2E)" }}>
-        <button onClick={()=>onNavigate("about-app")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
-        <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}>Terms of Service</span>
+        <button onClick={goBack} aria-label={uiText("Back")} style={{ width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.2)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><ArrowLeft size={18} color="white"/></button>
+        <span style={{ fontSize:17,fontWeight:700,color:"white",marginLeft:12 }}><UiText text={"Terms of Service"} /></span>
       </div>
       <div style={{ flex:1,overflowY:"auto",padding:"20px 16px 30px" }}>
         <div style={{ background:"white",borderRadius:16,padding:"20px",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",gap:14 }}>
           <div style={{ textAlign:"center",borderBottom:"1px solid #F3F4F6",paddingBottom:12 }}>
-            <h2 style={{ fontSize:18,fontWeight:800,color:"#1F2937",margin:0 }}>Terms of Service</h2>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:"4px 0 0" }}>Kuula Microfinance Limited · Last updated Jun 11, 2026</p>
+            <h2 style={{ fontSize:18,fontWeight:800,color:"#1F2937",margin:0 }}><UiText text={"Terms of Service"} /></h2>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:"4px 0 0" }}><UiText text={"Kuula Microfinance Limited · Last updated Jun 11, 2026"} /></p>
           </div>
           {[
             { title:"1. Eligibility", body:"You must be at least 18 years old, a Ugandan citizen or resident, and hold a valid National ID (NIN) to use Kuula's services." },
@@ -77,14 +84,14 @@ export function CustomerTermsScreen({ onNavigate }: Props) {
             { title:"6. Governing Law", body:"These terms are governed by the laws of Uganda and the microfinance regulations set by the Bank of Uganda and UMRA." },
           ].map(({title,body})=>(
             <div key={title}>
-              <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:"0 0 4px" }}>{title}</p>
-              <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}>{body}</p>
+              <p style={{ fontSize:13,fontWeight:700,color:"#1F2937",margin:"0 0 4px" }}><UiText text={title} /></p>
+              <p style={{ fontSize:12,color:"#6B7280",margin:0,lineHeight:1.7 }}><UiText text={body} /></p>
             </div>
           ))}
           <div style={{ borderTop:"1px solid #F3F4F6", paddingTop:12, marginTop:4, textAlign:"center" }}>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}>These terms are also published at:</p>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:"0 0 4px" }}><UiText text={"These terms are also published at:"} /></p>
             <p style={{ fontSize:12,color:"#0B5E3A",fontWeight:700,margin:0 }}>https://kuula.ug/terms</p>
-            <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}>Questions? support@kuula.ug · 0800 123 456 (toll-free)</p>
+            <p style={{ fontSize:11,color:"#9CA3AF",margin:"8px 0 0" }}><UiText text={"Questions? support@kuula.ug · 0800 123 456 (toll-free)"} /></p>
           </div>
         </div>
       </div>

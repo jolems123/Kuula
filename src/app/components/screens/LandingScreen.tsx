@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { Globe, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { KuulaLogo } from "../brand/KuulaLogo";
@@ -9,13 +10,13 @@ interface Props { onNavigate: (screen: string) => void; }
 /** First screen for signed-out visitors: brand story over the photos, then sign up or log in. */
 export function LandingScreen({ onNavigate }: Props) {
   const { i18n } = useTranslation();
-  const language = APP_LANGUAGES.find((l) => l.code === i18n.language)?.native ?? "English";
+  const language = APP_LANGUAGES.find((l) => l.code === i18n.resolvedLanguage)?.native ?? "English";
 
   return (
     <div className="kx kx-landing kx-on-photo">
       <div className="kx-landing__top">
         <KuulaLogo tone="light" size={36} subtitle={null} />
-        <button type="button" className="kx-chip" onClick={() => onNavigate("language")} aria-label={`Language: ${language}. Change language`}>
+        <button type="button" className="kx-chip" onClick={() => onNavigate("language")} aria-label={uiText(`Language: ${language}. Change language`)}>
           <Globe size={15} /> {language}
         </button>
       </div>
@@ -23,19 +24,16 @@ export function LandingScreen({ onNavigate }: Props) {
       <div className="kx-landing__body">
         <AuthStory />
         <div className="kx-landing__actions">
-          <button type="button" className="kx-btn kx-btn--primary kx-btn--lg" onClick={() => onNavigate("create-account")}>
-            Create account <ArrowRight size={18} />
+          <button type="button" className="kx-btn kx-btn--primary kx-btn--lg" onClick={() => onNavigate("create-account")}><UiText text={" Create account "} /><ArrowRight size={18} />
           </button>
-          <button type="button" className="kx-btn kx-btn--secondary kx-btn--lg" onClick={() => onNavigate("login")}>
-            Log in
-          </button>
+          <button type="button" className="kx-btn kx-btn--secondary kx-btn--lg" onClick={() => onNavigate("login")}><UiText text={" Log in "} /></button>
         </div>
-        <a href="https://www.kuulapp.com/" className="kx-link" style={{ display: "inline-block", marginTop: 18, color: "#fff", textDecoration: "underline", textUnderlineOffset: 4 }}>Learn about Kuula business loans</a>
+        <a href="https://www.kuulapp.com/" className="kx-link" style={{ display: "inline-block", marginTop: 18, color: "#fff", textDecoration: "underline", textUnderlineOffset: 4 }}><UiText text={"Learn about Kuula business loans"} /></a>
       </div>
 
       <div className="kx-landing__staff">
-        <span>© {new Date().getFullYear()} Kuula Microfinance Limited</span>
-        <button type="button" className="kx-link" onClick={() => onNavigate("admin-login")}>Staff sign in</button>
+        <span>© {new Date().getFullYear()}<UiText text={" Kuula Microfinance Limited"} /></span>
+        <button type="button" className="kx-link" onClick={() => onNavigate("admin-login")}><UiText text={"Staff sign in"} /></button>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../i18n/ui-text";
 import { House, HandCoins, LayoutGrid } from "lucide-react";
 
 interface BottomNavProps {
@@ -17,7 +18,7 @@ const ALIASES: Record<string, string> = { loans: "borrow", credit: "borrow", wal
 export function BottomNav({ active, onNavigate }: BottomNavProps) {
   const current = ALIASES[active] ?? active;
   return (
-    <nav className="kx kx-tabbar" aria-label="Main navigation">
+    <nav className="kx kx-tabbar" aria-label={uiText("Main navigation")}>
       {TABS.map(({ id, icon: Icon, label, screen }) => {
         const isActive = current === id;
         return (
@@ -29,7 +30,7 @@ export function BottomNav({ active, onNavigate }: BottomNavProps) {
             onClick={() => onNavigate(screen)}
           >
             <Icon size={22} strokeWidth={isActive ? 2 : 1.6} />
-            <span>{label}</span>
+            <span><UiText text={label} /></span>
           </button>
         );
       })}

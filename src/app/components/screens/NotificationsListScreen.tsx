@@ -1,3 +1,4 @@
+import { UiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, Bell, CheckCircle, AlertTriangle, Info } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,12 +26,12 @@ const TYPE_COLOR: Record<string, { color: string; bg: string }> = {
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return new Intl.RelativeTimeFormat(uiLocale()).format(-mins, "minute");
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+  if (hrs < 24) return new Intl.RelativeTimeFormat(uiLocale()).format(-hrs, "hour");
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (days < 7) return new Intl.RelativeTimeFormat(uiLocale()).format(-days, "day");
+  return new Date(iso).toLocaleDateString(uiLocale(), { month: "short", day: "numeric" });
 }
 
 export function NotificationsListScreen({ onNavigate }: Props) {
@@ -91,7 +92,7 @@ export function NotificationsListScreen({ onNavigate }: Props) {
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 90px", display: "flex", flexDirection: "column", gap: 10 }}>
         {loading && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
-            <p style={{ fontSize: 14 }}>Loading notifications…</p>
+            <p style={{ fontSize: 14 }}><UiText text={"Loading notifications…"} /></p>
           </div>
         )}
         {!loading && notifications.map((n) => {
@@ -118,8 +119,8 @@ export function NotificationsListScreen({ onNavigate }: Props) {
         {!loading && notifications.length === 0 && (
           <div style={{ textAlign: "center", padding: "60px 16px", color: "#9CA3AF" }}>
             <Bell size={40} color="#D1D5DB" style={{ margin: "0 auto 12px" }} />
-            <p style={{ fontSize: 16, fontWeight: 600, color: "#6B7280" }}>No notifications yet</p>
-            <p style={{ fontSize: 13 }}>Loan updates and account alerts will appear here.</p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: "#6B7280" }}><UiText text={"No notifications yet"} /></p>
+            <p style={{ fontSize: 13 }}><UiText text={"Loan updates and account alerts will appear here."} /></p>
           </div>
         )}
       </div>

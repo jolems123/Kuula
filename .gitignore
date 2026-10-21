@@ -75,3 +75,6 @@ server/uploads/
 /.tmp/
 /.ci-log-pr57.txt
 /.final-prod-smoke.mjs
+
+# Local translation inventory reports
+artifacts/i18n/

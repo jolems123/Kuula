@@ -18,6 +18,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./locales/en.json";
 import lg from "./locales/lg.json";
 import sw from "./locales/sw.json";
+import sourceUi from "./source-ui.json";
 
 export const APP_LANGUAGES = [
   { code: "en", label: "English", native: "English" },
@@ -42,9 +43,9 @@ export const FALLBACK_LANGS: LanguageCode[] = APP_LANGUAGES
   .filter((c) => !BUNDLED_LANGS.includes(c as LanguageCode)) as LanguageCode[];
 
 // Load only bundled translations; others fall back to English.
-const resources: Record<string, { translation: typeof en }> = { en: { translation: en } };
-if (BUNDLED_LANGS.includes("lg")) resources.lg = { translation: lg as unknown as typeof en };
-if (BUNDLED_LANGS.includes("sw")) resources.sw = { translation: sw as unknown as typeof en };
+const resources: Record<string, { translation: typeof en; ui: Record<string, string> }> = { en: { translation: en, ui: sourceUi.en } };
+if (BUNDLED_LANGS.includes("lg")) resources.lg = { translation: lg as unknown as typeof en, ui: sourceUi.lg };
+if (BUNDLED_LANGS.includes("sw")) resources.sw = { translation: sw as unknown as typeof en, ui: sourceUi.sw };
 
 const DETECTED_KEY = "kuula_lang";
 
@@ -54,7 +55,7 @@ i18n
   .init({
     resources,
     fallbackLng: "en",
-    supportedLngs: APP_LANGUAGES.map((l) => l.code),
+    supportedLngs: BUNDLED_LANGS,
     detection: {
       // Only use our custom localStorage key — ignore navigator language
       // so the app doesn't auto-switch when the device OS is in English
@@ -70,6 +71,12 @@ i18n
       useSuspense: false, // Avoid Suspense boundary issues with lazy screens
     },
   });
+
+const updateDocumentLanguage = () => {
+  if (typeof document !== "undefined") document.documentElement.lang = i18n.resolvedLanguage || "en";
+};
+i18n.on("languageChanged", updateDocumentLanguage);
+updateDocumentLanguage();
 
 export default i18n;
 export { DETECTED_KEY };

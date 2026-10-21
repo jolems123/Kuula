@@ -1,3 +1,4 @@
+import { UiText } from "../../../i18n/ui-text";
 import { ArrowLeft, CheckCircle, Clock, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
@@ -24,7 +25,7 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
         <button onClick={() => onNavigate("credit-dashboard")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>Improve Credit Score</span>
+        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}><UiText text={"Improve Credit Score"} /></span>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 30px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -32,12 +33,12 @@ export function ImproveCreditScreen({ onNavigate }: Props) {
         <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <Star size={20} color="#F59E0B" fill="#F59E0B" />
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#1F2937" }}>{done} of {TIPS.length} actions completed</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#1F2937" }}>{done}<UiText text={" of "} />{TIPS.length}<UiText text={" actions completed"} /></span>
           </div>
           <div style={{ height: 8, background: "#F3F4F6", borderRadius: 4 }}>
             <div style={{ width: `${(done / TIPS.length) * 100}%`, height: "100%", background: "#F59E0B", borderRadius: 4 }} />
           </div>
-          <p style={{ fontSize: 12, color: "#6B7280", margin: "8px 0 0" }}>This shows evidence recorded by Kuula, not a guaranteed approval or a credit bureau report.</p>
+          <p style={{ fontSize: 12, color: "#6B7280", margin: "8px 0 0" }}><UiText text={"This shows evidence recorded by Kuula, not a guaranteed approval or a credit bureau report."} /></p>
         </div>
 
         {/* Tips */}

@@ -1,3 +1,4 @@
+import { UiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, Download, Share2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -73,7 +74,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
   const share = async () => {
     if (!txn) return;
-    const text = `Kuula — ${label}: ${incoming ? "+" : "-"}${formatUGX(txn.amount)} on ${when.toLocaleDateString("en-GB")} (Ref ${txn.reference || txn.id})`;
+    const text = `Kuula — ${label}: ${incoming ? "+" : "-"}${formatUGX(txn.amount)} on ${when.toLocaleDateString(uiLocale())} (Ref ${txn.reference || txn.id})`;
     const nav = navigator as Navigator & { share?: (d: { title: string; text: string }) => Promise<void> };
     if (nav.share) {
       try { await nav.share({ title: "Kuula Transaction", text }); return; } catch { /* fall through */ }
@@ -88,7 +89,7 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
           <button onClick={() => onNavigate("transaction-history")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
           </button>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>Transaction Details</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}><UiText text={"Transaction Details"} /></span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={share} disabled={!txn} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", cursor: txn ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", opacity: txn ? 1 : 0.5 }}>
@@ -102,11 +103,11 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 30px", display: "flex", flexDirection: "column", gap: 16 }}>
         {loading ? (
-          <div style={{ textAlign: "center", padding: "48px 0", color: "#9CA3AF", fontSize: 13 }}>Loading transaction…</div>
+          <div style={{ textAlign: "center", padding: "48px 0", color: "#9CA3AF", fontSize: 13 }}><UiText text={"Loading transaction…"} /></div>
         ) : !txn ? (
           <div style={{ textAlign: "center", padding: "48px 0", color: "#9CA3AF" }}>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>No transaction selected</p>
-            <p style={{ fontSize: 13 }}>Open a transaction from your history to see its details.</p>
+            <p style={{ fontSize: 15, fontWeight: 600 }}><UiText text={"No transaction selected"} /></p>
+            <p style={{ fontSize: 13 }}><UiText text={"Open a transaction from your history to see its details."} /></p>
           </div>
         ) : (
           <>
@@ -115,34 +116,33 @@ export function TransactionDetailScreen({ onNavigate }: Props) {
                 {incoming ? <ArrowDownLeft size={32} color="#178654" /> : <ArrowUpRight size={32} color="#EF4444" />}
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, color: statusOk ? "#178654" : "#F59E0B", background: statusOk ? "#F0FDF4" : "#FFFBEB", padding: "3px 12px", borderRadius: 20, textTransform: "capitalize" }}>
-                ● {statusOk ? "Successful" : txn.status}
+                ● <UiText text={statusOk ? "Successful" : txn.status} />
               </span>
-              <p style={{ fontSize: 13, color: "#6B7280", margin: 0 }}>{label}</p>
+              <p style={{ fontSize: 13, color: "#6B7280", margin: 0 }}><UiText text={label} /></p>
               <p style={{ fontSize: 38, fontWeight: 900, color: incoming ? "#178654" : "#1F2937", margin: 0, letterSpacing: -1 }}>
-                {incoming ? "+" : "-"}{formatUGX(txn.amount)}
+                <UiText text={incoming ? "+" : "-"} />{formatUGX(txn.amount)}
               </p>
             </div>
 
             <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 4 }}>Transaction Information</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 4 }}><UiText text={"Transaction Information"} /></p>
               {[
                 { label: "Transaction ID", value: txn.id },
                 { label: "Type", value: label },
                 ...(txn.reference ? [{ label: "Reference", value: txn.reference }] : []),
-                { label: "Date", value: when.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) },
-                { label: "Time", value: when.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) },
+                { label: "Date", value: when.toLocaleDateString(uiLocale(), { day: "numeric", month: "long", year: "numeric" }) },
+                { label: "Time", value: when.toLocaleTimeString(uiLocale(), { hour: "2-digit", minute: "2-digit" }) },
                 { label: "Status", value: statusOk ? "Completed" : txn.status },
               ].map((r, i, arr) => (
                 <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? "1px solid #F3F4F6" : "none", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "#9CA3AF", flexShrink: 0 }}>{r.label}</span>
+                  <span style={{ fontSize: 12, color: "#9CA3AF", flexShrink: 0 }}><UiText text={r.label} /></span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#1F2937", textAlign: "right", wordBreak: "break-all" }}>{r.value}</span>
                 </div>
               ))}
             </div>
 
             <button onClick={saveReceipt} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, borderRadius: 14, background: "#F3FAF7", border: "none", color: "#0B5E3A", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              <Download size={16} /> Download Receipt (PDF)
-            </button>
+              <Download size={16} /><UiText text={" Download Receipt (PDF) "} /></button>
           </>
         )}
       </div>

@@ -135,3 +135,6 @@
 .kuula-application-guide ol { list-style: decimal; }
 .kuula-application-guide ul { list-style: disc; }
 .kuula-application-guide summary { min-height: 44px; padding-block: 12px; cursor: pointer; font-weight: 700; }
+.kuula-local-file-input { display: block; margin-block: 10px; }
+.kuula-local-file-button { min-height: 44px; padding: 11px 16px; border: 1px solid #0b5e3a; border-radius: 10px; background: #0b5e3a; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+.kuula-local-file-button:disabled { opacity: .6; cursor: not-allowed; }

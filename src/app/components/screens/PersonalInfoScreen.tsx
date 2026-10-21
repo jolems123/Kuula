@@ -1,3 +1,5 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../../api/client";
@@ -6,6 +8,7 @@ import { useAppContext } from "../../context/AppContext";
 interface Props { onNavigate: (screen: string) => void; }
 
 export function PersonalInfoScreen({ onNavigate }: Props) {
+  const goBack = useReturnNavigation("settings");
   const { state, updateProfile } = useAppContext();
   const user = state.user;
   const [form, setForm] = useState({ fullName: "", dateOfBirth: "", district: "", occupation: "", physicalAddress: "" });
@@ -56,19 +59,19 @@ export function PersonalInfoScreen({ onNavigate }: Props) {
 
   return <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F9FAFB" }}>
     <div style={{ display: "flex", alignItems: "center", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}>
-      <button aria-label="Back to profile" onClick={() => onNavigate("profile")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
-      <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>Personal Information</span>
+      <button aria-label={uiText("Back")} onClick={goBack} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
+      <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}><UiText text={"Personal Information"} /></span>
     </div>
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 130px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFF7ED", border: "1px solid #FED7AA", fontSize: 12, color: "#92400E" }}>Phone and NIN changes require identity re-verification. A verified legal name is also locked.</div>
-      {error && <div role="alert" style={{ padding: 11, borderRadius: 10, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>{error}</div>}
-      {saved && <div role="status" style={{ padding: 11, borderRadius: 10, background: "#F0FDF4", color: "#166534", fontSize: 12 }}>Your changes were saved.</div>}
+      <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFF7ED", border: "1px solid #FED7AA", fontSize: 12, color: "#92400E" }}><UiText text={"Phone and NIN changes require identity re-verification. A verified legal name is also locked."} /></div>
+      {error && <div role="alert" style={{ padding: 11, borderRadius: 10, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}><UiText text={error} /></div>}
+      {saved && <div role="status" style={{ padding: 11, borderRadius: 10, background: "#F0FDF4", color: "#166534", fontSize: 12 }}><UiText text={"Your changes were saved."} /></div>}
       <div style={{ background: "white", borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 20 }}>
-        <div><label htmlFor="profile-phone" style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}>Phone Number</label><input id="profile-phone" value={user?.phone || ""} disabled style={{ ...inputStyle, color: "#9CA3AF", background: "#F9FAFB" }} /></div>
-        {fields.map(({ key, label, type, disabled }) => <div key={key}><label htmlFor={`profile-${key}`} style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}>{label}</label><input id={`profile-${key}`} type={type} value={form[key]} disabled={disabled} onChange={(event) => set(key, event.target.value)} style={{ ...inputStyle, ...(disabled ? { color: "#9CA3AF", background: "#F9FAFB" } : {}) }} /></div>)}
+        <div><label htmlFor="profile-phone" style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}><UiText text={"Phone Number"} /></label><input id="profile-phone" value={user?.phone || ""} disabled style={{ ...inputStyle, color: "#9CA3AF", background: "#F9FAFB" }} /></div>
+        {fields.map(({ key, label, type, disabled }) => <div key={key}><label htmlFor={`profile-${key}`} style={{ fontSize: 13, fontWeight: 600, color: "#41594A", display: "block", marginBottom: 8 }}><UiText text={label} /></label><input id={`profile-${key}`} type={type} value={form[key]} disabled={disabled} onChange={(event) => set(key, event.target.value)} style={{ ...inputStyle, ...(disabled ? { color: "#9CA3AF", background: "#F9FAFB" } : {}) }} /></div>)}
       </div>
-      <div style={{ background: "white", borderRadius: 14, padding: "14px 16px", display: "flex", justifyContent: "space-between" }}><div><strong style={{ fontSize: 13 }}>National ID (NIN)</strong><div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}>{user?.nationalId ? `${user.nationalId.slice(0, 5)}••••${user.nationalId.slice(-3)}` : "Not supplied"}</div></div><span style={{ fontSize: 11, fontWeight: 700, color: user?.verified ? "#178654" : "#B45309" }}>{user?.verified ? "Verified" : "Pending"}</span></div>
+      <div style={{ background: "white", borderRadius: 14, padding: "14px 16px", display: "flex", justifyContent: "space-between" }}><div><strong style={{ fontSize: 13 }}><UiText text={"National ID (NIN)"} /></strong><div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}><UiText text={user?.nationalId ? `${user.nationalId.slice(0, 5)}••••${user.nationalId.slice(-3)}` : "Not supplied"} /></div></div><span style={{ fontSize: 11, fontWeight: 700, color: user?.verified ? "#178654" : "#B45309" }}><UiText text={user?.verified ? "Verified" : "Pending"} /></span></div>
     </div>
-    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}><button disabled={saving || !state.session.token} onClick={() => { void save(); }} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", opacity: saving ? .6 : 1 }}>{saving ? "Saving…" : "Save Changes"}</button></div>
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #F3F4F6" }}><button disabled={saving || !state.session.token} onClick={() => { void save(); }} style={{ width: "100%", height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0B5E3A, #064A2E)", color: "white", fontSize: 16, fontWeight: 700, border: "none", opacity: saving ? .6 : 1 }}><UiText text={saving ? "Saving…" : "Save Changes"} /></button></div>
   </div>;
 }

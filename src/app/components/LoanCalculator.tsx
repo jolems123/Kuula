@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../i18n/ui-text";
 import { useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +24,7 @@ function LoanBreakdownRow({ label, value, highlight }: { label: string; value: s
       padding: "10px 0",
       borderTop: "1px solid #F3F4F6",
     }}>
-      <span style={{ fontSize: 13, color: "#6B7280" }}>{label}</span>
+      <span style={{ fontSize: 13, color: "#6B7280" }}><UiText text={label} /></span>
       <span style={{ fontSize: 14, fontWeight: highlight ? 800 : 600, color: highlight ? "#064A2E" : "#1F2937" }}>
         {value}
       </span>
@@ -172,13 +173,13 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
 
         {/* Purpose */}
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Business loan purposes — select all that apply</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 8 }}><UiText text={"Business loan purposes — select all that apply"} /></p>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {BUSINESS_LOAN_PURPOSES.map((option) => (
               <button
                 key={option}
                 className="kuula-purpose-choice"
-                aria-label={option === "Other" ? "Other business purpose" : option}
+                aria-label={uiText(option === "Other" ? "Other business purpose" : option)}
                 type="button"
                 aria-pressed={purposes.includes(option)}
                 onClick={() => setPurposes(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}
@@ -190,11 +191,11 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
                   cursor: "pointer",
                 }}
               >
-                {purposes.includes(option) ? "✓ " : ""}{option === "Other" ? "Other business purpose" : option}
+                <UiText text={purposes.includes(option) ? "✓ " : ""} /><UiText text={option === "Other" ? "Other business purpose" : option} />
               </button>
             ))}
           </div>
-          {purposes.includes("Other") && <textarea aria-label="Describe your business use" value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder="Describe your business use" rows={2} style={{ boxSizing: "border-box", width: "100%", marginTop: 10, border: "1px solid #D8E2DC", borderRadius: 10, padding: 10, resize: "vertical" }} />}
+          {purposes.includes("Other") && <textarea aria-label={uiText("Describe your business use")} value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder={uiText("Describe your business use")} rows={2} style={{ boxSizing: "border-box", width: "100%", marginTop: 10, border: "1px solid #D8E2DC", borderRadius: 10, padding: 10, resize: "vertical" }} />}
         </div>
 
         {/* Summary */}
@@ -213,9 +214,7 @@ export function LoanCalculator({ onApply, maxAmount = 2_000_000 }: Props) {
               onClick={() => setShowBreakdown(!showBreakdown)}
               style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#064A2E", fontSize: 12 }}
             >
-              <Info size={13} />
-              Details
-              {showBreakdown ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              <Info size={13} /><UiText text={" Details "} />{showBreakdown ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           </div>
 

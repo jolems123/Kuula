@@ -1,3 +1,5 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { useAppContext, type Message } from "../../context/AppContext";
@@ -6,6 +8,7 @@ import { api } from "../../api/client";
 interface Props { onNavigate: (s: string) => void; }
 
 export function UserSupportChatScreen({ onNavigate }: Props) {
+  const goBack = useReturnNavigation("help-support");
   const { state } = useAppContext();
   const userId = state.user?.id ?? "";
   const token = state.session.token;
@@ -82,26 +85,24 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9" }}>
       <div style={{ background: "#0B5E3A", padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-        <button aria-label="Back to help" onClick={() => onNavigate("help-support")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <button aria-label={uiText("Back")} onClick={goBack} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <ArrowLeft size={18} color="white" />
         </button>
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: "white", margin: 0 }}>Kuula Support</p>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.78)", margin: "2px 0 0" }}>Secure support messaging</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: "white", margin: 0 }}><UiText text={"Kuula Support"} /></p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.78)", margin: "2px 0 0" }}><UiText text={"Secure support messaging"} /></p>
         </div>
       </div>
 
       {error && (
         <div role="alert" style={{ margin: "10px 16px 0", padding: "10px 12px", borderRadius: 10, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>
-          {error}
+          <UiText text={error} />
         </div>
       )}
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
         {thread.length === 0 && (
-          <div style={{ textAlign: "center", color: "#7A8B82", fontSize: 13, marginTop: 40 }}>
-            No messages yet. Send Kuula Support a message and your conversation will appear here.
-          </div>
+          <div style={{ textAlign: "center", color: "#7A8B82", fontSize: 13, marginTop: 40 }}><UiText text={" No messages yet. Send Kuula Support a message and your conversation will appear here. "} /></div>
         )}
         {thread.map((m) => {
           const isMine = m.senderId === userId;
@@ -132,13 +133,13 @@ export function UserSupportChatScreen({ onNavigate }: Props) {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-          placeholder="Type a message..."
+          placeholder={uiText("Type a message...")}
           rows={1}
           maxLength={2000}
           style={{ flex: 1, borderRadius: 20, border: "1.5px solid #DCE6E0", padding: "10px 16px", fontSize: 13, resize: "none", outline: "none", fontFamily: "inherit", lineHeight: 1.4, maxHeight: 100, overflowY: "auto" }}
         />
         <button
-          aria-label="Send support message"
+          aria-label={uiText("Send support message")}
           disabled={!inputText.trim() || sending}
           onClick={() => { void handleSend(); }}
           style={{ width: 44, height: 44, borderRadius: 22, background: inputText.trim() && !sending ? "#0B5E3A" : "#D9E2DD", border: "none", cursor: inputText.trim() && !sending ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}

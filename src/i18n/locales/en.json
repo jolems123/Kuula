@@ -77,11 +77,11 @@
   },
   "language": {
     "title": "Select Your Language",
-    "subtitle": "Yogera oluganda olwonna mu puloguramu",
+    "subtitle": "Choose the language used throughout Kuula.",
     "subtitleSw": "Chagua lugha yako, programu itabadilika kabisa",
-    "currentLang": "Current",
-    "otherLangs": "Other Languages",
-    "appWillChange": "The entire app will change to your selected language."
+    "currentLang": "Available languages",
+    "otherLangs": "Coming soon",
+    "appWillChange": "Your choice applies across the customer app and is saved on this device."
   },
   "home": {
     "goodMorning": "Good morning 👋",

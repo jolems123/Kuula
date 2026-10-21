@@ -1,3 +1,4 @@
+import { UiText } from "../../../i18n/ui-text";
 import { ArrowLeft, TrendingUp, Wallet, PlusCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -97,7 +98,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
                 transition: "all 0.15s",
               }}
             >
-              {tabItem.label}
+              <UiText text={tabItem.label} />
             </button>
           ))}
         </div>
@@ -134,7 +135,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
                     {icon}
                   </div>
                   {value}
-                  <p style={{ fontSize: 9, color: "#9CA3AF", margin: "2px 0 2px" }}>{label}</p>
+                  <p style={{ fontSize: 9, color: "#9CA3AF", margin: "2px 0 2px" }}><UiText text={label} /></p>
                   {sub}
                 </div>
               ))}
@@ -152,8 +153,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
                     {loan.activeLoan.status}
                   </span>
                 </div>
-                <p style={{ fontSize: 22, fontWeight: 800, color: "#1F2937", margin: "0 0 10px" }}>
-                  UGX {loan.activeLoan.amount.toLocaleString("en-UG")}
+                <p style={{ fontSize: 22, fontWeight: 800, color: "#1F2937", margin: "0 0 10px" }}><UiText text={" UGX "} />{loan.activeLoan.amount.toLocaleString("en-UG")}
                 </p>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ fontSize: 11, color: "#6B7280" }}>{t("dashboard.repaid")}</span>
@@ -194,8 +194,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
               <div style={{ background: "white", borderRadius: 16, padding: "14px 16px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>{t("dashboard.nextPayment")}</p>
-                  <p style={{ fontSize: 20, fontWeight: 800, color: "#1F2937", margin: "2px 0 0" }}>
-                    UGX {loan.nextPayment.amount.toLocaleString("en-UG")}
+                  <p style={{ fontSize: 20, fontWeight: 800, color: "#1F2937", margin: "2px 0 0" }}><UiText text={" UGX "} />{loan.nextPayment.amount.toLocaleString("en-UG")}
                   </p>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -225,7 +224,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
                     boxShadow: a.bg.includes("gradient") ? "0 4px 12px rgba(0,0,0,0.15)" : "0 2px 6px rgba(0,0,0,0.05)",
                   }}
                 >
-                  {a.label}
+                  <UiText text={a.label} />
                 </button>
               ))}
             </div>

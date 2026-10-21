@@ -1,3 +1,4 @@
+import { UiText, uiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Search, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
@@ -50,7 +51,7 @@ function mapTxn(r: Record<string, unknown>): TxnItem {
     sub: reference,
     amount,
     type: isIn ? "in" : "out",
-    date: Number.isNaN(createdDate.getTime()) ? "" : createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    date: Number.isNaN(createdDate.getTime()) ? "" : createdDate.toLocaleDateString(uiLocale(), { month: "short", day: "numeric", year: "numeric" }),
     category: TYPE_CATEGORY[txnType] ?? "payments",
     rawType: txnType,
     status: String(r.status ?? "pending"),
@@ -108,14 +109,13 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
           <button onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ArrowLeft size={18} color="white" />
           </button>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white", flex: 1 }}>Transaction History</span>
-          <button onClick={downloadStatement} disabled={loading} aria-label="Download statement" style={{ height: 36, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", color: "white", display: "flex", gap: 6, alignItems: "center", fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.55 : 1 }}>
-            <Download size={14} /> Statement
-          </button>
+          <span style={{ fontSize: 17, fontWeight: 700, color: "white", flex: 1 }}><UiText text={"Transaction History"} /></span>
+          <button onClick={downloadStatement} disabled={loading} aria-label={uiText("Download statement")} style={{ height: 36, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", color: "white", display: "flex", gap: 6, alignItems: "center", fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.55 : 1 }}>
+            <Download size={14} /><UiText text={" Statement "} /></button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "8px 12px" }}>
           <Search size={14} color="rgba(255,255,255,0.7)" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search transactions..." style={{ background: "transparent", border: "none", outline: "none", fontSize: 13, color: "white", flex: 1 }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={uiText("Search transactions...")} style={{ background: "transparent", border: "none", outline: "none", fontSize: 13, color: "white", flex: 1 }} />
         </div>
       </div>
 
@@ -126,10 +126,10 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 90px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {error && <div role="alert" style={{ background: "#FFF1F1", color: "#9D3737", borderRadius: 12, padding: 12, fontSize: 12, display: "flex", justifyContent: "space-between", gap: 10 }}><span>{error}</span><button onClick={() => void load()} style={{ border: 0, background: "transparent", color: "#9D3737", fontWeight: 700 }}>Retry</button></div>}
+        {error && <div role="alert" style={{ background: "#FFF1F1", color: "#9D3737", borderRadius: 12, padding: 12, fontSize: 12, display: "flex", justifyContent: "space-between", gap: 10 }}><span><UiText text={error} /></span><button onClick={() => void load()} style={{ border: 0, background: "transparent", color: "#9D3737", fontWeight: 700 }}><UiText text={"Retry"} /></button></div>}
         {loading && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
-            <p style={{ fontSize: 14 }}>Loading transactions…</p>
+            <p style={{ fontSize: 14 }}><UiText text={"Loading transactions…"} /></p>
           </div>
         )}
         {!loading && list.map((t) => (
@@ -138,18 +138,18 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
               {t.type === "in" ? <ArrowDownLeft size={18} color="#178654" /> : <ArrowUpRight size={18} color="#EF4444" />}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</p>
-              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}>{t.sub ? `${t.sub} · ` : ""}{t.date} · {t.status}</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><UiText text={t.label} /></p>
+              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "2px 0 0" }}><UiText text={t.sub ? `${t.sub} · ` : ""} />{t.date} · {t.status}</p>
             </div>
             <span style={{ fontSize: 14, fontWeight: 800, color: t.type === "in" ? "#178654" : "#EF4444", flexShrink: 0 }}>
-              {t.type === "in" ? "+" : ""}{ugx(Math.abs(t.amount))}
+              <UiText text={t.type === "in" ? "+" : ""} />{ugx(Math.abs(t.amount))}
             </span>
           </button>
         ))}
         {!loading && list.length === 0 && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9CA3AF" }}>
-            <p style={{ fontSize: 16 }}>No transactions yet</p>
-            <p style={{ fontSize: 13 }}>Your settled and pending loan transactions will appear here.</p>
+            <p style={{ fontSize: 16 }}><UiText text={"No transactions yet"} /></p>
+            <p style={{ fontSize: 13 }}><UiText text={"Your settled and pending loan transactions will appear here."} /></p>
           </div>
         )}
       </div>

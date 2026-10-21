@@ -1,3 +1,4 @@
+import { UiText, uiText, uiLocale } from "../../../i18n/ui-text";
 import { useEffect, useState } from "react";
 import {
   Bell, BriefcaseBusiness, CalendarClock,
@@ -26,7 +27,7 @@ function greeting(now = new Date()) {
 }
 
 function formatDue(iso: string) {
-  return new Date(iso).toLocaleDateString("en-UG", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(uiLocale(), { day: "numeric", month: "short" });
 }
 
 export function GrowthHomeScreen({ onNavigate }: Props) {
@@ -65,10 +66,10 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
         <div className="kx-home__hero">
           <div className="kx-home__bar">
             <div>
-              <p className="kx-home__hello">{greeting()},</p>
+              <p className="kx-home__hello"><UiText text={greeting()} />,</p>
               <h1 className="kx-home__name">{firstName}</h1>
             </div>
-            <button type="button" className="kx-icon-btn kx-icon-btn--on-dark" aria-label="Notifications" onClick={() => { markNotificationsRead(); onNavigate("notifications"); }}>
+            <button type="button" className="kx-icon-btn kx-icon-btn--on-dark" aria-label={uiText("Notifications")} onClick={() => { markNotificationsRead(); onNavigate("notifications"); }}>
               <Bell size={20} strokeWidth={1.75} />
               {state.unreadNotifications > 0 && <span className="kx-icon-btn__dot" />}
             </button>
@@ -81,31 +82,31 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
           {error && (
             <div className="kx-alert kx-alert--error" role="alert">
               <AlertCircle size={16} />
-              <span style={{ flex: 1 }}>{error}</span>
-              <button type="button" className="kx-link" onClick={() => void load()} aria-label="Try again"><RefreshCw size={16} /></button>
+              <span style={{ flex: 1 }}><UiText text={error} /></span>
+              <button type="button" className="kx-link" onClick={() => void load()} aria-label={uiText("Try again")}><RefreshCw size={16} /></button>
             </div>
           )}
 
           <section className="kx-card" style={{padding:18}}>
-            <h2>Apply for a business loan</h2>
-            <p>Tell us about your business, the amount you need and how you will repay. Your application will be independently assessed.</p>
-            <button type="button" className="kx-btn kx-btn--primary kx-btn--block" onClick={() => onNavigate("loan-apply")}>Apply for Business Loan</button>
-            <button type="button" className="kx-link" onClick={() => onNavigate("loan-history")} style={{marginTop:12}}>Track My Application</button>
+            <h2><UiText text={"Apply for a business loan"} /></h2>
+            <p><UiText text={"Tell us about your business, the amount you need and how you will repay. Your application will be independently assessed."} /></p>
+            <button type="button" className="kx-btn kx-btn--primary kx-btn--block" onClick={() => onNavigate("loan-apply")}><UiText text={"Apply for Business Loan"} /></button>
+            <button type="button" className="kx-link" onClick={() => onNavigate("loan-history")} style={{marginTop:12}}><UiText text={"Track My Application"} /></button>
           </section>
 
           {/* Account summary belongs on Overview, not under Settings.
               Only show values present in the authenticated customer profile. */}
-          <section className="kx-card" aria-label="Account overview" style={{ padding: 16 }}>
+          <section className="kx-card" aria-label={uiText("Account overview")} style={{ padding: 16 }}>
             <div className="kx-section-head" style={{ marginBottom: 12 }}>
-              <div><h2>Account overview</h2><p>Your recorded Kuula account information</p></div>
+              <div><h2><UiText text={"Account overview"} /></h2><p><UiText text={"Your recorded Kuula account information"} /></p></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-              <div><span className="kx-overline">Member since</span>
-                <strong style={{ display: "block", marginTop: 4 }}>{state.user?.memberSince && !Number.isNaN(new Date(state.user.memberSince).getTime())
-                  ? new Date(state.user.memberSince).toLocaleDateString("en-UG", { month: "short", year: "numeric" }) : "Not available"}</strong>
+              <div><span className="kx-overline"><UiText text={"Member since"} /></span>
+                <strong style={{ display: "block", marginTop: 4 }}><UiText text={state.user?.memberSince && !Number.isNaN(new Date(state.user.memberSince).getTime())
+                  ? new Date(state.user.memberSince).toLocaleDateString(uiLocale(), { month: "short", year: "numeric" }) : "Not available"} /></strong>
               </div>
-              <div><span className="kx-overline">Loans recorded</span>
-                <strong style={{ display: "block", marginTop: 4 }}>{state.loan ? state.loan.totalLoansCount : "Not available"}</strong>
+              <div><span className="kx-overline"><UiText text={"Loans recorded"} /></span>
+                <strong style={{ display: "block", marginTop: 4 }}><UiText text={state.loan ? state.loan.totalLoansCount : "Not available"} /></strong>
               </div>
 
             </div>
@@ -115,10 +116,10 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             <section className="kx-card kx-due">
               <span className="kx-tile-icon kx-tile-icon--gold"><CalendarClock size={20} strokeWidth={1.75} /></span>
               <div className="kx-due__text">
-                <span className="kx-overline">Next payment · {formatDue(overview.nextPayment.dueDate)}</span>
+                <span className="kx-overline"><UiText text={"Next payment · "} />{formatDue(overview.nextPayment.dueDate)}</span>
                 <strong>{money(overview.nextPayment.amount, currency)}</strong>
               </div>
-              <button type="button" className="kx-btn kx-btn--primary kx-btn--sm" onClick={() => onNavigate("make-payment")}>Pay now</button>
+              <button type="button" className="kx-btn kx-btn--primary kx-btn--sm" onClick={() => onNavigate("make-payment")}><UiText text={"Pay now"} /></button>
             </section>
           )}
 

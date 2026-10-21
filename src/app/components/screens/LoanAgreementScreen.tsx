@@ -1,3 +1,4 @@
+import { UiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, Download, CheckCircle, Pen, Clock3, AlertTriangle, Building2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppContext } from "../../context/AppContext";
@@ -11,7 +12,7 @@ interface Props { onNavigate: (s: string) => void; }
 function fmtDate(value: string | null | undefined) {
   if (!value) return "—";
   const d = new Date(value);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-UG", { day: "numeric", month: "long", year: "numeric" });
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString(uiLocale(), { day: "numeric", month: "long", year: "numeric" });
 }
 
 export function LoanAgreementScreen({ onNavigate }: Props) {
@@ -170,20 +171,20 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #087148)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("loan-detail")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>{disbursement ? (isPartnerFacility ? "Partner Settlement Progress" : "Disbursement Progress") : "Credit Agreement"}</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}><UiText text={disbursement ? (isPartnerFacility ? "Partner Settlement Progress" : "Disbursement Progress") : "Credit Agreement"} /></span>
         </div>
-        <button onClick={downloadAgreement} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600 }}><Download size={14} /> PDF</button>
+        <button onClick={downloadAgreement} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600 }}><Download size={14} /><UiText text={" PDF"} /></button>
       </div>
 
       <div style={{ background: serverAccepted ? "#EDF8F2" : "#FFF9E5", padding: "10px 16px", borderBottom: `1px solid ${serverAccepted ? "#B7DEC9" : "#F2D77B"}`, display: "flex", alignItems: "center", gap: 8 }}>
-        {serverAccepted ? <><CheckCircle size={16} color="#0B5E3A" /><span style={{ fontSize: 12, color: "#0B5E3A", fontWeight: 700 }}>Agreement acceptance securely recorded</span></> : <><Pen size={16} color="#9B7410" /><span style={{ fontSize: 12, color: "#665218", fontWeight: 700 }}>Review and accept the exact offer before settlement</span></>}
+        {serverAccepted ? <><CheckCircle size={16} color="#0B5E3A" /><span style={{ fontSize: 12, color: "#0B5E3A", fontWeight: 700 }}><UiText text={"Agreement acceptance securely recorded"} /></span></> : <><Pen size={16} color="#9B7410" /><span style={{ fontSize: 12, color: "#665218", fontWeight: 700 }}><UiText text={"Review and accept the exact offer before settlement"} /></span></>}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 150px" }}>
         {isPartnerFacility && !disbursement && (
           <div style={{ display: "flex", gap: 10, padding: 14, marginBottom: 14, borderRadius: 14, background: "#FFF7D8", border: "1px solid #EFE0A4" }}>
             <Building2 size={20} color="#7B6418" style={{ flexShrink: 0 }} />
-            <div><strong style={{ fontSize: 12, color: "#63551F" }}>Direct to verified payee</strong><div style={{ marginTop: 3, fontSize: 11, lineHeight: 1.5, color: "#75672F" }}>{payee}{offer?.invoiceReference ? ` · ${offer.invoiceReference}` : ""}. You repay Kuula under this agreement after Kuula confirms full provider settlement.</div></div>
+            <div><strong style={{ fontSize: 12, color: "#63551F" }}><UiText text={"Direct to verified payee"} /></strong><div style={{ marginTop: 3, fontSize: 11, lineHeight: 1.5, color: "#75672F" }}>{payee}<UiText text={offer?.invoiceReference ? ` · ${offer.invoiceReference}` : ""} /><UiText text={". You repay Kuula under this agreement after Kuula confirms full provider settlement."} /></div></div>
           </div>
         )}
 
@@ -193,49 +194,46 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
               {disbursement.status === "settled" ? <CheckCircle size={22} color="#0B5E3A" /> : disbursementTerminal ? <AlertTriangle size={22} color="#B45309" /> : <Clock3 size={22} color="#0B5E3A" />}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#13251C" }}>{disbursement.status === "settled" ? `Full principal settled to ${beneficiaryLabel}` : disbursementTerminal ? "Kuula review required" : disbursement.status === "awaiting_release" ? "Approved · awaiting Kuula's final payment authorization" : `Settling approved credit to ${beneficiaryLabel}`}</div>
-                <div style={{ fontSize: 11, color: "#718078", marginTop: 2 }}>{disbursement.network.toUpperCase()} Mobile Money · {disbursement.legs.length} transfer{disbursement.legs.length === 1 ? "" : "s"}</div>
+                <div style={{ fontSize: 11, color: "#718078", marginTop: 2 }}>{disbursement.network.toUpperCase()}<UiText text={" Mobile Money · "} />{disbursement.legs.length}<UiText text={" transfer"} /><UiText text={disbursement.legs.length === 1 ? "" : "s"} /></div>
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 12, color: "#68766F" }}>Provider-confirmed</span><strong style={{ fontSize: 13, color: "#0B5E3A" }}>{formatUGX(disbursement.totalSettled)} / {formatUGX(disbursement.approvedAmount)}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 12, color: "#68766F" }}><UiText text={"Provider-confirmed"} /></span><strong style={{ fontSize: 13, color: "#0B5E3A" }}>{formatUGX(disbursement.totalSettled)} / {formatUGX(disbursement.approvedAmount)}</strong></div>
             <div style={{ height: 8, borderRadius: 8, background: "#E8EFEB", overflow: "hidden", marginBottom: 14 }}><div style={{ width: `${Math.min(100, (disbursement.totalSettled / Math.max(1, disbursement.approvedAmount)) * 100)}%`, height: "100%", background: "#0B5E3A" }} /></div>
             <div style={{ display: "grid", gap: 8 }}>
-              {disbursement.legs.map((leg) => <div key={leg.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, background: "#F7FAF8" }}><div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}>Transfer {leg.sequence}</div><div style={{ fontSize: 10, color: "#809087", marginTop: 2 }}>{leg.status.replace(/_/g, " ")}</div></div><strong style={{ fontSize: 12, color: leg.status === "settled" ? "#0B5E3A" : "#4B5C53" }}>{formatUGX(leg.amount)}</strong></div>)}
+              {disbursement.legs.map((leg) => <div key={leg.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, background: "#F7FAF8" }}><div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}><UiText text={"Transfer "} />{leg.sequence}</div><div style={{ fontSize: 10, color: "#809087", marginTop: 2 }}>{leg.status.replace(/_/g, " ")}</div></div><strong style={{ fontSize: 12, color: leg.status === "settled" ? "#0B5E3A" : "#4B5C53" }}>{formatUGX(leg.amount)}</strong></div>)}
             </div>
-            {disbursement.status !== "settled" && <p style={{ fontSize: 11, color: "#718078", lineHeight: 1.5, margin: "12px 0 0" }}>Kuula sends only one transfer at a time. The next transfer starts only after the previous one is confirmed by the payment provider.</p>}
+            {disbursement.status !== "settled" && <p style={{ fontSize: 11, color: "#718078", lineHeight: 1.5, margin: "12px 0 0" }}><UiText text={"Kuula sends only one transfer at a time. The next transfer starts only after the previous one is confirmed by the payment provider."} /></p>}
           </div>
         )}
 
         <div style={{ background: "white", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ textAlign: "center", borderBottom: "2px solid #EEF2EF", paddingBottom: 16 }}><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}>KUULA MICROFINANCE LIMITED</p><h2 style={{ fontSize: 18, fontWeight: 800, color: "#13251C", margin: "4px 0" }}>{isPartnerFacility ? "RESTRICTED-PURPOSE CREDIT AGREEMENT" : "LOAN AGREEMENT"}</h2><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}>Agreement No: {agreementNo}</p></div>
-          {clauses.map(({ title, body }) => <div key={title}><p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: "0 0 4px" }}>{title}</p><p style={{ fontSize: 12, color: "#68766F", margin: 0, lineHeight: 1.7 }}>{body}</p></div>)}
+          <div style={{ textAlign: "center", borderBottom: "2px solid #EEF2EF", paddingBottom: 16 }}><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}><UiText text={"KUULA MICROFINANCE LIMITED"} /></p><h2 style={{ fontSize: 18, fontWeight: 800, color: "#13251C", margin: "4px 0" }}><UiText text={isPartnerFacility ? "RESTRICTED-PURPOSE CREDIT AGREEMENT" : "LOAN AGREEMENT"} /></h2><p style={{ fontSize: 11, color: "#89948E", margin: 0 }}><UiText text={"Agreement No: "} />{agreementNo}</p></div>
+          {clauses.map(({ title, body }) => <div key={title}><p style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", margin: "0 0 4px" }}><UiText text={title} /></p><p style={{ fontSize: 12, color: "#68766F", margin: 0, lineHeight: 1.7 }}>{body}</p></div>)}
           {!serverAccepted && <div style={{ padding: 14, borderRadius: 12, background: "#F3F9F5", border: "1px solid #CDE2D5" }}>
-            <strong style={{ fontSize: 13, color: "#1C4A31" }}>Sign your exact loan offer</strong>
-            <p style={{ color: "#50645B", fontSize: 12 }}>Your typed name and consent will be attached to the server-recorded agreement. Signing does not disburse money; an independent Kuula staff release is still required.</p>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700 }}>Registered full name
-              <input type="text" autoComplete="name" value={signatureName} onChange={event => setSignatureName(event.target.value)}
+            <strong style={{ fontSize: 13, color: "#1C4A31" }}><UiText text={"Sign your exact loan offer"} /></strong>
+            <p style={{ color: "#50645B", fontSize: 12 }}><UiText text={"Your typed name and consent will be attached to the server-recorded agreement. Signing does not disburse money; an independent Kuula staff release is still required."} /></p>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700 }}><UiText text={"Registered full name "} /><input type="text" autoComplete="name" value={signatureName} onChange={event => setSignatureName(event.target.value)}
                 placeholder={borrower} style={{ display: "block", width: "100%", marginTop: 6, padding: 12, border: "1px solid #D1E4D8", borderRadius: 8 }} />
             </label>
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12, fontSize: 12 }}>
-              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} />
-              I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement.
-            </label>
+              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} /><UiText text={" I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement. "} /></label>
           </div>}
           <div style={{fontSize:12,color:"#374151",padding:12,background:"#F0FDF4",borderRadius:10}}>
-            <strong>Additional approved charges: {formatUGX(serviceFee)}</strong>
-            {charges ? (charges.length ? charges.map((charge,i)=><p key={i}>{charge.label}: {formatUGX(charge.amount)}</p>) : <p>No additional charges.</p>) : <p>{chargeError || "Verifying final fees..."}</p>}
+            <strong><UiText text={"Additional approved charges: "} />{formatUGX(serviceFee)}</strong>
+            {charges ? (charges.length ? charges.map((charge,i)=><p key={i}><UiText text={charge.label} />: {formatUGX(charge.amount)}</p>) : <p><UiText text={"No additional charges."} /></p>) : <p>{chargeError || "Verifying final fees..."}</p>}
           </div>
-          {serverAccepted && <div style={{ border: "2px solid #0B5E3A", borderRadius: 12, padding: 16, background: "#EDF8F2" }}><p style={{ fontSize: 13, fontWeight: 700, color: "#0B5E3A", margin: "0 0 4px" }}>Server-recorded Acceptance</p><p style={{ fontSize: 15, color: "#1F2937", margin: "0 0 4px", fontWeight: 700 }}>{borrower}</p><p style={{ fontSize: 11, color: "#0B5E3A", margin: 0 }}>Accepted {fmtDate(acceptedAt)} · App {env.APP_VERSION}</p></div>}
+          {serverAccepted && <div style={{ border: "2px solid #0B5E3A", borderRadius: 12, padding: 16, background: "#EDF8F2" }}><p style={{ fontSize: 13, fontWeight: 700, color: "#0B5E3A", margin: "0 0 4px" }}><UiText text={"Server-recorded Acceptance"} /></p><p style={{ fontSize: 15, color: "#1F2937", margin: "0 0 4px", fontWeight: 700 }}>{borrower}</p><p style={{ fontSize: 11, color: "#0B5E3A", margin: 0 }}><UiText text={"Accepted "} />{fmtDate(acceptedAt)}<UiText text={" · App "} />{env.APP_VERSION}</p></div>}
         </div>
       </div>
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #E8EEEA" }}>
-        {error && <p style={{ fontSize: 12, color: "#B91C1C", margin: "0 0 10px", textAlign: "center" }}>{error}</p>}
-        {!offer ? <button disabled style={{ width: "100%", height: 52, borderRadius: 14, border: 0 }}>Loading offer…</button> : disbursement ? (
-          <button onClick={() => onNavigate(disbursement.status === "settled" ? "loan-detail" : "home")} className="kuula-primary" style={{ width: "100%", height: 52 }}>{disbursement.status === "settled" ? "View Active Loan" : "Return Home"}</button>
+        {error && <p style={{ fontSize: 12, color: "#B91C1C", margin: "0 0 10px", textAlign: "center" }}><UiText text={error} /></p>}
+        {!offer ? <button disabled style={{ width: "100%", height: 52, borderRadius: 14, border: 0 }}><UiText text={"Loading offer…"} /></button> : disbursement ? (
+          <button onClick={() => onNavigate(disbursement.status === "settled" ? "loan-detail" : "home")} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={disbursement.status === "settled" ? "View Active Loan" : "Return Home"} /></button>
         ) : !serverAccepted ? (
-          <button onClick={acceptAgreement} disabled={busy || !charges || !!chargeError || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Recording acceptance…" : "Accept Credit Agreement"}</button>
+          <button onClick={acceptAgreement} disabled={busy || !charges || !!chargeError || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={busy ? "Recording acceptance…" : "Accept Credit Agreement"} /></button>
         ) : (
-          <button onClick={requestDisbursement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}>{busy ? "Starting secure settlement…" : isPartnerFacility ? `Pay ${payee}` : "Request Mobile-Money Disbursement"}</button>
+          <button onClick={requestDisbursement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={busy ? "Starting secure settlement…" : isPartnerFacility ? `Pay ${payee}` : "Request Mobile-Money Disbursement"} /></button>
         )}
       </div>
     </div>

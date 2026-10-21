@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { MessageSquareText, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, type ClipboardEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -109,7 +110,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
       </div>
 
       <form onSubmit={verify} noValidate>
-        <div className="kx-otp" role="group" aria-label="Verification code">
+        <div className="kx-otp" role="group" aria-label={uiText("Verification code")}>
           {otp.map((digit, i) => (
             <input
               key={i}
@@ -118,7 +119,7 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
               type="text"
               inputMode="numeric"
               autoComplete={i === 0 ? "one-time-code" : "off"}
-              aria-label={`Digit ${i + 1}`}
+              aria-label={uiText(`Digit ${i + 1}`)}
               maxLength={1}
               value={digit}
               autoFocus={i === 0}
@@ -130,10 +131,10 @@ export function PhoneVerifyScreen({ onNavigate }: Props) {
         </div>
 
         <div className="kx-auth-stack" style={{ marginTop: 22 }}>
-          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>}
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><UiText text={error} /></div>}
           {resent && !error && <div className="kx-alert kx-alert--success" role="status"><CheckCircle2 size={16} />{t("phoneVerify.codeResent")}</div>}
           <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={!filled || verifying || locked}>
-            {locked ? `Locked · ${formatLockout(lockoutRemaining)}` : verifying ? <><span className="kx-spinner" />Verifying…</> : t("phoneVerify.verifyAndContinue")}
+            {locked ? `Locked · ${formatLockout(lockoutRemaining)}` : verifying ? <><span className="kx-spinner" /><UiText text={"Verifying…"} /></> : t("phoneVerify.verifyAndContinue")}
           </button>
         </div>
       </form>

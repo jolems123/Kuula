@@ -1,3 +1,4 @@
+import { UiText } from "../../../i18n/ui-text";
 import { ArrowLeft, Camera, Edit2, Star, TrendingUp, UserCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BottomNav } from "../BottomNav";
@@ -52,7 +53,7 @@ export function ProfileScreen({ onNavigate }: Props) {
           </div>
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 20, fontWeight: 800, color: "white", margin: 0 }}>{user?.fullName ?? "—"}</p>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", margin: "2px 0 0" }}>{user?.phone ?? "—"} · {user?.district ?? ""}, Uganda</p>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", margin: "2px 0 0" }}>{user?.phone ?? "—"} · {user?.district ?? ""}<UiText text={", Uganda"} /></p>
             {user?.verified && (
               <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, color: "#178654", background: "rgba(255,255,255,0.95)", padding: "3px 12px", borderRadius: 20, marginTop: 8 }}>{t("profile.verifiedAccount")}</span>
             )}
@@ -70,7 +71,7 @@ export function ProfileScreen({ onNavigate }: Props) {
               <div key={label} style={{ flex: 1, background: "white", borderRadius: 12, padding: "12px 8px", textAlign: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.04)" }}>
                 <Icon size={14} color={color} style={{ margin: "0 auto 4px" }} />
                 <p style={{ fontSize: 18, fontWeight: 900, color: "#1F2937", margin: 0 }}>{value}</p>
-                <p style={{ fontSize: 9, color: "#9CA3AF", margin: 0 }}>{label}</p>
+                <p style={{ fontSize: 9, color: "#9CA3AF", margin: 0 }}><UiText text={label} /></p>
                 <p style={{ fontSize: 9, color, fontWeight: 700, margin: "2px 0 0" }}>{sub}</p>
               </div>
             ))}
@@ -81,7 +82,7 @@ export function ProfileScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>{t("profile.personalInfo")}</p>
             {rows.map((r, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: i < rows.length - 1 ? "1px solid #F3F4F6" : "none" }}>
-                <span style={{ fontSize: 12, color: "#9CA3AF" }}>{r.label}</span>
+                <span style={{ fontSize: 12, color: "#9CA3AF" }}><UiText text={r.label} /></span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#1F2937", maxWidth: 180, textAlign: "right", wordBreak: "break-word" }}>{r.value}</span>
               </div>
             ))}

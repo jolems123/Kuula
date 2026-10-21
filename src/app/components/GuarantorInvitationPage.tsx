@@ -1,3 +1,4 @@
+import { UiText } from "../../i18n/ui-text";
 import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { api } from "../api/client";
@@ -56,29 +57,29 @@ export function GuarantorInvitationPage() {
     finally {setPending(false);}
   }
   return <main style={{maxWidth:500,margin:"5vh auto",padding:24,background:"white",borderRadius:18}}>
-    <h1 style={{color:"#0B5E3A",fontWeight:800}}>Kuula guarantor invitation</h1>
-    <p>Someone has nominated you as a possible guarantor. You have no obligation to guarantee or repay a debt merely by opening this page or expressing interest.</p>
-    {!accessToken && <p>To examine and sign final loan terms, register or sign in with your own Kuula account and complete normal phone and identity verification. Reopen the invitation afterwards.</p>}
-    {status && <p role="status">{status}</p>}
+    <h1 style={{color:"#0B5E3A",fontWeight:800}}><UiText text={"Kuula guarantor invitation"} /></h1>
+    <p><UiText text={"Someone has nominated you as a possible guarantor. You have no obligation to guarantee or repay a debt merely by opening this page or expressing interest."} /></p>
+    {!accessToken && <p><UiText text={"To examine and sign final loan terms, register or sign in with your own Kuula account and complete normal phone and identity verification. Reopen the invitation afterwards."} /></p>}
+    {status && <p role="status"><UiText text={status} /></p>}
     {terms ? <section style={{display:"grid",gap:12}}>
-      <h2>Review proposed liability</h2>
-      <p>Borrower: {terms.borrower}</p>
-      <p>Loan principal: UGX {terms.principal.toLocaleString()}</p>
-      <p><strong>Maximum guarantee amount: UGX {terms.totalLiability.toLocaleString()}</strong></p>
-      <p>Loan term: {terms.termDays} days</p>
+      <h2><UiText text={"Review proposed liability"} /></h2>
+      <p><UiText text={"Borrower: "} />{terms.borrower}</p>
+      <p><UiText text={"Loan principal: UGX "} />{terms.principal.toLocaleString()}</p>
+      <p><strong><UiText text={"Maximum guarantee amount: UGX "} />{terms.totalLiability.toLocaleString()}</strong></p>
+      <p><UiText text={"Loan term: "} />{terms.termDays}<UiText text={" days"} /></p>
       <p>{terms.disclosure}</p>
-      <label>Type your verified legal name<input className="kx-input" value={signedName} onChange={e=>setSignedName(e.target.value)}/></label>
-      <label><input type="checkbox" checked={liability} onChange={e=>setLiability(e.target.checked)}/> I understand the maximum potential liability and voluntarily agree to guarantee repayment under these terms.</label>
-      <label><input type="checkbox" checked={advice} onChange={e=>setAdvice(e.target.checked)}/> I have been advised to seek independent legal advice and had the opportunity to do so.</label>
-      <button type="button" disabled={pending || !liability || !advice} onClick={requestSignatureCode}>Send signature verification SMS</button>
-      <label>SMS verification code<input className="kx-input" inputMode="numeric" maxLength={6} value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/[^0-9]/g,""))}/></label>
-      <button type="button" disabled={pending || otpCode.length!==6} onClick={verifySignatureCode}>Verify signature code</button>
-      <button type="button" className="kuula-primary" disabled={pending || !liability || !advice || !otpVerified} onClick={sign}>Accept guarantor undertaking</button>
+      <label><UiText text={"Type your verified legal name"} /><input className="kx-input" value={signedName} onChange={e=>setSignedName(e.target.value)}/></label>
+      <label><input type="checkbox" checked={liability} onChange={e=>setLiability(e.target.checked)}/><UiText text={" I understand the maximum potential liability and voluntarily agree to guarantee repayment under these terms."} /></label>
+      <label><input type="checkbox" checked={advice} onChange={e=>setAdvice(e.target.checked)}/><UiText text={" I have been advised to seek independent legal advice and had the opportunity to do so."} /></label>
+      <button type="button" disabled={pending || !liability || !advice} onClick={requestSignatureCode}><UiText text={"Send signature verification SMS"} /></button>
+      <label><UiText text={"SMS verification code"} /><input className="kx-input" inputMode="numeric" maxLength={6} value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/[^0-9]/g,""))}/></label>
+      <button type="button" disabled={pending || otpCode.length!==6} onClick={verifySignatureCode}><UiText text={"Verify signature code"} /></button>
+      <button type="button" className="kuula-primary" disabled={pending || !liability || !advice || !otpVerified} onClick={sign}><UiText text={"Accept guarantor undertaking"} /></button>
     </section> : <div style={{display:"grid",gap:12}}>
-      <button type="button" disabled={pending || !inviteToken} onClick={()=>respond("interested")}>I am interested in learning more</button>
-      <button type="button" disabled={pending || !inviteToken || !accessToken} onClick={readTerms} className="kuula-primary">Review final loan terms</button>
-      <button type="button" disabled={pending || !inviteToken} onClick={()=>respond("decline")}>Decline invitation</button>
+      <button type="button" disabled={pending || !inviteToken} onClick={()=>respond("interested")}><UiText text={"I am interested in learning more"} /></button>
+      <button type="button" disabled={pending || !inviteToken || !accessToken} onClick={readTerms} className="kuula-primary"><UiText text={"Review final loan terms"} /></button>
+      <button type="button" disabled={pending || !inviteToken} onClick={()=>respond("decline")}><UiText text={"Decline invitation"} /></button>
     </div>}
-    <p style={{fontSize:12,color:"#68766F"}}>This is a separate voluntary undertaking. Never send your ID or password to a borrower.</p>
+    <p style={{fontSize:12,color:"#68766F"}}><UiText text={"This is a separate voluntary undertaking. Never send your ID or password to a borrower."} /></p>
   </main>;
 }

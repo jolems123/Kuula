@@ -1,3 +1,5 @@
+import { useReturnNavigation } from "../../lib/return-navigation";
+import { UiText, uiText } from "../../../i18n/ui-text";
 import {
   ArrowLeft, User, Bell, Shield, LifeBuoy, Info, ChevronRight, Globe,
 } from "lucide-react";
@@ -20,6 +22,7 @@ const menuItems = [
 ];
 
 export function SettingsScreen({ onNavigate }: Props) {
+  const goBack = useReturnNavigation("home");
   const { t, i18n } = useTranslation();
   const { state } = useAppContext();
   const user = state.user;
@@ -42,7 +45,7 @@ export function SettingsScreen({ onNavigate }: Props) {
         style={{ background: "linear-gradient(135deg, #0B5E3A, #064A2E)" }}
       >
         <button
-          onClick={() => onNavigate("home")}
+          onClick={goBack}
           style={{
             width: 36,
             height: 36,
@@ -72,7 +75,7 @@ export function SettingsScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 13, color: "#6B7280" }}>{user?.phone ?? "—"}</p>
           <div className="flex items-center gap-1 mt-0.5">
             <div style={{ width: 6, height: 6, borderRadius: 3, background: user?.verified ? "#178654" : "#9B6F15" }} />
-            <span style={{ fontSize: 11, color: user?.verified ? "#178654" : "#9B6F15", fontWeight: 500 }}>{user?.verified ? t("settings.verifiedAccount") : "Verification pending"}</span>
+            <span style={{ fontSize: 11, color: user?.verified ? "#178654" : "#9B6F15", fontWeight: 500 }}><UiText text={user?.verified ? t("settings.verifiedAccount") : "Verification pending"} /></span>
           </div>
         </div>
         <button
@@ -103,9 +106,9 @@ export function SettingsScreen({ onNavigate }: Props) {
               <Globe size={17} color="#0B5E3A" />
             </div>
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}>App Language</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", margin: 0 }}><UiText text={"App Language"} /></p>
               <p style={{ fontSize: 11, color: "#9CA3AF", margin: "1px 0 0" }}>
-                {i18n.language === "en" ? "English" : i18n.language === "lg" ? "Oluganda" : i18n.language === "sw" ? "Kiswahili" : i18n.language}
+                <UiText text={i18n.resolvedLanguage === "en" ? "English" : i18n.resolvedLanguage === "lg" ? "Oluganda" : i18n.resolvedLanguage === "sw" ? "Kiswahili" : i18n.resolvedLanguage} />
               </p>
             </div>
           </div>
@@ -117,8 +120,8 @@ export function SettingsScreen({ onNavigate }: Props) {
           Do not show non-persistent local toggles that could mislead customers. */}
       <button type="button" onClick={() => onNavigate("notification-settings")} className="mx-4 mt-3 p-4 rounded-2xl"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", border: 0, textAlign: "left", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-        <span><strong style={{ display: "block", color: "#1F2937", fontSize: 13 }}>Notification preferences</strong>
-          <span style={{ fontSize: 11, color: "#6B7280" }}>Manage SMS and push notifications</span></span>
+        <span><strong style={{ display: "block", color: "#1F2937", fontSize: 13 }}><UiText text={"Notification preferences"} /></strong>
+          <span style={{ fontSize: 11, color: "#6B7280" }}><UiText text={"Manage SMS and push notifications"} /></span></span>
         <ChevronRight size={16} color="#6B7280" />
       </button>
 
@@ -158,8 +161,8 @@ export function SettingsScreen({ onNavigate }: Props) {
                 <Icon size={18} color={item.color} />
               </div>
               <div className="flex-1">
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{menuItemI18n[item.screen]?.label ?? item.label}</p>
-                <p style={{ fontSize: 11, color: "#9CA3AF" }}>{menuItemI18n[item.screen]?.subtitle ?? item.subtitle}</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}><UiText text={menuItemI18n[item.screen]?.label ?? item.label} /></p>
+                <p style={{ fontSize: 11, color: "#9CA3AF" }}><UiText text={menuItemI18n[item.screen]?.subtitle ?? item.subtitle} /></p>
               </div>
               <ChevronRight size={16} color={isHovered ? "#0B5E3A" : "#D1D5DB"} style={{ transition: "color 0.15s", transform: isHovered ? "translateX(2px)" : "none" }} />
             </button>

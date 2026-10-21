@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../i18n/ui-text";
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Minus, Plus, LocateFixed } from "lucide-react";
 import { pixelToPoint, pointToPixel, type LocationPoint } from "../lib/location";
@@ -32,8 +33,8 @@ export function BusinessLocationMap({ point, onSelect }: { point: LocationPoint 
   }
   const move = (dx: number, dy: number) => setCenter(pixelToPoint(origin.x + dx, origin.y + dy, zoom));
   return <div className="kx-business-map">
-    <p className="kx-hint">Drag to move the map, zoom in, then tap your business premises to place the pin. The starting map view is Kampala; it is not your captured location.</p>
-    <div ref={viewport} className="kx-business-map__viewport" role="group" aria-label="Choose business location on map" style={{ height }}
+    <p className="kx-hint"><UiText text={"Drag to move the map, zoom in, then tap your business premises to place the pin. The starting map view is Kampala; it is not your captured location."} /></p>
+    <div ref={viewport} className="kx-business-map__viewport" role="group" aria-label={uiText("Choose business location on map")} style={{ height }}
       onPointerDown={event => { drag.current = { x: event.clientX, y: event.clientY, center }; event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={event => { if (!drag.current) return; const start = pointToPixel(drag.current.center, zoom); setCenter(pixelToPoint(start.x - event.clientX + drag.current.x, start.y - event.clientY + drag.current.y, zoom)); }}
       onPointerCancel={() => { drag.current = null; }}
@@ -44,19 +45,19 @@ export function BusinessLocationMap({ point, onSelect }: { point: LocationPoint 
         onSelect(pixelToPoint(origin.x + event.clientX - bounds.left - width / 2, origin.y + event.clientY - bounds.top - height / 2, zoom));
       }}>
       {tiles}
-      {marker && <MapPin aria-label="Business pin" size={32} fill="#0b5e3a" color="white" style={{ position: "absolute", left: marker.x - origin.x + width / 2 - 16, top: marker.y - origin.y + height / 2 - 32, pointerEvents: "none", filter: "drop-shadow(0 1px 2px #333)" }} />}
-      <a className="kx-business-map__attribution" onPointerDown={event => event.stopPropagation()} href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
+      {marker && <MapPin aria-label={uiText("Business pin")} size={32} fill="#0b5e3a" color="white" style={{ position: "absolute", left: marker.x - origin.x + width / 2 - 16, top: marker.y - origin.y + height / 2 - 32, pointerEvents: "none", filter: "drop-shadow(0 1px 2px #333)" }} />}
+      <a className="kx-business-map__attribution" onPointerDown={event => event.stopPropagation()} href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer"><UiText text={"© OpenStreetMap contributors"} /></a>
     </div>
     <div className="kx-business-map__controls">
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Zoom in map" disabled={zoom >= 19} onClick={() => setZoom(z => z + 1)}><Plus size={16} /></button>
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Zoom out map" disabled={zoom <= 3} onClick={() => setZoom(z => z - 1)}><Minus size={16} /></button>
-      <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onSelect(center)}><MapPin size={16} />Place pin at map centre</button>
-      {point && <button type="button" className="kx-btn kx-btn--secondary" onClick={() => setCenter(point)}><LocateFixed size={16} />Show my pin</button>}
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Pan map north" onClick={() => move(0, -100)}>↑</button>
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Pan map south" onClick={() => move(0, 100)}>↓</button>
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Pan map west" onClick={() => move(-100, 0)}>←</button>
-      <button type="button" className="kx-btn kx-btn--secondary" aria-label="Pan map east" onClick={() => move(100, 0)}>→</button>
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Zoom in map")} disabled={zoom >= 19} onClick={() => setZoom(z => z + 1)}><Plus size={16} /></button>
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Zoom out map")} disabled={zoom <= 3} onClick={() => setZoom(z => z - 1)}><Minus size={16} /></button>
+      <button type="button" className="kx-btn kx-btn--secondary" onClick={() => onSelect(center)}><MapPin size={16} /><UiText text={"Place pin at map centre"} /></button>
+      {point && <button type="button" className="kx-btn kx-btn--secondary" onClick={() => setCenter(point)}><LocateFixed size={16} /><UiText text={"Show my pin"} /></button>}
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Pan map north")} onClick={() => move(0, -100)}>↑</button>
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Pan map south")} onClick={() => move(0, 100)}>↓</button>
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Pan map west")} onClick={() => move(-100, 0)}>←</button>
+      <button type="button" className="kx-btn kx-btn--secondary" aria-label={uiText("Pan map east")} onClick={() => move(100, 0)}>→</button>
     </div>
-    {failed && <p role="status" className="kx-hint">Some map images could not load. Check your internet connection. You can still use GPS or enter coordinates below.</p>}
+    {failed && <p role="status" className="kx-hint"><UiText text={"Some map images could not load. Check your internet connection. You can still use GPS or enter coordinates below."} /></p>}
   </div>;
 }

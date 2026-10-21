@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../i18n/ui-text";
 /**
  * Top-level React error boundary.
  *
@@ -55,8 +56,8 @@ function FullScreenMessage({
         >
           {emoji}
         </div>
-        <h1 style={{ margin: "0 0 8px", fontSize: 20, color: "#1F2937" }}>{title}</h1>
-        <div style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.5 }}>{message}</div>
+        <h1 style={{ margin: "0 0 8px", fontSize: 20, color: "#1F2937" }}><UiText text={title} /></h1>
+        <div style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.5 }}><UiText text={message} /></div>
         {action && (
           <button
             onClick={action.onClick}
@@ -72,7 +73,7 @@ function FullScreenMessage({
               cursor: "pointer",
             }}
           >
-            {action.label}
+            <UiText text={action.label} />
           </button>
         )}
       </div>
@@ -89,11 +90,9 @@ export function ConfigErrorScreen({ errors }: { errors: string[] }) {
   return (
     <FullScreenMessage
       emoji="🛠️"
-      title="Configuration error"
+      title={uiText("Configuration error")}
       message={
-        <>
-          The app isn't configured correctly for this build:
-          <ul style={{ textAlign: "left", margin: "12px 0 0", paddingLeft: 20 }}>
+        <><UiText text={" The app isn't configured correctly for this build: "} /><ul style={{ textAlign: "left", margin: "12px 0 0", paddingLeft: 20 }}>
             {errors.map((e) => (
               <li key={e} style={{ marginBottom: 6 }}>
                 {e}
@@ -138,7 +137,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <FullScreenMessage
         emoji="⚠️"
-        title="Something went wrong"
+        title={uiText("Something went wrong")}
         message="The app hit an unexpected error. Please try again — your data is safe."
         action={{ label: "Reload app", onClick: this.handleReload }}
       />

@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { KuulaLogo } from "../brand/KuulaLogo";
@@ -17,9 +18,9 @@ interface AuthLayoutProps {
 export function AuthStory({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`kx-story${compact ? " kx-story--compact" : ""}`}>
-      <p className="kx-story__eyebrow">Kuula Microfinance</p>
-      <h1 className="kx-story__title">Access. Grow. <span>Prosper.</span></h1>
-      <p className="kx-story__lede">Everyday credit for the traders and shop owners who keep Uganda moving.</p>
+      <p className="kx-story__eyebrow"><UiText text={"Kuula Microfinance"} /></p>
+      <h1 className="kx-story__title"><UiText text={"Access. Grow. "} /><span><UiText text={"Prosper."} /></span></h1>
+      <p className="kx-story__lede"><UiText text={"Everyday credit for the traders and shop owners who keep Uganda moving."} /></p>
       <SlideIndicator />
     </div>
   );
@@ -35,7 +36,7 @@ export function AuthLayout({ children, onBack, backLabel = "Go back", logoSubtit
     <div className="kx kx-scene">
       <div className="kx-scene__top">
         {onBack && (
-          <button type="button" className="kx-scene__back" onClick={onBack} aria-label={backLabel}>
+          <button type="button" className="kx-scene__back" onClick={onBack} aria-label={uiText(backLabel)}>
             <ArrowLeft size={18} />
           </button>
         )}
@@ -45,7 +46,7 @@ export function AuthLayout({ children, onBack, backLabel = "Go back", logoSubtit
       <div className="kx-scene__story"><AuthStory /></div>
       <div className="kx-scene__panel">
         <div className="kx-glass kx-scene__card">{children}</div>
-        <p className="kx-scene__legal">© {new Date().getFullYear()} Kuula Microfinance Limited</p>
+        <p className="kx-scene__legal">© {new Date().getFullYear()}<UiText text={" Kuula Microfinance Limited"} /></p>
       </div>
     </div>
   );

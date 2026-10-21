@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { useId } from "react";
 
 interface KuulaMarkProps {
@@ -34,11 +35,11 @@ interface KuulaLogoProps {
 /** The one horizontal Kuula lockup used across the staff portal. */
 export function KuulaLogo({ size = 32, tone = "dark", subtitle = "Staff portal" }: KuulaLogoProps) {
   return (
-    <span className={`kx-logo kx-logo--${tone}`} aria-label="Kuula">
+    <span className={`kx-logo kx-logo--${tone}`} aria-label={uiText("Kuula")}>
       <KuulaMark size={size} variant={tone === "light" ? "glass" : "solid"} />
       <span className="kx-logo__text">
-        <b style={{ fontSize: Math.round(size * 0.53) }}>Kuula</b>
-        {subtitle && <small>{subtitle}</small>}
+        <b style={{ fontSize: Math.round(size * 0.53) }}><UiText text={"Kuula"} /></b>
+        {subtitle && <small><UiText text={subtitle} /></small>}
       </span>
     </span>
   );

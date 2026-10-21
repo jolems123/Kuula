@@ -77,11 +77,11 @@
   },
   "language": {
     "title": "Chagua Lugha Yako",
-    "subtitle": "Yogera oluganda olwonna mu puloguramu",
+    "subtitle": "Chagua lugha ya kutumia katika Kuula.",
     "subtitleSw": "Chagua lugha yako, programu itabadilika kabisa",
-    "currentLang": "Ya sasa",
-    "otherLangs": "Lugha Nyingine",
-    "appWillChange": "Programu yote itabadilika ku lugha ulichochagua."
+    "currentLang": "Lugha zinazopatikana",
+    "otherLangs": "Zinakuja hivi karibuni",
+    "appWillChange": "Chaguo lako linatumika katika programu ya wateja na kuhifadhiwa kwenye kifaa hiki."
   },
   "home": {
     "goodMorning": "Habari za asubuhi 👋",

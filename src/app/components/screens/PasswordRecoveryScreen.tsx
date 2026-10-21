@@ -1,3 +1,4 @@
+import { UiText, uiText } from "../../../i18n/ui-text";
 import { useState, type FormEvent } from "react";
 import { KeyRound, ShieldCheck, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { authRecoveryApi } from "../../api/auth-recovery";
@@ -57,7 +58,7 @@ export function PasswordRecoveryScreen({ onBack }: Props) {
     }
   };
 
-  const errorBox = error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} />{error}</div>;
+  const errorBox = error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={16} /><UiText text={error} /></div>;
 
   return (
     <AuthLayout onBack={onBack} backLabel="Back to log in">
@@ -65,21 +66,21 @@ export function PasswordRecoveryScreen({ onBack }: Props) {
         <div className="kx-step-enter">
           <div className="kx-auth-head">
             <div className="kx-auth-head__icon"><KeyRound size={22} /></div>
-            <h2>Reset your PIN</h2>
-            <p>We'll text a code to the phone number on your account.</p>
+            <h2><UiText text={"Reset your PIN"} /></h2>
+            <p><UiText text={"We'll text a code to the phone number on your account."} /></p>
           </div>
           <form onSubmit={requestCode} noValidate>
             <div className="kx-field">
-              <label className="kx-label" htmlFor="recover-phone">Phone number</label>
+              <label className="kx-label" htmlFor="recover-phone"><UiText text={"Phone number"} /></label>
               <div className="kx-control">
                 <span className="kx-control__prefix">+256</span>
-                <input id="recover-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder="7XX XXX XXX" autoFocus />
+                <input id="recover-phone" className="kx-input" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="username" placeholder={uiText("7XX XXX XXX")} autoFocus />
               </div>
             </div>
             <div className="kx-auth-stack" style={{ marginTop: 22 }}>
               {errorBox}
               <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={busy}>
-                {busy ? <><span className="kx-spinner" />Sending…</> : "Send code"}
+                <UiText text={busy ? <><span className="kx-spinner" />Sending…</> : "Send code"} />
               </button>
             </div>
           </form>
@@ -90,36 +91,36 @@ export function PasswordRecoveryScreen({ onBack }: Props) {
         <div className="kx-step-enter">
           <div className="kx-auth-head">
             <div className="kx-auth-head__icon"><KeyRound size={22} /></div>
-            <h2>Choose a new PIN</h2>
+            <h2><UiText text={"Choose a new PIN"} /></h2>
             <p>{message || "Enter the code we sent by SMS."}</p>
           </div>
           <form onSubmit={confirmReset} noValidate>
             <div className="kx-field">
-              <label className="kx-label" htmlFor="recover-code">SMS code</label>
+              <label className="kx-label" htmlFor="recover-code"><UiText text={"SMS code"} /></label>
               <div className="kx-control">
-                <input id="recover-code" className="kx-input" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" autoFocus />
+                <input id="recover-code" className="kx-input" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder={uiText("6-digit code")} autoFocus />
               </div>
             </div>
             <div className="kx-field">
-              <label className="kx-label" htmlFor="recover-pin">New {PIN_LENGTH}-digit PIN</label>
+              <label className="kx-label" htmlFor="recover-pin"><UiText text={"New "} />{PIN_LENGTH}<UiText text={"-digit PIN"} /></label>
               <div className="kx-control">
-                <input id="recover-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder="4 digits" style={{ letterSpacing: ".3em" }} />
-                <button type="button" className="kx-control__action" onClick={() => setShowPin((v) => !v)} aria-label={showPin ? "Hide PIN" : "Show PIN"}>
+                <input id="recover-pin" className="kx-input" value={newPin} onChange={(e) => setNewPin(digitsOnly(e.target.value))} type={showPin ? "text" : "password"} inputMode="numeric" maxLength={PIN_LENGTH} autoComplete="new-password" placeholder={uiText("4 digits")} style={{ letterSpacing: ".3em" }} />
+                <button type="button" className="kx-control__action" onClick={() => setShowPin((v) => !v)} aria-label={uiText(showPin ? "Hide PIN" : "Show PIN")}>
                   {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <span className="kx-hint">Don't reuse your Mobile Money PIN.</span>
+              <span className="kx-hint"><UiText text={"Don't reuse your Mobile Money PIN."} /></span>
             </div>
             <div className="kx-auth-stack" style={{ marginTop: 22 }}>
               {errorBox}
               <button type="submit" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" disabled={busy}>
-                {busy ? <><span className="kx-spinner" />Saving…</> : "Save new PIN"}
+                <UiText text={busy ? <><span className="kx-spinner" />Saving…</> : "Save new PIN"} />
               </button>
             </div>
           </form>
           <div className="kx-auth-foot">
-            <span>Didn't get a code?</span>
-            <button type="button" className="kx-link" onClick={() => { void requestCode(); }} disabled={busy}>Send another</button>
+            <span><UiText text={"Didn't get a code?"} /></span>
+            <button type="button" className="kx-link" onClick={() => { void requestCode(); }} disabled={busy}><UiText text={"Send another"} /></button>
           </div>
         </div>
       )}
@@ -128,10 +129,10 @@ export function PasswordRecoveryScreen({ onBack }: Props) {
         <div className="kx-step-enter">
           <div className="kx-auth-head">
             <div className="kx-auth-head__icon"><ShieldCheck size={22} /></div>
-            <h2>PIN updated</h2>
+            <h2><UiText text={"PIN updated"} /></h2>
             <p>{message || "You can now log in with your new PIN."}</p>
           </div>
-          <button type="button" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" onClick={onBack}>Back to log in</button>
+          <button type="button" className="kx-btn kx-btn--primary kx-btn--lg kx-btn--block" onClick={onBack}><UiText text={"Back to log in"} /></button>
         </div>
       )}
     </AuthLayout>
