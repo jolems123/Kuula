@@ -428,6 +428,49 @@ router.post("/guarantor-invitations/terms", authenticateToken, async (req: Reque
   res.json({terms:{applicationId:app.id,borrower:app.applicantName,principal:Number(app.amount),totalLiability:Number(app.total),termDays:app.termDays,offerExpiresAt:app.offerExpiresAt,identityName:user.fullName,requirementStatus:invite.requirement.status,disclosure:"A guarantee may require you to pay amounts the borrower fails to pay, up to the stated maximum liability. Seek independent legal advice before signing. Signing is voluntary."}});
 });
 
+// Fresh SMS proof binds the specific guarantee signature to the invited phone.
+router.post("/guarantor-invitations/sign-otp/request", authenticateToken, async (req: Request, res: Response) => {
+  const token=typeof req.body?.token==="string"?req.body.token:"";
+  if(!/^[a-f0-9]{64}$/.test(token)) throw new AppError("Invalid invitation",404);
+  const hash=crypto.createHash("sha256").update(token).digest("hex");
+  const invite=await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash:hash},include:{requirement:{include:{application:true}}}});
+  if(!invite || invite.expiresAt<=new Date() || !invite.acceptedAt || invite.declinedAt || invite.signedAt || invite.requirement.status!=="required" || invite.requirement.application.status!=="offered") throw new AppError("Invitation is not ready for signing",409);
+  const user=await prisma.user.findUnique({where:{id:req.user!.userId},select:{id:true,phone:true,phoneVerified:true,kycVerified:true}});
+  if(!user?.phoneVerified || !user.kycVerified || normalizeUgandaMobileMoneyPhone(user.phone||"")!==invite.phone || user.id===invite.requirement.application.applicantId) throw new AppError("A separate verified guarantor account is required",403);
+  if (invite.otpSentAt && Date.now()-invite.otpSentAt.getTime()<60000) throw new AppError("Wait before requesting another code",429);
+  if(invite.otpSendCount>=10) throw new AppError("Too many signature codes requested",429);
+  const pepper=process.env.OTP_PEPPER;
+  if(!pepper || pepper.length<32) throw new AppError("Secure OTP signing is not configured",503);
+  const code=String(crypto.randomInt(100000,1000000));
+  const otpHash=crypto.createHmac("sha256",pepper).update(invite.id+":"+user.id+":"+code).digest("hex");
+  const changed=await prisma.loanGuarantorInvitation.updateMany({where:{id:invite.id,signedAt:null,otpSendCount:{lt:10}},data:{otpHash,otpExpiresAt:new Date(Date.now()+10*60000),otpSentAt:new Date(),otpVerifiedAt:null,otpAttempts:0,otpSendCount:{increment:1}}});
+  if(changed.count!==1) throw new AppError("Invitation changed, retry safely",409);
+  const sent=await sendNotificationSms(invite.phone,"Kuula guarantee signature verification code: "+code+". Expires in 10 minutes. Never share this code.");
+  if(!sent) {
+    await prisma.loanGuarantorInvitation.updateMany({where:{id:invite.id,otpHash},data:{otpExpiresAt:new Date(0),otpHash:null}});
+    throw new AppError("SMS delivery was not confirmed. Signing is unavailable.",503);
+  }
+  res.json({ok:true,message:"Signature verification code sent to invited phone."});
+});
+
+router.post("/guarantor-invitations/sign-otp/verify", authenticateToken, async (req: Request, res: Response) => {
+  const token=typeof req.body?.token==="string"?req.body.token:"";
+  const code=typeof req.body?.code==="string"?req.body.code:"";
+  if(!/^[a-f0-9]{64}$/.test(token) || !/^\\d{6}$/.test(code)) throw new AppError("Invalid verification request",400);
+  const hash=crypto.createHash("sha256").update(token).digest("hex");
+  const invite=await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash:hash}});
+  if(!invite || invite.expiresAt<=new Date() || invite.signedAt || invite.declinedAt || !invite.otpHash || !invite.otpExpiresAt || invite.otpExpiresAt<=new Date() || invite.otpAttempts>=5) throw new AppError("Code expired or attempts exhausted",409);
+  const user=await prisma.user.findUnique({where:{id:req.user!.userId},select:{id:true,phone:true,phoneVerified:true,kycVerified:true}});
+  if(!user?.phoneVerified || !user.kycVerified || normalizeUgandaMobileMoneyPhone(user.phone||"")!==invite.phone) throw new AppError("Verified invited user required",403);
+  const pepper=process.env.OTP_PEPPER;
+  if(!pepper || pepper.length<32) throw new AppError("Secure OTP signing is unavailable",503);
+  const expected=crypto.createHmac("sha256",pepper).update(invite.id+":"+user.id+":"+code).digest("hex");
+  const valid=crypto.timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(invite.otpHash,"hex"));
+  const row=await prisma.loanGuarantorInvitation.updateMany({where:{id:invite.id,otpHash:invite.otpHash,otpAttempts:{lt:5},otpExpiresAt:{gt:new Date()}},data:valid?{otpVerifiedAt:new Date(),otpHash:null}:{otpAttempts:{increment:1}}});
+  if(row.count!==1 || !valid) throw new AppError("Invalid verification code",400);
+  res.json({ok:true,message:"Phone ownership confirmed for this signature."});
+});
+
 router.post("/guarantor-invitations/sign", authenticateToken, async (req: Request, res: Response) => {
   const token = typeof req.body?.token==="string" ? req.body.token : "";
   if (!/^[a-f0-9]{64}$/.test(token)) throw new AppError("Invalid invitation",404);
@@ -436,6 +479,7 @@ router.post("/guarantor-invitations/sign", authenticateToken, async (req: Reques
   const hash = crypto.createHash("sha256").update(token).digest("hex");
   const invite = await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash:hash},include:{requirement:{include:{application:true}}}});
   if(!invite || invite.expiresAt<=new Date() || invite.declinedAt || !invite.acceptedAt || invite.signedAt) throw new AppError("Invitation expired or already handled",409);
+  if(!invite.otpVerifiedAt || Date.now()-invite.otpVerifiedAt.getTime()>10*60000) throw new AppError("Complete fresh SMS verification before signing",403);
   const user = await prisma.user.findUnique({where:{id:req.user!.userId},select:{id:true,phone:true,phoneVerified:true,kycVerified:true,fullName:true}});
   if(!user || !user.kycVerified || !user.phoneVerified || normalizeUgandaMobileMoneyPhone(user.phone || "")!==invite.phone)
     throw new AppError("Independent verified identity and matching phone number required",403);
