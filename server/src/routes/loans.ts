@@ -458,7 +458,7 @@ router.post("/guarantor-invitations/sign-otp/request", authenticateToken, async 
 router.post("/guarantor-invitations/sign-otp/verify", authenticateToken, async (req: Request, res: Response) => {
   const token=typeof req.body?.token==="string"?req.body.token:"";
   const code=typeof req.body?.code==="string"?req.body.code:"";
-  if(!/^[a-f0-9]{64}$/.test(token) || !/^\\d{6}$/.test(code)) throw new AppError("Invalid verification request",400);
+  if(!/^[a-f0-9]{64}$/.test(token) || !/^[0-9]{6}$/.test(code)) throw new AppError("Invalid verification request",400);
   const hash=crypto.createHash("sha256").update(token).digest("hex");
   const invite=await prisma.loanGuarantorInvitation.findUnique({where:{invitationTokenHash:hash}});
   if(!invite || invite.expiresAt<=new Date() || invite.signedAt || invite.declinedAt || !invite.otpHash || !invite.otpExpiresAt || invite.otpExpiresAt<=new Date() || invite.otpAttempts>=5) throw new AppError("Code expired or attempts exhausted",409);
