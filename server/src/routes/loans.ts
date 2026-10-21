@@ -2,7 +2,6 @@ import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
 import { sendNotificationSms } from "../lib/sms.js";
-import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
