@@ -135,3 +135,15 @@ export async function sendNotificationSms(phoneInput: string, content: string): 
   if (provider() !== "egosms") return false;
   return (await sendViaEgoSms(phone, message)).accepted;
 }
+
+
+/** Separate opt-in channel for guarantor consent invitations and signature OTPs.
+ * Never piggyback on ordinary marketing/loan-notification configuration. */
+export async function sendGuarantorSms(phoneInput: string, content: string): Promise<boolean> {
+  if (process.env.GUARANTOR_SMS_ENABLED !== "true" || !smsConfigured()) return false;
+  const phone = normalizeUgandaMobileMoneyPhone(phoneInput);
+  const message = content.replaceAll("\r", " ").replaceAll("\n", " ").slice(0, 300);
+  if (provider() === "test" && process.env.NODE_ENV === "test") return true;
+  if (provider() !== "egosms") return false;
+  return (await sendViaEgoSms(phone, message)).accepted;
+}

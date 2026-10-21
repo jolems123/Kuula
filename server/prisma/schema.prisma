@@ -558,6 +558,34 @@ model LoanGuarantorRequirement {
   agreementReference String? @map("agreement_reference")
   updatedAt DateTime @updatedAt @map("updated_at")
   application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  invitation LoanGuarantorInvitation?
   @@index([status])
   @@map("loan_guarantor_requirements")
+}
+
+
+model LoanGuarantorInvitation {
+  id String @id @default(uuid()) @db.Uuid
+  requirementId String @unique @map("requirement_id") @db.Uuid
+  fullName String @map("full_name")
+  phone String
+  relationship String
+  invitationTokenHash String @unique @map("invitation_token_hash")
+  expiresAt DateTime @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at")
+  declinedAt DateTime? @map("declined_at")
+  guarantorUserId String? @map("guarantor_user_id") @db.Uuid
+  signatureHash String? @map("signature_hash")
+  signedAt DateTime? @map("signed_at")
+  agreementSnapshot Json? @map("agreement_snapshot")
+  otpHash String? @map("otp_hash")
+  otpExpiresAt DateTime? @map("otp_expires_at")
+  otpSentAt DateTime? @map("otp_sent_at")
+  otpVerifiedAt DateTime? @map("otp_verified_at")
+  otpAttempts Int @default(0) @map("otp_attempts")
+  otpSendCount Int @default(0) @map("otp_send_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  requirement LoanGuarantorRequirement @relation(fields:[requirementId], references:[id], onDelete:Cascade)
+  @@index([phone])
+  @@map("loan_guarantor_invitations")
 }

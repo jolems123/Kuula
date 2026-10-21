@@ -92,6 +92,24 @@ const query = (values: Record<string, string | undefined>) => {
 };
 
 const nodeApi = {
+  requireGuarantor: (token:string, applicationId:string, reason:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-requirement`,{method:"POST",headers:auth(token),body:JSON.stringify({status:"required",reason})}),
+  waiveGuarantor: (token:string, applicationId:string, reason:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-waiver`,{method:"POST",headers:auth(token),body:JSON.stringify({reason})}),
+  verifyGuarantor: (token:string, applicationId:string, notes:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-verification`,{method:"POST",headers:auth(token),body:JSON.stringify({notes})}),
+  guarantorTerms: (token: string, inviteToken: string) =>
+    request<{terms:{borrower:string;principal:number;totalLiability:number;termDays:number;offerExpiresAt:string;identityName:string;disclosure:string;requirementStatus:string}}>(
+      "/api/loans/guarantor-invitations/terms", {method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken})}),
+  requestGuarantorSignatureCode:(token:string,inviteToken:string)=>request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/sign-otp/request",{method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken})}),
+  verifyGuarantorSignatureCode:(token:string,inviteToken:string,code:string)=>request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/sign-otp/verify",{method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken,code})}),
+  signGuarantorUndertaking: (token:string, inviteToken:string, signedName:string) =>
+    request<{ok:boolean;signatureHash:string;message:string}>("/api/loans/guarantor-invitations/sign", {
+      method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken,signedName,acceptedLiability:true,independentAdviceAcknowledged:true}),
+    }),
+  respondToGuarantorInvitation: (token: string, response: "interested" | "decline") =>
+    request<{ok:boolean;message:string}>("/api/loans/guarantor-invitations/respond", {method:"POST",body:JSON.stringify({token,response})}),
+  getGuarantorRequirement: (token: string, applicationId: string) =>
+    request<{ requirement: { status: string; reason?: string | null; requestedAt?: string | null } }>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-requirement`, { headers: auth(token) }),
+  nominateGuarantor: (token: string, applicationId: string, input: {fullName:string; phone:string; relationship:string; permissionToContact:true}) =>
+    request<{ invitation: {id:string; status:string; expiresAt:string}; deliveryAccepted:boolean }>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-invitation`, { method:"POST", headers: auth(token), body:JSON.stringify(input) }),
   health: () => request<{ ok: boolean; realMoneyEnabled?: boolean }>("/api/health"),
   login: (phone: string, pin: string) => request<SessionPayload>("/api/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }),
   /** Staff sign-in is phone-first; the identifier may be a phone or (legacy) email. */
