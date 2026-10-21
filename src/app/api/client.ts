@@ -92,6 +92,9 @@ const query = (values: Record<string, string | undefined>) => {
 };
 
 const nodeApi = {
+  requireGuarantor: (token:string, applicationId:string, reason:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-requirement`,{method:"POST",headers:auth(token),body:JSON.stringify({status:"required",reason})}),
+  waiveGuarantor: (token:string, applicationId:string, reason:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-waiver`,{method:"POST",headers:auth(token),body:JSON.stringify({reason})}),
+  verifyGuarantor: (token:string, applicationId:string, notes:string) => request<{requirement:{status:string}}>(`/api/loans/applications/${encodeURIComponent(applicationId)}/guarantor-verification`,{method:"POST",headers:auth(token),body:JSON.stringify({notes})}),
   guarantorTerms: (token: string, inviteToken: string) =>
     request<{terms:{borrower:string;principal:number;totalLiability:number;termDays:number;offerExpiresAt:string;identityName:string;disclosure:string;requirementStatus:string}}>(
       "/api/loans/guarantor-invitations/terms", {method:"POST",headers:auth(token),body:JSON.stringify({token:inviteToken})}),
