@@ -450,17 +450,30 @@ router.post("/guarantor-invitations/sign", authenticateToken, async (req: Reques
   await prisma.$transaction(async tx=>{
     const updated = await tx.loanGuarantorInvitation.updateMany({where:{id:invite.id,signedAt:null,declinedAt:null,expiresAt:{gt:new Date()}},data:{guarantorUserId:user.id,signatureHash,signedAt:new Date(),agreementSnapshot:snapshot}});
     if(updated.count!==1) throw new AppError("Guarantee already signed",409);
-    const changed = await tx.loanGuarantorRequirement.updateMany({where:{id:invite.requirement.id,status:"required"},data:{status:"verified",reviewedAt:new Date(),reviewedBy:user.id,evidenceReference:`kyc:user:${user.id}`,agreementReference:signatureHash}});
+    const changed = await tx.loanGuarantorRequirement.updateMany({where:{id:invite.requirement.id,status:"required"},data:{status:"signed_pending_review",reviewedAt:null,reviewedBy:null,evidenceReference:`kyc:user:${user.id}`,agreementReference:signatureHash}});
     if(changed.count!==1) throw new AppError("Requirement changed during signing",409);
   });
   await writeAuditEvent({actorId:user.id,subjectUserId:app.applicantId,action:"loan.guarantor_undertaking_recorded",resourceType:"loan_application",resourceId:app.id,metadata:{guarantorUserId:user.id,signatureHash,maximumLiability:Number(app.total),agreementVersion:snapshot.agreementVersion}});
   res.json({ok:true,signatureHash,message:"Your guarantor acceptance has been recorded."});
 });
 
-// Fail closed until a guarantor-controlled identity verification, consent, and signed
-// undertaking workflow exists. A staff-supplied reference is NOT proof of consent.
-router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (_req: Request, _res: Response) => {
-  throw new AppError("Guarantor verification is unavailable until independent identity, consent and signed undertaking validation are implemented", 503);
+// The credit approver verifies internal identity and signed evidence; no self-reported
+// external reference can mark a guarantor as verified.
+router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
+  const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : "";
+  if(notes.length<30 || notes.length>2000) throw new AppError("Document verification findings (30–2000 characters) required",400);
+  const row = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true,invitation:true}});
+  if (!row || row.status!=="signed_pending_review" || !row.invitation?.signedAt || !row.invitation.guarantorUserId || !row.invitation.signatureHash || !row.invitation.agreementSnapshot) throw new AppError("A independently signed guarantor undertaking is required",409);
+  if (row.requestedBy===req.user!.userId || row.invitation.guarantorUserId===req.user!.userId || row.application.applicantId===req.user!.userId) throw new AppError("Independent approver required",403);
+  if(row.application.status!=="offered" || !row.application.offerExpiresAt || row.application.offerExpiresAt<=new Date()) throw new AppError("Loan offer expired or unavailable",409);
+  const guarantor=await prisma.user.findUnique({where:{id:row.invitation.guarantorUserId},select:{phoneVerified:true,kycVerified:true,phone:true,deletedAt:true}});
+  if (!guarantor?.phoneVerified || !guarantor.kycVerified || guarantor.deletedAt || normalizeUgandaMobileMoneyPhone(guarantor.phone||"")!==row.invitation.phone) throw new AppError("Guarantor identity requires independent KYC validation",409);
+  const changed=await prisma.loanGuarantorRequirement.updateMany({where:{id:row.id,status:"signed_pending_review",agreementReference:row.invitation.signatureHash},data:{status:"verified",reviewedBy:req.user!.userId,reviewedAt:new Date()}});
+  if(changed.count!==1) throw new AppError("Guarantee changed during approval",409);
+  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:row.application.applicantId,action:"loan.guarantor_independently_approved",resourceType:"loan_application",resourceId:id,metadata:{notes,signatureHash:row.invitation.signatureHash,guarantorUserId:row.invitation.guarantorUserId}});
+  res.json({requirement:{status:"verified",reviewNotes:notes}});
 });
 
 router.post("/top-up", authenticateToken, (_req: Request, res: Response) => {
