@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
+import { guarantorCleared } from "../lib/guarantor-policy.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
 import { evaluateUnderwriting } from "../lib/underwriting.js";
 import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
@@ -75,6 +76,13 @@ async function recheck(application: any) {
   if (!result.approved) throw new AppError(`Loan is no longer eligible: ${result.flags.join(", ")}`, 422);
 }
 
+async function assertGuarantorCleared(applicationId: string): Promise<void> {
+  const requirement = await prisma.loanGuarantorRequirement.findUnique({ where: { applicationId } });
+  if (!guarantorCleared(requirement?.status)) {
+    throw new AppError("A required guarantor has not completed independent verification and agreement acceptance", 409);
+  }
+}
+
 function compatibleBatch(batch: Awaited<ReturnType<typeof disbursementBatchForApplication>>) {
   if (!batch) return null;
   const reference = batch.legs.find((leg) => leg.status === "pending" || leg.status === "dispatching")?.reference
@@ -95,6 +103,7 @@ router.post("/:id/accept", authenticateToken, async (req: Request, res: Response
     throw new AppError("Restricted-purpose financing must be paid directly to the verified partner, not to the customer Mobile Money account", 409);
   }
 
+  await assertGuarantorCleared(applicationId);
   const existingBatch = await disbursementBatchForApplication(applicationId);
   if (existingBatch) {
     res.json({
@@ -166,6 +175,7 @@ router.get("/disbursements/awaiting-release", authenticateToken, requirePermissi
 
 router.post("/:id/disbursement/release", authenticateToken, requirePermissions("disbursement.release"), async (req: Request, res: Response) => {
   const applicationId = String(req.params.id || "");
+  await assertGuarantorCleared(applicationId);
   const released = await releaseDisbursementBatch({ applicationId, releasedBy: req.user!.userId });
   const first = await dispatchNextDisbursementLeg(released.batchId);
   await writeAuditEvent({
