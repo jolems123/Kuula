@@ -308,6 +308,44 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   res.json({ application: mapApplication(updated) });
 });
 
+// A guarantee is a separate legal obligation, not borrower-provided consent.
+// Only an independent approver may confirm evidence and an executed undertaking.
+router.post("/applications/:id/guarantor-requirement", authenticateToken, requirePermissions("loan.review"), async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID", 400);
+  const status = String(req.body?.status || "");
+  const reason = String(req.body?.reason || "").trim();
+  if (!["required", "waived"].includes(status)) throw new AppError("Status must be required or waived", 400);
+  if (reason.length < 20 || reason.length > 2000) throw new AppError("Record a specific risk assessment reason (20–2000 characters)", 400);
+  const application = await prisma.loanApplication.findUnique({where: {id},select:{id:true,applicantId:true,status:true,businessProfile:true}});
+  if (!application?.businessProfile) throw new AppError("Business application not found",404);
+  if (!["pending","resubmitted"].includes(application.status)) throw new AppError("Application cannot be changed after decision",409);
+  const current = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
+  if (current?.status === "verified") throw new AppError("Verified guarantee cannot be replaced by this route",409);
+  const row = await prisma.loanGuarantorRequirement.upsert({
+    where:{applicationId:id},
+    create:{applicationId:id,status,reason,requestedBy:req.user!.userId,requestedAt:new Date()},
+    update:{status,reason,requestedBy:req.user!.userId,requestedAt:new Date(),reviewedBy:null,reviewedAt:null,evidenceReference:null,agreementReference:null},
+  });
+  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:application.applicantId,action:"loan.guarantor_requirement_updated",resourceType:"loan_application",resourceId:id,metadata:{status,reason}});
+  res.json({requirement:{status:row.status,reason:row.reason,requestedAt:row.requestedAt}});
+});
+
+router.post("/applications/:id/guarantor-verification", authenticateToken, requirePermissions("loan.approve"), async (req: Request, res: Response) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
+  const evidenceReference = String(req.body?.evidenceReference || "").trim();
+  const agreementReference = String(req.body?.agreementReference || "").trim();
+  if (evidenceReference.length < 12 || agreementReference.length < 12 || evidenceReference.length > 500 || agreementReference.length > 500)
+    throw new AppError("Verification and signed undertaking references are required",400);
+  const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true}});
+  if (!requirement || requirement.status !== "required" || !["pending","resubmitted"].includes(requirement.application.status)) throw new AppError("No pending required guarantee",409);
+  if (requirement.requestedBy === req.user!.userId) throw new AppError("Independent approval required",403);
+  const row = await prisma.loanGuarantorRequirement.update({where:{id:requirement.id},data:{status:"verified",reviewedBy:req.user!.userId,reviewedAt:new Date(),evidenceReference,agreementReference}});
+  await writeAuditEvent({actorId:req.user!.userId,subjectUserId:requirement.application.applicantId,action:"loan.guarantor_verified",resourceType:"loan_application",resourceId:id,metadata:{evidenceReference,agreementReference}});
+  res.json({requirement:{status:row.status,reviewedAt:row.reviewedAt}});
+});
+
 router.post("/top-up", authenticateToken, (_req: Request, res: Response) => {
   res.status(503).json({
     error: "Loan top-ups are disabled until a dedicated refinance and restructuring workflow is approved.",
@@ -335,6 +373,9 @@ router.post(
     if (!application.underwriting) throw new AppError("Application has no underwriting assessment", 409);
 
     if (decision === "approved") {
+      const guarantee = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
+      if (guarantee?.status === "required") throw new AppError("A required guarantor must independently complete verification and sign the undertaking before approval",409);
+      if (guarantee && !["waived","verified","not_required"].includes(guarantee.status)) throw new AppError("Guarantor requirement not resolved",409);
       if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
