@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import prisma from "./prisma.js";
 import { AppError } from "../middleware/error-handler.js";
+import { guarantorCleared } from "./guarantor-policy.js";
 import {
   buildMarzPayWebhookUrl,
   createPaymentReference,
@@ -276,7 +277,7 @@ async function assertGuarantorReadyForBatch(batchId: string): Promise<void> {
   const batches = await prisma.$queryRaw<Array<{application_id:string}>>(Prisma.sql`SELECT application_id FROM disbursement_batches WHERE id=${batchId}::uuid LIMIT 1`);
   if(!batches[0]) throw new AppError("Disbursement batch not found",404);
   const guarantee = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:batches[0].application_id}});
-  if(guarantee && !["not_required","waived","verified"].includes(guarantee.status)) {
+  if(!guarantorCleared(guarantee?.status)) {
     throw new AppError("Payout blocked by incomplete guarantor agreement",409);
   }
 }
@@ -429,7 +430,7 @@ async function involvedStaff(applicationId: string): Promise<Set<string>> {
  */
 export async function releaseDisbursementBatch(params: { applicationId: string; releasedBy: string }): Promise<{ batchId: string; amount: number }> {
   const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:params.applicationId}});
-  if(requirement && !["not_required","waived","verified"].includes(requirement.status)) throw new AppError("Unresolved guarantor requirement",409);
+  if(!guarantorCleared(requirement?.status)) throw new AppError("Unresolved guarantor requirement",409);
   const batches = await prisma.$queryRaw<BatchRow[]>(Prisma.sql`SELECT * FROM disbursement_batches WHERE application_id=${params.applicationId}::uuid LIMIT 1`);
   const batch = batches[0];
   if (!batch) throw new AppError("This loan has no payout waiting for release", 404);
