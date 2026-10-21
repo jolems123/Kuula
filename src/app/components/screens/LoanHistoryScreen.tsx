@@ -1,6 +1,7 @@
 import { ArrowLeft, ChevronRight, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
+import { GuarantorNomination } from "../GuarantorNomination";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 
@@ -97,9 +98,8 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
           const canOpenLiveDetail = ["active", "overdue"].includes(loan.status);
           const canOpenOffer = ["pending", "resubmitted", "offered", "disbursing", "rejected", "failed"].includes(loan.status);
           const action = canOpenLiveDetail ? () => onNavigate("loan-detail") : canOpenOffer ? () => onNavigate("loan-approval") : undefined;
-          const Wrapper = action ? "button" : "div";
           return (
-            <Wrapper key={loan.id} {...(action ? { onClick: action } : {})} style={{ background: "white", borderRadius: 16, padding: "14px 16px", border: "1px solid #E8EEEA", boxShadow: "0 2px 6px rgba(0,0,0,0.035)", textAlign: "left", width: "100%", cursor: action ? "pointer" : "default" }}>
+            <div key={loan.id} style={{ background: "white", borderRadius: 16, padding: "14px 16px", border: "1px solid #E8EEEA", boxShadow: "0 2px 6px rgba(0,0,0,0.035)", textAlign: "left", width: "100%", cursor: action ? "pointer" : "default" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 800, color: "#1F2937", margin: 0 }}>{ugx(loan.amount)}</p>
@@ -107,6 +107,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 800, color: style.color, background: style.bg, padding: "4px 9px", borderRadius: 20 }}>{style.label}</span>{action && <ChevronRight size={14} color="#A6B1AB" />}</div>
               </div>
+              {action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}>View application details</button>}
               <div style={{ marginTop: 10, borderTop: "1px solid #F0F3F1", paddingTop: 9, display: "grid", gap: 5 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Application</span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
                 <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label="Loan application progress">
@@ -132,8 +133,9 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                 {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Quoted total repayment</span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
                 {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}>Offer expires</span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
               </div>
+              {token && <GuarantorNomination applicationId={loan.id} token={token} status={loan.status} />}
               {loan.status === "paid" && <div style={{ marginTop: 9, display: "flex", gap: 5, alignItems: "center", color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}><TrendingUp size={12} /> Fully repaid</div>}
-            </Wrapper>
+            </div>
           );
         })}
 
