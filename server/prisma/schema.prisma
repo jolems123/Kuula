@@ -241,6 +241,7 @@ model LoanApplication {
   underwriting UnderwritingAssessment?
   agreementAcceptance LoanAgreementAcceptance?
   partnerFinancing PartnerFinancingRequest?
+  guarantorRequirement LoanGuarantorRequirement?
   @@index([applicantId, createdAt(sort: Desc)])
   @@index([status])
   @@index([loanId])
@@ -539,4 +540,24 @@ model PartnerFinancingRequest {
   @@index([partnerId, status, createdAt])
   @@index([marketCode, status])
   @@map("partner_financing_requests")
+}
+
+
+/// Independent guarantor verification and executed legal undertaking must be confirmed
+/// before marking a required guarantee as verified.
+model LoanGuarantorRequirement {
+  id String @id @default(uuid()) @db.Uuid
+  applicationId String @unique @map("application_id") @db.Uuid
+  status String @default("not_required")
+  reason String?
+  requestedBy String? @map("requested_by") @db.Uuid
+  requestedAt DateTime? @map("requested_at")
+  reviewedBy String? @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at")
+  evidenceReference String? @map("evidence_reference")
+  agreementReference String? @map("agreement_reference")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@index([status])
+  @@map("loan_guarantor_requirements")
 }
