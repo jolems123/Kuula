@@ -272,9 +272,19 @@ async function claimNextLeg(batchId: string): Promise<{ batch: BatchRow; leg: Le
   });
 }
 
+async function assertGuarantorReadyForBatch(batchId: string): Promise<void> {
+  const batches = await prisma.$queryRaw<Array<{application_id:string}>>(Prisma.sql`SELECT application_id FROM disbursement_batches WHERE id=${batchId}::uuid LIMIT 1`);
+  if(!batches[0]) throw new AppError("Disbursement batch not found",404);
+  const guarantee = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:batches[0].application_id}});
+  if(guarantee && !["not_required","waived","verified"].includes(guarantee.status)) {
+    throw new AppError("Payout blocked by incomplete guarantor agreement",409);
+  }
+}
+
 export async function dispatchNextDisbursementLeg(batchId: string): Promise<{ dispatched: boolean; outcome?: MarzPayOutcome; reference?: string; sequence?: number; amount?: number; reason?: string }> {
   // Check before claiming, so a disabled switch never leaves a leg stuck in "dispatching".
   if (!marzPayConfigured()) return { dispatched: false, reason: "Real-money movement is disabled or MarzPay is not configured" };
+  await assertGuarantorReadyForBatch(batchId);
   const claimed = await claimNextLeg(batchId);
   if (!claimed) return { dispatched: false, reason: "no-dispatchable-leg" };
 
@@ -418,6 +428,8 @@ async function involvedStaff(applicationId: string): Promise<Set<string>> {
  * concurrent releases can never both proceed.
  */
 export async function releaseDisbursementBatch(params: { applicationId: string; releasedBy: string }): Promise<{ batchId: string; amount: number }> {
+  const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:params.applicationId}});
+  if(requirement && !["not_required","waived","verified"].includes(requirement.status)) throw new AppError("Unresolved guarantor requirement",409);
   const batches = await prisma.$queryRaw<BatchRow[]>(Prisma.sql`SELECT * FROM disbursement_batches WHERE application_id=${params.applicationId}::uuid LIMIT 1`);
   const batch = batches[0];
   if (!batch) throw new AppError("This loan has no payout waiting for release", 404);
