@@ -1,0 +1,33 @@
+name: Sentry Autofix Configuration Check
+
+on:
+  pull_request:
+    paths:
+      - "scripts/sentry-seer-autofix.mjs"
+      - ".github/workflows/sentry-*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/sentry-seer-autofix.mjs"
+      - ".github/workflows/sentry-*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: node --check scripts/sentry-seer-autofix.mjs
+      - name: Ensure fail-closed behavior when config is absent
+        shell: bash
+        run: |
+          if env -u SENTRY_AUTH_TOKEN -u SENTRY_ORG -u SENTRY_PROJECT -u GITHUB_TOKEN -u GITHUB_REPOSITORY node scripts/sentry-seer-autofix.mjs; then
+            echo "Expected refusal without API credentials" >&2
+            exit 1
+          fi
