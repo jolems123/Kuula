@@ -91,8 +91,8 @@ try {
   // Issue #117: unassigned loan.review personnel must not see sensitive case details.
   const operationsPath = `/api/operations/applications/${id}`;
   for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
-    await call("GET", endpoint, {token: officer.token, expect: 404});
-    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 404});
+    await call("GET", endpoint, {token: officer.token, expect: 403});
+    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
     await call("GET", endpoint, {token: admin.token, expect: 200});
   }
   const photoPath = `/api/loans/applications/${id}/business-photos`;
@@ -118,7 +118,7 @@ try {
   await call("POST", `/api/operations/applications/${id}/assign`, { token: admin.token, body: { level: 1, assigneeId: officer.id } });
   for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
     await call("GET", endpoint, {token: officer.token, expect: 200});
-    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 404});
+    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
     await call("GET", endpoint, {token: admin.token, expect: 200});
   }
   await call("POST", `/api/operations/applications/${id}/evaluation`, {
