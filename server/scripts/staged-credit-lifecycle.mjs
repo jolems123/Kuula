@@ -56,6 +56,20 @@ try {
     update: { pinHash, phoneVerified: true, kycVerified: true, role: "customer", deletedAt: null },
     create: { phone, fullName: "Staged Trader", role: "customer", pinHash, phoneVerified: true, kycVerified: true, termsAcceptedAt: new Date() },
   });
+  // This isolated CI borrower must satisfy the same reviewed-document gate as real borrowers.
+  // No production bypass: the fixture exists only in NODE_ENV=test.
+  if (process.env.NODE_ENV !== "test") throw new Error("KYC test fixture must never run outside NODE_ENV=test");
+  const priorKyc = await prisma.kycSubmission.findFirst({where:{userId:customerUser.id},orderBy:{version:"desc"}});
+  if (!priorKyc) {
+    await prisma.kycSubmission.create({data:{
+      userId:customerUser.id,version:1,status:"verified",fullName:customerUser.fullName,
+      nationalId:"CM900000000077",dateOfBirth:new Date("1990-01-01T00:00:00.000Z"),
+      frontRef:"ci-fixture/front.jpg",backRef:"ci-fixture/back.jpg",portraitRef:"ci-fixture/portrait.jpg",
+      frontMime:"image/jpeg",backMime:"image/jpeg",portraitMime:"image/jpeg",
+      provider:"isolated-ci-fixture",reviewedAt:new Date(),
+      decisionReason:"Isolated staged-credit lifecycle test KYC"
+    }});
+  }
   const expiresAt = new Date(Date.now() + 30 * 86_400_000);
   for (const [sourceType, extra] of [["mobile_money", { momoMonths: 12, momoTxnCount: 150 }], ["crb", { crbStatus: "clean" }]]) {
     await prisma.creditEvidence.upsert({
