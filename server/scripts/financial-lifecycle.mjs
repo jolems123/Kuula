@@ -81,6 +81,8 @@ try {
     exterior: testPng(255, 0, 0),
     interior: testPng(0, 255, 0),
     applicant_at_business: testPng(0, 0, 255),
+    stock_equipment: [testPng(240, 140, 10), testPng(220, 110, 15)],
+    collateral_asset: [testPng(15, 170, 160), testPng(20, 125, 175)],
   };
   await call("GET", photoPath, { expect: 401 });
   await call("POST", photoPath, { token: C, body: { photoConsent: false, photos: photoData }, expect: 400 });
@@ -88,7 +90,9 @@ try {
   await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { ...photoData, interior: photoData.exterior } }, expect: 400 });
   await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 201 });
   const photoList = await call("GET", photoPath, { token: C });
-  assert.equal(photoList.photos.length, 3);
+  assert.equal(photoList.photos.length, 7);
+  assert.equal(photoList.photos.filter(photo => photo.type === "stock_equipment").length, 2);
+  assert.equal(photoList.photos.filter(photo => photo.type === "collateral_asset").length, 2);
   assert.ok(["exterior", "interior", "applicant_at_business"].every(kind =>
     photoList.photos.some(photo => photo.type === kind)));
   await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 409 });

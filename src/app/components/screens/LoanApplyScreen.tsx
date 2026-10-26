@@ -170,7 +170,15 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     if (!file) return;
     try {
       const prepared = await prepareBusinessPhoto(file);
-      setPhotos(prev => ({ ...prev, [kind]: prepared }));
+      setPhotos(prev => {
+        if (kind === "stock_equipment" || kind === "collateral_asset") {
+          const current = prev[kind];
+          const list = Array.isArray(current) ? current : current ? [current] : [];
+          if (list.length >= 8) { setPhotoError("Maximum 8 photographs per category."); return prev; }
+          return { ...prev, [kind]: [...list, prepared] };
+        }
+        return { ...prev, [kind]: prepared };
+      });
     } catch (err) { setPhotoError(err instanceof Error ? err.message : "Unable to prepare photograph"); }
   };
 
@@ -447,11 +455,23 @@ export function LoanApplyScreen({ onNavigate }: Props) {
               <LocalizedFileInput type="file" accept="image/*" capture={camera} aria-label={uiText(label)}
                 onChange={event => { const file = event.target.files?.[0]; if (file) void pickPhoto(kind, file); event.target.value = ""; }}
                 style={{ width: "100%", fontSize: 12 }} />
-              {photos[kind] && <div style={{ marginTop: 8 }}>
-                <img src={URL.createObjectURL(photos[kind]!)} alt={label + " selected preview"} onLoad={event => URL.revokeObjectURL(event.currentTarget.src)}
-                  style={{ display: "block", maxWidth: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 10 }} />
-                <button type="button" onClick={() => setPhotos(prev => { const next = { ...prev }; delete next[kind]; return next; })} style={{ marginTop: 7, padding: 7, border: "1px solid #BBD4C5", background: "white", borderRadius: 8 }}><UiText text={"Remove or retake photo"} /></button>
-              </div>}
+              {(kind === "stock_equipment" || kind === "collateral_asset") && <p style={{fontSize:11,color:"#53635A"}}>Up to 8 different photos. Add views of separate assets or their condition, serial numbers and ownership markings.</p>}
+              {(Array.isArray(photos[kind]) ? photos[kind] : photos[kind] ? [photos[kind]] : []).map((file, index) => (
+                <div key={index} style={{marginTop:8}}>
+                  <img src={URL.createObjectURL(file)} alt={label + " photo " + (index + 1)} onLoad={event => URL.revokeObjectURL(event.currentTarget.src)}
+                    style={{display:"block",maxWidth:"100%",maxHeight:200,objectFit:"contain",borderRadius:10}} />
+                  <button type="button" onClick={() => setPhotos(prev => {
+                    const current = prev[kind];
+                    const list = Array.isArray(current) ? current : current ? [current] : [];
+                    const next = {...prev};
+                    const updated = list.filter((_,i)=>i!==index);
+                    if (updated.length) next[kind] = updated; else delete next[kind];
+                    return next;
+                  })} style={{marginTop:7,padding:7,border:"1px solid #BBD4C5",background:"white",borderRadius:8}}>
+                    <UiText text={"Remove photo " + (index + 1)} />
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
           {photoError && <p role="alert" style={{ color: "#A13A3A", fontSize: 12 }}><UiText text={photoError} /></p>}

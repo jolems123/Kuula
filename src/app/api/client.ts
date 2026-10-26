@@ -189,7 +189,7 @@ const nodeApi = {
     if (!body.url) throw new Error("Private photo link unavailable");
     return { url: body.url, temporary: false };
   },
-  uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string>) =>
+  uploadBusinessPhotos: (token: string, id: string, photos: Record<string, string | string[]>) =>
     request<{ ok: boolean; photoTypes: string[] }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
       { method: "POST", headers: auth(token), body: JSON.stringify({ photoConsent: true, photos }) }, 120000),
