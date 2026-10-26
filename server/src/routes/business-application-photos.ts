@@ -94,4 +94,42 @@ router.get("/applications/:id/business-photos/:photoId", authenticateToken, asyn
   res.json({ url: evidence.url, expiresInSeconds: evidence.expiresInSeconds });
 });
 
+
+/** Credit staff must document collateral verification; a photo alone never confers a security interest. */
+router.get("/applications/:id/collateral-assessment", authenticateToken, async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  await authorizedApplication(id, req.user!.userId, req.user!.role);
+  if (!hasPermission(req.user!.role, "loan.review")) throw new AppError("Staff credit review permission required",403);
+  const rows = await prisma.$queryRaw<{id:string;asset_description:string;ownership_evidence:string;estimated_value:bigint;verification_status:string;inspection_notes:string;reviewed_at:Date;reviewed_by:string}[]>(Prisma.sql`
+    SELECT id, asset_description, ownership_evidence, estimated_value, verification_status, inspection_notes, reviewed_at, reviewed_by
+    FROM collateral_assessments WHERE application_id=${id}::uuid ORDER BY reviewed_at DESC LIMIT 1`);
+  const photos = await prisma.$queryRaw<{id:string;photo_type:string}[]>(Prisma.sql`
+    SELECT id,photo_type FROM business_application_photos WHERE application_id=${id}::uuid AND photo_type='collateral_asset'`);
+  res.setHeader("Cache-Control","private, no-store");
+  res.json({assessment: rows[0] ? {...rows[0],estimated_value:Number(rows[0].estimated_value)} : null, photos});
+});
+
+router.post("/applications/:id/collateral-assessment", authenticateToken, async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  await authorizedApplication(id, req.user!.userId, req.user!.role);
+  if (!hasPermission(req.user!.role, "loan.review")) throw new AppError("Staff credit review permission required",403);
+  const description = typeof req.body?.assetDescription==="string" ? req.body.assetDescription.trim() : "";
+  const ownership = typeof req.body?.ownershipEvidence==="string" ? req.body.ownershipEvidence.trim() : "";
+  const notes = typeof req.body?.inspectionNotes==="string" ? req.body.inspectionNotes.trim() : "";
+  const status = req.body?.verificationStatus;
+  const value = req.body?.estimatedValue;
+  if (description.length<10 || description.length>1000 || ownership.length<10 || ownership.length>1500 || notes.length<20 || notes.length>3000)
+    throw new AppError("Asset, ownership findings, and inspection notes must be documented",400);
+  if (!["pending","inspected","rejected"].includes(status)) throw new AppError("Invalid assessment decision",400);
+  if (!Number.isSafeInteger(value) || value<0 || value>1000000000000) throw new AppError("Enter an integer UGX valuation",400);
+  const photo = await prisma.$queryRaw<{id:string}[]>(Prisma.sql`SELECT id FROM business_application_photos WHERE application_id=${id}::uuid AND photo_type='collateral_asset' LIMIT 1`);
+  if (status==="inspected" && !photo[0]) throw new AppError("An asset photograph is required before recording an inspection",409);
+  const idNew=crypto.randomUUID();
+  await prisma.$executeRaw(Prisma.sql`
+    INSERT INTO collateral_assessments (id,application_id,reviewed_by,asset_description,ownership_evidence,estimated_value,verification_status,inspection_notes)
+    VALUES (${idNew}::uuid,${id}::uuid,${req.user!.userId}::uuid,${description},${ownership},${BigInt(value)},${status},${notes})`);
+  await writeAuditEvent({actorId:req.user!.userId,action:"loan.collateral_assessment_recorded",resourceType:"loan_application",resourceId:id,metadata:{assessmentId:idNew,status,photoPresent:Boolean(photo[0])}});
+  res.status(201).json({ok:true,assessmentId:idNew,verificationStatus:status});
+});
+
 export default router;

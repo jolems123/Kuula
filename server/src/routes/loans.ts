@@ -415,7 +415,7 @@ router.post("/guarantor-invitations/respond", async (req: Request, res: Response
 // Guarantors must have a reviewed, complete three-photo identity evidence set.
 async function requireGuarantorPhotoEvidence(userId: string): Promise<string> {
   const record = await prisma.kycSubmission.findFirst({
-    where: { userId, status: "verified", frontRef: { not: null }, backRef: { not: null }, portraitRef: { not: null } },
+    where: { userId, status: "verified", frontRef: { not: "" }, backRef: { not: "" }, portraitRef: { not: null } },
     orderBy: { version: "desc" },
     select: { id: true },
   });

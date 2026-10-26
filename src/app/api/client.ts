@@ -172,6 +172,8 @@ const nodeApi = {
   getCollections: (token: string) => request<{ accounts: Array<Record<string, unknown>>; activities: Array<Record<string, unknown>> }>("/api/admin/collections", { headers: auth(token) }),
   addCollectionActivity: (token: string, repaymentId: string, input: Record<string, unknown>) => request<{ activity: Record<string, unknown> }>(`/api/admin/collections/${repaymentId}/activities`, { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   getApplications: (token: string) => request<{ applications: LoanApplication[] }>("/api/loans/applications", { headers: auth(token) }),
+  getCollateralAssessment: (token:string,id:string) => request<{assessment:{id:string;asset_description:string;ownership_evidence:string;estimated_value:number;verification_status:string;inspection_notes:string}|null;photos:{id:string;photo_type:string}[]}>(`/api/loans/applications/${encodeURIComponent(id)}/collateral-assessment`,{headers:auth(token)}),
+  saveCollateralAssessment: (token:string,id:string,payload:{assetDescription:string;ownershipEvidence:string;inspectionNotes:string;estimatedValue:number;verificationStatus:string}) => request<{ok:boolean;assessmentId:string}>(`/api/loans/applications/${encodeURIComponent(id)}/collateral-assessment`,{method:"POST",headers:auth(token),body:JSON.stringify(payload)}),
   getBusinessPhotos: (token: string, id: string) =>
     request<{ photos: Array<{ id: string; type: string; mime: string; bytes: number; uploadedAt: string }> }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
