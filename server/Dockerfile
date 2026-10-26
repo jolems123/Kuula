@@ -11,6 +11,7 @@ RUN apt-get update \
     && test "$(npm --version)" = "10.9.2"
 
 COPY package.json package-lock.json ./
+RUN npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 RUN npm ci --no-audit --no-fund
 
 COPY prisma ./prisma
