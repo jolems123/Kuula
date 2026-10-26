@@ -97,12 +97,16 @@ router.get("/dashboard", async (req: Request, res: Response) => {
 // route implementation so security does not depend on mount order alone.
 router.get("/applications/:id", async (req: Request, _res: Response, next: NextFunction) => {
   const applicationId = uuid(req.params.id, "Application ID");
-  await assertCurrentAssignment(applicationId, req.user!.userId);
+  // Administrators retain oversight; non-admin reviewers need an active assignment.
+  if (!["admin", "administrator", "super_admin"].includes(req.user!.role))
+    await assertCurrentAssignment(applicationId, req.user!.userId);
   next();
 });
 router.get("/applications/:id/messages", async (req: Request, _res: Response, next: NextFunction) => {
   const applicationId = uuid(req.params.id, "Application ID");
-  await assertCurrentAssignment(applicationId, req.user!.userId);
+  // Administrators retain oversight; non-admin reviewers need an active assignment.
+  if (!["admin", "administrator", "super_admin"].includes(req.user!.role))
+    await assertCurrentAssignment(applicationId, req.user!.userId);
   next();
 });
 

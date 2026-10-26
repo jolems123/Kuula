@@ -87,6 +87,14 @@ try {
     body: { amount: 200000, purpose: "Business: Working capital", termDays: 60, channel: "MTN MoMo", employmentStatus: "Business owner", occupationOrBusiness: "Hardware shop", employerOrBusinessName: "Staged Hardware", workDuration: "2+ years", incomeSource: "Business sales", repaymentSource: "Daily sales", declaredMonthlyIncome: 1500000, declaredMonthlyExpenses: 400000, existingDebtPayment: 0, business },
   });
   const id = created.application.id;
+  // Create the unrelated staff account after automatic allocation, to guarantee no assignment.
+  const unrelatedOfficer = await staff("loan_officer", "unrelated-officer");
+  // Issue #117: unassigned loan.review personnel must not see sensitive case details.
+  const operationsPath = `/api/operations/applications/${id}`;
+  for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
+    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
+    await call("GET", endpoint, {token: admin.token, expect: 200});
+  }
   const photoPath = `/api/loans/applications/${id}/business-photos`;
   await call("POST", `/api/loans/applications/${id}/business-review`, {
     token: admin.token, body: { status: "verified", notes: "Cannot verify without business photos" }, expect: 422,
@@ -108,6 +116,11 @@ try {
   const level1Staff = await call("GET", "/api/operations/staff?role=officer", { token: admin.token });
   assert.ok(level1Staff.staff.some((member) => member.id === officer.id), "loan_officer appears in the Level 1 picker");
   await call("POST", `/api/operations/applications/${id}/assign`, { token: admin.token, body: { level: 1, assigneeId: officer.id } });
+  for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
+    await call("GET", endpoint, {token: officer.token, expect: 200});
+    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
+    await call("GET", endpoint, {token: admin.token, expect: 200});
+  }
   await call("POST", `/api/operations/applications/${id}/evaluation`, {
     token: officer.token,
     body: { businessName: "Staged Hardware", businessType: "Retail", businessLocation: "Kampala", yearsOperating: 3, employeeCount: 3, estimatedMonthlySales: 1500000, estimatedStockValue: 4000000, monthlyOperatingExpenses: 400000, existingBusinessDebt: 0,
