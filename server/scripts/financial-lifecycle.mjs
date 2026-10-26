@@ -53,6 +53,19 @@ try {
   const C = customer.token;
   const A = admin.token;
 
+  // The seeded demo account predates manual-photo KYC. Create an isolated, explicitly
+  // test-only reviewed submission so the money lifecycle exercises the real
+  // production identity gate rather than weakening or bypassing it.
+  if (process.env.NODE_ENV !== "test") throw new Error("KYC fixture is restricted to NODE_ENV=test");
+  const demoUser = await prisma.user.findUniqueOrThrow({where:{phone:process.env.DEMO_PHONE || "+256700000000"}});
+  await prisma.kycSubmission.create({data:{
+    userId:demoUser.id,version:1,status:"verified",fullName:demoUser.fullName,
+    nationalId:"CM900000000000",dateOfBirth:new Date("1990-01-01T00:00:00.000Z"),
+    frontRef:"test-fixture/front.jpg",backRef:"test-fixture/back.jpg",portraitRef:"test-fixture/portrait.jpg",
+    frontMime:"image/jpeg",backMime:"image/jpeg",portraitMime:"image/jpeg",
+    provider:"isolated-ci-fixture",reviewedAt:new Date(),
+    decisionReason:"Non-production money lifecycle: identity gate fixture"
+  }});
   step("apply; duplicate application refused; approval refused until the business is verified");
   const application = await call("POST", "/api/loans/applications", { token: C, body: applicationBody });
   const applicationId = application.application.id;
