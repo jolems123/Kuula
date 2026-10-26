@@ -66,7 +66,7 @@ export function AdminOfficerDashboardScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-officer-dashboard" onNavigate={onNavigate} title="Credit Operations">
       <AdminPageHeader title={roleLabel(role)} subtitle="Only applications assigned to your current review level appear here." action={<div style={{ display: "flex", gap: 8 }}><button style={secondary} onClick={() => onNavigate("admin-officer-contact")}><Search size={14}/> Search</button>{role !== "officer" && <button style={primary} onClick={() => onNavigate("admin-officer-assignment")}>Assign applications</button>}</div>} />
       <ErrorBox value={error} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16, marginBottom: 22 }}>
         <StatCard label="My Queue" value={String(queue.length)} sub="Current assigned cases" color={GREEN} icon={<FileSearch size={18} color={GREEN}/>} />
         <StatCard label="Field Evaluation" value={String(data?.counts?.field_evaluation ?? 0)} color="#2563EB" icon={<Camera size={18} color="#2563EB"/>} />
         <StatCard label="Review" value={String((data?.counts?.level2_review ?? 0) + (data?.counts?.final_review ?? 0))} color="#7C3AED" icon={<ShieldCheck size={18} color="#7C3AED"/>} />
