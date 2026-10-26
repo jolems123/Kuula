@@ -34,20 +34,30 @@ router.post("/applications/:id/business-photos", authenticateToken, async (req: 
   if (REQUIRED.some(k => typeof photos[k] !== "string"))
     throw new AppError("Business exterior, interior and applicant-at-business photos are required", 400);
 
-  // Validate all image signatures and sizes BEFORE creating any private file.
-  const parsed = new Map<string, ReturnType<typeof parseDataUrl>>();
-  for (const [kind, dataUrl] of Object.entries(photos)) {
-    if (typeof dataUrl !== "string") throw new AppError("Invalid photo", 400);
-    try { parsed.set(kind, parseDataUrl(dataUrl)); }
-    catch { throw new AppError("All photos must be distinct JPG, PNG or WEBP images under 5MB", 400); }
+  // Required views remain single-image; stock and collateral accept up to eight.
+  const normalized: { kind: string; dataUrl: string }[] = [];
+  for (const [kind, value] of Object.entries(photos)) {
+    const multi = kind === "stock_equipment" || kind === "collateral_asset";
+    if (multi && Array.isArray(value)) {
+      if (value.length > 8 || value.some(v => typeof v !== "string")) throw new AppError("Maximum eight photographs per optional category", 400);
+      for (const dataUrl of value) normalized.push({kind,dataUrl});
+    } else if (typeof value === "string") normalized.push({kind,dataUrl:value});
+    else throw new AppError("Invalid photograph data", 400);
   }
-  const hashes = [...parsed.values()].map(p => crypto.createHash("sha256").update(p.buffer).digest("hex"));
-  if (new Set(hashes).size !== hashes.length) throw new AppError("Provide different photos for each required view", 400);
+  if (normalized.length > 19) throw new AppError("Too many photographs", 400);
+  const hashes: string[] = [];
+  for (const {dataUrl} of normalized) {
+    let parsed: ReturnType<typeof parseDataUrl>;
+    try { parsed = parseDataUrl(dataUrl); }
+    catch { throw new AppError("All photos must be different JPG, PNG or WEBP images under 5MB", 400); }
+    hashes.push(crypto.createHash("sha256").update(parsed.buffer).digest("hex"));
+  }
+  if (new Set(hashes).size !== hashes.length) throw new AppError("Each photograph must be different", 400);
 
   const saved: { kind: string; key: string; mime: string; bytes: number }[] = [];
   try {
-    for (const [kind] of parsed) {
-      const file = await saveFieldEvidence({ applicationId: id, evaluationId: id, evidenceType: "applicant-" + kind, dataUrl: photos[kind] });
+    for (const {kind, dataUrl} of normalized) {
+      const file = await saveFieldEvidence({ applicationId: id, evaluationId: id, evidenceType: "applicant-" + kind, dataUrl });
       saved.push({ kind, ...file });
     }
     // Fail on existing photo metadata rather than overwriting evidence that may already have been reviewed.

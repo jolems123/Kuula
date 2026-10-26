@@ -99,9 +99,10 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         setBusinessPhotoApplicationId(applicationId, state.user.id);
       }
       setSubmissionStage("uploading");
-      const photos: Record<string, string> = {};
+      const photos: Record<string, string | string[]> = {};
       for (const [kind, file] of Object.entries(files)) {
-        if (file) photos[kind] = await fileToDataUrl(file);
+        if (Array.isArray(file)) photos[kind] = await Promise.all(file.map(fileToDataUrl));
+        else if (file) photos[kind] = await fileToDataUrl(file);
       }
       // A prior timeout can mean that private evidence was stored despite
       // the client receiving no response. Query the server before retrying.
