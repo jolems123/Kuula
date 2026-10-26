@@ -35,7 +35,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
   const requiresData = line?.status === "data_required";
   const statusHeading = requiresIdentity ? "Identity verification needed" : requiresData ? "Credit information needed" : isReady ? "Business credit available" : line?.status === "in_use" ? "Your business facility" : "Your business finance";
   const statusDetail = requiresIdentity ? "Complete your identity verification to continue." : requiresData ? "Review your information before applying." : isReady ? "You can begin a new loan application, subject to assessment." : line?.status === "in_use" ? "Review your existing facility and repayment schedule." : "Apply for business finance or track an existing request.";
-  const primaryTarget = requiresIdentity ? "privacy-security" : line?.status === "in_use" ? "loan-detail" : "loan-apply";
+  const primaryTarget = requiresIdentity ? "kyc" : line?.status === "in_use" ? "loan-detail" : "loan-apply";
   const primaryLabel = requiresIdentity ? "Review identity verification" : line?.status === "in_use" ? "View loan details" : "Apply for business loan";
   return (
     <div className="kx kx-app kuula-customer-home">
