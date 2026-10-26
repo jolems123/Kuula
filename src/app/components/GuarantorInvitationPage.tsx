@@ -59,6 +59,7 @@ export function GuarantorInvitationPage() {
   return <main style={{maxWidth:500,margin:"5vh auto",padding:24,background:"white",borderRadius:18}}>
     <h1 style={{color:"#0B5E3A",fontWeight:800}}><UiText text={"Kuula guarantor invitation"} /></h1>
     <p><UiText text={"Someone has nominated you as a possible guarantor. You have no obligation to guarantee or repay a debt merely by opening this page or expressing interest."} /></p>
+    <section aria-label="Guarantor identity photographs" style={{border:"1px solid #D6E4DC",borderRadius:12,padding:12,marginBottom:12}}><strong>Required identity photographs</strong><p style={{fontSize:13}}>Before signing, use your own Kuula account to capture a clear portrait, the front of your National ID, and the back of your National ID through the secure Identity Verification screen. An authorized officer must verify all three. The borrower must not upload your ID for you.</p><p style={{fontSize:12}}>These images remain in Kuula’s protected KYC storage. Your documents are not shared with the borrower.</p></section>
     {!accessToken && <p><UiText text={"To examine and sign final loan terms, register or sign in with your own Kuula account and complete normal phone and identity verification. Reopen the invitation afterwards."} /></p>}
     {status && <p role="status"><UiText text={status} /></p>}
     {terms ? <section style={{display:"grid",gap:12}}>

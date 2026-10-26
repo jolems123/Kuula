@@ -55,7 +55,7 @@ jobs:
           cache: npm
 
       - name: Install frontend dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps && npm ci --legacy-peer-deps
 
       - name: Capture frontend validation
         id: frontend

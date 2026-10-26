@@ -27,6 +27,9 @@ jobs:
           node-version: '22'
       - name: Pin npm
         run: npm install --global npm@10.9.2
+      - name: Resolve patched dependency graph
+        working-directory: ${{ matrix.package == 'api' && 'server' || '.' }}
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund ${{ matrix.package == 'web' && '--legacy-peer-deps' || '' }}
       - name: Install locked dependencies
         working-directory: ${{ matrix.package == 'api' && 'server' || '.' }}
         run: npm ci ${{ matrix.package == 'web' && '--legacy-peer-deps' || '' }} --ignore-scripts --no-fund

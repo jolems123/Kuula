@@ -1,4 +1,4 @@
-export type BusinessPhotoType = "exterior" | "interior" | "stock_equipment" | "applicant_at_business";
+export type BusinessPhotoType = "exterior" | "interior" | "stock_equipment" | "collateral_asset" | "applicant_at_business";
 export type BusinessPhotoFiles = Partial<Record<BusinessPhotoType, File>>;
 let files: BusinessPhotoFiles = {};
 let consent = false;

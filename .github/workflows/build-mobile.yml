@@ -47,11 +47,11 @@ jobs:
           cache: npm
 
       - name: Install frontend dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps && npm ci --legacy-peer-deps
 
       - name: Install server dependencies
         working-directory: server
-        run: npm ci --no-audit --no-fund
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm ci --no-audit --no-fund
 
       - name: Generate Prisma client
         working-directory: server
@@ -101,7 +101,7 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - run: npm ci --legacy-peer-deps
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps && npm ci --legacy-peer-deps
 
       - name: Download verified web bundle
         uses: actions/download-artifact@v4
@@ -173,7 +173,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci --legacy-peer-deps
+      - run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --legacy-peer-deps && npm ci --legacy-peer-deps
 
       - name: Download verified web bundle
         uses: actions/download-artifact@v4

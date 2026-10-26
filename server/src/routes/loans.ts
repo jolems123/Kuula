@@ -412,6 +412,17 @@ router.post("/guarantor-invitations/respond", async (req: Request, res: Response
   res.json({ok:true,message:response==="decline"?"Invitation declined":"Interest recorded. No guarantee or debt obligation has been created."});
 });
 
+// Guarantors must have a reviewed, complete three-photo identity evidence set.
+async function requireGuarantorPhotoEvidence(userId: string): Promise<string> {
+  const record = await prisma.kycSubmission.findFirst({
+    where: { userId, status: "verified", frontRef: { not: "" }, backRef: { not: "" }, portraitRef: { not: null } },
+    orderBy: { version: "desc" },
+    select: { id: true },
+  });
+  if (!record) throw new AppError("Guarantor must complete ID front, ID back and portrait capture and receive independent KYC approval", 403);
+  return record.id;
+}
+
 // Guarantor signs only after the final loan offer exists and using a separate
 // authenticated, phone-verified and KYC-reviewed Kuula account.
 // This creates an evidentiary record; release of the feature remains subject to legal review.
@@ -427,6 +438,7 @@ router.post("/guarantor-invitations/terms", authenticateToken, async (req: Reque
   const app = invite.requirement.application;
   if (app.status !== "offered" || !app.offerExpiresAt || app.offerExpiresAt <= new Date()) throw new AppError("Final loan terms are not currently available",409);
   if(app.applicantId===user.id) throw new AppError("Borrowers cannot guarantee their own loan",403);
+  await requireGuarantorPhotoEvidence(user.id);
   res.json({terms:{applicationId:app.id,borrower:app.applicantName,principal:Number(app.amount),totalLiability:Number(app.total),termDays:app.termDays,offerExpiresAt:app.offerExpiresAt,identityName:user.fullName,requirementStatus:invite.requirement.status,disclosure:"A guarantee may require you to pay amounts the borrower fails to pay, up to the stated maximum liability. Seek independent legal advice before signing. Signing is voluntary."}});
 });
 
@@ -439,6 +451,7 @@ router.post("/guarantor-invitations/sign-otp/request", authenticateToken, async 
   if(!invite || invite.expiresAt<=new Date() || !invite.acceptedAt || invite.declinedAt || invite.signedAt || invite.requirement.status!=="required" || invite.requirement.application.status!=="offered") throw new AppError("Invitation is not ready for signing",409);
   const user=await prisma.user.findUnique({where:{id:req.user!.userId},select:{id:true,phone:true,phoneVerified:true,kycVerified:true}});
   if(!user?.phoneVerified || !user.kycVerified || normalizeUgandaMobileMoneyPhone(user.phone||"")!==invite.phone || user.id===invite.requirement.application.applicantId) throw new AppError("A separate verified guarantor account is required",403);
+  await requireGuarantorPhotoEvidence(user.id);
   if (invite.otpSentAt && Date.now()-invite.otpSentAt.getTime()<60000) throw new AppError("Wait before requesting another code",429);
   if(invite.otpSendCount>=10) throw new AppError("Too many signature codes requested",429);
   const pepper=process.env.OTP_PEPPER;
@@ -490,14 +503,15 @@ router.post("/guarantor-invitations/sign", authenticateToken, async (req: Reques
   if(app.status!=="offered" || !app.offerExpiresAt || app.offerExpiresAt<=new Date() || app.applicantId===user.id || invite.requirement.status!=="required")
     throw new AppError("No current guarantee awaiting signature",409);
   if(!Number.isFinite(Number(app.total)) || Number(app.total)<=0) throw new AppError("Valid final liability amount required",409);
+  const guarantorKycSubmissionId = await requireGuarantorPhotoEvidence(user.id);
   const signedName = typeof req.body?.signedName==="string" ? req.body.signedName.trim():"";
   if(signedName.toLocaleLowerCase() !== user.fullName.trim().toLocaleLowerCase()) throw new AppError("Signature name must match your verified profile",400);
-  const snapshot = {agreementVersion:"guarantor-2026-10-v1",applicationId:app.id,borrower:app.applicantName,guarantorUserId:user.id,guarantorName:user.fullName,principal:Number(app.amount),maximumLiability:Number(app.total),termDays:app.termDays,offerExpiresAt:app.offerExpiresAt,liabilityAcknowledged:true,adviceAcknowledged:true};
+  const snapshot = {agreementVersion:"guarantor-2026-10-v1",applicationId:app.id,borrower:app.applicantName,guarantorUserId:user.id,guarantorName:user.fullName,principal:Number(app.amount),maximumLiability:Number(app.total),termDays:app.termDays,offerExpiresAt:app.offerExpiresAt,liabilityAcknowledged:true,adviceAcknowledged:true,guarantorKycSubmissionId};
   const signatureHash = crypto.createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
   await prisma.$transaction(async tx=>{
     const updated = await tx.loanGuarantorInvitation.updateMany({where:{id:invite.id,signedAt:null,declinedAt:null,expiresAt:{gt:new Date()}},data:{guarantorUserId:user.id,signatureHash,signedAt:new Date(),agreementSnapshot:snapshot}});
     if(updated.count!==1) throw new AppError("Guarantee already signed",409);
-    const changed = await tx.loanGuarantorRequirement.updateMany({where:{id:invite.requirement.id,status:"required"},data:{status:"signed_pending_review",reviewedAt:null,reviewedBy:null,evidenceReference:`kyc:user:${user.id}`,agreementReference:signatureHash}});
+    const changed = await tx.loanGuarantorRequirement.updateMany({where:{id:invite.requirement.id,status:"required"},data:{status:"signed_pending_review",reviewedAt:null,reviewedBy:null,evidenceReference:`kyc:submission:${guarantorKycSubmissionId}`,agreementReference:signatureHash}});
     if(changed.count!==1) throw new AppError("Requirement changed during signing",409);
   });
   await writeAuditEvent({actorId:user.id,subjectUserId:app.applicantId,action:"loan.guarantor_undertaking_recorded",resourceType:"loan_application",resourceId:app.id,metadata:{guarantorUserId:user.id,signatureHash,maximumLiability:Number(app.total),agreementVersion:snapshot.agreementVersion}});
@@ -520,6 +534,8 @@ router.post("/applications/:id/guarantor-verification", authenticateToken, requi
   if(row.application.status!=="offered" || !row.application.offerExpiresAt || row.application.offerExpiresAt<=new Date()) throw new AppError("Loan offer expired or unavailable",409);
   const guarantor=await prisma.user.findUnique({where:{id:row.invitation.guarantorUserId},select:{phoneVerified:true,kycVerified:true,phone:true,deletedAt:true}});
   if (!guarantor?.phoneVerified || !guarantor.kycVerified || guarantor.deletedAt || normalizeUgandaMobileMoneyPhone(guarantor.phone||"")!==row.invitation.phone) throw new AppError("Guarantor identity requires independent KYC validation",409);
+  const guarantorKycSubmissionId = await requireGuarantorPhotoEvidence(row.invitation.guarantorUserId);
+  if (row.evidenceReference !== `kyc:submission:${guarantorKycSubmissionId}`) throw new AppError("Guarantor photo evidence has changed since signing; re-verification required",409);
   const changed=await prisma.loanGuarantorRequirement.updateMany({where:{id:row.id,status:"signed_pending_review",agreementReference:row.invitation.signatureHash},data:{status:"verified",reviewedBy:req.user!.userId,reviewedAt:new Date()}});
   if(changed.count!==1) throw new AppError("Guarantee changed during approval",409);
   await writeAuditEvent({actorId:req.user!.userId,subjectUserId:row.application.applicantId,action:"loan.guarantor_independently_approved",resourceType:"loan_application",resourceId:id,metadata:{notes,signatureHash:row.invitation.signatureHash,guarantorUserId:row.invitation.guarantorUserId}});

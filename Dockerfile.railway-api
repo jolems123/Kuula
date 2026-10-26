@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 # even when this Dockerfile is selected from the repository root. Therefore all
 # COPY paths below must be relative to the server build context (no server/ prefix).
 COPY package.json package-lock.json ./
+RUN npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 RUN npm ci --no-audit --no-fund
 COPY prisma ./prisma
 COPY scripts ./scripts
