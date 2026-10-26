@@ -120,6 +120,9 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
   const canChild = (id: string) => staffCanOpenScreen(id, state.role);
   const sections = NAV.map((s) => ({ ...s, items: s.items.filter(can).filter(item => item.children ? item.children.some(child => canChild(child.id)) : canChild(item.id)) })).filter((s) => s.items.length > 0);
   const canSearch = ["super_admin", "administrator", "admin", "credit_manager", "final_approver", "loan_officer", "manager", "officer"].includes(role);
+  const home = staffHome(state.role).replace(/^\//, "");
+  const roleName = ROLE_LABELS[role] ?? "Staff";
+  const goToMyWork = () => onNavigate(home);
   const signOut = () => { logout(); navigate("/admin-login", { replace: true }); };
   const goBack = () => {
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
@@ -188,8 +191,8 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
           {activeScreen !== "admin-dashboard" && (
             <button type="button" className="kx-icon-btn" onClick={goBack} aria-label="Go back"><ArrowLeft size={18} strokeWidth={1.75} /></button>
           )}
-          <h1 className="kx-topbar__title">{title}</h1>
-          <div className="kx-topbar__actions">
+          <div className="kx-topbar__heading"><span className="kx-topbar__eyebrow">{roleName} · Staff workspace</span><h1 className="kx-topbar__title">{title}</h1></div>
+          <div className="kx-topbar__actions">{activeScreen !== home && <button type="button" className="kx-topbar__my-work" onClick={goToMyWork}>My work</button>}
             {canSearch && (
               <button type="button" className="kx-search" onClick={() => onNavigate("admin-officer-contact")}>
                 <Search size={16} strokeWidth={1.75} /><span>Search customers</span>
