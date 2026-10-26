@@ -439,9 +439,10 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             ["interior", "Inside your business", "Show your workspace, shelves or equipment.", "environment"],
             ["applicant_at_business", "You at your business", "Include your face AND identifiable business surroundings in one photo.", "user"],
             ["stock_equipment", "Stock or equipment (optional)", "Photograph merchandise, tools or working equipment.", "environment"],
+            ["collateral_asset", "Pledged security / collateral (optional)", "Photograph the actual asset offered as security. Include identifiable features; photos alone do not prove ownership or valuation.", "environment"],
           ] as const).map(([kind, label, hint, camera]) => (
             <div key={kind} style={{ borderTop: "1px solid #E4EBE6", padding: "12px 0" }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#153826" }}><UiText text={label} /><UiText text={kind !== "stock_equipment" ? " *" : ""} /></label>
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#153826" }}><UiText text={label} /><UiText text={kind !== "stock_equipment" && kind !== "collateral_asset" ? " *" : ""} /></label>
               <p style={{ fontSize: 11, margin: "5px 0", color: "#64766C" }}><UiText text={hint} /></p>
               <LocalizedFileInput type="file" accept="image/*" capture={camera} aria-label={uiText(label)}
                 onChange={event => { const file = event.target.files?.[0]; if (file) void pickPhoto(kind, file); event.target.value = ""; }}

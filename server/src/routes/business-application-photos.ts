@@ -10,7 +10,7 @@ import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 const REQUIRED = ["exterior", "interior", "applicant_at_business"] as const;
-const TYPES = new Set<string>([...REQUIRED, "stock_equipment"]);
+const TYPES = new Set<string>([...REQUIRED, "stock_equipment", "collateral_asset"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function authorizedApplication(id: string, userId: string, role: Parameters<typeof hasPermission>[0]) {
