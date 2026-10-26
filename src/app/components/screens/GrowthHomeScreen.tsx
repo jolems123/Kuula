@@ -1,133 +1,73 @@
 import { UiText, uiText, uiLocale } from "../../../i18n/ui-text";
 import { useEffect, useState } from "react";
-import {
-  Bell, BriefcaseBusiness, CalendarClock,
-  ChevronRight, RefreshCw, ArrowUpRight, AlertCircle, type LucideIcon,
-} from "lucide-react";
+import { Bell, CalendarClock, RefreshCw, AlertCircle, ArrowUpRight, FileText, CreditCard, ShieldCheck } from "lucide-react";
 import { BottomNav } from "../BottomNav";
-import { api, type CreditProduct, type NetworkOverview } from "../../api/client";
+import { api, type NetworkOverview } from "../../api/client";
 import { useAppContext } from "../../context/AppContext";
-import { setCreditUseSelection } from "../../lib/selection";
 
 interface Props { onNavigate: (screen: string) => void; }
-
-
-const money = (value: number, currency = "UGX") => `${currency} ${Math.round(value).toLocaleString("en-UG")}`;
-const STATUS_COPY: Record<string, string> = {
-  available: "Ready to use",
-  in_use: "Your current facility is using this line",
-  identity_required: "Verify your identity to unlock credit",
-  data_required: "Refresh your credit data to unlock credit",
-};
-const statusCopy = (status: string) => STATUS_COPY[status] ?? "Your business loan request is being reviewed";
-
-function greeting(now = new Date()) {
-  const hour = now.getHours();
-  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-}
-
-function formatDue(iso: string) {
-  return new Date(iso).toLocaleDateString(uiLocale(), { day: "numeric", month: "short" });
-}
+const money = (amount: number, currency = "UGX") => `${currency} ${Math.round(amount).toLocaleString("en-UG")}`;
+const formattedDate = (value: string) => new Date(value).toLocaleDateString(uiLocale(), { day: "numeric", month: "short" });
+function greeting() { const hour = new Date().getHours(); return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"; }
 
 export function GrowthHomeScreen({ onNavigate }: Props) {
-  const { state, markNotificationsRead } = useAppContext();
+  const { state } = useAppContext();
   const [overview, setOverview] = useState<NetworkOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const token = state.session.token;
-
-  const load = async () => {
-    if (!token) return;
+  useEffect(() => {
+    let active = true;
+    if (!token) { setLoading(false); return; }
     setLoading(true); setError("");
-    try { setOverview(await api.networkOverview(token, "UG")); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not load your Kuula network profile."); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, [token]);
-
-  const select = (product: CreditProduct) => {
-    setCreditUseSelection({ productCode: product.code, productName: product.name, category: product.category, description: product.description, minAmount: product.minAmount, maxAmount: product.maxAmount, customerLimit: product.customerLimit, minTermDays: product.minTermDays, maxTermDays: product.maxTermDays, partnerRequired: product.partnerRequired, disbursementMode: product.disbursementMode });
-    onNavigate("loan-apply");
-  };
-
+    api.networkOverview(token, "UG")
+      .then(data => { if (active) setOverview(data); })
+      .catch(err => { if (active) setError(err instanceof Error ? err.message : "Unable to load your credit information."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token]);
   const currency = overview?.market.currency ?? "UGX";
-  const firstName = state.user?.fullName?.split(/\s+/)[0] || "there";
   const line = overview?.growthLine;
-  const available = line?.availableLimit ?? 0;
-  const total = line?.totalLimit ?? 0;
-  const availableShare = total > 0 ? Math.min(100, Math.max(0, (available / total) * 100)) : 0;
-  const ready = line?.status === "available";
-  
-
+  const firstName = state.user?.fullName?.trim().split(/\s+/)[0] || "there";
+  const hasPayment = Boolean(overview?.nextPayment);
+  const isReady = line?.status === "available";
+  const requiresIdentity = line?.status === "identity_required";
+  const requiresData = line?.status === "data_required";
+  const statusHeading = requiresIdentity ? "Identity verification needed" : requiresData ? "Credit information needed" : isReady ? "Business credit available" : line?.status === "in_use" ? "Your business facility" : "Your business finance";
+  const statusDetail = requiresIdentity ? "Complete your identity verification to continue." : requiresData ? "Review your information before applying." : isReady ? "You can begin a new loan application, subject to assessment." : line?.status === "in_use" ? "Review your existing facility and repayment schedule." : "Apply for business finance or track an existing request.";
+  const primaryTarget = requiresIdentity ? "privacy-security" : line?.status === "in_use" ? "loan-detail" : "loan-apply";
+  const primaryLabel = requiresIdentity ? "Review identity verification" : line?.status === "in_use" ? "View loan details" : "Apply for business loan";
   return (
-    <div className="kx kx-app">
+    <div className="kx kx-app kuula-customer-home">
       <div className="kx-app__scroll">
-        <div className="kx-home__hero">
-          <div className="kx-home__bar">
-            <div>
-              <p className="kx-home__hello"><UiText text={greeting()} />,</p>
-              <h1 className="kx-home__name">{firstName}</h1>
+        <header className="kuula-home-heading">
+          <div><span className="kuula-home-eyebrow"><UiText text={greeting()} /></span><h1><UiText text="Welcome back" />, {firstName}</h1><p><UiText text="Here is your business finance overview." /></p></div>
+          <button className="kuula-home-bell" type="button" aria-label={uiText("View notifications")} onClick={() => onNavigate("notifications")}><Bell size={20} />{state.unreadNotifications > 0 && <span className="kuula-home-bell__dot" />}</button>
+        </header>
+        <main className="kuula-home-content">
+          {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={18}/><span>{error}</span><button type="button" className="kx-link" onClick={() => { setError(""); setLoading(true); api.networkOverview(token!, "UG").then(setOverview).catch(e => setError(String(e))).finally(() => setLoading(false)); }}><RefreshCw size={18}/></button></div>}
+          <section className="kuula-home-feature" aria-label={uiText("Loan status and next steps")}>
+            <div className="kuula-home-feature__main"><span className="kuula-home-feature__eyebrow"><UiText text="YOUR LOAN STATUS" /></span><h2><UiText text={statusHeading} /></h2><p><UiText text={loading ? "Checking your latest information…" : statusDetail} /></p>
+              <div className="kuula-home-feature__actions"><button type="button" className="kuula-home-feature__button" onClick={() => onNavigate(primaryTarget)}><UiText text={primaryLabel} /><ArrowUpRight size={17}/></button><button type="button" className="kuula-home-feature__secondary" onClick={() => onNavigate("loan-history")}><UiText text="Track application" /></button></div>
             </div>
-            <button type="button" className="kx-icon-btn kx-icon-btn--on-dark" aria-label={uiText("Notifications")} onClick={() => { markNotificationsRead(); onNavigate("notifications"); }}>
-              <Bell size={20} strokeWidth={1.75} />
-              {state.unreadNotifications > 0 && <span className="kx-icon-btn__dot" />}
-            </button>
-          </div>
-
-
-        </div>
-
-        <div className="kx-app__body kx-home__body">
-          {error && (
-            <div className="kx-alert kx-alert--error" role="alert">
-              <AlertCircle size={16} />
-              <span style={{ flex: 1 }}><UiText text={error} /></span>
-              <button type="button" className="kx-link" onClick={() => void load()} aria-label={uiText("Try again")}><RefreshCw size={16} /></button>
-            </div>
-          )}
-
-          <section className="kx-card" style={{padding:18}}>
-            <h2><UiText text={"Apply for a business loan"} /></h2>
-            <p><UiText text={"Tell us about your business, the amount you need and how you will repay. Your application will be independently assessed."} /></p>
-            <button type="button" className="kx-btn kx-btn--primary kx-btn--block" onClick={() => onNavigate("loan-apply")}><UiText text={"Apply for Business Loan"} /></button>
-            <button type="button" className="kx-link" onClick={() => onNavigate("loan-history")} style={{marginTop:12}}><UiText text={"Track My Application"} /></button>
+            {line && line.totalLimit > 0 && <div className="kuula-home-feature__amount"><span><UiText text="Available credit limit" /></span><strong>{money(line.availableLimit,currency)}</strong><small><UiText text="Subject to eligibility and review" /></small></div>}
           </section>
-
-          {/* Account summary belongs on Overview, not under Settings.
-              Only show values present in the authenticated customer profile. */}
-          <section className="kx-card" aria-label={uiText("Account overview")} style={{ padding: 16 }}>
-            <div className="kx-section-head" style={{ marginBottom: 12 }}>
-              <div><h2><UiText text={"Account overview"} /></h2><p><UiText text={"Your recorded Kuula account information"} /></p></div>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-              <div><span className="kx-overline"><UiText text={"Member since"} /></span>
-                <strong style={{ display: "block", marginTop: 4 }}><UiText text={state.user?.memberSince && !Number.isNaN(new Date(state.user.memberSince).getTime())
-                  ? new Date(state.user.memberSince).toLocaleDateString(uiLocale(), { month: "short", year: "numeric" }) : "Not available"} /></strong>
-              </div>
-              <div><span className="kx-overline"><UiText text={"Loans recorded"} /></span>
-                <strong style={{ display: "block", marginTop: 4 }}><UiText text={state.loan ? state.loan.totalLoansCount : "Not available"} /></strong>
-              </div>
-
-            </div>
-          </section>
-
-          {overview?.nextPayment && (
-            <section className="kx-card kx-due">
-              <span className="kx-tile-icon kx-tile-icon--gold"><CalendarClock size={20} strokeWidth={1.75} /></span>
-              <div className="kx-due__text">
-                <span className="kx-overline"><UiText text={"Next payment · "} />{formatDue(overview.nextPayment.dueDate)}</span>
-                <strong>{money(overview.nextPayment.amount, currency)}</strong>
-              </div>
-              <button type="button" className="kx-btn kx-btn--primary kx-btn--sm" onClick={() => onNavigate("make-payment")}><UiText text={"Pay now"} /></button>
+          <div className="kuula-home-grid">
+            <section className="kuula-home-panel" aria-label={uiText("Quick actions")}><div className="kuula-home-panel__heading"><h2><UiText text="Quick actions" /></h2><p><UiText text="The essentials, all in one place." /></p></div><div className="kuula-home-action-grid">
+              <button type="button" onClick={() => onNavigate("loan-apply")}><FileText size={21}/><span><UiText text="Apply for loan" /></span></button>
+              <button type="button" onClick={() => onNavigate("loan-history")}><ShieldCheck size={21}/><span><UiText text="Track application" /></span></button>
+              <button type="button" onClick={() => onNavigate("make-payment")}><CreditCard size={21}/><span><UiText text="Make payment" /></span></button>
+            </div></section>
+            <section className="kuula-home-panel" aria-label={uiText("Repayment information")}><div className="kuula-home-panel__heading"><h2><UiText text="Repayments" /></h2><p><UiText text="Your upcoming payment information." /></p></div>
+              {overview?.nextPayment ? <div className="kuula-home-repayment"><CalendarClock size={23}/><div><span><UiText text="Next payment" /> · {formattedDate(overview.nextPayment.dueDate)}</span><strong>{money(overview.nextPayment.amount,currency)}</strong></div><button type="button" onClick={() => onNavigate("make-payment")}><UiText text="Pay now" /></button></div> : <p className="kuula-home-empty"><UiText text={loading ? "Loading repayment details…" : "No upcoming payment is currently shown."} /></p>}
             </section>
-          )}
-
-
-
-        </div>
+          </div>
+          <section className="kuula-home-panel kuula-home-account" aria-label={uiText("Account overview")}><div className="kuula-home-panel__heading"><h2><UiText text="Account overview" /></h2><p><UiText text="Information recorded on your Kuula account." /></p></div><div className="kuula-home-account__stats">
+            <div><span><UiText text="Member since" /></span><strong>{state.user?.memberSince && !Number.isNaN(new Date(state.user.memberSince).getTime()) ? new Date(state.user.memberSince).toLocaleDateString(uiLocale(), {month:"short",year:"numeric"}) : "Not available"}</strong></div>
+            <div><span><UiText text="Loans recorded" /></span><strong>{state.loan ? state.loan.totalLoansCount : "Not available"}</strong></div>
+          </div></section>
+        </main>
       </div>
-
       <BottomNav active="home" onNavigate={onNavigate} />
     </div>
   );
