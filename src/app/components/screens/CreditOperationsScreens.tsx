@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { captureLocation } from "../../lib/location";
 import { Camera, CheckCircle2, Clock3, FileSearch, MessageSquare, RefreshCw, Search, Send, ShieldCheck, Upload, UserRoundCheck, UsersRound, XCircle } from "lucide-react";
 import { AdminLayout, AdminCard, AdminPageHeader, StatCard, StatusBadge } from "../AdminLayout";
+import { ExportToolbar } from "../ExportToolbar";
 import { BottomNav } from "../BottomNav";
 import { api } from "../../api/client";
 import { creditOperationsApi, type OperationsQueueItem, type OperationsStaff } from "../../api/credit-operations";
@@ -66,6 +67,7 @@ export function AdminOfficerDashboardScreen({ onNavigate }: Props) {
     <AdminLayout activeScreen="admin-officer-dashboard" onNavigate={onNavigate} title="Credit Operations">
       <AdminPageHeader title={roleLabel(role)} subtitle="Only applications assigned to your current review level appear here." action={<div style={{ display: "flex", gap: 8 }}><button style={secondary} onClick={() => onNavigate("admin-officer-contact")}><Search size={14}/> Search</button>{role !== "officer" && <button style={primary} onClick={() => onNavigate("admin-officer-assignment")}>Assign applications</button>}</div>} />
       <ErrorBox value={error} />
+      {!error && <ExportToolbar title="My assigned credit queue" filename="kuula-my-review-queue" columns={["Application ID","Applicant","Amount (UGX)","Purpose","Status","Last updated"]} rows={queue.map(row=>[row.id,row.applicant_name,Number(row.amount),row.purpose,row.status,String(row.updated_at)])} disabled={loading}/>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16, marginBottom: 22 }}>
         <StatCard label="My Queue" value={String(queue.length)} sub="Current assigned cases" color={GREEN} icon={<FileSearch size={18} color={GREEN}/>} />
         <StatCard label="Field Evaluation" value={String(data?.counts?.field_evaluation ?? 0)} color="#2563EB" icon={<Camera size={18} color="#2563EB"/>} />

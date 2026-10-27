@@ -6,6 +6,7 @@ import { useAppContext } from "../../context/AppContext";
 import { api } from "../../api/client";
 import { setSelectedTransaction } from "../../lib/selection";
 import { downloadTransactionStatement } from "../../lib/statement";
+import { ExportToolbar } from "../ExportToolbar";
 
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + n.toLocaleString(); }
@@ -119,6 +120,7 @@ export function TransactionHistoryScreen({ onNavigate }: Props) {
         </div>
       </div>
 
+      <div style={{padding:"10px 16px",background:"white"}}><ExportToolbar title="My transaction history" filename="kuula-my-transactions" columns={["Date","Type","Amount (UGX)","Status","Reference"]} rows={filtered.map(txn=>[txn.createdAtISO,txn.rawType,txn.amount,txn.status,txn.reference])} disabled={loading}/></div>
       <div style={{ display: "flex", gap: 8, padding: "10px 16px", background: "white", borderBottom: "1px solid #F3F4F6", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["all", "loans", "payments"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", background: filter === f ? "#0B5E3A" : "#F3F4F6", color: filter === f ? "white" : "#6B7280", textTransform: "capitalize" }}>{f}</button>
