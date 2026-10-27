@@ -363,6 +363,7 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Loan History (All)" subtitle={loading ? "Loading…" : `${apps.length} closed applications`}
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-loan-history", ["Customer", "Amount (UGX)", "Purpose", "Date", "Status"], apps.map((a) => [a.applicantName || "—", a.amount, a.purpose, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
       />
+      <ExportToolbar title="Authorized loan history" filename="kuula-loan-history" columns={["Customer","Amount (UGX)","Purpose","Date","Status"]} rows={apps.map(a=>[a.applicantName||"—",a.amount,a.purpose,fmtDate(a.createdAt),a.status])} disabled={loading}/>
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>
       ) : apps.length === 0 ? (
