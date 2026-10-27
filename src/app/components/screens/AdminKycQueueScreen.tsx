@@ -81,12 +81,14 @@ export function AdminKycQueueScreen({ onNavigate }: Props) {
     {notice && <div className="kx-alert kx-alert--success" role="status" style={{ marginBottom: 16 }}><CheckCircle2 size={18} />{notice}</div>}
     {error && !selected && <div role="alert" style={{ marginBottom: 14, color: "#B91C1C", background: "#FEF2F2", padding: 12, borderRadius: 10 }}>{error}</div>}
     {loading ? <AdminCard>Loading KYC submissions…</AdminCard> : rows.length === 0 ? <AdminCard>No {status === "all" ? "" : status} KYC submissions.</AdminCard> : <div className="kx-kyc-review-grid">
-      <AdminCard>{rows.map(row => <button type="button" disabled={busy} aria-pressed={selected?.id === row.id} className="kx-kyc-submission" key={String(row.id)} onClick={() => selectRow(row)}><div className="kx-kyc-submission__title"><strong>{String(row.fullName || "Unnamed customer")}</strong><ChevronRight size={18} /></div><div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{String(row.nationalId || "No NIN")} · {String(row.provider || "No provider")}</div><StatusBadge status={String(row.status || "pending")} /></button>)}</AdminCard>
+      <AdminCard>{rows.map(row => <button type="button" disabled={busy} aria-pressed={selected?.id === row.id} className="kx-kyc-submission" key={String(row.id)} onClick={() => selectRow(row)}><div className="kx-kyc-submission__title"><strong>{String(row.fullName || "Unnamed customer")}</strong><ChevronRight size={18} /></div><div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{String(row.nationalId || "No NIN")} · {String(row.provider || "No provider")}</div><StatusBadge status={String(row.status || "pending")} /><span style={{fontSize:12,color:"#64748B",display:"block",marginTop:6}}>Submission {String(row.version ?? "—")}</span></button>)}</AdminCard>
       <AdminCard>
         {!selected ? "Select a submission to review its photographs and ID details." : <>
           <h3 style={{ marginTop: 0 }}>{String(selected.fullName)}</h3>
           <p>National ID: <strong>{String(selected.nationalId || "Not provided")}</strong></p>
           <p>Date of birth: <strong>{selected.dateOfBirth ? new Date(String(selected.dateOfBirth)).toLocaleDateString("en-UG") : "Not provided"}</strong></p>
+          <p>Submission version: <strong>{String(selected.version ?? "Not available")}</strong></p>
+          {selected.status === "rejected" && <div className="kx-alert kx-alert--error" role="status"><strong>Previous review rejected:</strong> {String(selected.decisionReason || "No review reason recorded.")} The customer can resubmit the complete set of photographs; the next submission will have a new version.</div>}
           <p>Capture method: <strong>{selected.provider === "kuula-manual" ? "Direct document upload" : String(selected.provider || "Legacy")}</strong></p>
           <p>Status: <strong>{String(selected.providerStatus || "Awaiting review")}</strong></p>
           <p>Submitted: <strong>{selected.submittedAt ? new Date(String(selected.submittedAt)).toLocaleString() : "Not available"}</strong></p>

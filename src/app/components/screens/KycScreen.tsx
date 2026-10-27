@@ -105,6 +105,7 @@ export function KycScreen({ onNavigate }: Props) {
   const [checking, setChecking] = useState(true);
   const [status, setStatus] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [submissionVersion, setSubmissionVersion] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -114,10 +115,11 @@ export function KycScreen({ onNavigate }: Props) {
       if (!live) return;
       const current = String(kyc.status ?? "");
       setStatus(current);
+      setSubmissionVersion(typeof kyc.version === "number" ? kyc.version : null);
       const legacyPending = current === "pending" && kyc.method === "smile-id";
       if ((current === "pending" && !legacyPending) || current === "verified") setStep(3);
       if (legacyPending) setRejectionReason("The previous identity capture service was retired. Use the new photo upload instead.");
-      if (current === "rejected") setRejectionReason(String(kyc.decisionReason ?? "Your document photographs need to be retaken."));
+      if (current === "rejected") { setStep(1); setRejectionReason(String(kyc.decisionReason ?? "Your document photographs need to be retaken.")); }
     }).catch(() => {
       if (live) setError("Could not check identity status. You can still enter your details.");
     }).finally(() => { if (live) setChecking(false); });
@@ -172,6 +174,7 @@ export function KycScreen({ onNavigate }: Props) {
       setStatus(result.kyc.status);
       setPictures({ front: null, back: null, portrait: null });
       setRejectionReason("");
+      setSubmissionVersion(previous => previous === null ? 1 : previous + 1);
       setStep(3);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not send your documents. Check the connection and try again.");
@@ -198,7 +201,14 @@ export function KycScreen({ onNavigate }: Props) {
           <p><UiText text={step === 1 ? "Enter the details printed on your Uganda National ID." : step === 2 ? "Photograph the front and back of the original card, then take a clear portrait of yourself." : status === "verified" ? "Your identity verification has been completed." : "Your photographs are securely submitted for review by an authorized Kuula officer."} /></p>
         </div>
         {step === 1 && <>
-          {rejectionReason && <div className="kx-alert kx-alert--error" role="status"><RefreshCcw size={16} /><span><UiText text={"Previous submission rejected: "} />{rejectionReason}<UiText text={". Please resubmit clear photos."} /></span></div>}
+          {status === "rejected" && <section className="kuula-kyc-resubmit" aria-label="Identity verification rejected" role="status">
+            <div className="kuula-kyc-resubmit__header"><RefreshCcw size={21} /><div><h3>Identity verification rejected</h3><p>{submissionVersion ? `Submission ${submissionVersion} needs replacement documents.` : "Your identity documents need to be submitted again."}</p></div></div>
+            <div className="kuula-kyc-resubmit__reason"><strong>Reason provided by the reviewer</strong><p>{rejectionReason || "The identity review was not approved. Please capture and submit a new set of clear photographs."}</p></div>
+            <p><strong>Resubmission checklist:</strong> You must replace all three photographs, even if only one photo was rejected.</p>
+            <ul><li>Front of your original National ID — all corners and writing visible</li><li>Back of your National ID — sharp and without glare</li><li>A new portrait — face clearly visible in good lighting</li></ul>
+            <button type="button" className="kx-btn kx-btn--primary" onClick={() => { setError(""); setStep(2); }}>Resubmit all documents</button>
+            <p className="kuula-kyc-resubmit__note">You may first correct your National ID number, legal name or date of birth in the fields below. The new upload will be reviewed independently.</p>
+          </section>}
           <div className="kx-field"><label htmlFor="kyc-nin" className="kx-label"><UiText text={"National ID number (NIN)"} /></label>
             <input id="kyc-nin" className="kx-input" value={idNumber} maxLength={14} autoComplete="off" onChange={e => setIdNumber(normalizeNin(e.target.value))} placeholder={uiText("14-character NIN")} /></div>
           <div className="kx-field"><label htmlFor="kyc-name" className="kx-label"><UiText text={"Full legal name"} /></label>
@@ -207,6 +217,7 @@ export function KycScreen({ onNavigate }: Props) {
             <input id="kyc-dob" className="kx-input" type="date" value={dob} onChange={e => setDob(e.target.value)} autoComplete="bday" /></div>
         </>}
         {step === 2 && <div className="kx-auth-stack">
+          {status === "rejected" && <div className="kx-alert kx-alert--info" role="status">Replacement submission: upload a fresh National ID front, back and portrait. All three are required.</div>}
           <div className="kx-alert kx-alert--info"><Shield size={18} /><span><UiText text={"Your ID and portrait are private. There is no automatic photo-based identity approval. An authorized Kuula officer reviews your submission."} /></span></div>
           <PhotoField kind="front" label="Front of National ID" hint="Show all four corners and readable text." file={pictures.front} onPick={selectPhoto} busy={preparing.front} disabled={submitting} />
           <PhotoField kind="back" label="Back of National ID" hint="Keep the reverse side fully visible, without glare." file={pictures.back} onPick={selectPhoto} busy={preparing.back} disabled={submitting} />
