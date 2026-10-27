@@ -189,6 +189,9 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("loan_officer");
+  const [resetting, setResetting] = useState<StaffMember | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const load = async () => {
     if (!token) return;
@@ -256,6 +259,20 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     finally { setBusyId(null); }
   };
 
+  const resetPassword = async () => {
+    if (!token || !resetting) return;
+    if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
+    if (!window.confirm(`Reset password for ${resetting.fullName}? All their active sessions will be signed out.`)) return;
+    setBusyId(resetting.id); setError(""); setNotice("");
+    try {
+      await api.resetStaffPassword(token, resetting.id, newPassword);
+      setNotice(`Password changed for ${resetting.fullName}. Their sessions have been revoked.`);
+      setResetting(null); setNewPassword(""); setConfirmPassword("");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not reset password."); }
+    finally { setBusyId(null); }
+  };
+
   const statusStyle = (status: StaffMember["status"]) => status === "active"
     ? { color: "#178654", background: "#F0FDF4" }
     : status === "invited" || status === "pending_approval"
@@ -293,6 +310,18 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
         </AdminCard>
       )}
       {editing && <AdminCard style={{ marginBottom:14 }}><h3 style={{ marginTop:0 }}>Edit staff profile</h3><div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12 }}><input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} /><input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /><select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></div><div style={{ display:"flex",gap:8,marginTop:12 }}><button onClick={()=>void saveEdit()} disabled={busyId===editing.id}>Save changes</button><button onClick={()=>setEditing(null)}>Cancel</button></div></AdminCard>}
+      {resetting && <AdminCard style={{marginBottom:14}}>
+        <h3 style={{marginTop:0}}>Reset password — {resetting.fullName}</h3>
+        <p style={{fontSize:13,color:"#64748B"}}>The existing password cannot be viewed. Set a strong replacement password; this will sign the staff member out of all current sessions. Use a secure channel to deliver the new password.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}>
+          <label>New password<input autoComplete="new-password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} /></label>
+          <label>Confirm password<input autoComplete="new-password" type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} /></label>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:12}}>
+          <button className="kx-btn kx-btn--primary" disabled={busyId===resetting.id||!newPassword||!confirmPassword} onClick={()=>void resetPassword()}>Reset password</button>
+          <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(null);setNewPassword("");setConfirmPassword("");}}>Cancel</button>
+        </div>
+      </AdminCard>}
       {notice && <p style={{ fontSize:12,color:"#15864E",margin:"0 0 12px" }}>{notice}</p>}
       {error && <p style={{ fontSize:12,color:"#DC4C4C",margin:"0 0 12px" }}>{error}</p>}
       {loading ? (
@@ -314,6 +343,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status.replace(/_/g, " ")}</span>
                   {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Approve access</button>}
                   {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
+                  {s.status === "active" && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>Reset password</button>}
                   {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>void reactivate(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
                   {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
                     <button onClick={() => void deactivate(s)} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
