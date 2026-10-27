@@ -1,5 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma.js";
+import bcrypt from "bcryptjs";
+import { validateNewPassword } from "../lib/otp.js";
 import {
   authenticateToken,
   INVITABLE_STAFF_ROLES,
@@ -193,6 +195,30 @@ router.post("/:id/reactivate", async (req: Request, res: Response) => {
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.reactivated", resourceType: "user", resourceId: target.id });
   const { passwordHash, ...safeUpdated } = updated;
   res.json({ ok: true, staff: { ...safeUpdated, status: updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
+});
+
+router.post("/:id/reset-password", async (req: Request, res: Response) => {
+  // Staff credentials are never returned. An administrative reset always invalidates sessions.
+  const targetId = String(req.params.id ?? "");
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target || target.deletedAt || !isStaffRole(target.role)) throw new AppError("Active staff account not found", 404);
+  if (target.id === req.user!.userId || target.role === "super_admin") throw new AppError("Use account recovery for the Super Admin account", 403);
+  if (!target.phoneVerified || !target.passwordHash) throw new AppError("Staff member must finish account activation before a password reset", 409);
+  let newPassword: string;
+  try { newPassword = validateNewPassword(req.body?.newPassword); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid password", 400); }
+  const hash = await bcrypt.hash(newPassword, 12);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: target.id }, data: {
+      passwordHash: hash, authVersion: { increment: 1 }, loginAttempts: 0, loginLockedUntil: null,
+    } }),
+    prisma.authSession.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  await writeAuditEvent({
+    actorId: req.user!.userId, subjectUserId: target.id,
+    action: "staff.password_reset_by_admin", resourceType: "user", resourceId: target.id,
+  });
+  res.json({ ok: true, message: "Password reset and all active sessions revoked." });
 });
 
 export default router;

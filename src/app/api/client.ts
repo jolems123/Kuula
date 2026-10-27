@@ -120,6 +120,7 @@ const nodeApi = {
   listStaff: (token: string) => request<{ staff: StaffMember[] }>("/api/staff", { headers: auth(token) }),
   inviteStaff: (token: string, input: { fullName: string; email: string; role: string }) => request<{ ok: boolean; staff: StaffMember }>("/api/staff/invite", { method: "POST", headers: auth(token), body: JSON.stringify(input) }),
   deactivateStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/deactivate`, { method: "POST", headers: auth(token) }),
+  resetStaffPassword: (token: string, id: string, newPassword: string) => request<{ ok: boolean; message: string }>(`/api/staff/${id}/reset-password`, { method: "POST", headers: auth(token), body: JSON.stringify({ newPassword }) }),
   reactivateStaff: (token: string, id: string) => request<{ ok: boolean; staff: StaffMember }>(`/api/staff/${id}/reactivate`, { method: "POST", headers: auth(token) }),
   updateStaff: (token: string, id: string, input: { fullName: string; email: string; role: string }) => request<{ staff: StaffMember }>(`/api/staff/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   refresh: refreshSession,
