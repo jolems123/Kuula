@@ -10,6 +10,7 @@ import { GuarantorStaffReview } from "../GuarantorStaffReview";
 import React, { useState, useEffect, useCallback } from "react";
 import { CheckCircle, XCircle, MessageSquare, Phone, Download } from "lucide-react";
 import { downloadCsv } from "../../lib/export";
+import { ExportToolbar } from "../ExportToolbar";
 import { AdminLayout, AdminTable, StatusBadge, AdminPageHeader, AdminCard, StatCard } from "../AdminLayout";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useAppContext } from "../../context/AppContext";
@@ -256,6 +257,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Active Loans" subtitle={loading ? "Loading…" : `${apps.length} loans currently active`}
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-active-loans", ["Customer", "Loan ID", "Amount (UGX)", "Applied", "Status"], apps.map((a) => [a.applicantName || "—", a.id, a.amount, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export CSV</button>}
       />
+      <ExportToolbar title="Authorized active facilities" filename="kuula-active-facilities" columns={["Customer","Application ID","Amount (UGX)","Applied","Status"]} rows={apps.map(a=>[a.applicantName||"—",a.id,a.amount,fmtDate(a.createdAt),a.status])} disabled={loading}/>
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="#0B5E3A" icon={<></>} />
         <StatCard label="Total Amount" value={loading ? "…" : `UGX ${(apps.reduce((s, a) => s + a.amount, 0) / 1000000).toFixed(1)}M`} color="#178654" icon={<></>} />
@@ -361,6 +363,7 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Loan History (All)" subtitle={loading ? "Loading…" : `${apps.length} closed applications`}
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-loan-history", ["Customer", "Amount (UGX)", "Purpose", "Date", "Status"], apps.map((a) => [a.applicantName || "—", a.amount, a.purpose, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
       />
+      <ExportToolbar title="Authorized loan history" filename="kuula-loan-history" columns={["Customer","Amount (UGX)","Purpose","Date","Status"]} rows={apps.map(a=>[a.applicantName||"—",a.amount,a.purpose,fmtDate(a.createdAt),a.status])} disabled={loading}/>
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>
       ) : apps.length === 0 ? (
