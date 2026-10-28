@@ -94,6 +94,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
   const role = state.role || "";
   const activeParent = NAV.flatMap((s) => s.items).find((item) => item.children?.some((c) => c.id === activeScreen))?.id;
   const [expanded, setExpanded] = useState<string[]>(() => [activeParent ?? "admin-credit-operations"]);
+  useEffect(() => { if (activeParent) setExpanded(previous => previous.includes(activeParent) ? previous : [...previous, activeParent]); }, [activeParent]);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => { setDrawerOpen(false); }, [activeScreen]);
@@ -119,7 +120,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
   };
   const canChild = (id: string) => staffCanOpenScreen(id, state.role);
   const sections = NAV.map((s) => ({ ...s, items: s.items.filter(can).filter(item => item.children ? item.children.some(child => canChild(child.id)) : canChild(item.id)) })).filter((s) => s.items.length > 0);
-  const canSearch = ["super_admin", "administrator", "admin", "credit_manager", "final_approver", "loan_officer", "manager", "officer"].includes(role);
+  const canSearch = ["super_admin", "administrator", "admin", "credit_manager", "final_approver", "loan_officer", "manager", "officer"].includes(role) && !["admin-officer-contact", "admin-customer-kyc"].includes(activeScreen);
   const home = staffHome(state.role).replace(/^\//, "");
   const roleName = ROLE_LABELS[role] ?? "Staff";
   const goToMyWork = () => onNavigate(home);
@@ -195,7 +196,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
           <div className="kx-topbar__actions">{activeScreen !== home && <button type="button" className="kx-topbar__my-work" onClick={goToMyWork}>My work</button>}
             {canSearch && (
               <button type="button" className="kx-search" onClick={() => onNavigate("admin-officer-contact")}>
-                <Search size={16} strokeWidth={1.75} /><span>Search customers</span>
+                <Search size={16} strokeWidth={1.75} /><span>Customer search</span>
               </button>
             )}
           </div>
