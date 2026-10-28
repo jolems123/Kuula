@@ -83,7 +83,7 @@ export function AdminKycQueueScreen({ onNavigate }: Props) {
   return <AdminLayout activeScreen="admin-customer-kyc" onNavigate={onNavigate} title="KYC Verification">
     <AdminPageHeader title="Identity document review" subtitle="Review the National ID front, back and portrait before approving an account." />
     <div className="kx-kyc-filters" aria-label="Submission status">{["customers", "pending", "verified", "rejected", "all"].map(value => <button type="button" key={value} disabled={busy} aria-pressed={status === value} onClick={() => setStatus(value)} className={`kx-btn ${status === value ? "kx-kyc-approve" : "kx-btn--secondary"}`}>{value === "customers" ? "All customers" : value === "pending" ? "Needs review" : value === "verified" ? "Approved" : value === "rejected" ? "Rejected" : "All submissions"}</button>)}</div>
-    {status === "customers" && !loading && <section className="kuula-kyc-overview" aria-label="All registered customer identity statuses">
+    {status === "customers" && !loading && !error && <section className="kuula-kyc-overview" aria-label="All registered customer identity statuses">
       <div className="kuula-kyc-overview__metrics">
         {([["Registered customers",customers.length],["Not submitted",customers.filter(c=>c.kycStatus==="not_submitted").length],["Pending review",customers.filter(c=>c.kycStatus==="pending").length],["Verified",customers.filter(c=>c.kycStatus==="verified").length],["Rejected",customers.filter(c=>c.kycStatus==="rejected").length]] as const).map(([label,value])=><div key={label} className="kuula-kyc-overview__metric"><span>{label}</span><strong>{value}</strong></div>)}
       </div>
@@ -97,7 +97,7 @@ export function AdminKycQueueScreen({ onNavigate }: Props) {
     </section>}
     {notice && <div className="kx-alert kx-alert--success" role="status" style={{ marginBottom: 16 }}><CheckCircle2 size={18} />{notice}</div>}
     {error && !selected && <div role="alert" style={{ marginBottom: 14, color: "#B91C1C", background: "#FEF2F2", padding: 12, borderRadius: 10 }}>{error}</div>}
-    {status === "customers" ? (loading ? <AdminCard>Loading customers…</AdminCard> : null) : loading ? <AdminCard>Loading KYC submissions…</AdminCard> : rows.length === 0 ? <AdminCard>No {status === "all" ? "" : status} KYC submissions.</AdminCard> : <div className="kx-kyc-review-grid">
+    {status === "customers" ? (loading ? <AdminCard>Loading customers…</AdminCard> : error ? <AdminCard>Customer registry is temporarily unavailable. Please retry after the API is available.</AdminCard> : null) : loading ? <AdminCard>Loading KYC submissions…</AdminCard> : rows.length === 0 ? <AdminCard>No {status === "all" ? "" : status} KYC submissions.</AdminCard> : <div className="kx-kyc-review-grid">
       <AdminCard>{rows.map(row => <button type="button" disabled={busy} aria-pressed={selected?.id === row.id} className="kx-kyc-submission" key={String(row.id)} onClick={() => selectRow(row)}><div className="kx-kyc-submission__title"><strong>{String(row.fullName || "Unnamed customer")}</strong><ChevronRight size={18} /></div><div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>{String(row.nationalId || "No NIN")} · {String(row.provider || "No provider")}</div><StatusBadge status={String(row.status || "pending")} /><span style={{fontSize:12,color:"#64748B",display:"block",marginTop:6}}>Submission {String(row.version ?? "—")}</span></button>)}</AdminCard>
       <AdminCard>
         {!selected ? "Select a submission to review its photographs and ID details." : <>
