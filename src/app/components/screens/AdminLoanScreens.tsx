@@ -69,7 +69,6 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
   const [recordSearch,setRecordSearch] = useState("");
-  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
