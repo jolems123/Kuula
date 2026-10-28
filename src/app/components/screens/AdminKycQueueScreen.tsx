@@ -83,14 +83,14 @@ export function AdminKycQueueScreen({ onNavigate }: Props) {
   };
 
   return <AdminLayout activeScreen="admin-customer-kyc" onNavigate={onNavigate} title="KYC Verification">
-    <AdminPageHeader title="Identity document review" subtitle="Review the National ID front, back and portrait before approving an account." />
+    <AdminPageHeader title="KYC verification" subtitle="Monitor customer identity status and review submitted documents." />
     <div className="kx-kyc-filters" aria-label="Submission status">{["customers", "pending", "verified", "rejected", "all"].map(value => <button type="button" key={value} disabled={busy} aria-pressed={status === value} onClick={() => setStatus(value)} className={`kx-btn ${status === value ? "kx-kyc-approve" : "kx-btn--secondary"}`}>{value === "customers" ? "All customers" : value === "pending" ? "Needs review" : value === "verified" ? "Approved" : value === "rejected" ? "Rejected" : "All submissions"}</button>)}</div>
-    <ListSearch value={search} onChange={setSearch} placeholder="Search name, contact or ID" />
+    <ListSearch value={search} onChange={setSearch} placeholder={status === "customers" ? "Filter customers by name, phone or email" : "Filter submissions by name or National ID"} />
     {status === "customers" && !loading && !error && <section className="kuula-kyc-overview" aria-label="All registered customer identity statuses">
       <div className="kuula-kyc-overview__metrics">
         {([["Registered customers",customers.length],["Not submitted",customers.filter(c=>c.kycStatus==="not_submitted").length],["Pending review",customers.filter(c=>c.kycStatus==="pending").length],["Verified",customers.filter(c=>c.kycStatus==="verified").length],["Rejected",customers.filter(c=>c.kycStatus==="rejected").length]] as const).map(([label,value])=><div key={label} className="kuula-kyc-overview__metric"><span>{label}</span><strong>{value}</strong></div>)}
       </div>
-      <AdminCard><h3>Customer verification registry</h3><p>One row per registered customer. Select a submission filter above to examine document review history.</p>
+      <AdminCard><h3>Customer KYC status</h3><p>One row per registered customer. Select a submission filter above to examine document review history.</p>
         <div className="kuula-kyc-customer-list">{customers.filter(customer=>[customer.fullName,customer.phone,customer.email].some(v=>String(v||"").toLowerCase().includes(search.trim().toLowerCase()))).map(customer=><div key={customer.id} className="kuula-kyc-customer-row">
           <div><strong>{customer.fullName || "Unnamed customer"}</strong><small>{customer.phone || customer.email || "No contact listed"}</small></div>
           <div><StatusBadge status={customer.kycStatus}/><small>{customer.latestSubmission ? `Submission ${customer.latestSubmission.version}` : "No identity documents submitted"}</small></div>
