@@ -69,6 +69,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
   const [recordSearch,setRecordSearch] = useState("");
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -244,6 +245,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -353,6 +355,7 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
