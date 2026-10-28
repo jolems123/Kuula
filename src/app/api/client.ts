@@ -161,6 +161,7 @@ const nodeApi = {
     request<{ ok: boolean; kyc: { submissionId: string; status: string; version: number } }>("/api/kyc/submit-documents",
       { method: "POST", headers: auth(token), body: JSON.stringify(body) }, KYC_UPLOAD_TIMEOUT_MS),
   getKycStatus: (token: string) => request<{ kyc: Record<string, unknown> }>("/api/kyc/status", { headers: auth(token) }),
+  getAdminKycCustomers: (token: string) => request<{ customers: Array<{ id: string; fullName: string; phone: string | null; email: string | null; kycStatus: string; latestSubmission: { id: string; version: number; status: string; decisionReason: string | null } | null }> }>("/api/admin/kyc/customers", { headers: auth(token) }),
   getAdminKycQueue: (token: string, status = "pending") => request<{ submissions: Array<Record<string, unknown>> }>(`/api/admin/kyc/queue${query({ status })}`, { headers: auth(token) }),
   decideAdminKyc: (token: string, id: string, decision: "verified" | "rejected", reason: string) => request<{ ok: boolean; submission: Record<string, unknown> }>(`/api/admin/kyc/${id}/decision`, { method: "POST", headers: auth(token), body: JSON.stringify({ decision, reason }) }),
   getAdminKycAudit: (token: string, id: string) => request<{ events: Array<Record<string, unknown>> }>(`/api/admin/kyc/${id}/audit`, { headers: auth(token) }),
