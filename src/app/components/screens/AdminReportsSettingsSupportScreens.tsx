@@ -1,3 +1,4 @@
+import { ListSearch } from "../ListSearch";
 /**
  * A8.1-A8.5 Reports | A9.1-A9.10 Settings | A10.1-A10.4 Support
  */
@@ -176,6 +177,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staffSearch,setStaffSearch]=useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -324,11 +326,12 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
       </AdminCard>}
       {notice && <p style={{ fontSize:12,color:"#15864E",margin:"0 0 12px" }}>{notice}</p>}
       {error && <p style={{ fontSize:12,color:"#DC4C4C",margin:"0 0 12px" }}>{error}</p>}
+      <ListSearch value={staffSearch} onChange={setStaffSearch} placeholder="Search staff name, email, phone, role or status" />
       {loading ? (
         <AdminCard><p style={{ fontSize:13,color:"#64748B",margin:0 }}>Loading staff accounts…</p></AdminCard>
       ) : (
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-          {staff.map((s)=>(
+          {staff.filter(s=>[s.fullName,s.email,s.phone,s.role,s.status].some(v=>String(v||"").toLowerCase().includes(staffSearch.trim().toLowerCase()))).map((s)=>(
             <AdminCard key={s.id}>
               <div style={{ display:"flex",alignItems:"center",gap:14,flexWrap:"wrap" }}>
                 <div style={{ width:44,height:44,borderRadius:22,background:"linear-gradient(135deg,#0B5E3A,#064A2E)",display:"flex",alignItems:"center",justifyContent:"center" }}>
