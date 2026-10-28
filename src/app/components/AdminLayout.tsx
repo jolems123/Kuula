@@ -32,7 +32,7 @@ const NAV: NavSection[] = [
           { id: "admin-officer-dashboard", label: "My review queue" },
           { id: "admin-officer-assignment", label: "Intake & assignment" },
           { id: "admin-approval-workflow", label: "Approval workflow" },
-          { id: "admin-officer-contact", label: "Customer search" },
+          { id: "admin-officer-contact", label: "Customer 360°" },
         ],
       },
       {
@@ -195,7 +195,7 @@ export function AdminLayout({ children, activeScreen, onNavigate, title }: Admin
           <div className="kx-topbar__actions">{activeScreen !== home && <button type="button" className="kx-topbar__my-work" onClick={goToMyWork}>My work</button>}
             {canSearch && (
               <button type="button" className="kx-search" onClick={() => onNavigate("admin-officer-contact")}>
-                <Search size={16} strokeWidth={1.75} /><span>Search customers</span>
+                <Search size={16} strokeWidth={1.75} /><span>Customer 360°</span>
               </button>
             )}
           </div>
