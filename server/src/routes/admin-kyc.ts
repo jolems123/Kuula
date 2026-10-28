@@ -9,6 +9,27 @@ import { writeAuditEvent } from "../lib/audit.js";
 const router = Router();
 router.use(authenticateToken);
 
+// One row per customer, with their latest submission only. Historical submissions remain in /queue.
+router.get("/customers", requirePermissions("kyc.review"), async (_req: Request, res: Response) => {
+  const customers = await prisma.user.findMany({
+    where: { role: { in: ["user", "customer"] }, deletedAt: null },
+    select: { id: true, fullName: true, phone: true, email: true, kycVerified: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const latest = await prisma.kycSubmission.findMany({
+    where: { userId: { in: customers.map(customer => customer.id) } },
+    select: { id: true, userId: true, version: true, status: true, submittedAt: true, decisionReason: true },
+    orderBy: [{ version: "desc" }, { submittedAt: "desc" }],
+  });
+  const byUser = new Map<string, (typeof latest)[number]>();
+  for (const submission of latest) if (!byUser.has(submission.userId)) byUser.set(submission.userId, submission);
+  res.json({ customers: customers.map(customer => ({
+    id: customer.id, fullName: customer.fullName, phone: customer.phone, email: customer.email,
+    createdAt: customer.createdAt, kycStatus: byUser.get(customer.id)?.status ?? (customer.kycVerified ? "verified" : "not_submitted"),
+    latestSubmission: byUser.get(customer.id) ?? null,
+  })) });
+});
+
 router.get("/queue", requirePermissions("kyc.review"), async (req: Request, res: Response) => {
   const status = typeof req.query.status === "string" ? req.query.status : "pending";
   const take = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
