@@ -1,3 +1,4 @@
+import { ListSearch } from "../ListSearch";
 import { ExpenditureSummary } from "../ExpenditureDetails";
 import { GuarantorStaffReview } from "../GuarantorStaffReview";
 /**
@@ -67,6 +68,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -123,10 +125,9 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
 
   const selected = apps.find((a) => a.id === selectedId);
 
-  const filtered = filter === "All"
-    ? apps
-    : apps.filter((a) => a.status.toLowerCase() === filter.toLowerCase());
+  const filtered = (filter === "All" ? apps : apps.filter(a=>a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
 
+  const [applicationSearch,setApplicationSearch] = useState("");
   const pendingCount = apps.filter((a) => a.status === "pending").length;
 
   return (
@@ -150,6 +151,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         ))}
       </div>
 
+      <ListSearch value={applicationSearch} onChange={setApplicationSearch} placeholder="Search customer, application ID, business or purpose" />
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading applications…</div>
       ) : filtered.length === 0 ? (
@@ -242,6 +244,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -258,6 +261,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-active-loans", ["Customer", "Loan ID", "Amount (UGX)", "Applied", "Status"], apps.map((a) => [a.applicantName || "—", a.id, a.amount, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export CSV</button>}
       />
       <ExportToolbar title="Authorized active facilities" filename="kuula-active-facilities" columns={["Customer","Application ID","Amount (UGX)","Applied","Status"]} rows={apps.map(a=>[a.applicantName||"—",a.id,a.amount,fmtDate(a.createdAt),a.status])} disabled={loading}/>
+      <ListSearch value={recordSearch} onChange={setRecordSearch} placeholder="Search active customer or loan ID" />
       <div style={{ display:"flex",gap:14,marginBottom:20 }}>
         <StatCard label="Active Loans" value={loading ? "…" : String(apps.length)} color="#0B5E3A" icon={<></>} />
         <StatCard label="Total Amount" value={loading ? "…" : `UGX ${(apps.reduce((s, a) => s + a.amount, 0) / 1000000).toFixed(1)}M`} color="#178654" icon={<></>} />
@@ -270,7 +274,7 @@ export function AdminActiveLoansListScreen({ onNavigate }: Props) {
       ) : (
         <AdminTable
           columns={["Customer", "Loan ID", "Amount", "Applied", "Status"]}
-          rows={apps.map((a) => [
+          rows={apps.filter(a=>[a.applicantName,a.id,a.purpose].some(v=>String(v||"").toLowerCase().includes(recordSearch.trim().toLowerCase()))).map((a) => [
             a.applicantName || "—",
             a.id.slice(0, 12),
             ugx(a.amount),
@@ -288,6 +292,7 @@ export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [accounts, setAccounts] = useState<Array<Record<string, unknown>>>([]);
+  const [overdueSearch,setOverdueSearch] = useState("");
   const [activities, setActivities] = useState<Array<Record<string, unknown>>>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -326,6 +331,7 @@ export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
           <p style={{ fontSize:12,color:"#991B1B",margin:0 }}>⚠ {accounts.length} loan{accounts.length !== 1 ? "s are" : " is"} overdue. Contact customers immediately.</p>
         </div>
       )}
+      <ListSearch value={overdueSearch} onChange={setOverdueSearch} placeholder="Search overdue customer or repayment reference" />
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>
       ) : accounts.length === 0 ? (
@@ -333,7 +339,7 @@ export function AdminOverdueLoansListScreen({ onNavigate }: Props) {
       ) : (
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><AdminTable
           columns={["Customer", "Amount due", "Days past due", "Status"]}
-          rows={accounts.map((a) => [
+          rows={accounts.filter(a=>[a.full_name,a.repayment_id].some(v=>String(v||"").toLowerCase().includes(overdueSearch.trim().toLowerCase()))).map((a) => [
             <button key={String(a.repayment_id)} onClick={()=>setSelected(String(a.repayment_id))}>{String(a.full_name||"—")}</button>,
             ugx(Number(a.total||0)-Number(a.amount_paid||0)),
             String(a.days_past_due||0), <StatusBadge key={String(a.repayment_id)} status="overdue" />,
@@ -348,6 +354,7 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
+  const [recordSearch,setRecordSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -363,6 +370,7 @@ export function AdminLoanHistoryAllScreen({ onNavigate }: Props) {
       <AdminPageHeader title="Loan History (All)" subtitle={loading ? "Loading…" : `${apps.length} closed applications`}
         action={<button disabled={loading || apps.length === 0} onClick={() => downloadCsv("kuula-loan-history", ["Customer", "Amount (UGX)", "Purpose", "Date", "Status"], apps.map((a) => [a.applicantName || "—", a.amount, a.purpose, fmtDate(a.createdAt), a.status]))} style={{ padding:"8px 14px",borderRadius:8,background:"white",border:"1px solid #E2E8F0",color:"#374151",fontSize:12,fontWeight:600,cursor: loading || apps.length === 0 ? "default" : "pointer",opacity: loading || apps.length === 0 ? 0.6 : 1,display:"flex",alignItems:"center",gap:6 }}><Download size={14}/>Export</button>}
       />
+      <ListSearch value={recordSearch} onChange={setRecordSearch} placeholder="Search loan history by customer, ID or purpose" />
       <ExportToolbar title="Authorized loan history" filename="kuula-loan-history" columns={["Customer","Amount (UGX)","Purpose","Date","Status"]} rows={apps.map(a=>[a.applicantName||"—",a.amount,a.purpose,fmtDate(a.createdAt),a.status])} disabled={loading}/>
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>

@@ -1,3 +1,4 @@
+import { ListSearch } from "../ListSearch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, MessageSquare, Send } from "lucide-react";
 import { api } from "../../api/client";
@@ -24,6 +25,7 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const [inboxSearch,setInboxSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -93,8 +95,9 @@ export function AdminSupportInboxScreen({ onNavigate }: Props) {
       {error && <div role="alert" style={{ color: "#991B1B", background: "#FEF2F2", padding: 12, borderRadius: 10, marginBottom: 16 }}>{error}</div>}
       {!selected ? <>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}><MessageSquare size={20} color="#0B5E3A" /><h2 style={{ margin: 0, fontSize: 18 }}>Customer conversations</h2></div>
+        <ListSearch value={inboxSearch} onChange={setInboxSearch} placeholder="Search customer or conversation content" />
         {loading ? <p>Loading conversations…</p> : threads.length === 0 ? <p style={{ color: "#64748B" }}>No support messages yet.</p> :
-          <div style={{ display: "grid", gap: 8 }}>{threads.map((thread) => <button key={thread.customerId} onClick={() => setSelected(thread.customerId)} style={{ textAlign: "left", background: "white", border: "1px solid #E2E8F0", borderRadius: 12, padding: 14, cursor: "pointer" }}>
+          <div style={{ display: "grid", gap: 8 }}>{threads.filter(thread=>[nameFor(thread.customerId),thread.last.content].some(v=>String(v||"").toLowerCase().includes(inboxSearch.trim().toLowerCase()))).map((thread) => <button key={thread.customerId} onClick={() => setSelected(thread.customerId)} style={{ textAlign: "left", background: "white", border: "1px solid #E2E8F0", borderRadius: 12, padding: 14, cursor: "pointer" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><strong>{nameFor(thread.customerId)}</strong><small>{relativeTime(thread.last.createdAt)}</small></div>
             <div style={{ color: "#64748B", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{thread.last.content}</div>
           </button>)}</div>}
