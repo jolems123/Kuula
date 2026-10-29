@@ -122,6 +122,7 @@ const nodeApi = {
   deactivateStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}/deactivate`, { method: "POST", headers: auth(token) }),
   resetStaffPassword: (token: string, id: string, newPassword: string) => request<{ ok: boolean; message: string }>(`/api/staff/${id}/reset-password`, { method: "POST", headers: auth(token), body: JSON.stringify({ newPassword }) }),
   reactivateStaff: (token: string, id: string) => request<{ ok: boolean; staff: StaffMember }>(`/api/staff/${id}/reactivate`, { method: "POST", headers: auth(token) }),
+  deleteStaff: (token: string, id: string) => request<{ ok: boolean }>(`/api/staff/${id}`, { method: "DELETE", headers: auth(token) }),
   updateStaff: (token: string, id: string, input: { fullName: string; email: string; role: string }) => request<{ staff: StaffMember }>(`/api/staff/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(input) }),
   refresh: refreshSession,
   signUp: (input: { name: string; phone: string; pin?: string; password?: string; nationalId: string; acceptedTerms?: boolean; termsVersion?: string }) => request<{ ok: boolean; needsConfirmation?: boolean }>("/api/auth/signup", { method: "POST", body: JSON.stringify(input) }),

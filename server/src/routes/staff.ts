@@ -16,6 +16,20 @@ import { roleLevel } from "../lib/credit-roles.js";
 
 const router = Router();
 
+// Accounts created before dedicated staff roles remain valid. When an older
+// account is edited, move it to its least-privilege modern equivalent so its
+// access and destination dashboard stay predictable.
+const LEGACY_ROLE_REPLACEMENTS: Record<string, string> = {
+  admin: "administrator",
+  manager: "credit_manager",
+  officer: "loan_officer",
+};
+
+function editableStaffRole(value: unknown, fallback: string): string {
+  const requested = typeof value === "string" ? value.trim().toLowerCase() : fallback;
+  return LEGACY_ROLE_REPLACEMENTS[requested] ?? requested;
+}
+
 // Every endpoint in this router is Super Admin only. Invitable roles exclude
 // super_admin itself: a second super admin can only be created by seeding,
 // never through an invite, so staff.manage cannot be used to clone itself.
@@ -61,7 +75,9 @@ const STAFF_SELECT = {
 
 router.get("/", async (_req: Request, res: Response) => {
   const staff = await prisma.user.findMany({
-    where: { role: { notIn: ["user", "customer"] } },
+    // Deleted staff identities are retained only in audit records. They must
+    // not look like a deactivated account that could be restored.
+    where: { role: { notIn: ["user", "customer", "deleted_staff"] } },
     select: STAFF_SELECT,
     orderBy: { createdAt: "asc" },
   });
@@ -172,7 +188,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
   if (target.id === req.user!.userId && req.body.role && req.body.role !== target.role) throw new AppError("You cannot change your own role", 400);
   const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : target.fullName;
   const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() || null : target.email;
-  const role = typeof req.body.role === "string" ? req.body.role.trim().toLowerCase() : target.role;
+  const role = editableStaffRole(req.body.role, target.role);
   if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the staff member's full name", 400);
   if (!(INVITABLE_STAFF_ROLES as readonly string[]).includes(role)) throw new AppError(`Role must be one of: ${INVITABLE_STAFF_ROLES.join(", ")}`, 400);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("Enter a valid email address", 400);
@@ -195,6 +211,50 @@ router.post("/:id/reactivate", async (req: Request, res: Response) => {
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.reactivated", resourceType: "user", resourceId: target.id });
   const { passwordHash, ...safeUpdated } = updated;
   res.json({ ok: true, staff: { ...safeUpdated, status: updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
+});
+
+router.delete("/:id", async (req: Request, res: Response) => {
+  // Financial and access audit records must remain traceable, so deletion
+  // permanently removes the sign-in identity and staff-directory entry while
+  // retaining the immutable record IDs used by the audit trail.
+  const targetId = String(req.params.id ?? "");
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target || !target.deletedAt || !isStaffRole(target.role)) throw new AppError("Deactivate the staff account before deleting it", 409);
+  if (target.id === req.user!.userId || target.role === "super_admin") throw new AppError("The Super Admin account cannot be deleted", 403);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: target.id },
+      data: {
+        role: "deleted_staff",
+        fullName: "Deleted staff account",
+        email: null,
+        phone: null,
+        passwordHash: null,
+        pinHash: null,
+        phoneVerified: false,
+        otpHash: null,
+        otpPurpose: null,
+        otpExpiresAt: null,
+        otpAttempts: 0,
+        otpLastSentAt: null,
+        otpLockedUntil: null,
+        loginAttempts: 0,
+        loginLockedUntil: null,
+        authVersion: { increment: 1 },
+      },
+    }),
+    prisma.authSession.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  await writeAuditEvent({
+    actorId: req.user!.userId,
+    subjectUserId: target.id,
+    action: "staff.deleted",
+    resourceType: "user",
+    resourceId: target.id,
+    metadata: { previousRole: target.role },
+  });
+  res.json({ ok: true });
 });
 
 router.post("/:id/reset-password", async (req: Request, res: Response) => {
