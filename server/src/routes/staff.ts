@@ -219,7 +219,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
   // retaining the immutable record IDs used by the audit trail.
   const targetId = String(req.params.id ?? "");
   const target = await prisma.user.findUnique({ where: { id: targetId } });
-  if (!target || !target.deletedAt || !isStaffRole(target.role)) throw new AppError("Deactivate the staff account before deleting it", 409);
+  if (!target || !isStaffRole(target.role)) throw new AppError("Staff account not found", 404);
   if (target.id === req.user!.userId || target.role === "super_admin") throw new AppError("The Super Admin account cannot be deleted", 403);
 
   await prisma.$transaction([

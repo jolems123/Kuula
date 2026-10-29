@@ -200,6 +200,16 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [resetting, setResetting] = useState<StaffMember | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [pendingAction, setPendingAction] = useState<{ kind: "deactivate" | "reactivate" | "delete"; member: StaffMember } | null>(null);
+
+  useEffect(() => {
+    if (!editing && !pendingAction) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setEditing(null); setPendingAction(null); }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [editing, pendingAction]);
 
   const load = async () => {
     if (!token) return;
@@ -232,11 +242,11 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
 
   const deactivate = async (member: StaffMember) => {
     if (!token) return;
-    if (!window.confirm(`Deactivate ${member.fullName}? Their sessions end immediately.`)) return;
     setBusyId(member.id); setError(""); setNotice("");
     try {
       await api.deactivateStaff(token, member.id);
       setNotice(`${member.fullName} has been deactivated.`);
+      setPendingAction(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not deactivate this account.");
@@ -260,17 +270,16 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     finally { setBusyId(null); }
   };
   const reactivate = async (member: StaffMember) => {
-    if (!token || !window.confirm(`Reactivate ${member.fullName}? They will regain staff sign-in access.`)) return;
+    if (!token) return;
     setBusyId(member.id); setError(""); setNotice("");
-    try { await api.reactivateStaff(token, member.id); setNotice(`${member.fullName} has been reactivated.`); await load(); }
+    try { await api.reactivateStaff(token, member.id); setNotice(`${member.fullName} has been reactivated.`); setPendingAction(null); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not reactivate this account."); }
     finally { setBusyId(null); }
   };
   const deleteAccount = async (member: StaffMember) => {
     if (!token) return;
-    if (!window.confirm(`Permanently delete ${member.fullName}'s staff account? Their sign-in details will be removed and this cannot be undone. Audit records are kept.`)) return;
     setBusyId(member.id); setError(""); setNotice("");
-    try { await api.deleteStaff(token, member.id); setNotice(`${member.fullName}'s account was permanently deleted.`); await load(); }
+    try { await api.deleteStaff(token, member.id); setNotice(`${member.fullName}'s account was permanently deleted.`); setPendingAction(null); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not delete this account."); }
     finally { setBusyId(null); }
   };
@@ -333,7 +342,20 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
           </button>
         </AdminCard>
       )}
-      {editing && <AdminCard style={{ marginBottom:14 }}><h3 style={{ marginTop:0 }}>Edit staff profile</h3><div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 210px), 1fr))",gap:12 }}><label>Full name<input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} /></label><label>Work email<input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /></label><label>Role<select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></label></div><div style={{ display:"flex",gap:8,marginTop:12,flexWrap:"wrap" }}><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>Save changes</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div></AdminCard>}
+      {editing && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setEditing(null)}>
+        <section className="kx-staff-modal" role="dialog" aria-modal="true" aria-labelledby="edit-staff-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="kx-staff-modal__head"><div><h3 id="edit-staff-title">Edit staff profile</h3><p>Changes take effect at the staff member’s next sign-in.</p></div><button type="button" className="kx-icon-btn" onClick={() => setEditing(null)} aria-label="Close edit staff form">×</button></div>
+          <div className="kx-staff-modal__fields"><label>Full name<input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} autoFocus /></label><label>Work email<input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /></label><label>Role<select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></label></div>
+          <div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>{busyId===editing.id ? "Saving…" : "Save changes"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
+        </section>
+      </div>}
+      {pendingAction && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setPendingAction(null)}>
+        <section className="kx-staff-modal kx-staff-modal--confirm" role="dialog" aria-modal="true" aria-labelledby="staff-action-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="kx-staff-modal__head"><div><h3 id="staff-action-title">{pendingAction.kind === "delete" ? "Delete staff account?" : pendingAction.kind === "deactivate" ? "Deactivate staff account?" : "Reactivate staff account?"}</h3><p>{pendingAction.member.fullName}</p></div><button type="button" className="kx-icon-btn" onClick={() => setPendingAction(null)} aria-label="Close confirmation">×</button></div>
+          <p className="kx-staff-modal__message">{pendingAction.kind === "delete" ? "This permanently removes the staff member’s sign-in details and staff-directory entry. Their audit records are retained. This cannot be undone." : pendingAction.kind === "deactivate" ? "Their current sessions will end immediately. You can reactivate the account later." : "They will regain access using their existing staff credentials."}</p>
+          <div className="kx-staff-modal__actions"><button className={pendingAction.kind === "delete" ? "kx-btn kx-btn--danger" : "kx-btn kx-btn--primary"} onClick={() => void (pendingAction.kind === "delete" ? deleteAccount(pendingAction.member) : pendingAction.kind === "deactivate" ? deactivate(pendingAction.member) : reactivate(pendingAction.member))} disabled={busyId===pendingAction.member.id}>{busyId===pendingAction.member.id ? "Working…" : pendingAction.kind === "delete" ? "Delete account" : pendingAction.kind === "deactivate" ? "Deactivate account" : "Reactivate account"}</button><button className="kx-btn kx-btn--secondary" onClick={() => setPendingAction(null)}>Cancel</button></div>
+        </section>
+      </div>}
       {resetting && <AdminCard style={{marginBottom:14}}>
         <h3 style={{marginTop:0}}>Reset password — {resetting.fullName}</h3>
         <p style={{fontSize:13,color:"#64748B"}}>The existing password cannot be viewed. Set a strong replacement password; this will sign the staff member out of all current sessions. Use a secure channel to deliver the new password.</p>
@@ -369,10 +391,10 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Approve access</button>}
                   {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
                   {s.status === "active" && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>Reset password</button>}
-                  {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>void reactivate(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
-                  {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={() => void deleteAccount(s)} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#7F1D1D",color:"white",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}><Trash2 size={12}/>{busyId === s.id ? "Working…" : "Delete account"}</button>}
+                  {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>setPendingAction({ kind:"reactivate", member:s })} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
+                  {s.role !== "super_admin" && s.id !== state.user?.id && <button onClick={() => setPendingAction({ kind:"delete", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#7F1D1D",color:"white",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}><Trash2 size={12}/>Delete account</button>}
                   {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
-                    <button onClick={() => void deactivate(s)} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
+                    <button onClick={() => setPendingAction({ kind:"deactivate", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
                       <Trash2 size={12}/>{busyId === s.id ? "Working…" : "Deactivate"}
                     </button>
                   )}
