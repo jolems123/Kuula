@@ -295,7 +295,6 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const resetPassword = async () => {
     if (!token || !resetting) return;
     if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
-    if (!window.confirm(`Reset password for ${resetting.fullName}? All their active sessions will be signed out.`)) return;
     setBusyId(resetting.id); setError(""); setNotice("");
     try {
       await api.resetStaffPassword(token, resetting.id, newPassword);
@@ -356,18 +355,14 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
           <div className="kx-staff-modal__actions"><button className={pendingAction.kind === "delete" ? "kx-btn kx-btn--danger" : "kx-btn kx-btn--primary"} onClick={() => void (pendingAction.kind === "delete" ? deleteAccount(pendingAction.member) : pendingAction.kind === "deactivate" ? deactivate(pendingAction.member) : reactivate(pendingAction.member))} disabled={busyId===pendingAction.member.id}>{busyId===pendingAction.member.id ? "Working…" : pendingAction.kind === "delete" ? "Delete account" : pendingAction.kind === "deactivate" ? "Deactivate account" : "Reactivate account"}</button><button className="kx-btn kx-btn--secondary" onClick={() => setPendingAction(null)}>Cancel</button></div>
         </section>
       </div>}
-      {resetting && <AdminCard style={{marginBottom:14}}>
-        <h3 style={{marginTop:0}}>Reset password — {resetting.fullName}</h3>
-        <p style={{fontSize:13,color:"#64748B"}}>The existing password cannot be viewed. Set a strong replacement password; this will sign the staff member out of all current sessions. Use a secure channel to deliver the new password.</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}>
-          <label>New password<input autoComplete="new-password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} /></label>
-          <label>Confirm password<input autoComplete="new-password" type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} /></label>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:12}}>
-          <button className="kx-btn kx-btn--primary" disabled={busyId===resetting.id||!newPassword||!confirmPassword} onClick={()=>void resetPassword()}>Reset password</button>
-          <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(null);setNewPassword("");setConfirmPassword("");}}>Cancel</button>
-        </div>
-      </AdminCard>}
+      {resetting && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => { setResetting(null); setNewPassword(""); setConfirmPassword(""); }}>
+        <section className="kx-staff-modal" role="dialog" aria-modal="true" aria-labelledby="change-staff-password-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="kx-staff-modal__head"><div><h3 id="change-staff-password-title">Change staff password</h3><p>{resetting.fullName}</p></div><button type="button" className="kx-icon-btn" onClick={() => { setResetting(null); setNewPassword(""); setConfirmPassword(""); }} aria-label="Close password form">×</button></div>
+          <p className="kx-staff-modal__message">Set a strong replacement password. The old password cannot be viewed, and all current sessions for this staff member will be signed out.</p>
+          <div className="kx-staff-modal__fields" style={{marginTop:18}}><label>New password<input autoComplete="new-password" type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} autoFocus /></label><label>Confirm new password<input autoComplete="new-password" type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} /></label></div>
+          <div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" disabled={busyId===resetting.id||!newPassword||!confirmPassword} onClick={()=>void resetPassword()}>{busyId===resetting.id ? "Changing…" : "Change password"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(null);setNewPassword("");setConfirmPassword("");}}>Cancel</button></div>
+        </section>
+      </div>}
       {notice && <p style={{ fontSize:12,color:"#15864E",margin:"0 0 12px" }}>{notice}</p>}
       {error && <p style={{ fontSize:12,color:"#DC4C4C",margin:"0 0 12px" }}>{error}</p>}
       <ListSearch value={staffSearch} onChange={setStaffSearch} placeholder="Search staff name, email, phone, role or status" />
@@ -390,7 +385,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status.replace(/_/g, " ")}</span>
                   {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Approve access</button>}
                   {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
-                  {s.status === "active" && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>Reset password</button>}
+                  {s.status === "active" && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>Change password</button>}
                   {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>setPendingAction({ kind:"reactivate", member:s })} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
                   {s.role !== "super_admin" && s.id !== state.user?.id && <button onClick={() => setPendingAction({ kind:"delete", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#7F1D1D",color:"white",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}><Trash2 size={12}/>Delete account</button>}
                   {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
