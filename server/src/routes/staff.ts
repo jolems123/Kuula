@@ -263,7 +263,10 @@ router.post("/:id/reset-password", async (req: Request, res: Response) => {
   const target = await prisma.user.findUnique({ where: { id: targetId } });
   if (!target || target.deletedAt || !isStaffRole(target.role)) throw new AppError("Active staff account not found", 404);
   if (target.id === req.user!.userId || target.role === "super_admin") throw new AppError("Use account recovery for the Super Admin account", 403);
-  if (!target.phoneVerified || !target.passwordHash) throw new AppError("Staff member must finish account activation before a password reset", 409);
+  // A pending staff member has chosen a password but is not yet authorized to
+  // sign in. Super Admin may replace it without granting access; approval is a
+  // separate explicit action.
+  if (!target.passwordHash) throw new AppError("The staff member must create their initial password before it can be changed", 409);
   let newPassword: string;
   try { newPassword = validateNewPassword(req.body?.newPassword); }
   catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid password", 400); }
