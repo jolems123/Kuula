@@ -1,10 +1,8 @@
 import { UiText } from "../../../i18n/ui-text";
-import { ExpenditureSummary } from "../ExpenditureDetails";
-import {getSelectedStatements,clearSelectedStatements,statementDataUrl} from "../../lib/financial-statements";
 import { ArrowLeft, CheckCircle } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useAppContext } from "../../context/AppContext";
-import { api, ApiError } from "../../api/client";
+import { api } from "../../api/client";
 import { env } from "../../config/env";
 import { getBusinessPhotos, getBusinessPhotoApplicationId, setBusinessPhotoApplicationId, clearBusinessPhotos, fileToDataUrl } from "../../lib/business-photos";
 import { clearSavedLoanApplicationDraft, getSavedLoanApplicationDraft } from "../../lib/loan-application-autosave";
@@ -28,7 +26,6 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       || !saved.occupationOrBusiness.trim()
       || !saved.workDuration
       || !saved.incomeSource
-      || !saved.repaymentSource.trim()
       || saved.income <= 0
       || saved.expenses + saved.existingDebt >= saved.income
       || ((saved.purposes ?? [saved.purpose]).includes("Other") && !saved.otherPurpose.trim())
@@ -49,7 +46,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       employerOrBusinessName: saved.employerOrBusinessName,
       workDuration: saved.workDuration,
       incomeSource: saved.incomeSource,
-      repaymentSource: saved.repaymentSource,
+      repaymentSource: "",
       declaredMonthlyIncome: saved.income,
       declaredMonthlyExpenses: saved.expenses,
       existingDebtPayment: saved.existingDebt,
@@ -112,18 +109,9 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         if (previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
         await api.uploadBusinessPhotos(token, applicationId, photos);
       }
-      if (getSelectedStatements().length > 0) {
-        const existingStatements = await api.listFinancialStatements(token, applicationId);
-        for (const item of getSelectedStatements()) {
-          if (!existingStatements.statements.some(saved => saved.kind === item.kind)) {
-            await api.uploadFinancialStatement(token, applicationId, {kind:item.kind,periodMonths:item.periodMonths,filename:item.file.name,dataUrl:await statementDataUrl(item.file)});
-          }
-        }
-      }
       setSubmissionStage("complete");
       setLastSubmittedApplicationId(applicationId);
       clearBusinessPhotos(state.user.id);
-      clearSelectedStatements();
       clearSavedLoanApplicationDraft(state.user.id);
       setLoanDraft(null);
       onNavigate("loan-approval");
@@ -153,33 +141,16 @@ export function LoanReviewScreen({ onNavigate }: Props) {
           <Row label="Employer / business name" value={draft.employerOrBusinessName || "Not provided"} />
           <Row label="Time in current work" value={draft.workDuration} />
           <Row label="Primary income source" value={draft.incomeSource} />
-          <Row label="Primary repayment source" value={draft.repaymentSource} />
           <Row label="Sector" value={draft.business.sector} />
           <Row label="Registration status" value={draft.business.tradingAs} />
           <Row label="Registration number" value={draft.business.registrationNumber || "Not registered"} />
           <Row label="District and location" value={draft.business.district + " · " + draft.business.physicalAddress} />
           {draft.business.latitude != null && draft.business.longitude != null && <Row label="Pinned GPS location" value={`${draft.business.latitude.toFixed(6)}, ${draft.business.longitude.toFixed(6)}`} />}
           <Row label="Months trading" value={String(draft.business.tradingMonths)} />
-          <Row label="Customers" value={draft.business.customerType} />
-          <Row label="Sales frequency" value={draft.business.salesFrequency === "unknown" ? "Not specified" : draft.business.salesFrequency} />
-          <Row label="Main suppliers" value={draft.business.primarySuppliers || "Not provided"} />
-          <Row label="Supplier payment terms" value={draft.business.supplierPaymentTerms || "Not provided"} />
-          <Row label="Seasonality / risks" value={draft.business.seasonalPattern || "Not provided"} />
-          <Row label="Low-season monthly sales" value={draft.business.lowSeasonMonthlySales ? ugx(draft.business.lowSeasonMonthlySales) : "Not specified"} />
           <Row label="Typical monthly business sales" value={ugx(draft.business.monthlySales)} />
           <Row label="Monthly operating expenses" value={ugx(draft.business.monthlyBusinessExpenses)} />
-          <Row label="Stock purchases" value={ugx(draft.business.inventoryCost)} />
-          <Row label="Rent" value={ugx(draft.business.rentCost)} />
-          <Row label="Wages" value={ugx(draft.business.wagesCost)} />
-          <Row label="Other operating costs" value={ugx(draft.business.otherOperatingCosts)} />
           <Row label="Existing debt repayments" value={ugx(draft.business.monthlyExistingDebt)} />
-          <Row label="Other creditors / debts" value={draft.business.otherDebtDetails || "Not provided"} />
-          <Row label="Workers" value={String(draft.business.staffCount)} />
-          <Row label="Loan use" value={draft.business.loanUse} />
-          <Row label="Business repayment plan" value={draft.business.repaymentPlan} />
-          <Row label="Preferred repayment frequency" value={draft.business.preferredRepaymentFrequency.replaceAll("_", " ")} />
-          <ExpenditureSummary business={draft.business} />
-          <p style={{ fontSize: 11, color: "#68766F", margin: "10px 0 0" }}><UiText text={"Your selected repayment frequency is a preference only. Actual obligations are determined by the final offer and accepted loan agreement."} /></p>
+          <Row label="Guarantor contacts" value={draft.business.guarantors?.map(item => item.name).join(" · ") || "Not provided"} />
 
         </div>
 

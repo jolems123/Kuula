@@ -40,6 +40,8 @@ export interface BusinessProfile {
   loanUse: string;
   expenditureItems?: { category: "stock" | "equipment" | "operations" | "expansion" | "other"; description: string; amount: number }[];
   repaymentPlan: string;
+  /** Nominations are collected for follow-up only; consent is always separate. */
+  guarantors?: { name: string; phone: string }[];
 }
 function required(value: unknown, label: string, max = 200): string {
   if (typeof value !== "string" || !value.trim() || value.trim().length > max) {
@@ -98,7 +100,7 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     latitude,
     longitude,
     goodsOrServices: required(obj.goodsOrServices, "Products or services", 300),
-    customerType: required(obj.customerType, "Main customers", 100),
+    customerType: optional(obj.customerType, "Main customers", 100),
     primarySuppliers: optional(obj.primarySuppliers, "Main suppliers", 200),
     supplierPaymentTerms: optional(obj.supplierPaymentTerms, "Supplier payment arrangements", 100),
     salesFrequency: (obj.salesFrequency ?? "unknown") as BusinessProfile["salesFrequency"],
@@ -109,7 +111,7 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
     wagesCost: numeric(obj.wagesCost ?? 0, "Monthly wages", 0, 100000000000),
     otherOperatingCosts: numeric(obj.otherOperatingCosts ?? 0, "Other operating expenses", 0, 100000000000),
     otherDebtDetails: optional(obj.otherDebtDetails, "Existing debt details", 200),
-    staffCount: numeric(obj.staffCount, "Number of workers", 0, 100000),
+    staffCount: numeric(obj.staffCount ?? 0, "Number of workers", 0, 100000),
     monthlySales: numeric(obj.monthlySales, "Monthly business sales", 1, 100000000000),
     monthlyBusinessExpenses: numeric(obj.monthlyBusinessExpenses, "Monthly business expenses", 0, 100000000000),
     monthlyExistingDebt: numeric(obj.monthlyExistingDebt, "Monthly existing debt payments", 0, 100000000000),
@@ -121,9 +123,26 @@ export function parseBusinessProfile(raw: unknown): BusinessProfile {
       expansion: numeric((obj.useOfFunds as Record<string, unknown> | null)?.expansion ?? 0, "Funds for expansion", 0, 100000000000),
       other: numeric((obj.useOfFunds as Record<string, unknown> | null)?.other ?? 0, "Funds for other uses", 0, 100000000000),
     },
-    loanUse: required(obj.loanUse, "How the loan will be used", 300),
-    repaymentPlan: required(obj.repaymentPlan, "How the business will repay", 300),
+    // Purpose selection and affordability figures replace the old narrative
+    // spending/repayment questions. Keep legacy values readable in old cases.
+    loanUse: optional(obj.loanUse, "How the loan will be used", 300),
+    repaymentPlan: optional(obj.repaymentPlan, "How the business will repay", 300),
   };
+  if (obj.guarantors !== undefined) {
+    if (!Array.isArray(obj.guarantors) || obj.guarantors.length !== 2) throw new RangeError("Provide exactly two guarantor contacts");
+    const seen = new Set<string>();
+    profile.guarantors = obj.guarantors.map((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) throw new RangeError("Guarantor contact is invalid");
+      const row = item as Record<string, unknown>;
+      const name = required(row.name, `Guarantor ${index + 1} name`, 120);
+      const phone = required(row.phone, `Guarantor ${index + 1} phone number`, 30);
+      const normalized = phone.replace(/[\s()-]/g, "");
+      if (!/^\+?256\d{9}$/.test(normalized) && !/^0\d{9}$/.test(normalized)) throw new RangeError(`Guarantor ${index + 1} phone number is invalid`);
+      if (seen.has(normalized)) throw new RangeError("Use two different guarantor phone numbers");
+      seen.add(normalized);
+      return { name, phone };
+    });
+  }
   if (!["daily", "weekly", "monthly", "seasonal", "unknown"].includes(profile.salesFrequency))
     throw new RangeError("Select a valid sales frequency");
   if (obj.expenditureItems !== undefined) {

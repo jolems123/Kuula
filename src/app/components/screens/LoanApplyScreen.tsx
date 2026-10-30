@@ -2,8 +2,6 @@ import { LocalizedFileInput } from "../LocalizedFileInput";
 import { UiText, uiText } from "../../../i18n/ui-text";
 import { checkLoanForm, type LoanFormIssue } from "../../lib/loan-form-checks";
 import { api } from "../../api/client";
-import { ExpenditureDetails } from "../ExpenditureDetails";
-import { getSelectedStatements, setSelectedStatements, validateStatement, type StatementKind } from "../../lib/financial-statements";
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
@@ -29,7 +27,7 @@ const METHODS = [
 const EMPTY_BUSINESS: BusinessDetails = {
   businessName: "", applicantPosition: "", locationSource: "none", locationCapturedAt: null, locationAccuracyMeters: null, sector: "", tradingAs: "informal", registrationNumber: "",
   tradingMonths: 0, district: "", physicalAddress: "", latitude: null, longitude: null, goodsOrServices: "",
-  customerType: "", primarySuppliers: "", supplierPaymentTerms: "", salesFrequency: "unknown", seasonalPattern: "", lowSeasonMonthlySales: 0, inventoryCost: 0, rentCost: 0, wagesCost: 0, otherOperatingCosts: 0, otherDebtDetails: "", staffCount: 0, preferredRepaymentFrequency: "at_maturity", useOfFunds: { stock: 0, equipment: 0, operations: 0, expansion: 0, other: 0 }, loanUse: "", repaymentPlan: "",
+  customerType: "", primarySuppliers: "", supplierPaymentTerms: "", salesFrequency: "unknown", seasonalPattern: "", lowSeasonMonthlySales: 0, inventoryCost: 0, rentCost: 0, wagesCost: 0, otherOperatingCosts: 0, otherDebtDetails: "", staffCount: 0, preferredRepaymentFrequency: "at_maturity", useOfFunds: { stock: 0, equipment: 0, operations: 0, expansion: 0, other: 0 }, loanUse: "", repaymentPlan: "", guarantors: [{ name: "", phone: "" }, { name: "", phone: "" }],
 };
 function durationBand(months: number): string {
   if (months < 6) return "Less than 6 months";
@@ -71,8 +69,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     } catch { setIdentityStatus('error'); return false; }
   };
   useEffect(() => { let active = true; const refresh = () => { if (active) void checkIdentity(); }; refresh(); window.addEventListener('focus', refresh); return () => { active = false; window.removeEventListener('focus', refresh); }; }, [state.session.token]);
-  const [statementError, setStatementError] = useState("");
-  const [statements, setStatements] = useState(getSelectedStatements);
   const [photos, setPhotos] = useState<BusinessPhotoFiles>(() => getBusinessPhotos().files);
   const [photoConsent, setPhotoConsent] = useState(() => getBusinessPhotos().consent);
   const [photoError, setPhotoError] = useState("");
@@ -84,7 +80,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
-  useEffect(() => { setSelectedStatements(statements); }, [statements]);
   useEffect(() => { setBusinessPhotos(photos, photoConsent); }, [photos, photoConsent]);
 
   useEffect(() => {
@@ -127,7 +122,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     setAmount((current) => Math.min(Math.max(current, MIN_AMOUNT), maxEligibleAmount));
   }, [canApply, maxEligibleAmount]);
 
-  const allocationsTotal = Object.values(businessDetails.useOfFunds).reduce((sum, value) => sum + value, 0);
   const businessCoordinatesAvailable = Number.isFinite(businessDetails.latitude) && Number.isFinite(businessDetails.longitude);
 
   const captureBusinessLocation = async () => {
@@ -182,14 +176,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
     } catch (err) { setPhotoError(err instanceof Error ? err.message : "Unable to prepare photograph"); }
   };
 
-  const addStatement = (kind: StatementKind, file: File | undefined) => {
-    setStatementError("");
-    if (!file) return;
-    try {
-      validateStatement(file);
-      setStatements(prev => [...prev.filter(s => s.kind !== kind), {kind, file, periodMonths: 6}]);
-    } catch (err) { setStatementError(err instanceof Error ? err.message : "Invalid statement"); }
-  };
 
   const issues = checkLoanForm({ amount, term, purposes, otherPurpose, business: businessDetails, income, expenses, debt: existingDebt, photos, consent: photoConsent, identityApproved: identityStatus === 'approved' });
   const goToIssue = (issue: LoanFormIssue) => {
@@ -255,14 +241,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         className="kx-input" style={{ width: "100%" }} />
     </label>
   );
-  const expenseBreakdown = businessDetails.inventoryCost + businessDetails.rentCost + businessDetails.wagesCost + businessDetails.otherOperatingCosts;
-  const businessCurrencyField = (label: string, key: "inventoryCost" | "rentCost" | "wagesCost" | "otherOperatingCosts" | "lowSeasonMonthlySales") => (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}><UiText text={label} /><UiText text={" (UGX/month)"} /></span>
-      <input id={`loan-${key}`} type="number" inputMode="numeric" min={0} step={1} value={businessDetails[key]} className="kx-input" style={{ width: "100%" }}
-        onChange={event => setBusinessDetails(v => ({ ...v, [key]: Math.max(0, Number(event.target.value)) }))} />
-    </label>
-  );
   const moneyInput = (label: string, value: number, setter: (value: number) => void, hint: string) => (
     <label style={{ display: "block" }}>
       <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#425149", marginBottom: 6 }}><UiText text={label} /></span>
@@ -288,7 +266,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <section className="kuula-application-guide" aria-labelledby="loan-guide-title">
           <h2 id="loan-guide-title"><UiText text={"Your loan application guide"} /></h2>
           <p><UiText text={"Complete the steps below. You can save a draft now; applying requires approved identity documents."} /></p>
-          <details><summary><UiText text={"Step-by-step help with amounts and documents"} /></summary><ol><li><UiText text={"Choose the amount you need and a term. Enter whole Uganda shillings, without commas."} /></li><li><UiText text={"Select all purposes. Split the full loan across the five spending boxes once. For a UGX 500,000 loan, UGX 300,000 stock + UGX 200,000 equipment = UGX 500,000. Use 0 for unused categories."} /></li><li><UiText text={"Give your business details and attach the three business photos with consent."} /></li><li><UiText text={"Enter monthly sales before costs, monthly expenses and payments on existing debts. These are monthly figures, not the loan amount."} /></li><li><UiText text={"Statements and itemized expenditure are optional. If you add expenditure items, their totals must match each funded category."} /></li><li><UiText text={"Check your answers, review the application, then confirm submission. Approval and loan pricing follow Kuula’s assessment."} /></li></ol></details>
+          <details><summary><UiText text={"Step-by-step help with amounts and documents"} /></summary><ol><li><UiText text={"Choose the amount you need and a term. Enter whole Uganda shillings, without commas."} /></li><li><UiText text={"Select every business purpose that applies."} /></li><li><UiText text={"Give your business details, pin the premises and attach the three business photos with consent."} /></li><li><UiText text={"Enter your usual monthly sales, expenses and any current loan payments. These are monthly figures, not the loan amount."} /></li><li><UiText text={"Add two guarantor contacts. They are only contacts at this point; a separate agreement is required before anyone can guarantee a loan."} /></li><li><UiText text={"Check your answers, review the application, then confirm submission. Approval and loan pricing follow Kuula’s assessment."} /></li></ol></details>
           <div id="loan-identity" tabIndex={-1}>
             <strong><UiText text={"Identity documents: "} /><UiText text={identityStatus === 'approved' ? 'verified and approved' : identityStatus === 'loading' ? 'checking status…' : identityStatus === 'error' ? 'status unavailable — retry before applying' : 'approval required before applying'} /></strong>
             {identityStatus !== 'approved' && <p><UiText text={"Uploading documents alone is not approval. Open Identity Verification to submit missing documents, read a rejection reason or wait for review."} /></p>}
@@ -311,7 +289,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.repaymentTerm").toUpperCase()}</label><div id="loan-term" className="flex gap-2 flex-wrap mt-3">{TERMS.map((d) => <button key={d} onClick={() => setTerm(d)} style={{ padding: "8px 14px", borderRadius: 10, border: term === d ? "none" : "1.5px solid #DDE5E0", background: term === d ? "#0B5E3A" : "white", color: term === d ? "white" : "#374151", fontSize: 13, fontWeight: 600 }}>{d} {t("loanApply.days")}</button>)}</div></div>
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}><UiText text={"BUSINESS LOAN PURPOSES"} /></label>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}><UiText text={"Select all business purposes that apply. Allocate the full loan once across the spending categories below."} /></p>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}><UiText text={"Select every business purpose that applies. A loan officer will confirm the final use during review."} /></p>
           <div id="loan-purposes" className="flex gap-2 flex-wrap mt-3">
             {BUSINESS_LOAN_PURPOSES.map((option) => <button key={option} type="button" className="kuula-purpose-choice" aria-label={uiText(option === "Other" ? "Other business purpose" : option)} aria-pressed={purposes.includes(option)} onClick={() => setPurposes(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])} style={{ padding: "7px 12px", borderRadius: 20, border: purposes.includes(option) ? "1px solid #0B5E3A" : "1.5px solid #E5E7EB", background: purposes.includes(option) ? "#EDF8F2" : "white", color: purposes.includes(option) ? "#0B5E3A" : "#6B7280", fontSize: 12, fontWeight: 600 }}><UiText text={purposes.includes(option) ? "✓ " : ""} /><UiText text={option === "Other" ? "Other business purpose" : option} /></button>)}
           </div>
@@ -321,43 +299,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             <textarea id="loan-other-purpose" aria-label={uiText("Describe your business use")} value={otherPurpose} maxLength={100} onChange={(event) => setOtherPurpose(event.target.value)} placeholder={uiText("Tell us what your business will use the loan for")} rows={3} style={{ width: "100%", border: "1px solid #D8E2DC", borderRadius: 12, padding: 12, background: "white", color: "#13251C", resize: "vertical" }} />
           </label>}
         </div>
-
-        <section className="p-4 rounded-2xl" style={{ background: "white" }} id="loan-spending" aria-label={uiText("Loan spending plan")}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 8px" }}><UiText text={"How will you spend this loan?"} /></h2>
-          <p style={{ fontSize: 12, color: "#68766F", lineHeight: 1.5 }}><UiText text={"Distribute the full requested amount across the categories below. Your breakdown must total "} />{formatUGX(amount)}.</p>
-          {([
-            ["stock", "Stock and inventory"],
-            ["equipment", "Equipment and tools"],
-            ["operations", "Working capital and operating costs"],
-            ["expansion", "Expansion"],
-            ["other", "Other business needs"],
-          ] as const).map(([key, label]) => (
-            <label key={key} style={{ display: "block", marginTop: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}><UiText text={label} /><UiText text={" (UGX)"} /></span>
-              <input type="number" min={0} max={amount} step={1000} inputMode="numeric"
-                className="kx-input" style={{ display: "block", width: "100%", marginTop: 5 }}
-                value={businessDetails.useOfFunds[key]}
-                onChange={event => setBusinessDetails(current => ({
-                  ...current,
-                  useOfFunds: { ...current.useOfFunds, [key]: Number(event.target.value) },
-                }))} />
-            </label>
-          ))}
-          <p role="status" style={{ fontSize: 12, fontWeight: 700, marginTop: 12, color: allocationsTotal === amount ? "#0B5E3A" : "#A13A3A" }}><UiText text={" Allocated: "} />{formatUGX(allocationsTotal)} · <UiText text={allocationsTotal === amount ? "Complete" : allocationsTotal < amount ? `Unallocated: ${formatUGX(amount - allocationsTotal)}` : `Overallocated: ${formatUGX(allocationsTotal - amount)}`} />
-          </p>
-          <div id="loan-items"><ExpenditureDetails items={businessDetails.expenditureItems ?? []} funds={businessDetails.useOfFunds} onChange={expenditureItems => setBusinessDetails(current => ({ ...current, expenditureItems }))} /></div>
-          <label style={{ display: "block", marginTop: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}><UiText text={"Preferred repayment frequency"} /></span>
-            <select id="loan-repayment-frequency" className="kx-input" style={{ display: "block", width: "100%", marginTop: 5 }}
-              value={businessDetails.preferredRepaymentFrequency}
-              onChange={event => setBusinessDetails(current => ({ ...current, preferredRepaymentFrequency: event.target.value as BusinessDetails["preferredRepaymentFrequency"] }))}>
-              <option value="daily"><UiText text={"Daily"} /></option><option value="weekly"><UiText text={"Weekly"} /></option>
-              <option value="biweekly"><UiText text={"Every two weeks"} /></option><option value="monthly"><UiText text={"Monthly"} /></option>
-              <option value="at_maturity"><UiText text={"Single payment at maturity"} /></option>
-            </select>
-          </label>
-          <p style={{ fontSize: 11, color: "#68766F", lineHeight: 1.5, marginTop: 7 }}><UiText text={" This is your preference, not a repayment schedule or an approved offer. Actual instalments and dates will be provided in the final loan agreement. "} /></p>
-        </section>
 
         <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label={uiText("Business profile")}>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 5px" }}><UiText text={"Tell us about your business"} /></h2>
@@ -432,10 +373,6 @@ export function LoanApplyScreen({ onNavigate }: Props) {
               <span style={{ display: "block", marginTop: 9, color: "#89948E", fontSize: 10, lineHeight: 1.45 }}><UiText text={"The map loads from OpenStreetMap when you choose to open it. GPS is captured only when you tap the location button; there is no background tracking. A business address is required. Confirm the pin matches your real business premises."} /></span>
             </div>
             {businessTextField("Main products or services", "goodsOrServices", "What does the business sell or provide?")}
-            {businessTextField("Who are your customers?", "customerType", "e.g. walk-in shoppers, farmers, contractors")}
-            {businessNumberField("Number of workers, including yourself", "staffCount", 0)}
-            {businessTextField("How exactly will you use this loan?", "loanUse", "e.g. purchase 15 cartons of inventory")}
-            {businessTextField("How will your business repay the loan?", "repaymentPlan", "e.g. daily sales revenue")}
           </div>
         </section>
 
@@ -480,41 +417,13 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           <p style={{ fontSize: 11, color: "#8A7661" }}><UiText text={"Photos are kept only in memory until submission. If you refresh or close the app, take them again. They are not saved in your browser's application draft."} /></p>
         </section>
 
-        <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label={uiText("Business operations")}>
-          <h2 id="loan-operations" style={{ fontSize: 16, fontWeight: 800, color: "#13251C", margin: "0 0 6px" }}><UiText text={"How your business operates"} /></h2>
-          <p style={{ color: "#68766F", fontSize: 11, lineHeight: 1.6 }}><UiText text={"Tell Kuula how your business buys, sells and deals with seasonal changes. These are declarations for staff assessment, not verified accounts."} /></p>
-          <div style={{ display: "grid", gap: 13 }}>
-            {businessTextField("Main suppliers (optional)", "primarySuppliers", "E.g. wholesalers, distributors or farmers")}
-            {businessTextField("Supplier payment terms (optional)", "supplierPaymentTerms", "Cash on delivery, weekly credit, 30 days")}
-            <label style={{ display: "block" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#425149" }}><UiText text={"How often do customers buy from you?"} /></span>
-              <select id="loan-salesFrequency" className="kx-input" style={{ width: "100%", marginTop: 6 }} value={businessDetails.salesFrequency}
-                onChange={event => setBusinessDetails(v => ({ ...v, salesFrequency: event.target.value as BusinessDetails["salesFrequency"] }))}>
-                <option value="unknown"><UiText text={"Select sales pattern"} /></option>
-                <option value="daily"><UiText text={"Every day"} /></option><option value="weekly"><UiText text={"Weekly"} /></option><option value="monthly"><UiText text={"Monthly"} /></option><option value="seasonal"><UiText text={"Seasonal"} /></option>
-              </select>
-            </label>
-            {businessTextField("Seasonality or business risks (optional)", "seasonalPattern", "E.g. slower during school holidays or rainy months")}
-            {businessCurrencyField("Sales in a typical low month (if known)", "lowSeasonMonthlySales")}
-          </div>
-        </section>
-
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>
           <p id="loan-finances" style={{ fontSize: 13, fontWeight: 800, color: "#13251C", margin: "0 0 4px" }}><UiText text={"Affordability information"} /></p>
-          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}><UiText text={"Enter your actual current figures. Kuula uses them together with verified credit evidence, and the server recalculates eligibility before approval and again before disbursement."} /></p>
+          <p style={{ fontSize: 11, color: "#68766F", margin: "0 0 14px", lineHeight: 1.5 }}><UiText text={"Use your best monthly estimate. These three figures let Kuula assess affordability; an officer may confirm them with you."} /></p>
           <div style={{ display: "grid", gap: 14 }}>
             {moneyInput("Average monthly business sales", income, setIncome, "Business revenue before any costs; do not enter gross profit or your personal salary.")}
             {moneyInput("Total monthly operating expenses", expenses, setExpenses, "Include stock purchases, rent, wages, utilities and other operating costs. Exclude loan repayments.")}
-            <div style={{ padding: 12, borderRadius: 12, background: "#F3FAF5", display: "grid", gap: 11 }}>
-              <strong style={{ fontSize: 12, color: "#173A27" }}><UiText text={"Break down your operating expenses"} /></strong>
-              {businessCurrencyField("Stock and inventory purchases", "inventoryCost")}
-              {businessCurrencyField("Business rent", "rentCost")}
-              {businessCurrencyField("Employee wages", "wagesCost")}
-              {businessCurrencyField("Utilities, transport and other costs", "otherOperatingCosts")}
-              <p style={{ fontSize: 12, margin: 0, color: expenseBreakdown > expenses ? "#B91C1C" : "#496257" }}><UiText text={" Breakdown: "} />{formatUGX(expenseBreakdown)}<UiText text={" of "} />{formatUGX(expenses)}<UiText text={" total monthly expenses. "} /></p>
-            </div>
             {moneyInput("Existing monthly debt repayments", existingDebt, setExistingDebt, "Include payments for every other loan or supplier financing arrangement.")}
-            {businessTextField("Existing business debts or creditors (optional)", "otherDebtDetails", "Lender or supplier, balance and due dates")}
             <div style={{ background: "#F7FAF8", borderRadius: 11, padding: 12, fontSize: 12, color: "#244636" }}><UiText text={" Declared monthly surplus before the proposed Kuula repayment: "} /><strong>{formatUGX(Math.max(0, income - expenses - existingDebt))}</strong>
               <p style={{ margin: "7px 0 0", fontSize: 11, color: "#68766F" }}><UiText text={"An estimate from your declarations, not your approved repayment capacity. Kuula applies conservative underwriting independently."} /></p>
             </div>
@@ -523,30 +432,18 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}><label style={{ fontSize: 12, fontWeight: 700, color: "#5D6C64" }}>{t("loanApply.disbursementMethod").toUpperCase()}</label><p style={{ fontSize: 11, color: "#68766F", margin: "5px 0 0" }}><UiText text={"Approved business credit is sent to your verified mobile-money account. Kuula may request business or supplier details during review."} /></p><div className="flex flex-col gap-2 mt-3">{METHODS.map((m) => <button key={m.id} onClick={() => setMethod(m.id)} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: method === m.id ? "#EDF8F2" : "#F9FAFB", border: method === m.id ? "1.5px solid #B7DEC9" : "1.5px solid transparent", textAlign: "left" }}><span style={{ fontSize: 20 }}>{m.icon}</span><span style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", flex: 1 }}><UiText text={m.label} /></span><span style={{ width: 20, height: 20, borderRadius: 10, border: method === m.id ? "6px solid #0B5E3A" : "2px solid #D1D5DB" }} /></button>)}</div></div>
 
-        <section className="p-4 rounded-2xl" style={{ background: "white" }}>
-          <strong><UiText text={"Financial statements (optional)"} /></strong>
-          <p><UiText text={"Attach a mobile money or bank statement if available. PDF, CSV or XLSX, up to 5 MB each. You may continue without statements."} /></p>
-          <div className="kuula-statement-grid">
-          {(["mobile_money", "bank"] as const).map(kind => <div key={kind} className="kuula-statement-card">
-            <label htmlFor={`statement-${kind}`}><UiText text={kind === "bank" ? "Bank statement" : "Mobile money statement"} /></label>
-            <p id={`statement-help-${kind}`}><UiText text={"Choose one PDF, CSV or XLSX file, up to 5 MB."} /></p>
-            <LocalizedFileInput fieldLabel={uiText(kind === "bank" ? "Bank statement" : "Mobile money statement")} id={`statement-${kind}`} aria-describedby={`statement-help-${kind}`} type="file" accept=".pdf,.csv,.xlsx" onChange={e => { addStatement(kind, e.target.files?.[0]); e.target.value = ""; }} />
-            {statements.filter(s => s.kind === kind).map(s => <div key={kind} className="kuula-statement-selected">
-              <span role="status"><UiText text={"Attached: "} />{s.file.name}</span>
-              <label htmlFor={`period-${kind}`}><UiText text={"Statement covers"} /></label>
-              <select id={`period-${kind}`} className="kx-input" value={s.periodMonths} onChange={e => setStatements(prev => prev.map(item => item.kind === kind ? {...item, periodMonths: Number(e.target.value)} : item))}>
-                <option value={3}><UiText text={"3 months"} /></option><option value={6}><UiText text={"6 months"} /></option><option value={12}><UiText text={"12 months"} /></option>
-              </select>
-              <button className="kuula-statement-remove" type="button" aria-label={uiText(`Remove ${kind === "bank" ? "bank" : "mobile money"} statement`)} onClick={() => setStatements(prev => prev.filter(item => item.kind !== kind))}><UiText text={"Remove file"} /></button>
-            </div>)}
-          </div>)}
-          </div>
-          {statementError && <p role="alert"><UiText text={statementError} /></p>}
-        </section>
         <section aria-labelledby="guarantor-heading" className="p-4 rounded-2xl" style={{ background: "white", border: "1px solid #E1EAE4" }}>
-          <h3 id="guarantor-heading" style={{ fontWeight: 800, fontSize: 15, color: "#184B32" }}><UiText text={"Guarantor information"} /></h3>
-          <p style={{ fontSize: 12, color: "#53635A", marginTop: 8 }}><UiText text={" A guarantor is not required to submit your business loan application. Kuula may request a guarantor following an individual credit assessment. If so, you will be notified and may choose whether to proceed. "} /></p>
-          <p style={{ fontSize: 12, color: "#53635A", marginTop: 8 }}><UiText text={" Do not enter someone else's ID, telephone number or financial details here. A nominated guarantor must be contacted separately, verify their identity and independently agree to the specific legal obligations before a guarantee can be accepted. "} /></p>
+          <h3 id="loan-guarantors" style={{ fontWeight: 800, fontSize: 15, color: "#184B32", margin: 0 }}><UiText text={"Two guarantor contacts"} /></h3>
+          <p style={{ fontSize: 12, color: "#53635A", marginTop: 8, lineHeight: 1.5 }}><UiText text={"Add two people Kuula may contact if a guarantor is required. This does not make either person liable: Kuula will separately verify their identity and ask for their independent agreement before any guarantee exists."} /></p>
+          <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+            {[0, 1].map(index => <div key={index} style={{ padding: 12, border: "1px solid #DFE8E2", borderRadius: 12, background: "#FBFDFC" }}>
+              <strong style={{ display: "block", fontSize: 12, color: "#244636", marginBottom: 9 }}><UiText text={`Guarantor ${index + 1}`} /></strong>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 9 }}>
+                <label><span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#425149", marginBottom: 5 }}><UiText text={"Full name"} /></span><input id={`loan-guarantor-${index + 1}-name`} className="kx-input" style={{ width: "100%" }} value={businessDetails.guarantors?.[index]?.name ?? ""} onChange={event => setBusinessDetails(current => ({ ...current, guarantors: [0, 1].map(position => position === index ? { name: event.target.value, phone: current.guarantors?.[position]?.phone ?? "" } : current.guarantors?.[position] ?? { name: "", phone: "" }) }))} /></label>
+                <label><span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#425149", marginBottom: 5 }}><UiText text={"Phone number"} /></span><input id={`loan-guarantor-${index + 1}-phone`} type="tel" inputMode="tel" placeholder="07XXXXXXXX or +256..." className="kx-input" style={{ width: "100%" }} value={businessDetails.guarantors?.[index]?.phone ?? ""} onChange={event => setBusinessDetails(current => ({ ...current, guarantors: [0, 1].map(position => position === index ? { name: current.guarantors?.[position]?.name ?? "", phone: event.target.value } : current.guarantors?.[position] ?? { name: "", phone: "" }) }))} /></label>
+              </div>
+            </div>)}
+          </div>
         </section>
         <div className="p-4 rounded-2xl" style={{ background: "#FFF9E5", border: "1px solid #F2D77B" }}>
           <div className="flex justify-between py-1.5"><span><UiText text={"Requested loan amount"} /></span><strong>{formatUGX(amount)}</strong></div>

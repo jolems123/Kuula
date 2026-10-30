@@ -1,5 +1,4 @@
 import { ListSearch } from "../ListSearch";
-import { ExpenditureSummary } from "../ExpenditureDetails";
 import { GuarantorStaffReview } from "../GuarantorStaffReview";
 /**
  * Admin Loan Management Screens
@@ -196,7 +195,6 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
             <button type="button" onClick={() => setSelectedId(null)} style={{ border: 0, background: "transparent", fontWeight: 700 }}>Close</button>
           </div>
           {token && <GuarantorStaffReview token={token} applicationId={selected.id} applicationStatus={selected.status} />}
-          <ExpenditureSummary business={selected.businessProfile} />
           {selected.businessProfile ? (
             <>
               <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, fontSize: 13 }}>
@@ -208,13 +206,10 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
                   ["Trading history", selected.businessProfile.tradingMonths + " months"],
                   ["District and location", selected.businessProfile.district + ", " + selected.businessProfile.physicalAddress],
                   ["Products / services", selected.businessProfile.goodsOrServices],
-                  ["Main customers", selected.businessProfile.customerType],
-                  ["Employees", String(selected.businessProfile.staffCount)],
                   ["Monthly sales (declared)", ugx(selected.businessProfile.monthlySales)],
                   ["Monthly business expenses (declared)", ugx(selected.businessProfile.monthlyBusinessExpenses)],
                   ["Existing debt payments (declared)", ugx(selected.businessProfile.monthlyExistingDebt)],
-                  ["Requested loan use", selected.businessProfile.loanUse],
-                  ["Repayment plan", selected.businessProfile.repaymentPlan],
+                  ["Guarantor contacts", selected.businessProfile.guarantors?.map(guarantor => `${guarantor.name} (${guarantor.phone})`).join(" · ") || "Not supplied on this application"],
                   ["Business verification", selected.businessReviewStatus ?? "Pending"],
                 ] as [string, string][]).map(([label, value]) => <div key={label}><dt style={{ color: "#68766F", marginBottom: 4 }}>{label}</dt><dd style={{ fontWeight: 700, margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{value}</dd></div>)}
               </dl>

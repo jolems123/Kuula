@@ -179,13 +179,8 @@ async function createLoanApplicationForUser(
   catch (error) { throw new AppError(error instanceof Error ? error.message : "Invalid business information", 422); }
   if (!Number.isInteger(payload.termDays) || payload.termDays < 30 || payload.termDays > 365)
     throw new AppError("Business loan terms must be between 30 and 365 days", 422);
-  const breakdown = Object.values(business.useOfFunds).reduce((sum, amount) => sum + amount, 0);
-  // Older released clients did not submit itemized funds. Do not turn their
-  // requests into unexpected 422 errors; new clients must always balance.
-  const hasSpendingPlan = payload.business !== null && typeof payload.business === "object"
-    && Object.prototype.hasOwnProperty.call(payload.business, "useOfFunds");
-  if (hasSpendingPlan && (!Number.isSafeInteger(breakdown) || breakdown !== payload.amount))
-    throw new AppError("The itemized use of funds must equal the requested loan amount", 422);
+  // Purpose selection is enough for a small-business application. Detailed
+  // allocation is optional evidence for an officer, not a submission gate.
   // Repayment frequency is only a customer preference. Actual dates, installments
   // and payment obligations must come from the final authorized loan agreement.
   const quote = quoteForRequest(payload.amount, payload.termDays);
@@ -257,7 +252,7 @@ async function createLoanApplicationForUser(
       action: "loan.application_submitted",
       resourceType: "loan_application",
       resourceId: application.id,
-      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose, useOfFunds: business.useOfFunds, expenditureItems: business.expenditureItems ?? [] },
+      metadata: { amount: quote.principal, termDays: quote.termDays, purpose: payload.purpose, guarantorContacts: business.guarantors?.length ?? 0 },
     });
     await notifyLoanCustomer(userId, "Kuula business loan application submitted",
       "Your business loan application was received and is awaiting assessment. Follow the review stages in Kuula.");

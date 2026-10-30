@@ -80,6 +80,8 @@ export interface BusinessProfile {
   loanUse: string;
   expenditureItems?: { category: "stock" | "equipment" | "operations" | "expansion" | "other"; description: string; amount: number }[];
   repaymentPlan: string;
+  /** Contacts are nominations only. They do not create a guarantee or liability. */
+  guarantors?: { name: string; phone: string }[];
 }
 
 export interface BusinessDetails extends Omit<BusinessProfile, "monthlySales" | "monthlyBusinessExpenses" | "monthlyExistingDebt"> {}

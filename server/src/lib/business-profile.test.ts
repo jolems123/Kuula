@@ -28,6 +28,15 @@ test("accepts a small business snapshot", () => {
   assert.equal(p.businessName, good.businessName);
   assert.equal(p.registrationNumber, "");
 });
+test("records two contact-only guarantor nominations without creating a guarantee", () => {
+  const profile = parseBusinessProfile({ ...good, guarantors: [
+    { name: "Amina Nambi", phone: "0701234567" },
+    { name: "Moses Kato", phone: "+256701234568" },
+  ] });
+  assert.equal(profile.guarantors?.length, 2);
+  assert.throws(() => parseBusinessProfile({ ...good, guarantors: [{ name: "One", phone: "0701234567" }] }), /two guarantor/i);
+  assert.throws(() => parseBusinessProfile({ ...good, guarantors: [{ name: "One", phone: "0701234567" }, { name: "Two", phone: "0701234567" }] }), /different/i);
+});
 test("requires registration number for registered businesses", () => {
   assert.throws(() => parseBusinessProfile({ ...good, tradingAs: "registered" }), /registration number/i);
 });
