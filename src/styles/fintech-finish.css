@@ -130,6 +130,16 @@
 .kuula-application-guide li { margin: 10px 0; }
 .kuula-application-guide li button { min-height: 44px; padding: 10px 12px; border: 1px solid #dfb2a9; border-radius: 8px; background: #fff; color: #922828; text-align: left; cursor: pointer; }
 .kuula-application-guide #loan-identity { padding: 14px; border: 1px solid #b8cdbf; border-radius: 10px; background: #fff; }
+.loan-identity-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.loan-identity-card__status { min-width: 0; flex: 1 1 280px; }
+.loan-identity-card__status p { margin: 8px 0 0; }
+.loan-identity-card__actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.loan-identity-card__actions .kx-map-toggle { min-width: 178px; white-space: nowrap; }
+@media (max-width: 720px) {
+  .loan-identity-card { align-items: stretch; flex-direction: column; gap: 14px; }
+  .loan-identity-card__actions { justify-content: stretch; }
+  .loan-identity-card__actions .kx-map-toggle { flex: 1 1 210px; }
+}
 [data-loan-invalid] { outline: 2px solid #b54735; outline-offset: 3px; scroll-margin-block: 100px; }
 
 .kuula-application-guide ol { list-style: decimal; }

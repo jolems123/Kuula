@@ -267,11 +267,14 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           <h2 id="loan-guide-title"><UiText text={"Your loan application guide"} /></h2>
           <p><UiText text={"Complete the steps below. You can save a draft now; applying requires approved identity documents."} /></p>
           <details><summary><UiText text={"Step-by-step help with amounts and documents"} /></summary><ol><li><UiText text={"Choose the amount you need and a term. Enter whole Uganda shillings, without commas."} /></li><li><UiText text={"Select every business purpose that applies."} /></li><li><UiText text={"Give your business details, pin the premises and attach the three business photos with consent."} /></li><li><UiText text={"Enter your usual monthly sales, expenses and any current loan payments. These are monthly figures, not the loan amount."} /></li><li><UiText text={"Add two guarantor contacts. They are only contacts at this point; a separate agreement is required before anyone can guarantee a loan."} /></li><li><UiText text={"Check your answers, review the application, then confirm submission. Approval and loan pricing follow Kuula’s assessment."} /></li></ol></details>
-          <div id="loan-identity" tabIndex={-1}>
-            <strong><UiText text={"Identity documents: "} /><UiText text={identityStatus === 'approved' ? 'verified and approved' : identityStatus === 'loading' ? 'checking status…' : identityStatus === 'error' ? 'status unavailable — retry before applying' : 'approval required before applying'} /></strong>
+          <div id="loan-identity" className="loan-identity-card" tabIndex={-1}>
+            <div className="loan-identity-card__status"><strong><UiText text={"Identity documents: "} /><UiText text={identityStatus === 'approved' ? 'verified and approved' : identityStatus === 'loading' ? 'checking status…' : identityStatus === 'error' ? 'status unavailable — retry before applying' : 'approval required before applying'} /></strong>
             {identityStatus !== 'approved' && <p><UiText text={"Uploading documents alone is not approval. Open Identity Verification to submit missing documents, read a rejection reason or wait for review."} /></p>}
-            <button type="button" className="kx-map-toggle" onClick={() => onNavigate('kyc')}><UiText text={"Open Identity Verification"} /></button>
-            <button type="button" className="kx-map-toggle" onClick={() => void checkIdentity()}><UiText text={"Refresh verification status"} /></button>
+            </div>
+            <div className="loan-identity-card__actions">
+              <button type="button" className="kx-map-toggle" onClick={() => onNavigate('kyc')}><UiText text={"Open Identity Verification"} /></button>
+              <button type="button" className="kx-map-toggle" onClick={() => void checkIdentity()}><UiText text={"Refresh verification status"} /></button>
+            </div>
           </div>
           <p role="status"><UiText text={issues.length ? issues.length + ' checks still need attention.' : 'All form checks passed. Your identity status will be checked again before review.'} /></p>
           <button type="button" className="kx-map-toggle" onClick={() => { setShowChecks(true); if (issues.length) goToIssue(issues[0]); }}><UiText text={"Check my application"} /></button>
