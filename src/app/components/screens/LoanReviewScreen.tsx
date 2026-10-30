@@ -11,6 +11,15 @@ import { getLoanDraft, setLoanDraft, setLastSubmittedApplicationId, type LoanDra
 
 interface Props { onNavigate: (s: string) => void; }
 function ugx(n: number) { return "UGX " + Math.round(n).toLocaleString("en-UG"); }
+function submissionMessage(error: unknown, termDays: number): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("repayment_not_affordable") || message.includes("requested_amount_above_limit")) {
+    return termDays < 60
+      ? "With the sales and expense figures entered, this amount needs a longer repayment term. Go back and select 60 or 90 days, then review and submit again."
+      : "With the sales and expense figures entered, this amount is above the current affordability limit. Check that your monthly sales, expenses and existing debt are correct, or request a lower amount."
+  }
+  return message || "We could not confirm your application. Your case may already exist; check My Applications before retrying.";
+}
 
 export function LoanReviewScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
@@ -116,7 +125,7 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       setLoanDraft(null);
       onNavigate("loan-approval");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "We could not confirm your application. Your case may already exist; check My Applications before retrying.");
+      setError(submissionMessage(e, draft.termDays));
     } finally {
       submittingRef.current = false;
       setLoading(false);

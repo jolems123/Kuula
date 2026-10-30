@@ -48,7 +48,11 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [amount, setAmount] = useState(savedDraft?.amount ?? calculatorSelection?.amount ?? MIN_AMOUNT);
   const validSavedTerm = savedDraft && TERMS.includes(savedDraft.termDays) ? savedDraft.termDays : undefined;
   const validCalculatorTerm = calculatorSelection && TERMS.includes(calculatorSelection.termDays) ? calculatorSelection.termDays : undefined;
-  const [term, setTerm] = useState(validSavedTerm ?? validCalculatorTerm ?? TERMS[0]);
+  // A 30-day default makes otherwise modest first applications fail the
+  // affordability screen before a borrower has had a fair chance to choose.
+  // Ninety days is available on web and Android and gives the officer a
+  // realistic starting term; the customer can still choose another option.
+  const [term, setTerm] = useState(validSavedTerm ?? validCalculatorTerm ?? (TERMS.includes(90) ? 90 : TERMS[0]));
   const [purposes, setPurposes] = useState<BusinessLoanPurposeOption[]>(savedDraft?.purposes ?? (savedDraft ? [savedDraft.purpose] : calculatorPurpose?.options ?? ["Working capital"]));
   const [otherPurpose, setOtherPurpose] = useState(savedDraft?.otherPurpose ?? calculatorPurpose?.otherDetails ?? "");
   const [method, setMethod] = useState(savedDraft?.method ?? "MTN MoMo");
