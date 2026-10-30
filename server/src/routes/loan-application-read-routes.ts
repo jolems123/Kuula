@@ -47,20 +47,23 @@ const INCOME_SOURCES = new Set(["Business sales", "Service income", "Commission"
 router.post("/applications", authenticateToken, (req: Request, res: Response, next: NextFunction) => {
   let details: Omit<ApplicationDetails, "applicationId">;
   try {
-    const employmentStatus = requiredText(req.body?.employmentStatus, "Employment or livelihood status", 40);
-    const workDuration = requiredText(req.body?.workDuration, "Time in current work or business", 40);
-    const incomeSource = requiredText(req.body?.incomeSource, "Primary income source", 40);
+    // These legacy columns support staff reporting, but are no longer extra
+    // questions in the small-business application. Derive safe values from
+    // the application so borrowers are not blocked by redundant fields.
+    const employmentStatus = typeof req.body?.employmentStatus === "string" && EMPLOYMENT_STATUSES.has(req.body.employmentStatus) ? req.body.employmentStatus : "Business owner";
+    const workDuration = typeof req.body?.workDuration === "string" && WORK_DURATIONS.has(req.body.workDuration) ? req.body.workDuration : "Less than 6 months";
+    const incomeSource = typeof req.body?.incomeSource === "string" && INCOME_SOURCES.has(req.body.incomeSource) ? req.body.incomeSource : "Business sales";
     if (!EMPLOYMENT_STATUSES.has(employmentStatus)) throw new AppError("Select a valid employment or livelihood status", 400);
     if (!WORK_DURATIONS.has(workDuration)) throw new AppError("Select a valid work duration", 400);
     if (!INCOME_SOURCES.has(incomeSource)) throw new AppError("Select a valid primary income source", 400);
 
     details = {
       employmentStatus,
-      occupationOrBusiness: requiredText(req.body?.occupationOrBusiness, "Occupation or business activity"),
+      occupationOrBusiness: typeof req.body?.occupationOrBusiness === "string" && req.body.occupationOrBusiness.trim() ? requiredText(req.body.occupationOrBusiness, "Occupation or business activity") : "Business activity",
       employerOrBusinessName: optionalText(req.body?.employerOrBusinessName),
       workDuration,
       incomeSource,
-      repaymentSource: requiredText(req.body?.repaymentSource, "Primary repayment source"),
+      repaymentSource: typeof req.body?.repaymentSource === "string" && req.body.repaymentSource.trim() ? requiredText(req.body.repaymentSource, "Primary repayment source") : "Business cash flow — assessed by Kuula",
     };
   } catch (error) {
     next(error);
