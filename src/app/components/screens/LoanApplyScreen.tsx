@@ -3,13 +3,13 @@ import { UiText, uiText } from "../../../i18n/ui-text";
 import { checkLoanForm, type LoanFormIssue } from "../../lib/loan-form-checks";
 import { api } from "../../api/client";
 import { ArrowLeft, LocateFixed, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
+import { useEffect, useRef, useState } from "react";
+import { getBusinessPhotos, setBusinessPhotos, prepareBusinessPhoto, fileToDataUrl, type BusinessPhotoType, type BusinessPhotoFiles } from "../../lib/business-photos";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "../../context/AppContext";
 import { getLoanCalculatorSelection, setLoanCalculatorSelection, setLoanDraft } from "../../lib/selection";
 import { BUSINESS_LOAN_PURPOSES, formatBusinessLoanPurposes, parseBusinessLoanPurposes, type BusinessLoanPurposeOption } from "../../lib/business-loan-purpose";
-import { getSavedLoanApplicationDraft, saveLoanApplicationDraft } from "../../lib/loan-application-autosave";
+import { getSavedLoanApplicationDraft, saveLoanApplicationDraft, type LoanApplicationFormDraft } from "../../lib/loan-application-autosave";
 import { getLoanTermOptions } from "../../lib/loan-terms";
 import type { BusinessDetails, BusinessProfile } from "../../api/types";
 import { BusinessLocationMap } from "../BusinessLocationMap";
@@ -20,6 +20,7 @@ function formatUGX(n: number) { return "UGX " + Math.round(n).toLocaleString("en
 
 const MIN_AMOUNT = 50_000;
 const PRODUCT_MAX_AMOUNT = 2_000_000;
+const DRAFT_PHOTO_TYPES: BusinessPhotoType[] = ["exterior", "interior", "applicant_at_business", "stock_equipment", "collateral_asset"];
 const METHODS = [
   { id: "MTN MoMo", label: "MTN MoMo", icon: "📱" },
   { id: "Airtel Money", label: "Airtel Money", icon: "📱" },
@@ -82,14 +83,92 @@ export function LoanApplyScreen({ onNavigate }: Props) {
   const [locationError, setLocationError] = useState("");
   const [showMap, setShowMap] = useState(false);
   const [error, setError] = useState("");
+  const [remoteDraftReady, setRemoteDraftReady] = useState(false);
+  const savedPhotoFiles = useRef<Partial<Record<BusinessPhotoType, File[]>>>({});
+  const photoSyncQueue = useRef<Promise<void>>(Promise.resolve());
+  const draftSaveQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => { setLoanCalculatorSelection(null); }, []);
   useEffect(() => { setBusinessPhotos(photos, photoConsent); }, [photos, photoConsent]);
 
   useEffect(() => {
+    let active = true;
+    if (!state.user || !state.session.token) return;
+    const token = state.session.token;
+    void api.getApplicationDraft(token).then(async ({ draft, photos: storedPhotos }) => {
+      if (!active) return;
+      if (draft?.data) {
+        const restored = draft.data;
+        setAmount(restored.amount); setTerm(TERMS.includes(restored.termDays) ? restored.termDays : 90);
+        setPurposes(restored.purposes ?? [restored.purpose]); setOtherPurpose(restored.otherPurpose); setMethod(restored.method);
+        setBusinessDetails({ ...EMPTY_BUSINESS, ...restored.businessDetails }); setIncome(restored.income); setExpenses(restored.expenses); setExistingDebt(restored.existingDebt);
+      }
+      const restoredFiles = await Promise.all(storedPhotos.map(async photo => [photo, await api.accessApplicationDraftPhoto(token, photo.id)] as const));
+      if (!active) return;
+      const next: BusinessPhotoFiles = {};
+      const groupedFiles = new Map<BusinessPhotoType, Array<{ position: number; file: File }>>();
+      for (const [photo, file] of restoredFiles) {
+        const type = photo.type;
+        const files = groupedFiles.get(type) ?? [];
+        files.push({ position: photo.position, file });
+        groupedFiles.set(type, files);
+      }
+      for (const [type, photos] of groupedFiles) {
+        const files = photos.sort((left, right) => left.position - right.position).map(photo => photo.file);
+        next[type] = type === "stock_equipment" || type === "collateral_asset" ? files : files[0];
+        savedPhotoFiles.current[type] = files;
+      }
+      if (storedPhotos.length) { setPhotos(current => ({ ...current, ...next })); setPhotoConsent(true); }
+      if (active) setRemoteDraftReady(true);
+    }).catch(() => { if (active) setSaveError("Your draft could not be restored from Kuula right now. Your copy on this device is still available."); });
+    return () => { active = false; };
+  }, [state.user?.id, state.session.token]);
+
+  useEffect(() => {
+    if (!remoteDraftReady || !state.session.token) return;
+    let active = true;
+    const token = state.session.token;
+    const timer = window.setTimeout(() => {
+      photoSyncQueue.current = photoSyncQueue.current.catch(() => undefined).then(async () => {
+        let failed = false;
+        for (const kind of DRAFT_PHOTO_TYPES) {
+          const current = photos[kind];
+          const files = Array.isArray(current) ? current : current ? [current] : [];
+          const saved = savedPhotoFiles.current[kind] ?? [];
+          for (let position = 0; position < Math.max(files.length, saved.length); position += 1) {
+            const file = files[position];
+            const savedFile = saved[position];
+            try {
+              if (photoConsent && file && file !== savedFile) {
+                await api.uploadApplicationDraftPhoto(token, kind, position, await fileToDataUrl(file));
+                const nextSaved = [...(savedPhotoFiles.current[kind] ?? [])];
+                nextSaved[position] = file;
+                savedPhotoFiles.current[kind] = nextSaved;
+              } else if ((!photoConsent || !file) && savedFile) {
+                await api.deleteApplicationDraftPhoto(token, kind, position);
+                const nextSaved = [...(savedPhotoFiles.current[kind] ?? [])];
+                delete nextSaved[position];
+                savedPhotoFiles.current[kind] = nextSaved;
+              }
+            } catch (photoSaveFailure) {
+              failed = true;
+              console.error(`Could not save the ${kind} loan-application photo at position ${position}.`, photoSaveFailure);
+            }
+          }
+        }
+        if (active) setPhotoError(failed ? "One or more photos could not be saved to Kuula. Check your connection and try again." : "");
+      }).catch(photoSyncFailure => {
+        console.error("Could not synchronize loan-application photos.", photoSyncFailure);
+        if (active) setPhotoError("Your photos could not be saved to Kuula. Check your connection and try again.");
+      });
+    }, 750);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [photos, photoConsent, remoteDraftReady, state.session.token]);
+
+  useEffect(() => {
     if (!state.user) return;
-    try {
-      saveLoanApplicationDraft(state.user.id, {
+    const token = state.session.token;
+    const draft: LoanApplicationFormDraft = {
         amount,
         termDays: term,
         purpose: purposes[0] ?? "Working capital",
@@ -106,13 +185,27 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         income,
         expenses,
         existingDebt,
-      });
-      setSaveError("");
+      };
+    try {
+      saveLoanApplicationDraft(state.user.id, draft);
+      if (remoteDraftReady || !state.session.token) setSaveError("");
     } catch (saveFailure) {
       console.error("Could not save the loan application draft.", saveFailure);
       setSaveError("Kuula could not save this draft in your browser. Keep this page open so you do not lose your changes.");
     }
-  }, [state.user, amount, term, purposes, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
+    if (!remoteDraftReady || !token) return;
+    const timer = window.setTimeout(() => {
+      draftSaveQueue.current = draftSaveQueue.current.catch(() => undefined).then(async () => {
+        try {
+          await api.saveApplicationDraft(token, draft);
+        } catch (draftSaveFailure) {
+          console.error("Could not save the loan application draft to Kuula.", draftSaveFailure);
+          setSaveError("Your latest changes are saved on this device, but could not reach Kuula yet. Keep working and Kuula will try again.");
+        }
+      });
+    }, 750);
+    return () => window.clearTimeout(timer);
+  }, [state.user, state.session.token, remoteDraftReady, amount, term, purposes, otherPurpose, method, businessDetails, income, expenses, existingDebt]);
 
   const availableCredit = Math.max(0, state.loan?.availableCredit ?? 0);
   // Growth Line indicates a pre-assessed offer, not eligibility to START a
@@ -265,7 +358,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ paddingBottom: 120 }}>
         <p role={saveError ? "alert" : "status"} style={{ margin: 0, fontSize: 11, color: saveError ? "#A13A3A" : "#68766F" }}>
-          {saveError || (savedDraft ? "Saved progress restored. Your changes save automatically in this browser tab and remain if you go back." : "Your progress saves automatically in this browser tab and remains if you go back or refresh. It clears after sign out or successful submission.")}
+          {saveError || (savedDraft ? "Saved progress restored. Your form saves automatically to your Kuula account and this device; sign back in to continue." : "Your form saves automatically to your Kuula account and this device. Sign back in to continue. Photos save to Kuula after you give consent.")}
         </p>
         <section className="kuula-application-guide" aria-labelledby="loan-guide-title">
           <h2 id="loan-guide-title"><UiText text={"Your loan application guide"} /></h2>
@@ -421,7 +514,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           {photoError && <p role="alert" style={{ color: "#A13A3A", fontSize: 12 }}><UiText text={photoError} /></p>}
           <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12, lineHeight: 1.6, color: "#243A2B" }}>
             <input id="loan-photo-consent" type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} /><UiText text={" I consent to Kuula securely storing these photographs for business verification, underwriting review, fraud prevention and applicable record retention. I confirm the images are of my business and I have permission to submit them. "} /></label>
-          <p style={{ fontSize: 11, color: "#8A7661" }}><UiText text={"Photos are kept only in memory until submission. If you refresh or close the app, take them again. They are not saved in your browser's application draft."} /></p>
+          <p style={{ fontSize: 11, color: "#8A7661" }}><UiText text={"With your consent, your business photos save securely to your Kuula account so you can continue after signing out."} /></p>
         </section>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>

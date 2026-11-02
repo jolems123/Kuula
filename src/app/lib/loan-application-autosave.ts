@@ -79,9 +79,9 @@ export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFor
   const key = storageKey(userId);
   let serialized: string | null;
   try {
-    serialized = window.sessionStorage.getItem(key);
+    serialized = window.localStorage.getItem(key);
   } catch (error) {
-    console.warn("Could not read the saved loan application draft from this browser tab.", error);
+    console.warn("Could not read the saved loan application draft from this browser.", error);
     return null;
   }
   if (serialized === null) return null;
@@ -96,7 +96,7 @@ export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFor
   }
   console.warn("Discarding an invalid saved loan application draft.");
   try {
-    window.sessionStorage.removeItem(key);
+    window.localStorage.removeItem(key);
   } catch (error) {
     console.warn("Could not remove the invalid saved loan application draft.", error);
   }
@@ -105,26 +105,26 @@ export function getSavedLoanApplicationDraft(userId: string): LoanApplicationFor
 
 export function saveLoanApplicationDraft(userId: string, draft: LoanApplicationFormDraft): void {
   if (!storageAvailable() || !userId) return;
-  window.sessionStorage.setItem(storageKey(userId), JSON.stringify(draft));
+  window.localStorage.setItem(storageKey(userId), JSON.stringify(draft));
 }
 
 export function clearSavedLoanApplicationDraft(userId: string): void {
   if (!storageAvailable() || !userId) return;
   try {
-    window.sessionStorage.removeItem(storageKey(userId));
+    window.localStorage.removeItem(storageKey(userId));
   } catch (error) {
-    console.warn("Could not clear the saved loan application draft from this browser tab.", error);
+    console.warn("Could not clear the saved loan application draft from this browser.", error);
   }
 }
 
 export function clearAllSavedLoanApplicationDrafts(): void {
   if (!storageAvailable()) return;
   try {
-    for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
-      const key = window.sessionStorage.key(index);
-      if (key?.startsWith(STORAGE_PREFIX)) window.sessionStorage.removeItem(key);
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(STORAGE_PREFIX)) window.localStorage.removeItem(key);
     }
   } catch (error) {
-    console.warn("Could not clear saved loan application drafts from this browser tab.", error);
+    console.warn("Could not clear saved loan application drafts from this browser.", error);
   }
 }

@@ -1,8 +1,8 @@
 import type { BusinessProfile } from "../api/types";
 
 /**
- * Lightweight cross-screen selection store. Sensitive workflow state is kept in
- * memory only and is cleared on logout; it is never persisted to browser storage.
+ * Lightweight cross-screen selection store. Ephemeral review selections are kept
+ * in memory only; resumable loan-form progress is handled by loan-application-autosave.
  */
 
 export interface SelectedTransaction {
@@ -110,7 +110,7 @@ export function setCustomer360Id(value: string | null): void { _customer360Id = 
 export function getCustomer360Id(): string | null { return _customer360Id; }
 
 export function clearSelectionState(): void {
-  clearAllSavedLoanApplicationDrafts();
+  // A loan draft belongs to the customer and survives secure sign-out.
   clearBusinessPhotos();
   clearAllBusinessPhotoApplicationIds();
   _selectedTransaction = null;
@@ -124,6 +124,4 @@ export function clearSelectionState(): void {
   _creditOperationsSelection = null;
   _customer360Id = null;
 }
-import { clearAllSavedLoanApplicationDrafts } from "./loan-application-autosave";
-
 import { clearBusinessPhotos, clearAllBusinessPhotoApplicationIds } from "./business-photos";

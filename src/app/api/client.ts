@@ -196,6 +196,23 @@ const nodeApi = {
     request<{ ok: boolean; photoTypes: string[] }>(
       "/api/loans/applications/" + encodeURIComponent(id) + "/business-photos",
       { method: "POST", headers: auth(token), body: JSON.stringify({ photoConsent: true, photos }) }, 120000),
+  getApplicationDraft: (token: string) => request<{ draft: { data: import("../lib/loan-application-autosave").LoanApplicationFormDraft; updatedAt: string } | null; photos: Array<{ id: string; type: import("../lib/business-photos").BusinessPhotoType; position: number; mime: string; bytes: number; updatedAt: string }> }>("/api/loans/application-draft", { headers: auth(token) }),
+  saveApplicationDraft: (token: string, draft: import("../lib/loan-application-autosave").LoanApplicationFormDraft) =>
+    request<{ ok: boolean }>("/api/loans/application-draft", { method: "PUT", headers: auth(token), body: JSON.stringify({ draft }) }),
+  uploadApplicationDraftPhoto: (token: string, type: import("../lib/business-photos").BusinessPhotoType, position: number, dataUrl: string) =>
+    request<{ ok: boolean }>("/api/loans/application-draft/photos", { method: "POST", headers: auth(token), body: JSON.stringify({ type, position, dataUrl, photoConsent: true }) }, 120000),
+  deleteApplicationDraftPhoto: (token: string, type: import("../lib/business-photos").BusinessPhotoType, position: number) =>
+    request<void>("/api/loans/application-draft/photos/" + encodeURIComponent(type) + "/" + position, { method: "DELETE", headers: auth(token) }),
+  accessApplicationDraftPhoto: async (token: string, photoId: string): Promise<File> => {
+    const response = await fetch(apiBaseUrl + "/api/loans/application-draft/photos/" + encodeURIComponent(photoId), { headers: auth(token) });
+    if (!response.ok) throw new Error("Saved draft photo is unavailable.");
+    const payload = (response.headers.get("content-type") ?? "").startsWith("image/") ? null : await response.json() as { url?: string };
+    const imageResponse = payload?.url ? await fetch(payload.url) : response;
+    if (!imageResponse.ok) throw new Error("Saved draft photo is unavailable.");
+    const blob = await imageResponse.blob();
+    return new File([blob], "saved-business-photo." + (blob.type.split("/")[1] || "jpg"), { type: blob.type || "image/jpeg" });
+  },
+  deleteApplicationDraft: (token: string) => request<void>("/api/loans/application-draft", { method: "DELETE", headers: auth(token) }),
   uploadFinancialStatement: (token: string, id: string, data: {kind: "bank" | "mobile_money"; periodMonths: number; filename: string; dataUrl: string}) =>
     request<{ok:boolean;kind:string}>("/api/loans/applications/" + encodeURIComponent(id) + "/financial-statements", {method:"POST",headers:auth(token),body:JSON.stringify(data)},120000),
   listFinancialStatements: (token: string, id: string) =>

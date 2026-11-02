@@ -118,6 +118,12 @@ export function LoanReviewScreen({ onNavigate }: Props) {
         if (previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
         await api.uploadBusinessPhotos(token, applicationId, photos);
       }
+      try {
+        await api.deleteApplicationDraft(token);
+      } catch (cleanupFailure) {
+        console.error("The application was submitted, but its saved draft could not be cleared.", cleanupFailure);
+        throw new Error("Your application was submitted, but Kuula could not clear the saved draft. Open My Applications to track it and do not submit again.");
+      }
       setSubmissionStage("complete");
       setLastSubmittedApplicationId(applicationId);
       clearBusinessPhotos(state.user.id);

@@ -13,6 +13,7 @@ import httpsEnforcementRoutes from "./routes/https-enforcement.js";
 import operationsAuditGuardRoutes from "./routes/operations-audit-guard.js";
 import loanRoutes from "./routes/loans.js";
 import businessApplicationPhotoRoutes from "./routes/business-application-photos.js";
+import loanApplicationDraftRoutes from "./routes/loan-application-drafts.js";
 import loanApplicationReadRoutes from "./routes/loan-application-read-routes.js";
 import paymentRoutes from "./routes/payments.js";
 import disbursementRoutes from "./routes/disbursement-routes.js";
@@ -153,6 +154,7 @@ app.use("/api/kyc", express.json({ limit: "22mb", verify: jsonVerify }));
 app.use("/api/profile/me/photo", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use("/api/operations", express.json({ limit: "15mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/business-photos", express.json({ limit: "30mb", verify: jsonVerify }));
+app.use("/api/loans/application-draft/photos", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use("/api/loans/applications/:id/financial-statements", express.json({ limit: "8mb", verify: jsonVerify }));
 app.use(express.json({ limit: "1mb", verify: jsonVerify }));
 // Every JSON API endpoint accepts a named object, never an array of commands.
@@ -182,6 +184,8 @@ app.get("/api/ready", async (_req, res) => {
         CASE WHEN to_regclass('public.disbursement_batches') IS NULL THEN 'disbursement_batches' END,
         CASE WHEN to_regclass('public.disbursement_legs') IS NULL THEN 'disbursement_legs' END,
         CASE WHEN to_regclass('public.journals') IS NULL THEN 'journals' END
+        ,CASE WHEN to_regclass('public.loan_application_drafts') IS NULL THEN 'loan_application_drafts' END
+        ,CASE WHEN to_regclass('public.loan_application_draft_photos') IS NULL THEN 'loan_application_draft_photos' END
         ,CASE WHEN to_regclass('public.support_tickets') IS NULL THEN 'support_tickets' END
         ,CASE WHEN to_regclass('public.collection_activities') IS NULL THEN 'collection_activities' END
       ], NULL) AS missing_tables
@@ -208,6 +212,7 @@ app.use("/api/network", partnerFinancingRoutes);
 app.use("/api/network", networkFinancialFallbackGuard);
 app.use("/api/network", networkRoutes);
 app.use("/api/loans", businessApplicationPhotoRoutes);
+app.use("/api/loans", loanApplicationDraftRoutes);
 app.use("/api/loans", financialStatementRoutes);
 app.use("/api/loans", loanApplicationReadRoutes);
 app.use("/api/loans", partnerOfferGuardRoutes);

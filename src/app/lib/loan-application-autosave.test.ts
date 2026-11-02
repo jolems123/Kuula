@@ -37,28 +37,28 @@ const draft: LoanApplicationFormDraft = {
 afterEach(() => vi.unstubAllGlobals());
 
 it("preserves all chosen purposes and rejects duplicate or unknown selections", () => {
-  const sessionStorage = new MemoryStorage();
-  vi.stubGlobal("window", { sessionStorage });
+  const localStorage = new MemoryStorage();
+  vi.stubGlobal("window", { localStorage });
   const purposes = ["Working capital", "Stock and inventory", "Other"] as const;
   saveLoanApplicationDraft("multi", { ...draft, purposes: [...purposes] });
   expect(getSavedLoanApplicationDraft("multi")?.purposes).toEqual(purposes);
   for (const invalid of [["Personal"], ["Working capital", "Working capital"]]) {
-    sessionStorage.setItem("kuula:loan-application-draft:v1:multi", JSON.stringify({ ...draft, purposes: invalid }));
+    localStorage.setItem("kuula:loan-application-draft:v1:multi", JSON.stringify({ ...draft, purposes: invalid }));
     expect(getSavedLoanApplicationDraft("multi")).toBeNull();
   }
 });
 
 it("restores previous loan purpose names without losing a saved application", () => {
-  const sessionStorage = new MemoryStorage();
-  vi.stubGlobal("window", { sessionStorage });
-  sessionStorage.setItem("kuula:loan-application-draft:v1:legacy-user", JSON.stringify({ ...draft, purpose: "Inventory and stock" }));
+  const localStorage = new MemoryStorage();
+  vi.stubGlobal("window", { localStorage });
+  localStorage.setItem("kuula:loan-application-draft:v1:legacy-user", JSON.stringify({ ...draft, purpose: "Inventory and stock" }));
   expect(getSavedLoanApplicationDraft("legacy-user")?.purpose).toBe("Stock and inventory");
   expect(getSavedLoanApplicationDraft("legacy-user")?.amount).toBe(draft.amount);
 });
 
 describe("loan application autosave", () => {
   it("restores the saved draft only for the matching user", () => {
-    vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
+    vi.stubGlobal("window", { localStorage: new MemoryStorage() });
     saveLoanApplicationDraft("customer-1", draft);
 
     expect(getSavedLoanApplicationDraft("customer-1")).toEqual(draft);
@@ -66,7 +66,7 @@ describe("loan application autosave", () => {
   });
 
   it("preserves a pinned GPS location in the saved draft", () => {
-    vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
+    vi.stubGlobal("window", { localStorage: new MemoryStorage() });
     const locatedDraft = {
       ...draft,
       businessDetails: {
@@ -101,7 +101,7 @@ describe("loan application autosave", () => {
   });
 
   it("clears the saved draft after submission", () => {
-    vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
+    vi.stubGlobal("window", { localStorage: new MemoryStorage() });
     saveLoanApplicationDraft("customer-1", draft);
 
     clearSavedLoanApplicationDraft("customer-1");
@@ -109,8 +109,8 @@ describe("loan application autosave", () => {
     expect(getSavedLoanApplicationDraft("customer-1")).toBeNull();
   });
 
-  it("clears all saved drafts on logout", () => {
-    vi.stubGlobal("window", { sessionStorage: new MemoryStorage() });
+  it("clears all saved drafts when requested", () => {
+    vi.stubGlobal("window", { localStorage: new MemoryStorage() });
     saveLoanApplicationDraft("customer-1", draft);
     saveLoanApplicationDraft("customer-2", draft);
 
