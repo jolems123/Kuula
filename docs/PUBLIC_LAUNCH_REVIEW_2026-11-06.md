@@ -29,3 +29,12 @@ Repayment allocation previously treated accepted loan service fees as principal,
 Historical posted journals are not rewritten by this change. Finance must review any already settled loans for misclassification and use approved correcting entries if needed.
 
 This review is a release evidence checklist, not a legal approval or independent security certification.
+
+## Technical closeout follow-up
+
+- Added staff email MFA and account recovery integration coverage using the real TLS SMTP client against an isolated test server. It verifies no password-only session, invalid/replayed OTP rejection, session revocation after recovery, and failure without fallback when SMTP rejects authentication. This does not prove delivery to production staff mailboxes.
+- SMTP errors now omit command contents, including base64-encoded authentication credentials; pending delivery rejects cleanly when the connection closes.
+- Added a disposable PostgreSQL backup roundtrip to CI after the financial lifecycle: pg_dump, pg_restore, all tracked table counts compared, balanced journals and valid journal links. Production backup restoration remains a separate gate.
+- Restore verification now requires expected source counts, so an empty or incomplete restore cannot be marked PASS without comparison.
+- GitHub administration requires owner sign-in; connected repository tools do not expose administration writes. The current shell and browser have no owner session.
+- Provider credential rotation and a provider payment cannot be replaced by code changes. Lending/data-protection approvals and independent penetration testing need external evidence.

@@ -56,7 +56,7 @@ export async function sendTransactionalEmail(message: TransactionalEmail): Promi
         if (separator === "-") continue;
         const current = queue.shift()!;
         if (!current.expected.includes(code)) {
-          current.reject(new Error(`SMTP rejected ${current.command || "command"} with ${code}`));
+          current.reject(new Error(`SMTP command rejected with status ${code}`));
           return;
         }
         current.resolve(line.trim());
@@ -64,7 +64,12 @@ export async function sendTransactionalEmail(message: TransactionalEmail): Promi
     }
 
     socket.on("data", (chunk) => { buffer += chunk; flush(); });
-    socket.on("error", reject);
+    const fail = (error: Error) => {
+      for (const pending of queue.splice(0)) pending.reject(error);
+      reject(error);
+    };
+    socket.on("error", fail);
+    socket.on("close", () => fail(new Error("SMTP connection closed")));
     socket.on("timeout", () => socket.destroy(new Error("SMTP connection timed out")));
 
     const expect = (expected: number[], command?: string) => new Promise<string>((res, rej) => {

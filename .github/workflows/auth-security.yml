@@ -68,6 +68,16 @@ jobs:
           npm run db:migrate:deploy
           npm run db:seed
 
+      - name: Verify staff MFA and recovery over TLS SMTP
+        working-directory: server
+        env:
+          TEST_SMTP_KEY: /tmp/kuula-smtp.key
+          TEST_SMTP_CERT: /tmp/kuula-smtp.crt
+          NODE_EXTRA_CA_CERTS: /tmp/kuula-smtp.crt
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout /tmp/kuula-smtp.key -out /tmp/kuula-smtp.crt -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 >/dev/null 2>&1
+          node scripts/staff-mfa-smoke.mjs
+
       - name: Verify OTP, recovery, revocation, and deletion
         working-directory: server
         run: |
