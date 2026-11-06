@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 
 const urlText = process.env.ISOLATED_DATABASE_URL;
-if (process.env.RESTORE_AUDIT_CONFIRM !== "ISOLATED" || !urlText) {
-  console.error("Set ISOLATED_DATABASE_URL and RESTORE_AUDIT_CONFIRM=ISOLATED; this script is read-only.");
+if (process.env.RESTORE_AUDIT_CONFIRM !== "ISOLATED" || !urlText || !process.env.RESTORE_EXPECTED_COUNTS_JSON) {
+  console.error("Set ISOLATED_DATABASE_URL, RESTORE_AUDIT_CONFIRM=ISOLATED and RESTORE_EXPECTED_COUNTS_JSON from the source backup; this script is read-only.");
   process.exit(2);
 }
 let target;

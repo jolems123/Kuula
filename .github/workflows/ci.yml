@@ -207,6 +207,12 @@ jobs:
           test "$ready" = "true"
           node scripts/staged-credit-lifecycle.mjs
 
+      - name: Verify isolated backup restoration
+        working-directory: server
+        env:
+          CI_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: node scripts/ci-restore-roundtrip.mjs
+
   capacitor-sync:
     name: Capacitor Sync
     needs: frontend
