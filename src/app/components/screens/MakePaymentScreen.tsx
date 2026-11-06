@@ -170,9 +170,9 @@ export function MakePaymentScreen({ onNavigate }: Props) {
           <strong>Payment breakdown</strong>
           {quote && quote.loanCredit === amount ? <>
             <p>Applied to loan: {ugx(quote.loanCredit)}</p>
-            <p>Mobile-money collection fee: {ugx(quote.customerFee)}</p>
+            <p>Kuula payment fee (3%): {ugx(quote.customerFee)}</p>
             <p><strong>Total deducted from your phone: {ugx(quote.totalDebit)}</strong></p>
-            <p style={{ fontSize: 12 }}>The provider deducts its fee from the total collected. Only {ugx(quote.loanCredit)} reduces your loan. Any confirmed fee saving is held for your refund; a higher provider cost is absorbed by Kuula.</p>
+            <p style={{ fontSize: 12 }}>The 3% fee is added to your repayment amount. Only {ugx(quote.loanCredit)} reduces your loan. MarzPay charges Kuula separately; its charge may differ from this fixed customer fee.</p>
           </> : <p role={quoteError ? "alert" : undefined}>{quoteError || "Calculating provider fees…"}</p>}
         </div>}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#F0FDF4", border: "1px solid #B7DEC9" }}>

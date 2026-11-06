@@ -112,7 +112,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
     { label: "Requested", value: `${dateStr} · ${timeStr}` },
     { label: "Method", value: method },
     { label: "Provider state", value: providerStatus },
-    ...(payment?.loanCredit !== undefined ? [{ label: "Requested loan credit", value: formatUGX(payment.loanCredit) }, { label: "Disclosed fee allowance", value: formatUGX(payment.customerFee ?? 0) }] : []),
+    ...(payment?.loanCredit !== undefined ? [{ label: "Requested loan credit", value: formatUGX(payment.loanCredit) }, { label: "Disclosed customer fee", value: formatUGX(payment.customerFee ?? 0) }] : []),
     ...(actualProviderFee !== null ? [{ label: "Actual provider fee", value: formatUGX(actualProviderFee) }] : []),
   ];
 
@@ -127,7 +127,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
       rows: [
         { label: "Method", value: method },
         { label: "Type", value: "Loan Repayment" },
-        ...rows.filter(row => ["Requested loan credit", "Disclosed fee allowance", "Actual provider fee"].includes(row.label)),
+        ...rows.filter(row => ["Requested loan credit", "Disclosed customer fee", "Actual provider fee"].includes(row.label)),
         { label: "Provider state", value: providerStatus },
       ],
       footerNote: settled

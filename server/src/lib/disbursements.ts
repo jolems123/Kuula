@@ -189,12 +189,17 @@ async function destinationCommittedToday(params: {
 export async function customerPaymentFeeDisclosure(params: { amount: number; phone: string; channel: string }): Promise<PaymentFeeDisclosure> {
   const network = networkFromChannel(params.channel);
   const limit = await providerLimit({ network, beneficiaryType: "customer", beneficiaryReference: params.phone });
-  const budgets = splitDisbursementAmount(params.amount, Math.min(5_000_000, Number(limit.max_single_amount)), Number(limit.min_amount) + 1000);
-  let legs;
-  try { legs = budgets.map(payoutQuote); }
+  let quoted;
+  try { quoted = payoutQuote(params.amount); }
   catch (error) { throw new AppError(error instanceof Error ? error.message : "Payout fees unavailable", 422); }
-  if (legs.some(leg => leg.net < Number(limit.min_amount))) throw new AppError("Net payout is below the provider minimum", 422);
-  return { policyVersion: PAYMENT_FEE_POLICY, principal: params.amount, payoutFee: legs.reduce((n, leg) => n + leg.customerFee, 0), netDisbursement: legs.reduce((n, leg) => n + leg.net, 0), collectionBps: COLLECTION_BPS, legs };
+  const netLegs = splitDisbursementAmount(quoted.net, Math.min(5_000_000, Number(limit.max_single_amount)), Number(limit.min_amount));
+  let unallocatedFee = quoted.customerFee;
+  const legs = netLegs.map((net, index) => {
+    const customerFee = index === netLegs.length - 1 ? unallocatedFee : Math.floor(quoted.customerFee * net / quoted.net);
+    unallocatedFee -= customerFee;
+    return { budget: net + customerFee, net, customerFee };
+  });
+  return { policyVersion: PAYMENT_FEE_POLICY, principal: params.amount, payoutFee: quoted.customerFee, netDisbursement: quoted.net, collectionBps: COLLECTION_BPS, legs };
 }
 
 export async function createCustomerDisbursementBatch(params: {

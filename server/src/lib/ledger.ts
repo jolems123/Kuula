@@ -1,5 +1,4 @@
 import { Prisma, type Transaction } from "@prisma/client";
-import { recoveredProviderFee } from "./payment-fees.js";
 
 interface JournalLine {
   accountCode: string;
@@ -38,7 +37,7 @@ type SettlementSource = Pick<Transaction, "type" | "amount"> & {
 
 /**
  * MOBILE_MONEY_CLEARING mirrors Kuula's MarzPay wallet. MarzPay's own charges are kept
- * in PROVIDER_FEE_EXPENSE. A frozen customerFee recovers at most the actual cost.
+ * in PROVIDER_FEE_EXPENSE. A frozen customerFee is a separate fixed customer charge.
  * Legacy entries with no customerFee retain the original policy:
  * - a payout costs the wallet amount + charge, and the borrower owes only the amount;
  * - a collection credits the wallet amount - charge, and the borrower is credited in full.
@@ -46,15 +45,14 @@ type SettlementSource = Pick<Transaction, "type" | "amount"> & {
 export function linesFor(transaction: SettlementSource): JournalLine[] {
   const fee = transaction.providerFee && transaction.providerFee > BigInt(0) ? transaction.providerFee : BigInt(0);
   const agreed = transaction.customerFee ?? BigInt(0);
-  const recovered = recoveredProviderFee(agreed, fee);
-  const recoveryLines: JournalLine[] = recovered > BigInt(0) ? [{ accountCode: "PROVIDER_FEE_EXPENSE", direction: "credit", amount: recovered }] : [];
+  const recovered = agreed;
+  const recoveryLines: JournalLine[] = recovered > BigInt(0) ? [{ accountCode: "PAYMENT_FEE_INCOME", direction: "credit", amount: recovered }] : [];
   const feeLine: JournalLine[] = fee > BigInt(0) ? [{ accountCode: "PROVIDER_FEE_EXPENSE", direction: "debit", amount: fee }] : [];
   if (transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg") {
     return [
       { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "debit", amount: transaction.amount + agreed },
       ...feeLine,
       ...recoveryLines,
-      ...(agreed > recovered ? [{ accountCode: "UNAPPLIED_CUSTOMER_FUNDS", direction: "credit" as const, amount: agreed - recovered }] : []),
       { accountCode: "MOBILE_MONEY_CLEARING", direction: "credit", amount: transaction.amount + fee },
     ];
   }
