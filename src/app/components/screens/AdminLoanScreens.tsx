@@ -67,7 +67,8 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const token = state.session.token;
   const [apps, setApps] = useState<LoanApplication[]>([]);
-  const [recordSearch,setRecordSearch] = useState("");
+  const [applicationSearch, setApplicationSearch] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -77,11 +78,14 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const [reviewBusy, setReviewBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
+    if (!token) { setLoading(false); return; }
     try {
       const { applications } = await api.getApplications(token);
       setApps(applications);
-    } catch { /* keep last known state */ }
+      setLoadError("");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load loan applications. Please try again.");
+    }
     finally { setLoading(false); }
   }, [token]);
 
@@ -126,7 +130,6 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
 
   const filtered = (filter === "All" ? apps : apps.filter(a=>a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
 
-  const [applicationSearch,setApplicationSearch] = useState("");
   const pendingCount = apps.filter((a) => a.status === "pending").length;
 
   return (
@@ -151,10 +154,13 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       </div>
 
       <ListSearch value={applicationSearch} onChange={setApplicationSearch} placeholder="Search customer, application ID, business or purpose" />
+      {loadError && <div role="alert" style={{ padding: 12, marginBottom: 12, borderRadius: 10, background: "#FEF2F2", color: "#991B1B" }}>
+        {loadError} <button type="button" onClick={() => void refresh()}>Retry</button>
+      </div>}
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading applications…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>No {filter === "All" ? "" : filter.toLowerCase() + " "}applications yet</div>
+        <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>{loadError ? "Applications could not be refreshed." : applicationSearch.trim() ? "No applications match your search." : `No ${filter === "All" ? "" : filter.toLowerCase() + " "}applications yet`}</div>
       ) : (
         <AdminTable
           columns={["Applicant / business", "Amount", "Loan purpose", "Applied", "Status", "Action"]}
