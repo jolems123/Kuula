@@ -72,6 +72,8 @@ try {
   await call("auth/me", null, 401, login.token);
   await call("auth/refresh", { refreshToken: login.refreshToken }, 401);
   await call("auth/admin-login", { email, password: original }, 401);
+  await call("auth/admin-login", { email, password: changed }, 429);
+  await cooldown(); // Advance the isolated fixture past the resend cooldown.
   const recovered = await call("auth/admin-login", { email, password: changed });
   assert.equal(recovered.mfaRequired, true, "Recovery cannot bypass MFA");
   await call("auth/admin-login/verify", { email, code: process.env.TEST_OTP_CODE });
@@ -80,6 +82,7 @@ try {
   const failed = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
   assert.equal(failed.otpHash, null);
   assert.equal(failed.otpLastSentAt, null, "Delivery failure permits retry without a password-only fallback");
+  assert.ok(logs.includes("SMTP command rejected with status 535"), "The rejected-authentication error was observed");
   assert.ok(!logs.includes(smtpPassword) && !logs.includes(Buffer.from(smtpPassword).toString("base64")), "SMTP credentials must never appear in errors");
   console.log("Staff MFA, recovery, revocation, replay and SMTP failure controls passed (isolated CI)");
 } finally {
