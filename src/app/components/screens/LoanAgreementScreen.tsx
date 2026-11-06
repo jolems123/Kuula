@@ -2,7 +2,7 @@ import { UiText, uiLocale } from "../../../i18n/ui-text";
 import { ArrowLeft, Download, CheckCircle, Pen, Clock3, AlertTriangle, Building2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppContext } from "../../context/AppContext";
-import { api, ApiError, type LoanApplication } from "../../api/client";
+import { api, ApiError, type LoanApplication, type PaymentFeeDisclosure } from "../../api/client";
 import { partnerFinancingApi } from "../../api/partner-financing";
 import { getDisbursementStatus, type DisbursementBatchStatus } from "../../api/disbursement";
 import { downloadPdf, formatUGX } from "../../lib/export";
@@ -20,6 +20,9 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const user = state.user;
   const [offer, setOffer] = useState<LoanApplication | null>(null);
+  const [paymentFees, setPaymentFees] = useState<PaymentFeeDisclosure | null>(null);
+  const [feesReady, setFeesReady] = useState(false);
+  const [feesError, setFeesError] = useState("");
   const [charges, setCharges] = useState<Array<{label:string;amount:number}> | null>(null);
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
@@ -61,6 +64,15 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   },[token,offer?.id,offer?.status]);
 
   useEffect(() => {
+    if (!token || !offer) return;
+    let active = true;
+    setFeesReady(false); setFeesError("");
+    api.getPaymentFees(token, offer.id).then(result => { if (active) { setPaymentFees(result.paymentFees); setFeesReady(true); } })
+      .catch(error => { if (active) setFeesError(error instanceof Error ? error.message : "Could not verify payment fees"); });
+    return () => { active = false; };
+  }, [token, offer?.id]);
+
+  useEffect(() => {
     if (!token || !offer || !disbursement) return;
     if (["settled", "failed", "attention_required"].includes(disbursement.status)) return;
     const timer = window.setInterval(async () => {
@@ -88,22 +100,23 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const clauses = [
     { title: "1. Parties", body: `This agreement is between Kuula Microfinance Limited (the lender) and ${borrower} (the borrower).` },
     { title: "2. Principal", body: `Principal: ${formatUGX(principal)}. Settlement is requested only after this agreement is accepted and all eligibility checks still pass.` },
-    { title: "3. Pricing", body: `${aprPercent != null ? `${aprPercent}% annual percentage rate` : "The disclosed annual percentage rate"}, using simple interest. Interest shown for this offer: ${formatUGX(interest)}.` },
+    { title: "3. Pricing", body: `${aprPercent != null ? `${aprPercent}% nominal annual interest rate` : "The disclosed annual percentage rate"}, using simple interest. Interest shown for this offer: ${formatUGX(interest)}.` },
     { title: "4. Additional charges", body: `Approved charges: ${charges ? (charges.length ? charges.map(item => `${item.label}: ${formatUGX(item.amount)}`).join("; ") : "None") : "Pending verification"}. Total additional charges: ${formatUGX(serviceFee)}.` },
     { title: "5. Total Repayment", body: `Total repayment for this offer: ${formatUGX(total)} over ${offer?.termDays ?? "the disclosed"} days.` },
     {
       title: "5. Disbursement / Settlement",
       body: isPartnerFacility
         ? `This is restricted-purpose credit. Kuula will settle the approved principal directly to ${payee} using the independently verified partner destination linked to invoice/order ${offer?.invoiceReference || "recorded on the application"}. Money is not released as unrestricted cash to the borrower. Kuula may split the approved principal into sequential provider-safe transfers. The loan becomes active only after the full approved principal is provider-confirmed settled to the verified payee.`
-        : `Disbursement is requested through ${offer?.channel ?? "the selected mobile-money channel"}. Kuula may split a large approved principal into sequential provider-safe transfers. The loan becomes active only after the full approved principal is provider-confirmed settled.`,
+        : `Disbursement is requested through ${offer?.channel ?? "the selected mobile-money channel"}. Kuula may split a large approved principal into sequential provider-safe transfers. The loan becomes active only after the disclosed net payout is provider-confirmed settled.`,
     },
+    { title: "Provider payment costs", body: !feesReady ? (feesError || "Verifying payment costs") : paymentFees ? `Approved principal: ${formatUGX(principal)}. Provider payout fee deducted from principal: ${formatUGX(paymentFees.payoutFee)}. You receive ${formatUGX(paymentFees.netDisbursement)}. Principal and contractual repayment remain unchanged. Including the estimated collection cost for a single full repayment, the annualised simple total-cost rate on cash received is ${(((Math.ceil(total * 10000 / (10000 - paymentFees.collectionBps)) - paymentFees.netDisbursement) / paymentFees.netDisbursement) * 365 / (offer?.termDays || 1) * 100).toFixed(2)}%. For each repayment the provider charges ${paymentFees.collectionBps / 100}% of the total collection. Kuula divides the requested loan payment by ${(10000 - paymentFees.collectionBps) / 10000} and rounds up to whole UGX to show the total phone debit before you pay. For one payment of the full contractual balance, estimated total debit is ${formatUGX(Math.ceil(total * 10000 / (10000 - paymentFees.collectionBps)))}. Paying in parts can change rounding. Actual provider fees are recorded separately; savings are held for your refund and excess provider charges are absorbed by Kuula.` : "Provider payment costs are paid by Kuula under this agreement; the principal is paid in full." },
     { title: "6. Repayment", body: "Repayments change the loan balance only after the payment provider confirms collection. Partial payments are permitted up to the outstanding balance." },
     { title: "7. Data & Credit", body: "Kuula may use verified identity, repayment and permitted credit evidence for underwriting, servicing, fraud prevention and lawful reporting according to the applicable privacy notice and agreements." },
   ];
 
   const acceptAgreement = async () => {
     if (!token || !offer || busy) return;
-    if (!charges || chargeError) { setError("Approved pricing details must load before you can accept the loan."); return; }
+    if (!charges || chargeError || !feesReady || feesError) { setError("Approved pricing details must load before you can accept the loan."); return; }
     if (!understoodTerms || !signatureName.trim() || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()) {
       setError("Please confirm that you understand the agreement and type your registered name to sign.");
       return;
@@ -111,6 +124,9 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
     setBusy(true); setError(null);
     try {
       const result = await api.acceptLoanAgreement(token, offer.id, {
+        paymentFeePolicy: paymentFees?.policyVersion ?? null,
+        netDisbursement: paymentFees?.netDisbursement ?? principal,
+        payoutFee: paymentFees?.payoutFee ?? 0,
         appVersion: env.APP_VERSION,
         signatureVersion: "typed_name_v1",
         signedByName: signatureName.trim(),
@@ -193,12 +209,12 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               {disbursement.status === "settled" ? <CheckCircle size={22} color="#0B5E3A" /> : disbursementTerminal ? <AlertTriangle size={22} color="#B45309" /> : <Clock3 size={22} color="#0B5E3A" />}
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#13251C" }}>{disbursement.status === "settled" ? `Full principal settled to ${beneficiaryLabel}` : disbursementTerminal ? "Kuula review required" : disbursement.status === "awaiting_release" ? "Approved · awaiting Kuula's final payment authorization" : `Settling approved credit to ${beneficiaryLabel}`}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#13251C" }}>{disbursement.status === "settled" ? `Disclosed payout settled to ${beneficiaryLabel}` : disbursementTerminal ? "Kuula review required" : disbursement.status === "awaiting_release" ? "Approved · awaiting Kuula's final payment authorization" : `Settling approved credit to ${beneficiaryLabel}`}</div>
                 <div style={{ fontSize: 11, color: "#718078", marginTop: 2 }}>{disbursement.network.toUpperCase()}<UiText text={" Mobile Money · "} />{disbursement.legs.length}<UiText text={" transfer"} /><UiText text={disbursement.legs.length === 1 ? "" : "s"} /></div>
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 12, color: "#68766F" }}><UiText text={"Provider-confirmed"} /></span><strong style={{ fontSize: 13, color: "#0B5E3A" }}>{formatUGX(disbursement.totalSettled)} / {formatUGX(disbursement.approvedAmount)}</strong></div>
-            <div style={{ height: 8, borderRadius: 8, background: "#E8EFEB", overflow: "hidden", marginBottom: 14 }}><div style={{ width: `${Math.min(100, (disbursement.totalSettled / Math.max(1, disbursement.approvedAmount)) * 100)}%`, height: "100%", background: "#0B5E3A" }} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 12, color: "#68766F" }}><UiText text={"Provider-confirmed"} /></span><strong style={{ fontSize: 13, color: "#0B5E3A" }}>{formatUGX(disbursement.totalSettled)} / {formatUGX(disbursement.netDisbursement ?? disbursement.approvedAmount)}</strong></div>
+            <div style={{ height: 8, borderRadius: 8, background: "#E8EFEB", overflow: "hidden", marginBottom: 14 }}><div style={{ width: `${Math.min(100, (disbursement.totalSettled / Math.max(1, disbursement.netDisbursement ?? disbursement.approvedAmount)) * 100)}%`, height: "100%", background: "#0B5E3A" }} /></div>
             <div style={{ display: "grid", gap: 8 }}>
               {disbursement.legs.map((leg) => <div key={leg.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 10, background: "#F7FAF8" }}><div><div style={{ fontSize: 12, fontWeight: 700, color: "#263A30" }}><UiText text={"Transfer "} />{leg.sequence}</div><div style={{ fontSize: 10, color: "#809087", marginTop: 2 }}>{leg.status.replace(/_/g, " ")}</div></div><strong style={{ fontSize: 12, color: leg.status === "settled" ? "#0B5E3A" : "#4B5C53" }}>{formatUGX(leg.amount)}</strong></div>)}
             </div>
@@ -231,7 +247,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         {!offer ? <button disabled style={{ width: "100%", height: 52, borderRadius: 14, border: 0 }}><UiText text={"Loading offer…"} /></button> : disbursement ? (
           <button onClick={() => onNavigate(disbursement.status === "settled" ? "loan-detail" : "home")} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={disbursement.status === "settled" ? "View Active Loan" : "Return Home"} /></button>
         ) : !serverAccepted ? (
-          <button onClick={acceptAgreement} disabled={busy || !charges || !!chargeError || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={busy ? "Recording acceptance…" : "Accept Credit Agreement"} /></button>
+          <button onClick={acceptAgreement} disabled={busy || !feesReady || !!feesError || !charges || !!chargeError || !understoodTerms || signatureName.trim().toLowerCase() !== borrower.trim().toLowerCase()} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={busy ? "Recording acceptance…" : "Accept Credit Agreement"} /></button>
         ) : (
           <button onClick={requestDisbursement} disabled={busy} className="kuula-primary" style={{ width: "100%", height: 52 }}><UiText text={busy ? "Starting secure settlement…" : isPartnerFacility ? `Pay ${payee}` : "Request Mobile-Money Disbursement"} /></button>
         )}

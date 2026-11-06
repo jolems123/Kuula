@@ -1,5 +1,6 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import { payoutFee } from "../lib/payment-fees.js";
 
 // Stand-in for MarzPay in CI, answering in the shapes the official documentation gives
 // (https://wallet.wearemarz.com/documentation). Status lookups report a transaction as
@@ -25,6 +26,8 @@ function money(raw: number) {
   return { formatted: raw.toLocaleString("en-US", { minimumFractionDigits: 2 }), raw, currency: "UGX" };
 }
 
+function recordFee(record: Stored) { return record.kind === "disbursement" ? payoutFee(record.amount) : Math.ceil(record.amount * 3 / 100); }
+
 function callbackShape(record: Stored) {
   const section = { provider: "mtn", phone_number: record.phone, amount: money(record.amount), provider_transaction_id: `FAKE-${record.uuid.slice(0, 8)}` };
   return {
@@ -35,6 +38,7 @@ function callbackShape(record: Stored) {
       ...(record.kind === "disbursement" ? { provider_reference: record.ourReference } : {}),
       status: record.status,
       amount: money(record.amount),
+      charge: money(recordFee(record)),
     },
     [record.kind]: section,
   };
@@ -76,7 +80,7 @@ const server = http.createServer((req, res) => {
           message: "Withdrawal request submitted successfully!",
           data: {
             transaction: { uuid: record.uuid, reference: record.systemReference, provider_reference: record.ourReference, status: "pending" },
-            withdrawal: { amount: money(record.amount), charge: money(500), total_deduction: money(record.amount + 500), provider: "mtn", phone_number: record.phone },
+            withdrawal: { amount: money(record.amount), charge: money(recordFee(record)), total_deduction: money(record.amount + recordFee(record)), provider: "mtn", phone_number: record.phone },
           },
         });
       } else {

@@ -16,6 +16,8 @@ export interface DisbursementBatchStatus {
   network: "mtn" | "airtel" | string;
   currency: string;
   approvedAmount: number;
+  netDisbursement?: number;
+  customerFee?: number;
   totalSettled: number;
   remainingAmount: number;
   reference?: string;

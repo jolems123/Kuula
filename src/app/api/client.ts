@@ -19,6 +19,8 @@ import {
 } from "./types";
 import type { AdminStats, InvestorReport, CustomerRow, AppNotification } from "./types-compat";
 
+export interface PaymentQuote { policyVersion: string; loanCredit: number; customerFee: number; totalDebit: number; collectionBps: number; }
+export interface PaymentFeeDisclosure { policyVersion: string; principal: number; payoutFee: number; netDisbursement: number; collectionBps: number; legs: Array<{ budget: number; net: number; customerFee: number }>; }
 export { ApiError };
 export type {
   SessionPayload,
@@ -244,7 +246,9 @@ const nodeApi = {
   reviewReconciliation: (token: string, id: string, note: string) => request<{ ok: boolean; status: string }>(`/api/admin/reconciliation/${id}/review`, { method: "POST", headers: auth(token), body: JSON.stringify({ note }) }),
   getTransactionJournal: (token: string, id: string) => request<{ journal: Record<string, unknown> | null }>(`/api/admin/reconciliation/${id}/journal`, { headers: auth(token) }),
   getRepayment: (token: string) => request<{ repayment: null | (Record<string, unknown> & { collection: { stage: string; label: string; daysToDue: number } }) }>("/api/loans/repayment", { headers: auth(token) }),
-  payRepayment: (token: string, amount?: number) => request<{ repayment: Record<string, unknown> | null; attempt: { success: boolean; reason: string }; isPartial?: boolean; isPending?: boolean; amount?: number; reference?: string; uuid?: string; message?: string }>("/api/loans/repayment/pay", { method: "POST", headers: auth(token), body: amount !== undefined ? JSON.stringify({ amount }) : undefined }),
+  getPaymentFees: (token: string, applicationId: string) => request<{ paymentFees: PaymentFeeDisclosure | null }>(`/api/loans/${encodeURIComponent(applicationId)}/payment-fees`, { headers: auth(token) }),
+  quoteRepayment: (token: string, amount: number) => request<PaymentQuote>("/api/loans/repayment/payment-quote", { method: "POST", headers: auth(token), body: JSON.stringify({ amount }) }),
+  payRepayment: (token: string, amount?: number, feeConsent?: Pick<PaymentQuote, "policyVersion" | "totalDebit">) => request<{ repayment: Record<string, unknown> | null; attempt: { success: boolean; reason: string }; isPartial?: boolean; isPending?: boolean; amount?: number; reference?: string; uuid?: string; message?: string }>("/api/loans/repayment/pay", { method: "POST", headers: auth(token), body: JSON.stringify({ amount, feeConsent }) }),
   requestTopUp: (token: string, body: { amount: number; term_days: number; purpose: string; disbursement_method: string }) => request<{ success?: boolean; reason?: string; code?: string }>("/api/loans/top-up", { method: "POST", headers: auth(token), body: JSON.stringify(body) }),
   getNotifications: (token: string) => request<{ notifications: AppNotification[] }>("/api/notifications", { headers: auth(token) }),
   markNotificationRead: (token: string, id: string) => request<{ ok: true }>(`/api/notifications/${id}/read`, { method: "POST", headers: auth(token) }),

@@ -1,4 +1,5 @@
 import { Prisma, type Transaction } from "@prisma/client";
+import { recoveredProviderFee } from "./payment-fees.js";
 
 interface JournalLine {
   accountCode: string;
@@ -30,23 +31,30 @@ export type RefundSourceAccount = "UNAPPLIED_CUSTOMER_FUNDS" | "LOAN_COLLECTIONS
 
 type SettlementSource = Pick<Transaction, "type" | "amount"> & {
   providerFee?: bigint | null;
+  customerFee?: bigint;
   allocation?: RepaymentAllocation | null;
   refundSourceAccount?: RefundSourceAccount | null;
 };
 
 /**
  * MOBILE_MONEY_CLEARING mirrors Kuula's MarzPay wallet. MarzPay's own charges are kept
- * out of borrower balances and posted to PROVIDER_FEE_EXPENSE:
+ * in PROVIDER_FEE_EXPENSE. A frozen customerFee recovers at most the actual cost.
+ * Legacy entries with no customerFee retain the original policy:
  * - a payout costs the wallet amount + charge, and the borrower owes only the amount;
  * - a collection credits the wallet amount - charge, and the borrower is credited in full.
  */
 export function linesFor(transaction: SettlementSource): JournalLine[] {
   const fee = transaction.providerFee && transaction.providerFee > BigInt(0) ? transaction.providerFee : BigInt(0);
+  const agreed = transaction.customerFee ?? BigInt(0);
+  const recovered = recoveredProviderFee(agreed, fee);
+  const recoveryLines: JournalLine[] = recovered > BigInt(0) ? [{ accountCode: "PROVIDER_FEE_EXPENSE", direction: "credit", amount: recovered }] : [];
   const feeLine: JournalLine[] = fee > BigInt(0) ? [{ accountCode: "PROVIDER_FEE_EXPENSE", direction: "debit", amount: fee }] : [];
   if (transaction.type === "loan_disbursement" || transaction.type === "loan_disbursement_leg") {
     return [
-      { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "debit", amount: transaction.amount },
+      { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "debit", amount: transaction.amount + agreed },
       ...feeLine,
+      ...recoveryLines,
+      ...(agreed > recovered ? [{ accountCode: "UNAPPLIED_CUSTOMER_FUNDS", direction: "credit" as const, amount: agreed - recovered }] : []),
       { accountCode: "MOBILE_MONEY_CLEARING", direction: "credit", amount: transaction.amount + fee },
     ];
   }
@@ -65,9 +73,9 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
     const allocation = transaction.allocation;
     if (!allocation) {
       // Without a loan to apply it to, the money waits in suspense for a person to decide.
-      return [...debits, { accountCode: "LOAN_COLLECTIONS_SUSPENSE", direction: "credit", amount: transaction.amount }];
+      return [...debits, { accountCode: "LOAN_COLLECTIONS_SUSPENSE", direction: "credit", amount: transaction.amount - recovered }, ...recoveryLines];
     }
-    if (allocation.interest + allocation.principal + allocation.unapplied !== transaction.amount) {
+    if (allocation.interest + allocation.principal + allocation.unapplied !== transaction.amount - recovered) {
       throw new Error("Repayment allocation does not equal the collected amount");
     }
     const credits: JournalLine[] = [
@@ -75,7 +83,7 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
       { accountCode: "INTEREST_INCOME", direction: "credit", amount: allocation.interest },
       { accountCode: "UNAPPLIED_CUSTOMER_FUNDS", direction: "credit", amount: allocation.unapplied },
     ];
-    return [...debits, ...credits.filter((line) => line.amount > BigInt(0))];
+    return [...debits, ...recoveryLines, ...credits.filter((line) => line.amount > BigInt(0))];
   }
   return [];
 }

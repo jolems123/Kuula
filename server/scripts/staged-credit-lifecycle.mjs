@@ -148,7 +148,8 @@ try {
   assert.equal(offer.application.status, "offered");
 
   step("the customer accepts; only an uninvolved finance officer can release the payout");
-  await call("POST", `/api/loans/${id}/agreement/accept`, { token: customer.token, body: { clientContext: { source: "ci-staged" } } });
+  const { paymentFees } = await call("GET", `/api/loans/${id}/payment-fees`, { token: customer.token });
+  await call("POST", `/api/loans/${id}/agreement/accept`, { token: customer.token, body: { clientContext: { source: "ci-staged", paymentFeePolicy: paymentFees.policyVersion, netDisbursement: paymentFees.netDisbursement, payoutFee: paymentFees.payoutFee } } });
   const accepted = await call("POST", `/api/loans/${id}/accept`, { token: customer.token });
   assert.equal(accepted.disbursement.status, "awaiting_release");
   await call("POST", `/api/loans/${id}/disbursement/release`, { token: approver.token, expect: 403 });
