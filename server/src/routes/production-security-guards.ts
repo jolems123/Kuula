@@ -168,6 +168,8 @@ router.get("/transactions", authenticateToken, async (req: Request, res: Respons
       loanId: true,
       type: true,
       amount: true,
+      customerFee: true,
+      providerFee: true,
       status: true,
       reference: true,
       providerStatus: true,
@@ -175,7 +177,7 @@ router.get("/transactions", authenticateToken, async (req: Request, res: Respons
       updatedAt: true,
     },
   });
-  res.json({ transactions: transactions.map((row) => ({ ...row, amount: Number(row.amount) })) });
+  res.json({ transactions: transactions.map((row) => ({ ...row, amount: Number(row.amount), customerFee: Number(row.customerFee), providerFee: row.providerFee === null ? null : Number(row.providerFee) })) });
 });
 
 router.post("/users/me/delete", authenticateToken, async (req: Request, _res: Response, next: NextFunction) => {

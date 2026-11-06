@@ -120,7 +120,11 @@ try {
 
   step("accepting needs the signed agreement and moves no money: the payout waits for release");
   await call("POST", `/api/loans/${applicationId}/accept`, { token: C, expect: 409 });
-  const agreement = await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci" } } });
+  const { paymentFees } = await call("GET", `/api/loans/${applicationId}/payment-fees`, { token: C });
+  assert.equal(paymentFees.netDisbursement, 97000);
+  assert.equal(paymentFees.payoutFee, 3000);
+  await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci-no-fee-consent" } }, expect: 409 });
+  const agreement = await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci", paymentFeePolicy: paymentFees.policyVersion, netDisbursement: paymentFees.netDisbursement, payoutFee: paymentFees.payoutFee } } });
   assert.equal(agreement.ok, true);
   const accepted = await call("POST", `/api/loans/${applicationId}/accept`, { token: C });
   assert.equal(accepted.disbursement.status, "awaiting_release");
@@ -150,9 +154,9 @@ try {
   assert.ok(disbursementRef);
   const liquidity = await call("GET", "/api/admin/liquidity", { token: A });
   assert.equal(liquidity.wallet.availableUgx, Number(process.env.FAKE_MARZPAY_BALANCE || 50_000_000));
-  assert.equal(liquidity.committed.inFlight, 100000, "a released payout counts as committed until it settles");
+  assert.equal(liquidity.committed.inFlight, 98500, "a released payout counts as committed until it settles");
   const payoutTx = await prisma.transaction.findUnique({ where: { reference: disbursementRef } });
-  assert.equal(payoutTx.providerFee, BigInt(500), "send-money charge from the create response is stored");
+  assert.equal(payoutTx.providerFee, BigInt(1500), "send-money charge from the create response is stored");
   assert.ok(payoutTx.transactionId, "MarzPay transaction uuid is stored");
 
   step("a callback with the wrong amount is held; later callbacks stay blocked until reviewed");
@@ -172,18 +176,24 @@ try {
   assert.equal(settledPayout.settled, true);
   const status = await call("GET", `/api/loans/${applicationId}/disbursement`, { token: C });
   assert.equal(status.disbursement.status, "settled");
-  assert.equal(status.disbursement.totalSettled, 100000);
+  assert.equal(status.disbursement.totalSettled, 97000);
   const replay = await webhook(finalPayout, 200);
   assert.equal(replay.settled, false, "a repeated callback changes nothing");
   const payoutJournal = await prisma.journal.findUnique({ where: { transactionId: payoutTx.id }, include: { entries: true } });
   assert.deepEqual(
     payoutJournal.entries.map((entry) => `${entry.accountCode}:${entry.direction}:${entry.amount}`).sort(),
-    ["LOAN_PRINCIPAL_RECEIVABLE:debit:100000", "MOBILE_MONEY_CLEARING:credit:100500", "PROVIDER_FEE_EXPENSE:debit:500"],
+    ["LOAN_PRINCIPAL_RECEIVABLE:debit:100000", "MOBILE_MONEY_CLEARING:credit:98500", "PAYMENT_FEE_INCOME:credit:3000", "PROVIDER_FEE_EXPENSE:debit:1500"],
   );
   await assert.rejects(prisma.journalEntry.updateMany({ where: { journalId: payoutJournal.id }, data: { amount: BigInt(1) } }), /append-only/);
 
   step("partial repayment confirmed by a status lookup, without any callback");
-  const payment = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 10000 } });
+  const quote = amount => call("POST", "/api/loans/repayment/payment-quote", { token: C, body: { amount } });
+  const q10 = await quote(10000);
+  assert.equal(q10.totalDebit, 10300);
+  assert.equal(q10.customerFee, 300);
+  await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 10000 }, expect: 409 });
+  await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 10000, feeConsent: { ...q10, totalDebit: 10000 } }, expect: 409 });
+  const payment = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 10000, feeConsent: q10 } });
   assert.ok(payment.reference && payment.uuid);
   await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 5000 }, expect: 409 });
   const paymentTx = await prisma.transaction.findUnique({ where: { reference: payment.reference } });
@@ -191,6 +201,7 @@ try {
   const verified = await call("POST", `/api/admin/reconciliation/${paymentTx.id}/verify`, { token: A });
   assert.equal(verified.lookup, "found");
   assert.equal(verified.settlement.body.settled, true);
+  assert.equal((await prisma.transaction.findUniqueOrThrow({ where: { id: paymentTx.id } })).reconciliationStatus, "matched", "expected provider/customer fee differences are not reconciliation errors");
   let repayment = await call("GET", "/api/loans/repayment", { token: C });
   assert.equal(repayment.repayment.amount_paid, 10000);
 
@@ -202,7 +213,7 @@ try {
   assert.equal(repayment.repayment.amount_paid, 10000);
 
   step("a failed collection leaves the balance unchanged and frees the customer to pay again");
-  const failing = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 5000 } });
+  const failing = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 5000, feeConsent: await quote(5000) } });
   const failedCallback = await fakeSettle(failing.reference, "failed");
   await webhook(failedCallback, 200);
   repayment = await call("GET", "/api/loans/repayment", { token: C });
@@ -210,7 +221,7 @@ try {
 
   step("a lost MarzPay response stays open, blocks a second prompt, and settles once confirmed");
   await call("POST", "/__test/lose-next-response", { base: FAKE, body: {} });
-  const uncertain = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 20000 }, expect: 202 });
+  const uncertain = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 20000, feeConsent: await quote(20000) }, expect: 202 });
   assert.equal(uncertain.isPending, true);
   const uncertainTx = await prisma.transaction.findUnique({ where: { reference: uncertain.reference } });
   assert.equal(uncertainTx.status, "pending");
@@ -227,8 +238,8 @@ try {
   assert.ok(loanInterest > 0 && loanInterest < 10000, "the first 10,000 payment covers all interest");
   const credits = async (transactionId) => Object.fromEntries((await prisma.journalEntry.findMany({ where: { journal: { transactionId }, direction: "credit" } }))
     .map((entry) => [entry.accountCode, Number(entry.amount)]));
-  assert.deepEqual(await credits(paymentTx.id), { INTEREST_INCOME: loanInterest, LOAN_PRINCIPAL_RECEIVABLE: 10000 - loanInterest });
-  assert.deepEqual(await credits(uncertainTx.id), { LOAN_PRINCIPAL_RECEIVABLE: 20000 });
+  assert.deepEqual(await credits(paymentTx.id), { INTEREST_INCOME: loanInterest, LOAN_PRINCIPAL_RECEIVABLE: 10000 - loanInterest, PAYMENT_FEE_INCOME: q10.customerFee });
+  assert.deepEqual(await credits(uncertainTx.id), { LOAN_PRINCIPAL_RECEIVABLE: 20000, PAYMENT_FEE_INCOME: 600 });
   const receivable = await prisma.journalEntry.groupBy({ by: ["direction"], where: { accountCode: "LOAN_PRINCIPAL_RECEIVABLE" }, _sum: { amount: true } });
   const byDirection = Object.fromEntries(receivable.map((row) => [row.direction, Number(row._sum.amount)]));
   assert.equal(byDirection.debit - byDirection.credit, 100000 - (30000 - loanInterest), "principal receivable equals principal not yet repaid");
@@ -272,7 +283,7 @@ try {
   const refundTx = await prisma.transaction.findUnique({ where: { reference: sent.reference }, include: { journal: { include: { entries: true } } } });
   assert.deepEqual(
     refundTx.journal.entries.map((entry) => `${entry.accountCode}:${entry.direction}:${entry.amount}`).sort(),
-    ["LOAN_COLLECTIONS_SUSPENSE:debit:5000", "MOBILE_MONEY_CLEARING:credit:5500", "PROVIDER_FEE_EXPENSE:debit:500"],
+    ["LOAN_COLLECTIONS_SUSPENSE:debit:5000", "MOBILE_MONEY_CLEARING:credit:6000", "PROVIDER_FEE_EXPENSE:debit:1000"],
   );
   const afterRefund = await call("GET", "/api/admin/refunds", { token: A });
   assert.equal(afterRefund.refunds.find((row) => row.id === refund.id).status, "completed");
@@ -280,6 +291,26 @@ try {
   assert.ok(!openQueue.transactions.some((row) => row.reference === orphanReference), "a fully refunded payment leaves the open queue");
   assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
 
+  step("fixed customer fees stay at 3% when provider costs differ, and full repayment closes the loan");
+  const q1 = await quote(1000);
+  const savingPayment = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 1000, feeConsent: q1 } });
+  const savingCallback = await fakeSettle(savingPayment.reference, "completed");
+  savingCallback.transaction.charge = { raw: q1.customerFee - 1, currency: "UGX" };
+  assert.notEqual((await webhook(savingCallback, 200)).unapplied, true);
+  const savingTx = await prisma.transaction.findUniqueOrThrow({ where: { reference: savingPayment.reference } });
+  const savingEntries = await prisma.journalEntry.findMany({ where: { journal: { transactionId: savingTx.id }, accountCode: "UNAPPLIED_CUSTOMER_FUNDS" } });
+  assert.equal(savingEntries.reduce((sum, row) => sum + Number(row.amount), 0), 0);
+  repayment = await call("GET", "/api/loans/repayment", { token: C });
+  assert.equal(repayment.repayment.amount_paid, 31000);
+  const remaining = repayment.repayment.total - repayment.repayment.amount_paid;
+  const fullQuote = await quote(remaining);
+  const full = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: remaining, feeConsent: fullQuote } });
+  const fullCallback = await fakeSettle(full.reference, "completed");
+  assert.equal((await webhook(fullCallback, 200)).settled, true);
+  assert.equal((await webhook(fullCallback, 200)).settled, false);
+  assert.equal((await call("GET", "/api/loans/repayment", { token: C })).repayment, null);
+  assert.equal((await prisma.loanApplication.findUniqueOrThrow({ where: { id: applicationId } })).status, "paid");
+  assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
   console.log("Financial lifecycle passed");
 } finally {
   await prisma.$disconnect();

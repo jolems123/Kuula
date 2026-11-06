@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { acceptedPaymentFees, PAYMENT_FEE_POLICY, COLLECTION_BPS, payoutQuote, payoutFee, type PaymentFeeDisclosure } from "./payment-fees.js";
 import { Prisma } from "@prisma/client";
 import prisma from "./prisma.js";
 import { AppError } from "../middleware/error-handler.js";
@@ -51,6 +52,7 @@ interface LegRow {
   batch_id: string;
   sequence: number;
   amount: bigint;
+  customer_fee: bigint;
   status: string;
   transaction_id: string | null;
   reference: string | null;
@@ -184,6 +186,22 @@ async function destinationCommittedToday(params: {
   return Number(rows[0]?.committed || 0);
 }
 
+export async function customerPaymentFeeDisclosure(params: { amount: number; phone: string; channel: string }): Promise<PaymentFeeDisclosure> {
+  const network = networkFromChannel(params.channel);
+  const limit = await providerLimit({ network, beneficiaryType: "customer", beneficiaryReference: params.phone });
+  let quoted;
+  try { quoted = payoutQuote(params.amount); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Payout fees unavailable", 422); }
+  const netLegs = splitDisbursementAmount(quoted.net, Math.min(5_000_000, Number(limit.max_single_amount)), Number(limit.min_amount));
+  let unallocatedFee = quoted.customerFee;
+  const legs = netLegs.map((net, index) => {
+    const customerFee = index === netLegs.length - 1 ? unallocatedFee : Math.floor(quoted.customerFee * net / quoted.net);
+    unallocatedFee -= customerFee;
+    return { budget: net + customerFee, net, customerFee };
+  });
+  return { policyVersion: PAYMENT_FEE_POLICY, principal: params.amount, payoutFee: quoted.customerFee, netDisbursement: quoted.net, collectionBps: COLLECTION_BPS, legs };
+}
+
 export async function createCustomerDisbursementBatch(params: {
   applicationId: string;
   userId: string;
@@ -211,7 +229,12 @@ export async function createCustomerDisbursementBatch(params: {
   const maxSingle = Number(limit.max_single_amount);
   const minAmount = Number(limit.min_amount);
   const maxDaily = limit.max_daily_amount === null ? null : Number(limit.max_daily_amount);
-  const legs = splitDisbursementAmount(params.amount, maxSingle, minAmount);
+  const acceptance = await prisma.loanAgreementAcceptance.findUnique({ where: { applicationId: params.applicationId } });
+  const fees = acceptedPaymentFees(acceptance?.termsSnapshot);
+  if (fees && fees.principal !== params.amount) throw new AppError("Accepted fee disclosure does not match the approved principal", 409);
+  const legs = fees ? fees.legs.map(leg => leg.net) : splitDisbursementAmount(params.amount, maxSingle, minAmount);
+  if (legs.some(amount => amount < minAmount || amount > maxSingle)) throw new AppError("Accepted payout plan exceeds current provider limits; a revised agreement is required", 409);
+  const netTotal = legs.reduce((sum, amount) => sum + amount, 0);
 
   if (maxDaily !== null) {
     const alreadyCommitted = await destinationCommittedToday({ marketCode: "UG", provider: "marzpay", network, beneficiaryReference: params.phone, excludeApplicationId: params.applicationId });
@@ -229,13 +252,13 @@ export async function createCustomerDisbursementBatch(params: {
       ) VALUES (
         ${batchId}::uuid, ${params.applicationId}::uuid, ${params.userId}::uuid, ${params.loanId},
         'customer', ${params.phone}, 'UG', 'marzpay', ${network}, 'UGX',
-        ${BigInt(params.amount)}, ${BigInt(params.amount)}, 'awaiting_release'
+        ${BigInt(params.amount)}, ${BigInt(netTotal)}, 'awaiting_release'
       )
     `);
     for (let index = 0; index < legs.length; index += 1) {
       await tx.$executeRaw(Prisma.sql`
-        INSERT INTO disbursement_legs (id, batch_id, sequence, amount, status)
-        VALUES (${crypto.randomUUID()}::uuid, ${batchId}::uuid, ${index + 1}, ${BigInt(legs[index])}, 'planned')
+        INSERT INTO disbursement_legs (id, batch_id, sequence, amount, customer_fee, status)
+        VALUES (${crypto.randomUUID()}::uuid, ${batchId}::uuid, ${index + 1}, ${BigInt(legs[index])}, ${BigInt(fees?.legs[index].customerFee ?? 0)}, 'planned')
       `);
     }
   });
@@ -262,7 +285,7 @@ async function claimNextLeg(batchId: string): Promise<{ batch: BatchRow; leg: Le
 
     const reference = createPaymentReference();
     const transaction = await tx.transaction.create({
-      data: { userId: batch.user_id, loanId: batch.loan_id, type: "loan_disbursement_leg", amount: leg.amount, status: "pending", reference, provider: batch.provider, providerStatus: "initiating", reconciliationStatus: "unreconciled" },
+      data: { userId: batch.user_id, loanId: batch.loan_id, type: "loan_disbursement_leg", amount: leg.amount, customerFee: leg.customer_fee, status: "pending", reference, provider: batch.provider, providerStatus: "initiating", reconciliationStatus: "unreconciled" },
     });
     await tx.$executeRaw(Prisma.sql`
       UPDATE disbursement_legs SET status='dispatching', transaction_id=${transaction.id}::uuid, reference=${reference}, attempted_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
@@ -333,9 +356,11 @@ export async function disbursementBatchForApplication(applicationId: string) {
     network: batch.network,
     currency: batch.currency,
     approvedAmount: Number(batch.approved_amount),
+    netDisbursement: Number(batch.total_planned),
+    customerFee: Number(batch.approved_amount - batch.total_planned),
     totalSettled: Number(batch.total_settled),
     remainingAmount: Number(batch.total_planned - batch.total_settled),
-    legs: legs.map((leg) => ({ id: leg.id, sequence: leg.sequence, amount: Number(leg.amount), status: leg.status, reference: leg.reference })),
+    legs: legs.map((leg) => ({ id: leg.id, sequence: leg.sequence, amount: Number(leg.amount), customerFee: Number(leg.customer_fee), status: leg.status, reference: leg.reference })),
   };
 }
 
@@ -448,8 +473,12 @@ export async function releaseDisbursementBatch(params: { applicationId: string; 
 
   const balance = await getMarzPayAvailableBalanceUgx();
   if (balance === null) throw new AppError("MarzPay's wallet balance could not be read, so the payout cannot be funded safely", 503);
-  if (balance < Number(batch.approved_amount)) {
-    throw new AppError(`Insufficient MarzPay funds: UGX ${balance.toLocaleString()} available, UGX ${Number(batch.approved_amount).toLocaleString()} needed plus charges`, 409);
+  const releaseLegs = await prisma.$queryRaw<LegRow[]>(Prisma.sql`SELECT * FROM disbursement_legs WHERE batch_id=${batch.id}::uuid ORDER BY sequence`);
+  let required;
+  try { required = releaseLegs.reduce((sum, leg) => sum + Number(leg.amount) + payoutFee(Number(leg.amount)), 0); }
+  catch { throw new AppError("Payout tariff is not verified for this batch; finance review is required", 409); }
+  if (balance < required) {
+    throw new AppError(`Insufficient MarzPay funds: UGX ${balance.toLocaleString()} available, UGX ${required.toLocaleString()} needed including provider charges`, 409);
   }
 
   const claimed = await prisma.$executeRaw(Prisma.sql`

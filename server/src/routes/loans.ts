@@ -1,6 +1,8 @@
 import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
+import { customerPaymentFeeDisclosure } from "../lib/disbursements.js";
+import { acceptedPaymentFees, collectionQuote, PAYMENT_FEE_POLICY } from "../lib/payment-fees.js";
 import { sendGuarantorSms } from "../lib/sms.js";
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
@@ -642,6 +644,15 @@ router.post(
   }
 );
 
+router.get("/:id/payment-fees", authenticateToken, async (req: Request, res: Response) => {
+  const app = await prisma.loanApplication.findUnique({ where: { id: String(req.params.id) }, include: { applicant: true, agreementAcceptance: true, partnerFinancing: true } });
+  if (!app || app.applicantId !== req.user!.userId) throw new AppError("Loan offer not found", 404);
+  if (!["offered", "approved", "disbursing", "active", "overdue", "paid"].includes(app.status)) throw new AppError("Fees are disclosed after approval", 409);
+  const accepted = acceptedPaymentFees(app.agreementAcceptance?.termsSnapshot);
+  const fees = accepted ?? (app.agreementAcceptance || app.partnerFinancing ? null : await customerPaymentFeeDisclosure({ amount: Number(app.amount), phone: providerPhone(app.applicant.phone), channel: app.channel }));
+  res.set("Cache-Control", "private, no-store").json({ paymentFees: fees });
+});
+
 router.get("/:id/offer-charges", authenticateToken, async (req: Request, res: Response) => {
   const id=String(req.params.id);
   const app=await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true,serviceFee:true}});
@@ -661,7 +672,7 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
   const userId = req.user!.userId;
   const application = await prisma.loanApplication.findUnique({
     where: { id: applicationId },
-    include: { applicant: true, underwriting: true, agreementAcceptance: true },
+    include: { applicant: true, underwriting: true, agreementAcceptance: true, partnerFinancing: true },
   });
   if (!application || application.applicantId !== userId) throw new AppError("Loan offer not found", 404);
   if (application.status !== "offered") throw new AppError("Only an active loan offer can be accepted", 409);
@@ -681,7 +692,12 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
   await persistAssessment(application.id, null, current);
   if (!current.approved) throw new AppError(`Loan is no longer eligible: ${current.flags.join(", ")}`, 422);
 
+  const paymentFees = application.partnerFinancing ? null : await customerPaymentFeeDisclosure({ amount: Number(application.amount), phone: providerPhone(application.applicant.phone), channel: application.channel });
+  if (paymentFees && (req.body?.clientContext?.paymentFeePolicy !== PAYMENT_FEE_POLICY || req.body?.clientContext?.netDisbursement !== paymentFees.netDisbursement || req.body?.clientContext?.payoutFee !== paymentFees.payoutFee)) {
+    throw new AppError("Review and accept the current payout and repayment fee disclosure before signing", 409);
+  }
   const termsSnapshot = {
+    paymentFees,
     lender: "Kuula Microfinance Limited",
     applicationId: application.id,
     borrowerId: userId,
@@ -860,6 +876,17 @@ router.get("/repayment", authenticateToken, async (req: Request, res: Response) 
   });
 });
 
+router.post("/repayment/payment-quote", authenticateToken, async (req: Request, res: Response) => {
+  const repayment = await prisma.repayment.findFirst({ where: { userId: req.user!.userId, status: { not: "paid" } }, orderBy: { dueDate: "asc" } });
+  if (!repayment) throw new AppError("No active repayment", 404);
+  const outstanding = Number(repayment.total) - Number(repayment.amountPaid);
+  const amount = req.body?.amount;
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > outstanding) throw new AppError("Payment cannot exceed your outstanding balance", 400);
+  const app = await prisma.loanApplication.findFirst({ where: { applicantId: req.user!.userId, loanId: repayment.loanId }, include: { agreementAcceptance: true } });
+  try { res.set("Cache-Control", "private, no-store").json(collectionQuote(amount, Boolean(acceptedPaymentFees(app?.agreementAcceptance?.termsSnapshot)))); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Payment quote unavailable", 400); }
+});
+
 router.post("/repayment/pay", authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user!.userId;
   const repayment = await prisma.repayment.findFirst({
@@ -883,7 +910,13 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
   if (!user.phoneVerified) throw new AppError("Verify your phone before making a repayment", 403);
 
   const phone = providerPhone(user.phone);
-  const amount = providerAmount(requested);
+  const application = await prisma.loanApplication.findFirst({ where: { applicantId: userId, loanId: repayment.loanId }, include: { agreementAcceptance: true } });
+  const recoverFees = Boolean(acceptedPaymentFees(application?.agreementAcceptance?.termsSnapshot));
+  let paymentQuote;
+  try { paymentQuote = collectionQuote(requested, recoverFees); }
+  catch (error) { throw new AppError(error instanceof Error ? error.message : "Payment quote unavailable", 400); }
+  if (recoverFees && (req.body?.feeConsent?.policyVersion !== paymentQuote.policyVersion || req.body?.feeConsent?.totalDebit !== paymentQuote.totalDebit)) throw new AppError("Review and confirm the total debit including provider fees before paying", 409);
+  const amount = providerAmount(paymentQuote.totalDebit);
   const callbackUrl = providerCallbackUrl();
   const reference = createPaymentReference();
   const attempts = jsonAttempts(repayment.attempts);
@@ -903,6 +936,7 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
         loanId: repayment.loanId,
         type: "loan_payment",
         amount: BigInt(amount),
+        customerFee: BigInt(paymentQuote.customerFee),
         status: "pending",
         reference,
         provider: "marzpay",
@@ -924,7 +958,8 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
       repayment: { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid), amount_paid: Number(repayment.amountPaid) },
       attempt: { success: false, reason: "confirming-with-provider" },
       isPending: true,
-      isPartial: amount < outstanding,
+      isPartial: requested < outstanding,
+      paymentQuote,
       reference,
       uuid: null,
       message: "We are confirming this payment with Mobile Money. Do not pay again; your balance updates as soon as it is confirmed.",
@@ -965,14 +1000,15 @@ router.post("/repayment/pay", authenticateToken, async (req: Request, res: Respo
     action: "loan.repayment_requested",
     resourceType: "transaction",
     resourceId: reference,
-    metadata: { loanId: repayment.loanId, amount },
+    metadata: { loanId: repayment.loanId, amount, loanCredit: requested, customerFee: paymentQuote.customerFee },
   });
 
   res.json({
     repayment: { ...repayment, total: Number(repayment.total), amountPaid: Number(repayment.amountPaid), amount_paid: Number(repayment.amountPaid) },
     attempt: { success: false, reason: "pending-customer-approval" },
     isPending: true,
-    isPartial: amount < outstanding,
+    isPartial: requested < outstanding,
+      paymentQuote,
     amount,
     reference,
     uuid: result.uuid,

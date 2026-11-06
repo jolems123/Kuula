@@ -2,7 +2,7 @@ import { UiText, uiText } from "../../../i18n/ui-text";
 import { ArrowLeft, Lock, Smartphone } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppContext } from "../../context/AppContext";
-import { api } from "../../api/client";
+import { api, type PaymentQuote } from "../../api/client";
 import { env } from "../../config/env";
 import { setLastPayment } from "../../lib/selection";
 
@@ -26,6 +26,18 @@ export function MakePaymentScreen({ onNavigate }: Props) {
   const [dataLoading, setDataLoading] = useState(useServer);
   const [dataError, setDataError] = useState("");
   const [payError, setPayError] = useState("");
+  const [quote, setQuote] = useState<PaymentQuote | null>(null);
+  const [quoteError, setQuoteError] = useState("");
+  useEffect(() => {
+    setQuote(null); setQuoteError("");
+    if (!token || amount == null || !Number.isSafeInteger(amount) || amount <= 0 || outstanding == null || amount > outstanding) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      api.quoteRepayment(token, amount).then(result => { if (active) setQuote(result); })
+        .catch(error => { if (active) setQuoteError(error instanceof Error ? error.message : "Could not verify payment fees"); });
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [token, amount, outstanding]);
 
   useEffect(() => {
     if (!useServer || !token) return;
@@ -53,20 +65,22 @@ export function MakePaymentScreen({ onNavigate }: Props) {
     return () => { active = false; };
   }, [useServer, token]);
 
-  const canPay = !loading && !dataLoading && !dataError && outstanding != null && amount != null && Number.isFinite(amount) && amount > 0 && amount <= outstanding;
+  const canPay = quote != null && quote.loanCredit === amount && !quoteError && !loading && !dataLoading && !dataError && outstanding != null && amount != null && Number.isFinite(amount) && amount > 0 && amount <= outstanding;
 
   const pay = async () => {
-    if (!canPay || !token || outstanding == null || amount == null) return;
+    if (!canPay || !quote || !token || outstanding == null || amount == null) return;
     const amt = Math.round(amount);
-    const out = outstanding;
+
     setLoading(true);
     setPayError("");
     try {
-      const isPartial = amt < out;
-      const res = await api.payRepayment(token, isPartial ? amt : undefined);
+
+      const res = await api.payRepayment(token, amt, { policyVersion: quote.policyVersion, totalDebit: quote.totalDebit });
       if ("isPending" in res && res.isPending) {
         setLastPayment({
-          amount: typeof res.amount === "number" ? res.amount : amt,
+          loanCredit: quote.loanCredit,
+          customerFee: quote.customerFee,
+          amount: typeof res.amount === "number" ? res.amount : quote.totalDebit,
           reference: String(res.reference ?? res.uuid ?? "—"),
           method: "Verified Mobile Money",
           status: typeof res.message === "string" && res.message ? res.message : "Pending provider confirmation",
@@ -152,6 +166,15 @@ export function MakePaymentScreen({ onNavigate }: Props) {
           </div>
         </div>
 
+        {amount != null && outstanding != null && <div style={{ padding: 16, background: "white", borderRadius: 16 }} aria-live="polite">
+          <strong>Payment breakdown</strong>
+          {quote && quote.loanCredit === amount ? <>
+            <p>Applied to loan: {ugx(quote.loanCredit)}</p>
+            <p>Kuula payment fee (3%): {ugx(quote.customerFee)}</p>
+            <p><strong>Total deducted from your phone: {ugx(quote.totalDebit)}</strong></p>
+            <p style={{ fontSize: 12 }}>The 3% fee is added to your repayment amount. Only {ugx(quote.loanCredit)} reduces your loan. MarzPay charges Kuula separately; its charge may differ from this fixed customer fee.</p>
+          </> : <p role={quoteError ? "alert" : undefined}>{quoteError || "Calculating provider fees…"}</p>}
+        </div>}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", borderRadius: 10, background: "#F0FDF4", border: "1px solid #B7DEC9" }}>
           <Lock size={14} color="#0B5E3A" style={{ marginTop: 1 }} />
           <span style={{ fontSize: 11, lineHeight: 1.5, color: "#37644F" }}><UiText text={"Starting a collection does not mark your repayment paid. Kuula updates your balance only after the payment provider confirms settlement."} /></span>
@@ -161,7 +184,7 @@ export function MakePaymentScreen({ onNavigate }: Props) {
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #E8EEEA" }}>
         {payError && <p role="alert" style={{ fontSize: 12, color: "#B42318", fontWeight: 600, textAlign: "center", margin: "0 0 8px" }}>{payError}</p>}
         <button onClick={() => { void pay(); }} disabled={!canPay} style={{ width: "100%", height: 52, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 16, fontWeight: 700, border: "none", cursor: canPay ? "pointer" : "not-allowed", opacity: canPay ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-          <UiText text={loading ? "Starting Mobile Money prompt…" : amount != null ? `Pay ${ugx(amount)}` : "Pay"} />
+          <UiText text={loading ? "Starting Mobile Money prompt…" : quote && quote.loanCredit === amount ? `Pay ${ugx(quote.totalDebit)} including fee` : "Pay"} />
         </button>
       </div>
     </div>

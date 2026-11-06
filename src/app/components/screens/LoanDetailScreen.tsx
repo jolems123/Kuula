@@ -81,7 +81,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
             return {
               id: String(tx.id ?? tx.reference ?? `${tx.createdAt ?? "transaction"}-${tx.amount ?? 0}`),
               date: fmtDate(tx.createdAt),
-              amount: Math.abs(Number(tx.amount ?? 0)),
+              amount: Math.max(0, Math.abs(Number(tx.amount ?? 0)) - Number(tx.customerFee ?? 0)),
               status,
             };
           });

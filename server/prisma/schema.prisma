@@ -340,6 +340,7 @@ model Transaction {
   providerAmount        BigInt?   @map("provider_amount")
   providerCurrency      String?   @map("provider_currency")
   providerFee           BigInt?   @map("provider_fee")
+  customerFee           BigInt    @default(0) @map("customer_fee")
   transactionId         String?   @map("transaction_id")
   reconciliationStatus  String    @default("unreconciled") @map("reconciliation_status")
   reconciledAt          DateTime? @map("reconciled_at")

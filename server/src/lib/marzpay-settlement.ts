@@ -25,6 +25,7 @@ interface LinkedLeg {
   leg_amount: bigint;
   leg_status: string;
   approved_amount: bigint;
+  total_planned: bigint;
   total_settled: bigint;
   application_id: string;
   user_id: string;
@@ -60,7 +61,14 @@ export async function settleMarzPayEvent(event: MarzPayWebhookEvent): Promise<Se
     console.warn(JSON.stringify({ event: "marzpay.unknown_reference", reference: event.reference, alternate: event.alternateReference }));
     return { httpStatus: 404, body: { error: "Unknown transaction reference" } };
   }
+  if (event.charge !== null && (!Number.isSafeInteger(event.charge) || event.charge < 0 || ledger.type === "loan_payment" && event.charge >= Number(ledger.amount))) {
+    return { httpStatus: 409, body: { error: "Invalid provider fee" } };
+  }
   if (ledger.provider !== "marzpay") return { httpStatus: 409, body: { error: "Transaction provider mismatch" } };
+  if (ledger.status === "pending" && event.isFinal && event.isSuccess && ledger.customerFee > BigInt(0) && event.charge === null && ledger.providerFee === null) {
+    await holdForReconciliation(ledger, event, "Provider must confirm the actual fee before posting payment fees");
+    return { httpStatus: 409, body: { error: "Actual provider fee is required for customer-fee accounting" } };
+  }
   // From here on, always use Kuula's stored reference.
   const settled = { ...event, reference: ledger.reference! };
   return ledger.type === "loan_disbursement_leg" ? settleDisbursementLeg(settled, ledger) : settleTransaction(settled, ledger);
@@ -90,7 +98,7 @@ async function holdForReconciliation(ledger: Transaction, event: MarzPayWebhookE
 async function settleDisbursementLeg(event: MarzPayWebhookEvent, ledger: Transaction): Promise<SettlementOutcome> {
   const linked = await prisma.$queryRaw<LinkedLeg[]>(Prisma.sql`
     SELECT l.id AS leg_id, l.batch_id, l.sequence, l.amount AS leg_amount, l.status AS leg_status,
-           b.approved_amount, b.total_settled, b.application_id, b.user_id, b.loan_id
+           b.approved_amount, b.total_planned, b.total_settled, b.application_id, b.user_id, b.loan_id
     FROM disbursement_legs l
     JOIN disbursement_batches b ON b.id=l.batch_id
     WHERE l.reference=${event.reference}
@@ -154,7 +162,7 @@ async function settleDisbursementLeg(event: MarzPayWebhookEvent, ledger: Transac
         FROM disbursement_legs WHERE batch_id=${leg.batch_id}::uuid
       `);
       const totalSettled = Number(totals[0]?.settled || 0);
-      const complete = totalSettled === Number(leg.approved_amount) && Number(totals[0]?.unsettled || 0) === 0;
+      const complete = totalSettled === Number(leg.total_planned) && Number(totals[0]?.unsettled || 0) === 0;
 
       if (complete) {
         const application = await tx.loanApplication.findUnique({ where: { id: leg.application_id } });
@@ -172,7 +180,7 @@ async function settleDisbursementLeg(event: MarzPayWebhookEvent, ledger: Transac
         await tx.loanApplication.update({ where: { id: leg.application_id }, data: { status: "active", dueDate, disbursementRef: event.uuid || event.reference } });
         await tx.user.update({ where: { id: leg.user_id }, data: { loansTotal: { increment: 1 } } });
         await tx.notification.create({
-          data: { userId: leg.user_id, title: "Loan Disbursed", body: `Your full UGX ${Number(leg.approved_amount).toLocaleString()} loan has been sent to Mobile Money.`, type: "success" },
+          data: { userId: leg.user_id, title: "Loan Disbursed", body: `UGX ${Number(leg.total_planned).toLocaleString()} has been sent to Mobile Money from your UGX ${Number(leg.approved_amount).toLocaleString()} principal. Disclosed customer disbursement fee: UGX ${Number(leg.approved_amount - leg.total_planned).toLocaleString()}.`, type: "success" },
         });
       } else {
         await tx.$executeRaw(Prisma.sql`
@@ -329,7 +337,10 @@ async function settleLegacyDisbursement(tx: Prisma.TransactionClient, ledger: Tr
 
 /** Returns true when confirmed money could not be applied to any open repayment. */
 async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction, event: MarzPayWebhookEvent): Promise<boolean> {
-  const paymentAmount = Number(ledger.amount);
+  const agreedFee = ledger.customerFee ?? BigInt(0);
+  const actualFee = ledger.providerFee ?? BigInt(0);
+  const recoveredFee = agreedFee;
+  const paymentAmount = Number(ledger.amount - agreedFee);
   // Prefer the repayment this collection was raised against; if that link was cleared
   // (for example after an earlier timeout), apply it to the borrower's open repayment.
   const repayment = await tx.repayment.findFirst({ where: { userId: ledger.userId, loanId: ledger.loanId!, pendingCollectionRef: event.reference } })
@@ -375,7 +386,7 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
       status: fullyPaid ? "paid" : repayment.status,
       receiptId,
       pendingCollectionRef: repayment.pendingCollectionRef === event.reference ? null : repayment.pendingCollectionRef,
-      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: paymentAmount, applied, interest: Number(allocation.interest), principal: Number(allocation.principal), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
+      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: Number(ledger.amount), loanCredit: paymentAmount, providerFee: Number(actualFee), recoveredFee: Number(recoveredFee), applied, interest: Number(allocation.interest), principal: Number(allocation.principal), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
     },
   });
   if (applied < paymentAmount) {
