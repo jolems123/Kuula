@@ -18,7 +18,7 @@ vi.mock("../AdminLayout", async () => {
   const wrapper = ({ children }: { children?: import("react").ReactNode }) => createElement("div", null, children);
   return {
     AdminLayout: wrapper, AdminCard: wrapper, StatCard: wrapper,
-    AdminPageHeader: ({ title }: { title: string }) => createElement("h1", null, title),
+    AdminPageHeader: ({ title, subtitle }: { title: string; subtitle: string }) => createElement("header", null, createElement("h1", null, title), createElement("p", null, subtitle)),
     StatusBadge: ({ status }: { status: string }) => createElement("span", null, status),
     AdminTable: ({ rows }: { rows: import("react").ReactNode[][] }) => createElement("div", null,
       rows.map((row, index) => createElement("div", { key: index }, row))),
