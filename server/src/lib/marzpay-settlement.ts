@@ -143,7 +143,7 @@ async function settleDisbursementLeg(event: MarzPayWebhookEvent, ledger: Transac
         providerAmount: event.amount === null ? null : BigInt(event.amount),
         providerCurrency: event.currency || (event.amount === null ? null : "UGX"),
         providerFee: event.charge === null ? ledger.providerFee : BigInt(event.charge),
-        reconciliationStatus: event.isSuccess && !(ledger.customerFee > BigInt(0) && (event.charge === null ? ledger.providerFee : BigInt(event.charge)) !== ledger.customerFee) ? "matched" : "reconciliation_required",
+        reconciliationStatus: event.isSuccess ? "matched" : "reconciliation_required",
         reconciledAt: event.isSuccess ? new Date() : null,
       },
     });
@@ -274,7 +274,7 @@ async function settleTransaction(event: MarzPayWebhookEvent, ledger: Transaction
         providerCurrency: event.currency || (event.amount === null ? null : "UGX"),
         providerFee,
         // A failure is a final provider fact but still needs a person to confirm the customer outcome.
-        reconciliationStatus: event.isSuccess && !(ledger.customerFee > BigInt(0) && (event.charge === null ? ledger.providerFee : BigInt(event.charge)) !== ledger.customerFee) ? "matched" : "reconciliation_required",
+        reconciliationStatus: event.isSuccess ? "matched" : "reconciliation_required",
         reconciledAt: event.isSuccess ? new Date() : null,
       },
     });
@@ -389,7 +389,7 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
       attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: Number(ledger.amount), loanCredit: paymentAmount, providerFee: Number(actualFee), recoveredFee: Number(recoveredFee), applied, interest: Number(allocation.interest), principal: Number(allocation.principal), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
     },
   });
-  if (applied < paymentAmount || actualFee > agreedFee && agreedFee > BigInt(0)) {
+  if (applied < paymentAmount) {
     // Overpayment: keep the excess visible for a refund decision instead of silently dropping it.
     await tx.transaction.update({ where: { id: ledger.id }, data: { reconciliationStatus: "reconciliation_required" } });
   }

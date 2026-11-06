@@ -201,6 +201,7 @@ try {
   const verified = await call("POST", `/api/admin/reconciliation/${paymentTx.id}/verify`, { token: A });
   assert.equal(verified.lookup, "found");
   assert.equal(verified.settlement.body.settled, true);
+  assert.equal((await prisma.transaction.findUniqueOrThrow({ where: { id: paymentTx.id } })).reconciliationStatus, "matched", "expected provider/customer fee differences are not reconciliation errors");
   let repayment = await call("GET", "/api/loans/repayment", { token: C });
   assert.equal(repayment.repayment.amount_paid, 10000);
 

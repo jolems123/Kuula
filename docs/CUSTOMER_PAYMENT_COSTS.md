@@ -8,7 +8,7 @@ For each repayment collect `loanCredit + ceil(loanCredit * 0.03)`. A UGX 50,000 
 
 These are Kuula's fixed customer fees, not a representation of MarzPay's actual tariff. Published MarzPay Uganda mobile-money collections cost 3% of the gross amount collected, and payout fees are tiered flat amounts (https://wallet.wearemarz.com/pricing). Hence collecting UGX 51,500 can leave Kuula UGX 49,955 after provider charges: Kuula absorbs that UGX 45 shortfall without reducing customer loan credit. The customer fee stays 3% even when actual provider cost differs.
 
-Customer fees are credited to PAYMENT_FEE_INCOME. Actual provider costs are separately debited to PROVIDER_FEE_EXPENSE. Journals remain balanced; actual provider cost differences are flagged for reconciliation. No fee-saving refund is created under this fixed policy. Genuine loan overpayments retain the existing refund process. Failed or pending provider attempts do not credit the loan or post fee income.
+Customer fees are credited to PAYMENT_FEE_INCOME. Actual provider costs are separately debited to PROVIDER_FEE_EXPENSE. Journals remain balanced; expected differences between the fixed customer fee and actual provider cost do not create reconciliation errors. No fee-saving refund is created under this fixed policy. Genuine loan overpayments retain the existing refund process. Failed or pending provider attempts do not credit the loan or post fee income.
 
 Fee disclosure and the transfer plan are frozen in the hashed agreement. Agreements and PDFs show approved principal, the 3% deducted, net cash, repayment fee formula, full-payment example and annualised simple total-cost rate on net cash. Receipts distinguish customer fee and actual provider cost.
 
