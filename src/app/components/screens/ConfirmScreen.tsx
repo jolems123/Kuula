@@ -18,6 +18,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
   const token = state.session.token;
   const payment = getLastPayment();
   const [providerState, setProviderState] = useState<ProviderState>("pending");
+  const [actualProviderFee, setActualProviderFee] = useState<number | null>(null);
   const [providerStatus, setProviderStatus] = useState("Waiting for provider confirmation");
 
   const amount = payment?.amount ?? 0;
@@ -37,6 +38,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
         const { transactions } = await api.getTransactions(token);
         const transaction = transactions.find((item) => String(item.reference ?? "") === payment.reference);
         if (!active || !transaction) return;
+        if (typeof transaction.providerFee === "number") setActualProviderFee(transaction.providerFee);
         const status = String(transaction.status ?? "pending").toLowerCase();
         const rawLabel = String(transaction.providerStatus ?? status).toLowerCase();
         // "unknown" means Mobile Money's answer was lost; Kuula is confirming it, not guessing.
@@ -110,6 +112,8 @@ export function ConfirmScreen({ onNavigate }: Props) {
     { label: "Requested", value: `${dateStr} · ${timeStr}` },
     { label: "Method", value: method },
     { label: "Provider state", value: providerStatus },
+    ...(payment?.loanCredit !== undefined ? [{ label: "Requested loan credit", value: formatUGX(payment.loanCredit) }, { label: "Disclosed fee allowance", value: formatUGX(payment.customerFee ?? 0) }] : []),
+    ...(actualProviderFee !== null ? [{ label: "Actual provider fee", value: formatUGX(actualProviderFee) }] : []),
   ];
 
   const saveRecord = () => {
@@ -123,6 +127,7 @@ export function ConfirmScreen({ onNavigate }: Props) {
       rows: [
         { label: "Method", value: method },
         { label: "Type", value: "Loan Repayment" },
+        ...rows.filter(row => ["Requested loan credit", "Disclosed fee allowance", "Actual provider fee"].includes(row.label)),
         { label: "Provider state", value: providerStatus },
       ],
       footerNote: settled

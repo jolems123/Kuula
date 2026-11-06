@@ -78,6 +78,8 @@ export function MakePaymentScreen({ onNavigate }: Props) {
       const res = await api.payRepayment(token, amt, { policyVersion: quote.policyVersion, totalDebit: quote.totalDebit });
       if ("isPending" in res && res.isPending) {
         setLastPayment({
+          loanCredit: quote.loanCredit,
+          customerFee: quote.customerFee,
           amount: typeof res.amount === "number" ? res.amount : quote.totalDebit,
           reference: String(res.reference ?? res.uuid ?? "—"),
           method: "Verified Mobile Money",

@@ -20,6 +20,8 @@ export function getSelectedTransaction(): SelectedTransaction | null { return _s
 
 export interface PaymentResult {
   amount: number;
+  loanCredit?: number;
+  customerFee?: number;
   reference: string;
   method: string;
   status: string;

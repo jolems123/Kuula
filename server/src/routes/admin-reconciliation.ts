@@ -34,6 +34,7 @@ router.get("/", async (req: Request, res: Response) => {
       providerAmount: true,
       providerCurrency: true,
       providerFee: true,
+      customerFee: true,
       transactionId: true,
       reconciliationStatus: true,
       reconciledAt: true,
@@ -45,6 +46,7 @@ router.get("/", async (req: Request, res: Response) => {
     transactions: transactions.map((row) => ({
       ...row,
       amount: Number(row.amount),
+      customerFee: Number(row.customerFee),
       providerAmount: row.providerAmount == null ? null : Number(row.providerAmount),
       providerFee: row.providerFee == null ? null : Number(row.providerFee),
     })),
