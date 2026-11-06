@@ -56,9 +56,11 @@ router.get("/liquidity", authenticateToken, requirePermissions("report.view"), a
   const [booked, committedRows, balance] = await Promise.all([
     bookedLoans(),
     prisma.$queryRaw<Array<{ awaiting: bigint | null; in_flight: bigint | null }>>`
-      SELECT COALESCE(SUM(approved_amount) FILTER (WHERE status='awaiting_release'),0)::bigint AS awaiting,
-             COALESCE(SUM(total_planned - total_settled) FILTER (WHERE status IN ('planned','processing','partially_disbursed','attention_required')),0)::bigint AS in_flight
-      FROM disbursement_batches`,
+      SELECT COALESCE(SUM(l.amount + COALESCE(t.provider_fee, CASE WHEN l.amount <= 50000 THEN 1000 WHEN l.amount <= 300000 THEN 1500 WHEN l.amount <= 750000 THEN 2800 ELSE 5000 END)) FILTER (WHERE b.status='awaiting_release'),0)::bigint AS awaiting,
+             COALESCE(SUM(l.amount + COALESCE(t.provider_fee, CASE WHEN l.amount <= 50000 THEN 1000 WHEN l.amount <= 300000 THEN 1500 WHEN l.amount <= 750000 THEN 2800 ELSE 5000 END)) FILTER (WHERE b.status IN ('planned','processing','partially_disbursed','attention_required')),0)::bigint AS in_flight
+      FROM disbursement_batches b
+      JOIN disbursement_legs l ON l.batch_id=b.id AND l.status <> 'settled'
+      LEFT JOIN transactions t ON t.id=l.transaction_id`,
     marzPayLookupConfigured() ? getMarzPayAvailableBalanceUgx() : Promise.resolve(null),
   ]);
   const awaitingRelease = Number(committedRows[0]?.awaiting ?? 0);

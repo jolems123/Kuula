@@ -290,6 +290,26 @@ try {
   assert.ok(!openQueue.transactions.some((row) => row.reference === orphanReference), "a fully refunded payment leaves the open queue");
   assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
 
+  step("a lower actual fee holds the saving for refund, then a full grossed-up payment closes the loan");
+  const q1 = await quote(1000);
+  const savingPayment = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: 1000, feeConsent: q1 } });
+  const savingCallback = await fakeSettle(savingPayment.reference, "completed");
+  savingCallback.transaction.charge = { raw: q1.customerFee - 1, currency: "UGX" };
+  assert.equal((await webhook(savingCallback, 200)).unapplied, true);
+  const savingTx = await prisma.transaction.findUniqueOrThrow({ where: { reference: savingPayment.reference } });
+  const savingEntries = await prisma.journalEntry.findMany({ where: { journal: { transactionId: savingTx.id }, accountCode: "UNAPPLIED_CUSTOMER_FUNDS" } });
+  assert.equal(savingEntries.reduce((sum, row) => sum + Number(row.amount), 0), 1);
+  repayment = await call("GET", "/api/loans/repayment", { token: C });
+  assert.equal(repayment.repayment.amount_paid, 31000);
+  const remaining = repayment.repayment.total - repayment.repayment.amount_paid;
+  const fullQuote = await quote(remaining);
+  const full = await call("POST", "/api/loans/repayment/pay", { token: C, body: { amount: remaining, feeConsent: fullQuote } });
+  const fullCallback = await fakeSettle(full.reference, "completed");
+  assert.equal((await webhook(fullCallback, 200)).settled, true);
+  assert.equal((await webhook(fullCallback, 200)).settled, false);
+  assert.equal((await call("GET", "/api/loans/repayment", { token: C })).repayment, null);
+  assert.equal((await prisma.loanApplication.findUniqueOrThrow({ where: { id: applicationId } })).status, "paid");
+  assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
   console.log("Financial lifecycle passed");
 } finally {
   await prisma.$disconnect();
