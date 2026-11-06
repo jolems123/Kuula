@@ -367,15 +367,16 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
     await tx.transaction.update({ where: { id: ledger.id }, data: { reconciliationStatus: "reconciliation_required" } });
     return true;
   }
-  const application = await tx.loanApplication.findFirst({ where: { applicantId: ledger.userId, loanId: ledger.loanId! }, select: { interest: true } });
+  const application = await tx.loanApplication.findFirst({ where: { applicantId: ledger.userId, loanId: ledger.loanId! }, select: { interest: true, serviceFee: true } });
   const allocation: RepaymentAllocation = allocateRepayment({
     payment: paymentAmount,
     loanInterest: Number(application?.interest ?? 0),
+    loanFees: Number(application?.serviceFee ?? 0),
     loanTotal: Number(repayment.total),
     paidBefore: Number(repayment.amountPaid),
   });
   await postSettlementJournal(tx, { ...ledger, allocation });
-  const applied = Number(allocation.interest + allocation.principal);
+  const applied = Number(allocation.interest + allocation.principal + (allocation.fees ?? BigInt(0)));
   const newPaid = Number(repayment.amountPaid) + applied;
   const fullyPaid = newPaid >= Number(repayment.total);
   const receiptId = `RCPT-${event.reference.slice(0, 8).toUpperCase()}`;
@@ -386,7 +387,7 @@ async function settleRepayment(tx: Prisma.TransactionClient, ledger: Transaction
       status: fullyPaid ? "paid" : repayment.status,
       receiptId,
       pendingCollectionRef: repayment.pendingCollectionRef === event.reference ? null : repayment.pendingCollectionRef,
-      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: Number(ledger.amount), loanCredit: paymentAmount, providerFee: Number(actualFee), recoveredFee: Number(recoveredFee), applied, interest: Number(allocation.interest), principal: Number(allocation.principal), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
+      attempts: [...attemptsArray(repayment.attempts), { at: new Date().toISOString(), method: "mobile-money-collection", amount: Number(ledger.amount), loanCredit: paymentAmount, providerFee: Number(actualFee), recoveredFee: Number(recoveredFee), applied, interest: Number(allocation.interest), principal: Number(allocation.principal), loanFees: Number(allocation.fees ?? BigInt(0)), unapplied: Number(allocation.unapplied), success: true, reason: "provider-confirmed", reference: event.reference, provider_uuid: event.uuid, receipt_id: receiptId }] as Prisma.InputJsonValue,
     },
   });
   if (applied < paymentAmount) {

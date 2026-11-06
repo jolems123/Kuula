@@ -1,8 +1,9 @@
 # Real-money activation, rollback and recovery
 
 Kuula moves money through MarzPay only when `REAL_MONEY_ENABLED=true` on the
-`kuula-api` Railway service. It was switched **off** in production on 2026-10-14 and
-must stay off until every item in sections 1 and 2 is signed off by a named person.
+`kuula-api` Railway service. Production was re-enabled at the owner’s request on 2026-11-06. This is an
+operational setting, not evidence that the prerequisites below are complete.
+Unrestricted public launch remains blocked pending recorded verification.
 
 Status markers: ☐ not done · ☑ done (record who and when).
 

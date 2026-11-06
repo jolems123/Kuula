@@ -234,19 +234,22 @@ try {
   assert.equal(repayment.repayment.amount_paid, 30000);
 
   step("repayment journals settle interest first, then principal, crediting the borrower in full");
-  const loanInterest = Number((await prisma.loanApplication.findUnique({ where: { id: applicationId }, select: { interest: true } })).interest);
+  const acceptedLoan = await prisma.loanApplication.findUniqueOrThrow({ where: { id: applicationId }, select: { interest: true, serviceFee: true } });
+  const loanInterest = Number(acceptedLoan.interest);
+  const loanFees = Number(acceptedLoan.serviceFee);
+  assert.equal(loanFees, 100, "the accepted processing fee is classified separately");
   assert.ok(loanInterest > 0 && loanInterest < 10000, "the first 10,000 payment covers all interest");
   const credits = async (transactionId) => Object.fromEntries((await prisma.journalEntry.findMany({ where: { journal: { transactionId }, direction: "credit" } }))
     .map((entry) => [entry.accountCode, Number(entry.amount)]));
-  assert.deepEqual(await credits(paymentTx.id), { INTEREST_INCOME: loanInterest, LOAN_PRINCIPAL_RECEIVABLE: 10000 - loanInterest, PAYMENT_FEE_INCOME: q10.customerFee });
+  assert.deepEqual(await credits(paymentTx.id), { INTEREST_INCOME: loanInterest, LOAN_PRINCIPAL_RECEIVABLE: 10000 - loanInterest - loanFees, LOAN_FEE_INCOME: loanFees, PAYMENT_FEE_INCOME: q10.customerFee });
   assert.deepEqual(await credits(uncertainTx.id), { LOAN_PRINCIPAL_RECEIVABLE: 20000, PAYMENT_FEE_INCOME: 600 });
   const receivable = await prisma.journalEntry.groupBy({ by: ["direction"], where: { accountCode: "LOAN_PRINCIPAL_RECEIVABLE" }, _sum: { amount: true } });
   const byDirection = Object.fromEntries(receivable.map((row) => [row.direction, Number(row._sum.amount)]));
-  assert.equal(byDirection.debit - byDirection.credit, 100000 - (30000 - loanInterest), "principal receivable equals principal not yet repaid");
+  assert.equal(byDirection.debit - byDirection.credit, 100000 - (30000 - loanInterest - loanFees), "principal receivable equals principal not yet repaid");
   const trial = await call("GET", "/api/admin/reconciliation/trial-balance", { token: A });
   assert.equal(trial.balanced, true, "total debits equal total credits");
   const account = (code) => trial.accounts.find((row) => row.account === code)?.balance ?? 0;
-  assert.equal(account("LOAN_PRINCIPAL_RECEIVABLE"), 100000 - (30000 - loanInterest));
+  assert.equal(account("LOAN_PRINCIPAL_RECEIVABLE"), 100000 - (30000 - loanInterest - loanFees));
   assert.equal(account("INTEREST_INCOME"), -loanInterest);
   const journalCount = await prisma.journal.count();
   assert.ok(journalCount >= 3);
@@ -311,6 +314,9 @@ try {
   assert.equal((await call("GET", "/api/loans/repayment", { token: C })).repayment, null);
   assert.equal((await prisma.loanApplication.findUniqueOrThrow({ where: { id: applicationId } })).status, "paid");
   assert.equal((await call("GET", "/api/admin/reconciliation/trial-balance", { token: A })).balanced, true);
+  const payoffTrial = await call("GET", "/api/admin/reconciliation/trial-balance", { token: A });
+  assert.equal(payoffTrial.accounts.find((row) => row.account === "LOAN_PRINCIPAL_RECEIVABLE")?.balance ?? 0, 0, "full payoff closes principal receivable exactly");
+  assert.equal(payoffTrial.accounts.find((row) => row.account === "LOAN_FEE_INCOME")?.balance, -loanFees);
   console.log("Financial lifecycle passed");
 } finally {
   await prisma.$disconnect();

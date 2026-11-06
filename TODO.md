@@ -6,7 +6,7 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 
 - [x] Uganda NIN validation is enforced on account creation and KYC.
 - [x] Phone verification and password reset use OTPs stored as keyed hashes.
-- [x] Staff/admin login requires SMS MFA outside tests.
+- [ ] Staff email OTP MFA is implemented but requires verified delivery/recovery and `STAFF_EMAIL_MFA_REQUIRED=true` in production. Production flag was absent on 2026-11-06.
 - [x] Access tokens are short-lived and refresh sessions rotate/revoke server-side.
 - [x] KYC front/back document uploads are validated and stored server-side.
 - [x] Production KYC storage requires S3 and uses server-side encryption; document access is short-lived/authenticated.
@@ -26,7 +26,7 @@ This file tracks only work that is genuinely still outstanding. Completed implem
 - [x] Wallet/payment-method, refinance/credit-limit, promotion and unapproved autopay/repayment-plan deep links are removed from the live production journey through canonical redirects.
 - [x] The remaining Supabase compatibility shim is dependency-free at runtime and cannot pull the Supabase client into the application bundle.
 
-## Required before enabling real money
+## Required before unrestricted public launch
 
 The full, current checklist (prerequisites, sandbox scenarios, go-live, rollback and
 the backup-restore drill) is in [docs/REAL_MONEY_ACTIVATION.md](docs/REAL_MONEY_ACTIVATION.md).
@@ -41,7 +41,9 @@ the backup-restore drill) is in [docs/REAL_MONEY_ACTIVATION.md](docs/REAL_MONEY_
 - [ ] Run MarZPay sandbox/end-to-end tests for disbursement, collection, duplicate/replayed callback, amount mismatch, provider identity mismatch and reconciliation recovery.
 - [ ] Verify database backup/restore and migration rollback/recovery procedure on a non-production copy.
 - [ ] Enable branch protection/ruleset on `main`: pull request required, required status checks, no force pushes, and at least one approval for production changes.
-- [ ] Keep `REAL_MONEY_ENABLED=false` until all items above are complete.
+- [ ] Resolve the remaining release gates before unrestricted launch. Live money is currently enabled at the owner’s request; this does not prove release readiness.
+
+See [the dated public-launch review](docs/PUBLIC_LAUNCH_REVIEW_2026-11-06.md) for current evidence.
 
 ## Controlled cleanup after CI/install tooling is available
 

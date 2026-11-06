@@ -7,23 +7,28 @@ interface JournalLine {
 }
 
 /**
- * How a confirmed repayment is split. Policy: interest is settled first, then principal;
+ * How a confirmed repayment is split. Policy: interest is settled first, then agreed loan fees, then principal;
  * anything beyond the loan's balance is held as unapplied customer funds for refund or
- * a later decision. No penalty or fee income is charged to borrowers.
+ * a later decision. This classifies fees already included in the accepted loan total;
+ * it does not add charges to the borrower balance.
  */
 export interface RepaymentAllocation {
   interest: bigint;
   principal: bigint;
+  fees?: bigint;
   unapplied: bigint;
 }
 
-export function allocateRepayment(input: { payment: number; loanInterest: number; loanTotal: number; paidBefore: number }): RepaymentAllocation {
+export function allocateRepayment(input: { payment: number; loanInterest: number; loanFees?: number; loanTotal: number; paidBefore: number }): RepaymentAllocation {
   const payment = Math.max(0, Math.round(input.payment));
   const outstanding = Math.max(0, Math.round(input.loanTotal - input.paidBefore));
   const applied = Math.min(payment, outstanding);
   const interestDue = Math.max(0, Math.round(input.loanInterest) - Math.min(Math.round(input.paidBefore), Math.round(input.loanInterest)));
   const interest = Math.min(applied, interestDue);
-  return { interest: BigInt(interest), principal: BigInt(applied - interest), unapplied: BigInt(payment - applied) };
+  const feesPaid = Math.max(0, Math.round(input.paidBefore) - Math.max(0, Math.round(input.loanInterest)));
+  const feesDue = Math.max(0, Math.round(input.loanFees ?? 0) - feesPaid);
+  const fees = Math.min(applied - interest, feesDue);
+  return { interest: BigInt(interest), principal: BigInt(applied - interest - fees), unapplied: BigInt(payment - applied), ...(fees > 0 ? { fees: BigInt(fees) } : {}) };
 }
 
 export type RefundSourceAccount = "UNAPPLIED_CUSTOMER_FUNDS" | "LOAN_COLLECTIONS_SUSPENSE";
@@ -73,12 +78,13 @@ export function linesFor(transaction: SettlementSource): JournalLine[] {
       // Without a loan to apply it to, the money waits in suspense for a person to decide.
       return [...debits, { accountCode: "LOAN_COLLECTIONS_SUSPENSE", direction: "credit", amount: transaction.amount - recovered }, ...recoveryLines];
     }
-    if (allocation.interest + allocation.principal + allocation.unapplied !== transaction.amount - recovered) {
+    if (allocation.interest + allocation.principal + (allocation.fees ?? BigInt(0)) + allocation.unapplied !== transaction.amount - recovered) {
       throw new Error("Repayment allocation does not equal the collected amount");
     }
     const credits: JournalLine[] = [
       { accountCode: "LOAN_PRINCIPAL_RECEIVABLE", direction: "credit", amount: allocation.principal },
       { accountCode: "INTEREST_INCOME", direction: "credit", amount: allocation.interest },
+      { accountCode: "LOAN_FEE_INCOME", direction: "credit", amount: allocation.fees ?? BigInt(0) },
       { accountCode: "UNAPPLIED_CUSTOMER_FUNDS", direction: "credit", amount: allocation.unapplied },
     ];
     return [...debits, ...recoveryLines, ...credits.filter((line) => line.amount > BigInt(0))];
