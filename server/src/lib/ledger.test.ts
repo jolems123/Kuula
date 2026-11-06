@@ -67,3 +67,21 @@ test("a confirmed refund releases the held money and books MarzPay's charge as K
   ]);
   assert.throws(() => linesFor({ type: "customer_refund", amount: BigInt(5_000) }), /held/);
 });
+
+
+test("accepted loan fees never reduce principal and remain separate from payment fees", async () => {
+  const { allocateRepayment } = await import("./ledger.js");
+  const loan = { loanInterest: 1000, loanFees: 100, loanTotal: 11100 };
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 1050, paidBefore: 0 }), { interest: 1000n, fees: 50n, principal: 0n, unapplied: 0n });
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 100, paidBefore: 1050 }), { interest: 0n, fees: 50n, principal: 50n, unapplied: 0n });
+  const allocation = allocateRepayment({ ...loan, payment: 12000, paidBefore: 0 });
+  assert.deepEqual(allocation, { interest: 1000n, fees: 100n, principal: 10000n, unapplied: 900n });
+  const lines = linesFor({ type: "loan_payment", amount: 12360n, customerFee: 360n, providerFee: 371n, allocation });
+  assert.equal(balance(lines).debit, balance(lines).credit);
+  assert.equal(lines.find((line) => line.accountCode === "LOAN_FEE_INCOME")?.amount, 100n);
+  assert.equal(lines.find((line) => line.accountCode === "PAYMENT_FEE_INCOME")?.amount, 360n);
+  const first = allocateRepayment({ ...loan, payment: 1050, paidBefore: 0 });
+  const last = allocateRepayment({ ...loan, payment: 10050, paidBefore: 1050 });
+  assert.equal(first.principal + last.principal, 10000n);
+  assert.deepEqual(allocateRepayment({ ...loan, payment: 500, paidBefore: 11100 }), { interest: 0n, principal: 0n, unapplied: 500n });
+});
