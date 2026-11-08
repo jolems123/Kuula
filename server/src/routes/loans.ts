@@ -43,8 +43,8 @@ function quoteForRequest(amount: unknown, termDays: unknown): LoanQuote {
 }
 
 function money(value: unknown, label: string, allowZero = false): number {
-  const normalized = Math.round(Number(value));
-  if (!Number.isFinite(normalized) || normalized < 0 || (!allowZero && normalized === 0)) {
+  const normalized = Number(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 0 || (!allowZero && normalized === 0)) {
     throw new AppError(`${label} must be a valid ${allowZero ? "non-negative" : "positive"} amount`, 400);
   }
   return normalized;
