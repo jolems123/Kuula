@@ -11,7 +11,7 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission, isStaffRole, requirePermissions } from "../middleware/auth.js";
 import { assertLoanIdentityApproved } from "../lib/loan-identity.js";
 import { AppError } from "../middleware/error-handler.js";
-import { guarantorCleared } from "../lib/guarantor-policy.js";
+import { guarantorCleared, guaranteeSignatureHash } from "../lib/guarantor-policy.js";
 import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
@@ -516,7 +516,7 @@ router.post("/guarantor-invitations/sign", authenticateToken, async (req: Reques
   const signedName = typeof req.body?.signedName==="string" ? req.body.signedName.trim():"";
   if(signedName.toLocaleLowerCase() !== user.fullName.trim().toLocaleLowerCase()) throw new AppError("Signature name must match your verified profile",400);
   const snapshot = {agreementVersion:"guarantor-2026-10-v1",applicationId:app.id,borrower:app.applicantName,guarantorUserId:user.id,guarantorName:user.fullName,principal:Number(app.amount),maximumLiability:Number(app.total),termDays:app.termDays,offerExpiresAt:app.offerExpiresAt,liabilityAcknowledged:true,adviceAcknowledged:true,guarantorKycSubmissionId};
-  const signatureHash = crypto.createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+  const signatureHash = guaranteeSignatureHash(snapshot);
   await prisma.$transaction(async tx=>{
     const updated = await tx.loanGuarantorInvitation.updateMany({where:{id:invite.id,signedAt:null,declinedAt:null,expiresAt:{gt:new Date()}},data:{guarantorUserId:user.id,signatureHash,signedAt:new Date(),agreementSnapshot:snapshot}});
     if(updated.count!==1) throw new AppError("Guarantee already signed",409);
@@ -537,7 +537,7 @@ router.post("/applications/:id/guarantor-verification", authenticateToken, requi
   if(notes.length<30 || notes.length>2000) throw new AppError("Document verification findings (30–2000 characters) required",400);
   const row = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true,invitation:true}});
   if (!row || row.status!=="signed_pending_review" || !row.invitation?.signedAt || !row.invitation.guarantorUserId || !row.invitation.signatureHash || !row.invitation.agreementSnapshot) throw new AppError("A independently signed guarantor undertaking is required",409);
-  const recordedHash=crypto.createHash("sha256").update(JSON.stringify(row.invitation.agreementSnapshot)).digest("hex");
+  const recordedHash=guaranteeSignatureHash(row.invitation.agreementSnapshot);
   if (recordedHash !== row.invitation.signatureHash || recordedHash !== row.agreementReference) throw new AppError("Stored guarantee evidence failed integrity verification",409);
   if (row.requestedBy===req.user!.userId || row.invitation.guarantorUserId===req.user!.userId || row.application.applicantId===req.user!.userId) throw new AppError("Independent approver required",403);
   if(row.application.status!=="offered" || !row.application.offerExpiresAt || row.application.offerExpiresAt<=new Date()) throw new AppError("Loan offer expired or unavailable",409);
