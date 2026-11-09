@@ -12,10 +12,6 @@ const required = [
   "KYC_S3_BUCKET",
   "KYC_S3_REGION",
   "TRUST_PROXY_HOPS",
-  "SMTP_HOST",
-  "SMTP_PORT",
-  "SMTP_USER",
-  "SMTP_PASSWORD",
   "EMAIL_FROM",
   "SUPPORT_EMAIL",
   "COMPLAINTS_EMAIL",
@@ -24,6 +20,14 @@ const required = [
 
 for (const name of required) {
   if (!String(process.env[name] ?? "").trim()) problems.push(`${name} is required`);
+}
+
+// Staff verification codes are emailed: either Resend's HTTPS API (works on hosting
+// plans that block outbound SMTP) or a complete SMTP configuration.
+const hasValue = (name) => Boolean(String(process.env[name] ?? "").trim());
+const smtpVars = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD"];
+if (!hasValue("RESEND_API_KEY") && !smtpVars.every(hasValue)) {
+  problems.push(`Email delivery needs RESEND_API_KEY, or all of ${smtpVars.join(", ")}`);
 }
 
 const db = String(process.env.DATABASE_URL ?? "");

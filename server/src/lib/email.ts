@@ -11,8 +11,29 @@ function configured(name: string): string {
   return String(process.env[name] ?? "").trim();
 }
 
-export function emailConfigured(): boolean {
+const RESEND_ENDPOINT = "https://api.resend.com/emails";
+const RESEND_TIMEOUT_MS = 15_000;
+
+/**
+ * Resend's HTTPS API is preferred when RESEND_API_KEY is set: hosting plans that block
+ * outbound SMTP (Railway below Pro) still allow HTTPS. SMTP remains the fallback.
+ */
+function resendConfigured(): boolean {
+  return Boolean(configured("RESEND_API_KEY") && configured("EMAIL_FROM"));
+}
+
+function smtpConfigured(): boolean {
   return Boolean(configured("SMTP_HOST") && configured("SMTP_USER") && configured("SMTP_PASSWORD") && configured("EMAIL_FROM"));
+}
+
+export function emailTransport(): "resend" | "smtp" | null {
+  if (resendConfigured()) return "resend";
+  if (smtpConfigured()) return "smtp";
+  return null;
+}
+
+export function emailConfigured(): boolean {
+  return emailTransport() !== null;
 }
 
 function safeHeader(value: string): string {
@@ -23,8 +44,36 @@ function dotStuff(value: string): string {
   return value.replace(/\r?\n/g, "\r\n").replace(/^\./gm, "..");
 }
 
+async function sendWithResend(message: TransactionalEmail): Promise<{ accepted: boolean; detail: string }> {
+  const from = configured("EMAIL_FROM");
+  const fromName = configured("EMAIL_FROM_NAME") || "Kuula";
+  const replyTo = message.replyTo || configured("SUPPORT_EMAIL") || from;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(message.to)) throw new Error("Recipient email is invalid");
+
+  const response = await fetch(RESEND_ENDPOINT, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${configured("RESEND_API_KEY")}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      from: `${safeHeader(fromName)} <${safeHeader(from)}>`,
+      to: [safeHeader(message.to)],
+      reply_to: safeHeader(replyTo),
+      subject: safeHeader(message.subject),
+      text: message.text,
+    }),
+    signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
+  });
+  const body = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
+  if (!response.ok || !body.id) {
+    // Never include the API key or the message text; the status and Resend's reason are enough.
+    return { accepted: false, detail: `Resend rejected the email (HTTP ${response.status}${body.name ? ` ${body.name}` : ""}${body.message ? `: ${body.message}` : ""})` };
+  }
+  return { accepted: true, detail: `Accepted by Resend (${body.id})` };
+}
+
 export async function sendTransactionalEmail(message: TransactionalEmail): Promise<{ accepted: boolean; detail: string }> {
-  if (!emailConfigured()) return { accepted: false, detail: "Transactional email is not configured" };
+  const transport = emailTransport();
+  if (!transport) return { accepted: false, detail: "Transactional email is not configured" };
+  if (transport === "resend") return sendWithResend(message);
 
   const host = configured("SMTP_HOST");
   const port = Number(configured("SMTP_PORT") || "465");
