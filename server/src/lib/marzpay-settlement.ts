@@ -6,6 +6,7 @@ import { allocateRepayment, postSettlementJournal, type RepaymentAllocation } fr
 import { dispatchNextDisbursementLeg } from "./disbursements.js";
 import { writeAuditEvent } from "./audit.js";
 import { refundForTransaction } from "./refunds.js";
+import { payoutFee } from "./payment-fees.js";
 
 /**
  * Applies one final or interim MarzPay status (from an authenticated callback, a status
@@ -31,6 +32,9 @@ interface LinkedLeg {
   user_id: string;
   loan_id: string;
 }
+
+/** Settled transactions whose MarzPay charge was estimated from the tariff; finance confirms it. */
+export const FEE_UNCONFIRMED = "fee_unconfirmed";
 
 /** Transactions whose outcome is not yet known; a provider-confirmed status may settle them. */
 export const AWAITING_PROVIDER = "awaiting_provider";
@@ -65,13 +69,25 @@ export async function settleMarzPayEvent(event: MarzPayWebhookEvent): Promise<Se
     return { httpStatus: 409, body: { error: "Invalid provider fee" } };
   }
   if (ledger.provider !== "marzpay") return { httpStatus: 409, body: { error: "Transaction provider mismatch" } };
+  // MarzPay did not state its own charge on a successful transfer. Never let that freeze
+  // the customer's money: settle using the published payout tariff (no published tariff
+  // exists for collections, so 0), then flag the fee for finance to confirm.
+  let feeEstimated = false;
   if (ledger.status === "pending" && event.isFinal && event.isSuccess && ledger.customerFee > BigInt(0) && event.charge === null && ledger.providerFee === null) {
-    await holdForReconciliation(ledger, event, "Provider must confirm the actual fee before posting payment fees");
-    return { httpStatus: 409, body: { error: "Actual provider fee is required for customer-fee accounting" } };
+    let estimate = 0;
+    if (ledger.type === "loan_disbursement_leg") {
+      try { estimate = payoutFee(Number(ledger.amount)); } catch { estimate = 0; }
+    }
+    event = { ...event, charge: estimate };
+    feeEstimated = true;
   }
   // From here on, always use Kuula's stored reference.
   const settled = { ...event, reference: ledger.reference! };
-  return ledger.type === "loan_disbursement_leg" ? settleDisbursementLeg(settled, ledger) : settleTransaction(settled, ledger);
+  const outcome = ledger.type === "loan_disbursement_leg" ? await settleDisbursementLeg(settled, ledger) : await settleTransaction(settled, ledger);
+  if (feeEstimated && outcome.body.settled === true) {
+    await prisma.transaction.updateMany({ where: { id: ledger.id, status: "completed", reconciliationStatus: "matched" }, data: { reconciliationStatus: FEE_UNCONFIRMED } });
+  }
+  return outcome;
 }
 
 async function holdForReconciliation(ledger: Transaction, event: MarzPayWebhookEvent, reason: string, legAndBatch?: { legId: string; batchId: string }) {

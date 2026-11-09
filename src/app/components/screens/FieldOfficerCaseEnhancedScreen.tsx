@@ -37,7 +37,7 @@ export function OfficerPricingForm({token,applicationId}:{token:string|null;appl
     } catch(err){setMessage(err instanceof Error?err.message:"Could not save pricing proposal");}
     finally{setSaving(false);}
   };
-  return <AdminCard><h3>Proposed interest and charges</h3><p style={{fontSize:12,color:"#64748B"}}>Enter the proposed annual simple interest rate and each additional fee. The customer will only see terms after independent approval.</p>
+  return <AdminCard><h3>Proposed interest and charges</h3><p style={{fontSize:12,color:"#64748B"}}>Pricing applies to the recommended amount and term saved in the business assessment, so save those first. Enter the annual simple interest rate and each additional fee. If the recommendation changes, price it again. The customer only sees terms after independent approval.</p>
     <label>Annual interest rate (%)<input type="number" min={0} max={33.6} step="0.01" style={input} value={rate} onChange={e=>setRate(e.target.value)}/></label>
     {charges.map((charge,index)=><div key={index} style={{display:"flex",gap:8,marginTop:8}}>
       <input aria-label="Charge description" placeholder="Charge description" style={input} value={charge.label} onChange={e=>setCharges(prev=>prev.map((v,i)=>i===index?{...v,label:e.target.value}:v))}/>

@@ -54,7 +54,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
     if (status === "active" || status === "paid" || status === "overdue") return "approved";
     if (status === "disbursing") return "disbursing";
     if (status === "offered") return "offered";
-    if (status === "rejected" || status === "failed") return "rejected";
+    if (status === "rejected" || status === "failed" || status === "expired" || status === "cancelled") return "rejected";
     return "pending";
   };
 

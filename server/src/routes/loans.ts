@@ -1,6 +1,7 @@
 import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
+import { roleLevel } from "../lib/credit-roles.js";
 import { customerPaymentFeeDisclosure } from "../lib/disbursements.js";
 import { acceptedPaymentFees, collectionQuote, PAYMENT_FEE_POLICY } from "../lib/payment-fees.js";
 import { sendGuarantorSms } from "../lib/sms.js";
@@ -19,6 +20,7 @@ import { evaluateUnderwriting, UNDERWRITING_POLICY } from "../lib/underwriting.j
 import { writeAuditEvent } from "../lib/audit.js";
 import { isBusinessLoanPurpose } from "../lib/business-loan-purpose.js";
 import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
+import { expireLapsedOffers } from "../lib/loan-offer-expiry.js";
 import {
   buildMarzPayWebhookUrl,
   collectMoney,
@@ -170,6 +172,7 @@ async function createLoanApplicationForUser(
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
   await assertLoanIdentityApproved(user, () => prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { status: true } }));
 
+  await expireLapsedOffers({ userId });
   const open = await prisma.loanApplication.findFirst({
     where: { applicantId: userId, status: { in: OPEN_STATUSES } },
     select: { id: true, status: true },
@@ -288,6 +291,11 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   const application = await prisma.loanApplication.findUnique({ where: { id } });
   if (!application || !application.businessProfile) throw new AppError("Business loan application not found", 404);
   if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Application is no longer pending review", 409);
+  // Only staff who work this case at Level 1 or 2 may verify the business; the final
+  // approver must stay independent of the verification.
+  const assigned = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT id FROM approval_assignments WHERE application_id=${id}::uuid AND assignee_id=${req.user!.userId}::uuid AND level IN (1,2) LIMIT 1`);
+  if (!assigned[0]) throw new AppError("Only the loan officer or credit manager assigned to this case can review the business", 403);
   if (status === "verified") await assertBusinessPhotoEvidence(id);
   const updated = await prisma.loanApplication.update({
     where: { id },
@@ -316,6 +324,8 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   const reason = String(req.body?.reason || "").trim();
   if (status !== "required") throw new AppError("Only a requirement can be issued here; waivers require independent credit approval", 400);
   if (reason.length < 20 || reason.length > 2000) throw new AppError("Record a specific risk assessment reason (20–2000 characters)", 400);
+  // A guarantor who can never sign would block the payout for good.
+  if (process.env.GUARANTOR_LEGAL_TERMS_APPROVED !== "true") throw new AppError("Guarantor signing is not enabled yet, so a guarantor cannot be required. Decline or reduce the loan instead.", 409);
   const application = await prisma.loanApplication.findUnique({where: {id},select:{id:true,applicantId:true,status:true,businessProfile:true}});
   if (!application?.businessProfile) throw new AppError("Business application not found",404);
   if (!["pending","resubmitted"].includes(application.status)) throw new AppError("Application cannot be changed after decision",409);
@@ -348,7 +358,8 @@ router.post("/applications/:id/guarantor-waiver", authenticateToken, requirePerm
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (reason.length < 30 || reason.length > 2000) throw new AppError("Independent documented waiver rationale (30–2000 characters) required",400);
   const original = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true}});
-  if (!original || original.status !== "required" || !["pending","resubmitted"].includes(original.application.status)) throw new AppError("No open guarantor requirement",409);
+  // Waivable until the customer accepts the offer, so a lapsed or failed guarantee never strands a loan.
+  if (!original || original.status !== "required" || !["pending","resubmitted","offered"].includes(original.application.status)) throw new AppError("No open guarantor requirement",409);
   if (original.requestedBy === req.user!.userId) throw new AppError("Independent credit approver required",403);
   const result = await prisma.loanGuarantorRequirement.updateMany({where:{id:original.id,status:"required"},data:{status:"waived",reason,reviewedBy:req.user!.userId,reviewedAt:new Date(),evidenceReference:null,agreementReference:null}});
   if (result.count !== 1) throw new AppError("Requirement was modified concurrently",409);
@@ -362,7 +373,8 @@ router.post("/applications/:id/guarantor-invitation", authenticateToken, async (
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
   const applicant = await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true}});
   if (!applicant || applicant.applicantId !== req.user!.userId) throw new AppError("Application not found",404);
-  if (!["pending","resubmitted"].includes(applicant.status)) throw new AppError("Application cannot be modified",409);
+  // Inviting (or re-inviting after an invitation lapses) is allowed until the offer is accepted.
+  if (!["pending","resubmitted","offered"].includes(applicant.status)) throw new AppError("Application cannot be modified",409);
   const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
   if (!requirement || requirement.status !== "required") throw new AppError("A credit officer must request a guarantor first",409);
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
@@ -556,6 +568,9 @@ router.post(
     const notes = String(req.body?.notes || "").trim();
     if (!["approved", "rejected"].includes(decision)) throw new AppError("Decision must be approved or rejected", 400);
     if (!notes) throw new AppError("Written decision notes are required", 400);
+    // Offers and final rejections are the final credit authority's decision, not Level 2's.
+    if (roleLevel(req.user!.role) !== 3) throw new AppError("Only a final approver can issue or reject a loan offer", 403);
+    if (decision === "rejected" && notes.length < 40) throw new AppError("Record the reasons for the rejection (at least 40 characters)", 400);
 
     const application = await prisma.loanApplication.findUnique({
       where: { id },
@@ -573,26 +588,24 @@ router.post(
       if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
-      await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
-      const current = await recheckUnderwriting(application, application.applicant, application.underwriting);
-      await persistAssessment(application.id, req.user!.userId, current);
-      if (!current.approved) throw new AppError(`Application is no longer eligible: ${current.flags.join(", ")}`, 422);
     }
 
-    let officerPricing: {id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown} | null = null;
+    let officerPricing: {id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;principal:bigint;term_days:number} | null = null;
     if (decision === "approved") {
       const cases = await prisma.$queryRaw<Array<{status:string}>>(Prisma.sql`SELECT status FROM credit_cases WHERE application_id=${id}::uuid LIMIT 1`);
       if (cases[0]?.status !== "ready_for_offer") throw new AppError("Independent final credit review must be completed before approval", 409);
-      const proposals = await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown}>>(Prisma.sql`
-        SELECT id,proposed_by,apr,interest,other_charges,total,fee_breakdown FROM loan_pricing_proposals
+      const proposals = await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;principal:bigint;term_days:number}>>(Prisma.sql`
+        SELECT id,proposed_by,apr,interest,other_charges,total,fee_breakdown,principal,term_days FROM loan_pricing_proposals
         WHERE application_id=${id}::uuid AND status='proposed' LIMIT 1`);
       officerPricing = proposals[0] ?? null;
       if (!officerPricing) throw new AppError("Assigned loan officer must prepare an itemized pricing proposal",409);
       if (officerPricing.proposed_by === req.user!.userId) throw new AppError("An independent approver must authorize the officer's terms",403);
       const approval = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM approval_actions WHERE application_id=${id}::uuid AND level=3 AND action='approve' AND actor_id <> ${officerPricing.proposed_by}::uuid LIMIT 1`);
       if (!approval.length) throw new AppError("Pricing cannot be offered before independent Level 3 approval",409);
+      // The offer is issued on the amount and term the officer priced (never above the request).
+      await assertWithinApprovalAuthority(req.user!.role, Number(officerPricing.principal));
       const fresh = await recheckUnderwriting(
-        {...application, total: officerPricing.total},
+        {...application, amount: officerPricing.principal, termDays: Number(officerPricing.term_days), total: officerPricing.total},
         application.applicant,
         application.underwriting,
       );
@@ -605,6 +618,17 @@ router.post(
       ? new Date(decidedAt.getTime() + UNDERWRITING_POLICY.offerValidityHours * 3_600_000)
       : null;
     const updated = await prisma.$transaction(async tx => {
+      if (decision === "rejected") {
+        // Close the staged credit case with the same decision, so case and application agree.
+        const caseRows = await tx.$queryRaw<Array<{ current_level: number; status: string }>>(Prisma.sql`SELECT current_level, status FROM credit_cases WHERE application_id=${id}::uuid FOR UPDATE`);
+        if (caseRows[0] && caseRows[0].status !== "rejected") {
+          await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${id}::uuid AND status='active'`);
+          await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET status='rejected', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE application_id=${id}::uuid`);
+          await tx.$executeRaw(Prisma.sql`
+            INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative)
+            VALUES (${crypto.randomUUID()}::uuid, ${id}::uuid, ${Number(caseRows[0].current_level) || 3}, ${req.user!.userId}::uuid, 'reject', ${notes})`);
+        }
+      }
       if (officerPricing) {
         const count = await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='approved',approved_by=${req.user!.userId}::uuid,approved_at=NOW() WHERE id=${officerPricing.id}::uuid AND status='proposed'`);
         if (count !== 1) throw new AppError("Pricing proposal changed during approval; retry review",409);
@@ -618,6 +642,8 @@ router.post(
           approvedBy: req.user!.userId,
           offerExpiresAt,
           ...(officerPricing ? {
+            amount: officerPricing.principal,
+            termDays: Number(officerPricing.term_days),
             apr: Number(officerPricing.apr),
             interest: officerPricing.interest,
             serviceFee: officerPricing.other_charges,

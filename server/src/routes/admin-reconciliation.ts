@@ -3,7 +3,7 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { flagStalePaymentTransactions, verifyTransactionWithProvider } from "../lib/reconciliation.js";
-import { AWAITING_PROVIDER } from "../lib/marzpay-settlement.js";
+import { AWAITING_PROVIDER, FEE_UNCONFIRMED } from "../lib/marzpay-settlement.js";
 import { runProviderReconciliation } from "../lib/provider-reconciliation.js";
 import { Prisma } from "@prisma/client";
 import { writeAuditEvent } from "../lib/audit.js";
@@ -17,7 +17,7 @@ router.get("/", async (req: Request, res: Response) => {
   const take = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
   const transactions = await prisma.transaction.findMany({
     where: status === "all" ? {} : status === "open"
-      ? { reconciliationStatus: { in: ["reconciliation_required", AWAITING_PROVIDER] } }
+      ? { reconciliationStatus: { in: ["reconciliation_required", AWAITING_PROVIDER, FEE_UNCONFIRMED] } }
       : { reconciliationStatus: status },
     orderBy: { createdAt: "asc" },
     take,

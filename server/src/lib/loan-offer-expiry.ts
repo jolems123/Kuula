@@ -3,9 +3,37 @@ import { sendLoanExternalNotice } from "./loan-customer-notifications.js";
 
 const LOCK_KEY = 724_001_338;
 const HOUR = 60 * 60 * 1000;
+const EXPIRED_TITLE = "Kuula loan offer expired";
+const EXPIRED_BODY = "Your Kuula loan offer expired before it was accepted. No money was sent and you owe nothing. You can apply again in the app.";
+
+/**
+ * Closes offers whose acceptance window has passed. An offer that was never accepted
+ * has no payout attached, so it simply becomes `expired`; the customer is then free to
+ * apply again. Runs before every open-loan check and in the hourly sweep.
+ */
+export async function expireLapsedOffers(options: { userId?: string; now?: Date } = {}): Promise<number> {
+  const now = options.now ?? new Date();
+  const lapsed = await prisma.loanApplication.findMany({
+    where: { status: "offered", offerExpiresAt: { lte: now }, ...(options.userId ? { applicantId: options.userId } : {}) },
+    select: { id: true, applicantId: true },
+    take: 500,
+  });
+  let expired = 0;
+  for (const offer of lapsed) {
+    const changed = await prisma.loanApplication.updateMany({
+      where: { id: offer.id, status: "offered", offerExpiresAt: { lte: now }, acceptedAt: null },
+      data: { status: "expired", decisionNotes: "Offer expired before the customer accepted it." },
+    });
+    if (changed.count !== 1) continue;
+    expired += 1;
+    await prisma.notification.create({ data: { userId: offer.applicantId, title: EXPIRED_TITLE, body: EXPIRED_BODY, type: "loan_offer_expired:" + offer.id } });
+  }
+  return expired;
+}
 
 /** Once-per-offer 24-hour reminder with a DB advisory lock across API replicas. */
 export async function runOfferExpirySweep(now = new Date()): Promise<{created: number; skipped: boolean}> {
+  await expireLapsedOffers({ now });
   const notices = await prisma.$transaction(async tx => {
     const [lock] = await tx.$queryRaw<Array<{locked: boolean}>>`SELECT pg_try_advisory_xact_lock(${LOCK_KEY}) AS locked`;
     if (!lock?.locked) return null;

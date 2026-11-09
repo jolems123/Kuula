@@ -461,10 +461,7 @@ export async function releaseDisbursementBatch(params: { applicationId: string; 
   if (!batch) throw new AppError("This loan has no payout waiting for release", 404);
   if (batch.status !== "awaiting_release") throw new AppError(`This payout is already ${batch.status.replaceAll("_", " ")}`, 409);
   if (!marzPayConfigured()) throw new AppError("Real-money movement is disabled, so payouts cannot be released", 503);
-  if (batch.user_id === params.releasedBy) throw new AppError("Segregation of duties: a borrower cannot release their own payout", 403);
-  if ((await involvedStaff(params.applicationId)).has(params.releasedBy)) {
-    throw new AppError("Segregation of duties: someone who reviewed or approved this loan cannot also release its payout", 403);
-  }
+  await assertIndependentReleaser(params.applicationId, batch.user_id, params.releasedBy);
 
   const application = await prisma.loanApplication.findUnique({ where: { id: params.applicationId }, include: { applicant: true } });
   if (!application || application.status !== "disbursing") throw new AppError("The loan is no longer awaiting payout", 409);
@@ -487,4 +484,85 @@ export async function releaseDisbursementBatch(params: { applicationId: string; 
   `);
   if (claimed !== 1) throw new AppError("This payout was released by someone else at the same time", 409);
   return { batchId: batch.id, amount: Number(batch.approved_amount) };
+}
+
+/** The borrower and anyone who reviewed, priced or approved the loan may not move its money. */
+export async function assertIndependentReleaser(applicationId: string, borrowerId: string, staffId: string): Promise<void> {
+  if (borrowerId === staffId) throw new AppError("Segregation of duties: a borrower cannot release their own payout", 403);
+  if ((await involvedStaff(applicationId)).has(staffId)) {
+    throw new AppError("Segregation of duties: someone who reviewed or approved this loan cannot also release its payout", 403);
+  }
+}
+
+/** MarzPay's wallet must cover every leg still to be sent, plus the published tariff. */
+export async function assertFundsForUnsentLegs(batchId: string): Promise<void> {
+  const balance = await getMarzPayAvailableBalanceUgx();
+  if (balance === null) throw new AppError("MarzPay's wallet balance could not be read, so the payout cannot be funded safely", 503);
+  const legs = await prisma.$queryRaw<LegRow[]>(Prisma.sql`SELECT * FROM disbursement_legs WHERE batch_id=${batchId}::uuid AND status IN ('planned','failed') ORDER BY sequence`);
+  let required;
+  try { required = legs.reduce((sum, leg) => sum + Number(leg.amount) + payoutFee(Number(leg.amount)), 0); }
+  catch { throw new AppError("Payout tariff is not verified for this batch; finance review is required", 409); }
+  if (balance < required) throw new AppError(`Insufficient MarzPay funds: UGX ${balance.toLocaleString()} available, UGX ${required.toLocaleString()} needed including provider charges`, 409);
+}
+
+export interface AttentionPayout {
+  batchId: string;
+  applicationId: string;
+  applicantName: string;
+  phone: string;
+  status: string;
+  amount: number;
+  totalSettled: number;
+  failureReason: string | null;
+  canRetry: boolean;
+  canCancel: boolean;
+  updatedAt: Date;
+}
+
+/** Released payouts that stopped: failed legs, or a hold that needs a person. */
+export async function payoutsNeedingAttention(): Promise<AttentionPayout[]> {
+  const rows = await prisma.$queryRaw<Array<{ id: string; application_id: string; applicant_name: string; beneficiary_reference: string; status: string; approved_amount: bigint; total_settled: bigint; failure_reason: string | null; updated_at: Date; failed_legs: bigint; open_legs: bigint; held_legs: bigint }>>(Prisma.sql`
+    SELECT b.id, b.application_id, a.applicant_name, b.beneficiary_reference, b.status, b.approved_amount, b.total_settled, b.failure_reason, b.updated_at,
+           (SELECT count(*) FROM disbursement_legs l WHERE l.batch_id=b.id AND l.status='failed') AS failed_legs,
+           (SELECT count(*) FROM disbursement_legs l WHERE l.batch_id=b.id AND l.status IN ('dispatching','pending')) AS open_legs,
+           (SELECT count(*) FROM disbursement_legs l WHERE l.batch_id=b.id AND l.status='attention_required') AS held_legs
+    FROM disbursement_batches b JOIN loan_applications a ON a.id=b.application_id
+    WHERE b.status IN ('failed','attention_required') AND a.status='disbursing'
+    ORDER BY b.updated_at ASC
+    LIMIT 200
+  `);
+  return rows.map((row) => ({
+    batchId: row.id, applicationId: row.application_id, applicantName: row.applicant_name, phone: row.beneficiary_reference,
+    status: row.status, amount: Number(row.approved_amount), totalSettled: Number(row.total_settled), failureReason: row.failure_reason,
+    canRetry: Number(row.failed_legs) > 0 && Number(row.held_legs) === 0 && Number(row.open_legs) === 0,
+    canCancel: Number(row.total_settled) === 0 && Number(row.open_legs) === 0 && Number(row.held_legs) === 0,
+    updatedAt: row.updated_at,
+  }));
+}
+
+/**
+ * Closes a payout that never sent any money, so the customer is no longer blocked by a
+ * loan stuck in `disbursing`. MarzPay must confirm every attempted leg failed first.
+ */
+export async function cancelUnpaidPayout(params: { applicationId: string; cancelledBy: string; reason: string }): Promise<void> {
+  if (params.reason.trim().length < 20) throw new AppError("Record why the payout is being cancelled (at least 20 characters)", 400);
+  const batches = await prisma.$queryRaw<BatchRow[]>(Prisma.sql`SELECT * FROM disbursement_batches WHERE application_id=${params.applicationId}::uuid LIMIT 1`);
+  const batch = batches[0];
+  if (!batch) throw new AppError("This loan has no payout", 404);
+  if (!["failed", "awaiting_release"].includes(batch.status)) throw new AppError("Only a payout that failed, or was never released, can be cancelled", 409);
+  if (batch.total_settled > BigInt(0)) throw new AppError("Part of this payout was sent, so it cannot be cancelled", 409);
+  const legs = await prisma.$queryRaw<LegRow[]>(Prisma.sql`SELECT * FROM disbursement_legs WHERE batch_id=${batch.id}::uuid ORDER BY sequence`);
+  if (legs.some((leg) => !["planned", "failed"].includes(leg.status))) throw new AppError("A payout transfer is still in progress or held for review", 409);
+  for (const leg of legs.filter((item) => item.status === "failed")) await assertLegSafeToRetry(leg);
+
+  await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<BatchRow[]>(Prisma.sql`SELECT * FROM disbursement_batches WHERE id=${batch.id}::uuid FOR UPDATE`);
+    if (!locked[0] || locked[0].status !== batch.status || locked[0].total_settled > BigInt(0)) throw new AppError("The payout changed while it was being cancelled; try again", 409);
+    await tx.$executeRaw(Prisma.sql`UPDATE disbursement_batches SET status='cancelled', failure_reason=${params.reason.trim()}, updated_at=CURRENT_TIMESTAMP WHERE id=${batch.id}::uuid`);
+    const changed = await tx.loanApplication.updateMany({
+      where: { id: params.applicationId, status: "disbursing" },
+      data: { status: "cancelled", decisionNotes: `Payout cancelled: ${params.reason.trim()}` },
+    });
+    if (changed.count !== 1) throw new AppError("The loan is no longer awaiting payout", 409);
+  });
 }

@@ -5,6 +5,7 @@ import prisma from "../lib/prisma.js";
 import { authenticateToken, hasPermission } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
 import { parseMarzPayWebhook, secureTokenEquals, verifyMarzPayWebhookSignature } from "../lib/marzpay.js";
+import { expireLapsedOffers } from "../lib/loan-offer-expiry.js";
 
 const router = Router();
 const OPEN_FINANCIAL_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
@@ -182,6 +183,7 @@ router.get("/transactions", authenticateToken, async (req: Request, res: Respons
 
 router.post("/users/me/delete", authenticateToken, async (req: Request, _res: Response, next: NextFunction) => {
   const userId = req.user!.userId;
+  await expireLapsedOffers({ userId });
   const [openApplication, openRepayment, unsettledBatch] = await Promise.all([
     prisma.loanApplication.findFirst({
       where: { applicantId: userId, status: { in: OPEN_FINANCIAL_STATUSES } },

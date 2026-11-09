@@ -72,8 +72,17 @@ try {
   assert.ok(applicationId);
   await call("POST", "/api/loans/applications", { token: C, body: applicationBody, expect: 409 });
   await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "Unverified business test must be denied" }, expect: 422 });
+  const officerEmail="pricing-officer-ci@kuula.test", officerPassword="TestOfficer-CI-Password-2026";
+  const officer=await prisma.user.upsert({where:{email:officerEmail},update:{role:"loan_officer",passwordHash:await bcrypt.hash(officerPassword,10),phoneVerified:true,deletedAt:null},create:{email:officerEmail,fullName:"CI Pricing Officer",role:"loan_officer",phoneVerified:true,passwordHash:await bcrypt.hash(officerPassword,10)}});
+  const officerLogin=await call("POST","/api/auth/admin-login",{body:{email:officerEmail,password:officerPassword}});
+  const adminId=(await prisma.user.findUniqueOrThrow({where:{email:process.env.ADMIN_EMAIL || "admin-ci@kuula.test"}})).id;
+  await prisma.$executeRaw`INSERT INTO credit_cases(application_id,customer_id,current_level,status,current_assignee_id) VALUES(${applicationId}::uuid,${application.application.applicantId}::uuid,1,'field_evaluation',${officer.id}::uuid) ON CONFLICT(application_id) DO UPDATE SET current_level=1,status='field_evaluation',current_assignee_id=${officer.id}::uuid`;
+  await prisma.$executeRaw`INSERT INTO approval_assignments(id,application_id,level,assignee_id,assigned_by) VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,1,${officer.id}::uuid,${adminId}::uuid)`;
   await call("POST", `/api/loans/applications/${applicationId}/business-review`, {
-    token: A, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 422,
+    token: A, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 403,
+  });
+  await call("POST", `/api/loans/applications/${applicationId}/business-review`, {
+    token: officerLogin.token, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 422,
   });
   step("private business photos: ownership, required uploads, distinctness and duplicate protection");
   const photoPath = `/api/loans/applications/${applicationId}/business-photos`;
@@ -96,25 +105,23 @@ try {
   assert.ok(["exterior", "interior", "applicant_at_business"].every(kind =>
     photoList.photos.some(photo => photo.type === kind)));
   await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 409 });
-  const review = await call("POST", `/api/loans/applications/${applicationId}/business-review`, { token: A, body: { status: "verified", notes: "CI verified trading operations and business turnover evidence" } });
+  const review = await call("POST", `/api/loans/applications/${applicationId}/business-review`, { token: officerLogin.token, body: { status: "verified", notes: "CI verified trading operations and business turnover evidence" } });
   assert.equal(review.application.businessReviewStatus, "verified");
+  step("prepare independent officer pricing and final review fixtures");
+  await call("POST", "/api/loans/applications/decision", {token:A,body:{id:applicationId,decision:"approved",notes:"Must require independent review"},expect:409});
+  await call("POST",`/api/operations/applications/${applicationId}/pricing-proposal`,{token:officerLogin.token,body:{aprPercent:10,charges:[]},expect:409});
+  await call("POST",`/api/operations/applications/${applicationId}/evaluation`,{token:officerLogin.token,body:{businessObservations:"Stocked shop trading daily",financialObservations:"Sales cover costs",repaymentCapacity:"Comfortable",recommendation:"approve",recommendedAmount:applicationBody.amount,recommendedTermDays:applicationBody.termDays}});
+  await call("POST",`/api/operations/applications/${applicationId}/pricing-proposal`,{token:officerLogin.token,body:{aprPercent:10,charges:[{label:"Processing fee",amount:100}]},expect:201});
+  await call("POST", "/api/loans/applications/decision", {token:A,body:{id:applicationId,decision:"approved",notes:"Must require Level 3 approval"},expect:409});
+  await prisma.$executeRaw`INSERT INTO approval_actions(id,application_id,level,actor_id,action,narrative) VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,3,${adminId}::uuid,'approve','Isolated final reviewer fixture for pricing approval')`;
+  await prisma.$executeRaw`UPDATE credit_cases SET current_level=3,status='ready_for_offer',current_assignee_id=${adminId}::uuid WHERE application_id=${applicationId}::uuid`;
   step("an approval above the approver's configured authority is refused");
   const approverRole = admin.user?.role || admin.role;
   await call("PUT", `/api/staff/authority-limits/${approverRole}`, { token: A, body: { maxAmount: 50000, reason: "CI authority limit test" } });
   await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "Above authority must be refused" }, expect: 403 });
   await call("PUT", `/api/staff/authority-limits/${approverRole}`, { token: A, body: { maxAmount: null, reason: "CI removes the test limit" } });
-  step("prepare independent officer pricing and final review fixtures");
-  await call("POST", "/api/loans/applications/decision", {token:A,body:{id:applicationId,decision:"approved",notes:"Must require independent review"},expect:409});
-  const officerEmail="pricing-officer-ci@kuula.test", officerPassword="TestOfficer-CI-Password-2026";
-  const officer=await prisma.user.upsert({where:{email:officerEmail},update:{role:"loan_officer",passwordHash:await bcrypt.hash(officerPassword,10),phoneVerified:true,deletedAt:null},create:{email:officerEmail,fullName:"CI Pricing Officer",role:"loan_officer",phoneVerified:true,passwordHash:await bcrypt.hash(officerPassword,10)}});
-  const officerLogin=await call("POST","/api/auth/admin-login",{body:{email:officerEmail,password:officerPassword}});
-  const adminId=(await prisma.user.findUniqueOrThrow({where:{email:process.env.ADMIN_EMAIL || "admin-ci@kuula.test"}})).id;
-  await prisma.$executeRaw`INSERT INTO credit_cases(application_id,customer_id,current_level,status,current_assignee_id) VALUES(${applicationId}::uuid,${application.application.applicantId}::uuid,1,'field_evaluation',${officer.id}::uuid) ON CONFLICT(application_id) DO UPDATE SET current_level=1,status='field_evaluation',current_assignee_id=${officer.id}::uuid`;
-  await prisma.$executeRaw`INSERT INTO approval_assignments(id,application_id,level,assignee_id,assigned_by) VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,1,${officer.id}::uuid,${adminId}::uuid)`;
-  await call("POST",`/api/operations/applications/${applicationId}/pricing-proposal`,{token:officerLogin.token,body:{aprPercent:10,charges:[{label:"Processing fee",amount:100}]},expect:201});
-  await call("POST", "/api/loans/applications/decision", {token:A,body:{id:applicationId,decision:"approved",notes:"Must require Level 3 approval"},expect:409});
-  await prisma.$executeRaw`INSERT INTO approval_actions(id,application_id,level,actor_id,action,narrative) VALUES(${crypto.randomUUID()}::uuid,${applicationId}::uuid,3,${adminId}::uuid,'approve','Isolated final reviewer fixture for pricing approval')`;
-  await prisma.$executeRaw`UPDATE credit_cases SET current_level=3,status='ready_for_offer',current_assignee_id=${adminId}::uuid WHERE application_id=${applicationId}::uuid`;
+  step("only a final approver may issue the offer");
+  await call("POST", "/api/loans/applications/decision", { token: officerLogin.token, body: { id: applicationId, decision: "approved", notes: "A loan officer cannot issue offers" }, expect: 403 });
   const offer = await call("POST", "/api/loans/applications/decision", { token: A, body: { id: applicationId, decision: "approved", notes: "CI approval after underwriting recheck" } });
   assert.equal(offer.application.status, "offered");
 

@@ -104,7 +104,7 @@ export interface LoanApplication {
   reviewLevel?: number | null;
   reviewStage?: string | null;
   agreementAccepted?: boolean;
-  status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
+  status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed" | "expired" | "cancelled";
   total: number;
   apr?: number;
   interest?: number | null;

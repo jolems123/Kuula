@@ -15,6 +15,10 @@ import {
   disbursementBatchForApplication,
   releaseDisbursementBatch,
   resetFailedLegForRetry,
+  assertFundsForUnsentLegs,
+  assertIndependentReleaser,
+  cancelUnpaidPayout,
+  payoutsNeedingAttention,
 } from "../lib/disbursements.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
@@ -213,13 +217,23 @@ router.get("/:id/disbursement", authenticateToken, async (req: Request, res: Res
   res.json({ applicationStatus: application.status, disbursement: compatibleBatch(batch) });
 });
 
-router.post("/:id/disbursement/retry", authenticateToken, requirePermissions("reconciliation.manage"), async (req: Request, res: Response) => {
+router.get("/disbursements/needing-attention", authenticateToken, requirePermissions("disbursement.release"), async (_req: Request, res: Response) => {
+  res.json({ payouts: await payoutsNeedingAttention() });
+});
+
+// Re-sending money carries the same controls as the first release: payout-release rights,
+// an independent person, sufficient funds, and MarzPay's confirmation the attempt failed.
+router.post("/:id/disbursement/retry", authenticateToken, requirePermissions("disbursement.release"), async (req: Request, res: Response) => {
   const applicationId = String(req.params.id || "");
   const batch = await disbursementBatchForApplication(applicationId);
   if (!batch) throw new AppError("Disbursement batch not found", 404);
   if (batch.legs.some((leg) => leg.status === "attention_required")) {
     throw new AppError("This disbursement has a reconciliation mismatch and cannot be retried until the mismatch is resolved", 409);
   }
+  const owner = await prisma.loanApplication.findUnique({ where: { id: applicationId }, select: { applicantId: true, status: true } });
+  if (!owner || owner.status !== "disbursing") throw new AppError("The loan is no longer awaiting payout", 409);
+  await assertIndependentReleaser(applicationId, owner.applicantId, req.user!.userId);
+  await assertFundsForUnsentLegs(batch.id);
   await resetFailedLegForRetry(batch.id);
   const result = await dispatchNextDisbursementLeg(batch.id);
   await writeAuditEvent({
@@ -231,6 +245,17 @@ router.post("/:id/disbursement/retry", authenticateToken, requirePermissions("re
   });
   const refreshed = await disbursementBatchForApplication(applicationId);
   res.json({ ok: result.dispatched, result, disbursement: compatibleBatch(refreshed) });
+});
+
+router.post("/:id/disbursement/cancel", authenticateToken, requirePermissions("disbursement.release"), async (req: Request, res: Response) => {
+  const applicationId = String(req.params.id || "");
+  const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
+  await cancelUnpaidPayout({ applicationId, cancelledBy: req.user!.userId, reason });
+  const owner = await prisma.loanApplication.findUnique({ where: { id: applicationId }, select: { applicantId: true } });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: owner?.applicantId ?? null, action: "loan.disbursement_cancelled", resourceType: "loan_application", resourceId: applicationId, metadata: { reason } });
+  if (owner) await notifyLoanCustomer(owner.applicantId, "Kuula loan payout cancelled",
+    "The payment for your loan could not be completed and has been cancelled. No money was sent and you owe nothing. You can apply again in the app.");
+  res.json({ ok: true, status: "cancelled" });
 });
 
 export default router;
