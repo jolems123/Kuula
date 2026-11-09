@@ -324,6 +324,8 @@ router.post("/applications/:id/guarantor-requirement", authenticateToken, requir
   const reason = String(req.body?.reason || "").trim();
   if (status !== "required") throw new AppError("Only a requirement can be issued here; waivers require independent credit approval", 400);
   if (reason.length < 20 || reason.length > 2000) throw new AppError("Record a specific risk assessment reason (20–2000 characters)", 400);
+  // A guarantor who can never sign would block the payout for good.
+  if (process.env.GUARANTOR_LEGAL_TERMS_APPROVED !== "true") throw new AppError("Guarantor signing is not enabled yet, so a guarantor cannot be required. Decline or reduce the loan instead.", 409);
   const application = await prisma.loanApplication.findUnique({where: {id},select:{id:true,applicantId:true,status:true,businessProfile:true}});
   if (!application?.businessProfile) throw new AppError("Business application not found",404);
   if (!["pending","resubmitted"].includes(application.status)) throw new AppError("Application cannot be changed after decision",409);
@@ -356,7 +358,8 @@ router.post("/applications/:id/guarantor-waiver", authenticateToken, requirePerm
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (reason.length < 30 || reason.length > 2000) throw new AppError("Independent documented waiver rationale (30–2000 characters) required",400);
   const original = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id},include:{application:true}});
-  if (!original || original.status !== "required" || !["pending","resubmitted"].includes(original.application.status)) throw new AppError("No open guarantor requirement",409);
+  // Waivable until the customer accepts the offer, so a lapsed or failed guarantee never strands a loan.
+  if (!original || original.status !== "required" || !["pending","resubmitted","offered"].includes(original.application.status)) throw new AppError("No open guarantor requirement",409);
   if (original.requestedBy === req.user!.userId) throw new AppError("Independent credit approver required",403);
   const result = await prisma.loanGuarantorRequirement.updateMany({where:{id:original.id,status:"required"},data:{status:"waived",reason,reviewedBy:req.user!.userId,reviewedAt:new Date(),evidenceReference:null,agreementReference:null}});
   if (result.count !== 1) throw new AppError("Requirement was modified concurrently",409);
@@ -370,7 +373,8 @@ router.post("/applications/:id/guarantor-invitation", authenticateToken, async (
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(id)) throw new AppError("Invalid application ID",400);
   const applicant = await prisma.loanApplication.findUnique({where:{id},select:{applicantId:true,status:true}});
   if (!applicant || applicant.applicantId !== req.user!.userId) throw new AppError("Application not found",404);
-  if (!["pending","resubmitted"].includes(applicant.status)) throw new AppError("Application cannot be modified",409);
+  // Inviting (or re-inviting after an invitation lapses) is allowed until the offer is accepted.
+  if (!["pending","resubmitted","offered"].includes(applicant.status)) throw new AppError("Application cannot be modified",409);
   const requirement = await prisma.loanGuarantorRequirement.findUnique({where:{applicationId:id}});
   if (!requirement || requirement.status !== "required") throw new AppError("A credit officer must request a guarantor first",409);
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
