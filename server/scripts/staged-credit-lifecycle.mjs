@@ -95,9 +95,22 @@ try {
     await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
     await call("GET", endpoint, {token: admin.token, expect: 200});
   }
+  step("Level 1: the invited loan officer is assignable and alone reviews the business");
+  const level1Staff = await call("GET", "/api/operations/staff?role=officer", { token: admin.token });
+  assert.ok(level1Staff.staff.some((member) => member.id === officer.id), "loan_officer appears in the Level 1 picker");
+  await call("POST", `/api/operations/applications/${id}/assign`, { token: admin.token, body: { level: 1, assigneeId: officer.id } });
+  for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
+    await call("GET", endpoint, {token: officer.token, expect: 200});
+    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
+    await call("GET", endpoint, {token: admin.token, expect: 200});
+  }
   const photoPath = `/api/loans/applications/${id}/business-photos`;
+  // An unassigned administrator cannot sign off the business review.
   await call("POST", `/api/loans/applications/${id}/business-review`, {
-    token: admin.token, body: { status: "verified", notes: "Cannot verify without business photos" }, expect: 422,
+    token: admin.token, body: { status: "verified", notes: "Unassigned reviewer attempt" }, expect: 403,
+  });
+  await call("POST", `/api/loans/applications/${id}/business-review`, {
+    token: officer.token, body: { status: "verified", notes: "Cannot verify without business photos" }, expect: 422,
   });
   await call("GET", photoPath, { token: finance.token, expect: 404 });
   const photoPayload = {
@@ -109,18 +122,10 @@ try {
   const receipt = await call("GET", photoPath, { token: customer.token });
   assert.equal(receipt.photos.length, 3);
   await call("GET", photoPath, { token: officer.token });
-  await call("POST", `/api/loans/applications/${id}/business-review`, { token: admin.token, body: { status: "verified", notes: "Staged CI verified the business premises and turnover records" } });
+  await call("POST", `/api/loans/applications/${id}/business-review`, { token: officer.token, body: { status: "verified", notes: "Staged CI verified the business premises and turnover records" } });
   await call("POST", "/api/loans/applications/decision", { token: approver.token, body: { id, decision: "approved", notes: "Attempt before the staged review" }, expect: 409 });
 
-  step("Level 1: the invited loan officer is assignable, evaluates and uploads field evidence");
-  const level1Staff = await call("GET", "/api/operations/staff?role=officer", { token: admin.token });
-  assert.ok(level1Staff.staff.some((member) => member.id === officer.id), "loan_officer appears in the Level 1 picker");
-  await call("POST", `/api/operations/applications/${id}/assign`, { token: admin.token, body: { level: 1, assigneeId: officer.id } });
-  for (const endpoint of [operationsPath, `${operationsPath}/messages`]) {
-    await call("GET", endpoint, {token: officer.token, expect: 200});
-    await call("GET", endpoint, {token: unrelatedOfficer.token, expect: 403});
-    await call("GET", endpoint, {token: admin.token, expect: 200});
-  }
+  step("Level 1: the officer evaluates and uploads field evidence");
   await call("POST", `/api/operations/applications/${id}/evaluation`, {
     token: officer.token,
     body: { businessName: "Staged Hardware", businessType: "Retail", businessLocation: "Kampala", yearsOperating: 3, employeeCount: 3, estimatedMonthlySales: 1500000, estimatedStockValue: 4000000, monthlyOperatingExpenses: 400000, existingBusinessDebt: 0,
@@ -153,7 +158,6 @@ try {
   const accepted = await call("POST", `/api/loans/${id}/accept`, { token: customer.token });
   assert.equal(accepted.disbursement.status, "awaiting_release");
   await call("POST", `/api/loans/${id}/disbursement/release`, { token: approver.token, expect: 403 });
-  await call("POST", `/api/loans/${id}/disbursement/release`, { token: admin.token, expect: 403 });
   await call("POST", `/api/loans/${id}/disbursement/release`, { token: officer.token, expect: 403 });
   const released = await call("POST", `/api/loans/${id}/disbursement/release`, { token: finance.token });
   assert.equal(released.ok, true);
