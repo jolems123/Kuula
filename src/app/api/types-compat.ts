@@ -31,7 +31,7 @@ export type AdminStats = {
     purpose: string;
     termDays: number;
     channel: string;
-    status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed";
+    status: "pending" | "resubmitted" | "offered" | "disbursing" | "approved" | "rejected" | "active" | "paid" | "overdue" | "failed" | "expired" | "cancelled";
     total: number;
     createdAt: string;
     decidedAt: string | null;

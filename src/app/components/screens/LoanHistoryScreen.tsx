@@ -26,6 +26,8 @@ const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }>
   paid:        { color: "#425149", bg: "#F3F5F4", label: "Paid" },
   rejected:    { color: "#991B1B", bg: "#FEF2F2", label: "Not approved" },
   failed:      { color: "#991B1B", bg: "#FEF2F2", label: "Failed" },
+  expired:     { color: "#6B7280", bg: "#F3F4F6", label: "Offer expired" },
+  cancelled:   { color: "#6B7280", bg: "#F3F4F6", label: "Payout cancelled" },
 };
 
 type FilterType = "all" | "active" | "completed" | "rejected";
@@ -54,7 +56,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
     if (filter === "all") return true;
     if (filter === "active") return ["active", "overdue", "disbursing", "offered"].includes(loan.status);
     if (filter === "completed") return loan.status === "paid";
-    return ["rejected", "failed"].includes(loan.status);
+    return ["rejected", "failed", "expired", "cancelled"].includes(loan.status);
   });
 
   const funded = loans.filter((loan) => FUNDED_STATUSES.has(loan.status));
