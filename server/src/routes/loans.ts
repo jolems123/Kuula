@@ -20,6 +20,7 @@ import { evaluateUnderwriting, UNDERWRITING_POLICY } from "../lib/underwriting.j
 import { writeAuditEvent } from "../lib/audit.js";
 import { isBusinessLoanPurpose } from "../lib/business-loan-purpose.js";
 import { assertWithinApprovalAuthority } from "../lib/credit-authority.js";
+import { expireLapsedOffers } from "../lib/loan-offer-expiry.js";
 import {
   buildMarzPayWebhookUrl,
   collectMoney,
@@ -171,6 +172,7 @@ async function createLoanApplicationForUser(
   if (!user || user.deletedAt) throw new AppError("User not found", 404);
   await assertLoanIdentityApproved(user, () => prisma.kycSubmission.findFirst({ where: { userId }, orderBy: { version: "desc" }, select: { status: true } }));
 
+  await expireLapsedOffers({ userId });
   const open = await prisma.loanApplication.findFirst({
     where: { applicantId: userId, status: { in: OPEN_STATUSES } },
     select: { id: true, status: true },
@@ -289,6 +291,11 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   const application = await prisma.loanApplication.findUnique({ where: { id } });
   if (!application || !application.businessProfile) throw new AppError("Business loan application not found", 404);
   if (!["pending", "resubmitted"].includes(application.status)) throw new AppError("Application is no longer pending review", 409);
+  // Only staff who work this case at Level 1 or 2 may verify the business; the final
+  // approver must stay independent of the verification.
+  const assigned = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT id FROM approval_assignments WHERE application_id=${id}::uuid AND assignee_id=${req.user!.userId}::uuid AND level IN (1,2) LIMIT 1`);
+  if (!assigned[0]) throw new AppError("Only the loan officer or credit manager assigned to this case can review the business", 403);
   if (status === "verified") await assertBusinessPhotoEvidence(id);
   const updated = await prisma.loanApplication.update({
     where: { id },

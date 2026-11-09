@@ -411,6 +411,8 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (action === "approve" && application.businessProfile) await assertBusinessPhotoEvidence(applicationId);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
     throw new AppError("A documented, verified business assessment is required before final approval", 422);
+  if (action === "approve" && application.businessReviewedBy === req.user!.userId)
+    throw new AppError("Segregation of duties: the person who verified the business cannot give the final approval", 403);
 
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)

@@ -5,6 +5,7 @@ import { effectiveCreditEvidence } from "./credit-evidence.js";
 import { evaluateUnderwriting } from "./underwriting.js";
 import { AppError } from "../middleware/error-handler.js";
 import { writeAuditEvent } from "./audit.js";
+import { expireLapsedOffers } from "./loan-offer-expiry.js";
 
 const OPEN_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
 
@@ -46,6 +47,7 @@ export async function createPartnerFinancingApplication(input: PartnerApplicatio
   const declaredMonthlyExpenses = money(input.declaredMonthlyExpenses, "Monthly expenses", true);
   const existingDebtPayment = money(input.existingDebtPayment, "Existing debt payment", true);
 
+  await expireLapsedOffers({ userId: input.userId });
   const [open, evidence, growthLine] = await Promise.all([
     prisma.loanApplication.findFirst({
       where: { applicantId: input.userId, status: { in: OPEN_STATUSES } },
