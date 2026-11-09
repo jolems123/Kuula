@@ -41,8 +41,10 @@ test("prices the newly supported 30, 45 and 60 day terms exactly", () => {
   }
 });
 
-test("rounds Uganda-shilling principal amounts", () => {
-  assert.equal(localQuote(100_000.6, 90).principal, 100_001);
+test("rejects fractional or unsafe Uganda-shilling principal amounts", () => {
+  for (const value of [100_000.6, 0.1, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => localQuote(value, 90), RangeError);
+  }
 });
 
 test("rejects non-positive and non-finite principals", () => {

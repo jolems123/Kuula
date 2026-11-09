@@ -40,8 +40,8 @@ const MAX_NET_CASH_FLOW_SHARE = 0.50;
 const FIRST_LOAN_CAP_UGX = 500_000;
 
 function integerMoney(value: number, label: string, allowZero = false): number {
-  const normalized = Math.round(Number(value));
-  if (!Number.isFinite(normalized) || normalized < 0 || (!allowZero && normalized === 0)) {
+  const normalized = Number(value);
+  if (!Number.isSafeInteger(normalized) || normalized < 0 || (!allowZero && normalized === 0)) {
     throw new RangeError(`${label} must be a valid ${allowZero ? "non-negative" : "positive"} amount`);
   }
   return normalized;

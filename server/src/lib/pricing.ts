@@ -26,8 +26,8 @@ export interface LoanQuote {
 }
 
 function normalizePrincipal(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) throw new RangeError("Loan amount must be a positive number");
-  return Math.round(value);
+  if (!Number.isSafeInteger(value) || value <= 0) throw new RangeError("Loan amount must be a positive whole UGX amount");
+  return value;
 }
 
 function normalizeTerm(value: number): number {

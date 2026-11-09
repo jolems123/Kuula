@@ -111,3 +111,18 @@ test("new borrowers without CRB or MoMo evidence can be considered conservativel
   assert.equal(result.approved, true);
   assert.ok(!result.flags.some(flag => /crb|mobile_money_evidence_missing/.test(flag)));
 });
+
+test("credit assessment refuses fractional, unsafe, or non-finite money instead of rounding", () => {
+  const valid = { ...base, declaredMonthlyIncome: 1_000_000, declaredMonthlyExpenses: 100_000 };
+  for (const [field, value] of [
+    ["requestedAmount", 100_000.4],
+    ["totalRepayment", 108_000.9],
+    ["declaredMonthlyIncome", 1_000_000.5],
+    ["declaredMonthlyExpenses", 100_000.2],
+    ["existingDebtPayment", 0.5],
+    ["verifiedMonthlyIncome", Number.MAX_SAFE_INTEGER + 1],
+    ["requestedAmount", Number.POSITIVE_INFINITY],
+  ] as const) {
+    assert.throws(() => evaluateUnderwriting({ ...valid, [field]: value }), RangeError, field);
+  }
+});
