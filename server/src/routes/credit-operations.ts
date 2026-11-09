@@ -180,8 +180,20 @@ router.post("/applications/:id/pricing-proposal", async (req: Request, res: Resp
   await assertAssigned(applicationId, req.user!.userId, 1, req.user!.role);
   if (!roleFitsLevel(req.user!.role, 1)) throw new AppError("Only the assigned loan officer may propose pricing", 403);
   const aprPercent = Number(req.body?.aprPercent);
-  const principal = Number(application.amount);
-  const days = application.termDays;
+  // The officer prices the amount and term they recommend in the field evaluation, which
+  // may be lower than requested but never higher. The offer is issued on exactly these.
+  const recommended = await prisma.$queryRaw<Array<{ recommended_amount: bigint | null; recommended_term_days: number | null }>>(Prisma.sql`
+    SELECT recommended_amount, recommended_term_days FROM credit_evaluations WHERE application_id=${applicationId}::uuid ORDER BY version DESC LIMIT 1`);
+  const requestedPrincipal = Number(application.amount);
+  const recommendedPrincipal = recommended[0]?.recommended_amount == null ? null : Number(recommended[0].recommended_amount);
+  const recommendedDays = recommended[0]?.recommended_term_days == null ? null : Number(recommended[0].recommended_term_days);
+  if (recommendedPrincipal == null || recommendedDays == null) throw new AppError("Save the field evaluation with a recommended amount and term before pricing", 409);
+  if (!Number.isSafeInteger(recommendedPrincipal) || recommendedPrincipal <= 0 || recommendedPrincipal > requestedPrincipal)
+    throw new AppError("The recommended amount must be a whole amount no higher than the customer requested", 422);
+  if (!Number.isInteger(recommendedDays) || recommendedDays < PRICING.MIN_TERM_DAYS || recommendedDays > PRICING.MAX_TERM_DAYS)
+    throw new AppError(`The recommended term must be ${PRICING.MIN_TERM_DAYS}–${PRICING.MAX_TERM_DAYS} days`, 422);
+  const principal = recommendedPrincipal;
+  const days = recommendedDays;
   const charges = req.body?.charges;
   if (!Number.isFinite(aprPercent) || aprPercent < 0 || aprPercent > PRICING.MAX_APR * 100 || !Array.isArray(charges) || charges.length > 12)
     throw new AppError("Provide a valid APR and itemized charges", 422);
@@ -194,7 +206,7 @@ router.post("/applications/:id/pricing-proposal", async (req: Request, res: Resp
     otherCharges += amount;
     breakdown.push({label,amount});
   }
-  if (!Number.isSafeInteger(otherCharges) || otherCharges > Math.round(principal * 0.336))
+  if (!Number.isSafeInteger(otherCharges) || otherCharges > Math.round(principal * PRICING.MAX_APR))
     throw new AppError("Charges exceed the configured risk limit", 422);
   const apr = Math.round(aprPercent * 100) / 10000;
   const interest = Math.round(principal * apr * days / 365);
@@ -345,6 +357,10 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
     if (!ev || !ev.business_observations || !ev.financial_observations || !ev.repayment_capacity || !ev.recommendation || !ev.recommended_amount || !ev.recommended_term_days) throw new AppError("Complete the required field evaluation narrative and recommendation before submitting", 409);
     const evidence = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT count(*)::int AS count FROM evaluation_evidence WHERE application_id = ${applicationId}::uuid`);
     if (Number(evidence[0]?.count || 0) < 2) throw new AppError("At least two field evidence images/documents are required before Level 1 submission", 409);
+    const priced = await prisma.$queryRaw<Array<{ principal: bigint; term_days: number }>>(Prisma.sql`SELECT principal, term_days FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid AND status='proposed' LIMIT 1`);
+    if (!priced[0]) throw new AppError("Submit the pricing proposal before sending the case for review", 409);
+    if (Number(priced[0].principal) !== Number(ev.recommended_amount) || Number(priced[0].term_days) !== Number(ev.recommended_term_days))
+      throw new AppError("The pricing proposal no longer matches the recommended amount and term; submit the pricing again", 409);
     await prisma.$executeRaw(Prisma.sql`UPDATE credit_evaluations SET status='submitted', submitted_at=CURRENT_TIMESTAMP, visit_completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=${ev.id}::uuid`);
   }
   if (level >= 2) {
@@ -384,7 +400,13 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (!["return", "reject", "approve"].includes(action)) throw new AppError("Action must be return, reject, or approve", 400);
   if (narrative.length < 40) throw new AppError("A substantive decision narrative of at least 40 characters is required", 400);
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
-  if (action === "approve") await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
+  let approvedPrincipal = Number(application.amount);
+  if (action === "approve") {
+    const priced = await prisma.$queryRaw<Array<{ principal: bigint }>>(Prisma.sql`SELECT principal FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid AND status='proposed' LIMIT 1`);
+    if (!priced[0]) throw new AppError("This case has no pricing proposal. Return it to the loan officer to price it before approving.", 409);
+    approvedPrincipal = Number(priced[0].principal);
+    await assertWithinApprovalAuthority(req.user!.role, approvedPrincipal);
+  }
   await assertIndependentOfOtherLevels(applicationId, req.user!.userId, level);
   if (action === "approve" && application.businessProfile) await assertBusinessPhotoEvidence(applicationId);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")

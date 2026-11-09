@@ -1,6 +1,7 @@
 import { assignInitialLoanOfficer } from "../lib/auto-assign-officer.js";
 import { notifyLoanCustomer } from "../lib/loan-customer-notifications.js";
 import crypto from "node:crypto";
+import { roleLevel } from "../lib/credit-roles.js";
 import { customerPaymentFeeDisclosure } from "../lib/disbursements.js";
 import { acceptedPaymentFees, collectionQuote, PAYMENT_FEE_POLICY } from "../lib/payment-fees.js";
 import { sendGuarantorSms } from "../lib/sms.js";
@@ -556,6 +557,9 @@ router.post(
     const notes = String(req.body?.notes || "").trim();
     if (!["approved", "rejected"].includes(decision)) throw new AppError("Decision must be approved or rejected", 400);
     if (!notes) throw new AppError("Written decision notes are required", 400);
+    // Offers and final rejections are the final credit authority's decision, not Level 2's.
+    if (roleLevel(req.user!.role) !== 3) throw new AppError("Only a final approver can issue or reject a loan offer", 403);
+    if (decision === "rejected" && notes.length < 40) throw new AppError("Record the reasons for the rejection (at least 40 characters)", 400);
 
     const application = await prisma.loanApplication.findUnique({
       where: { id },
@@ -573,26 +577,24 @@ router.post(
       if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
-      await assertWithinApprovalAuthority(req.user!.role, Number(application.amount));
-      const current = await recheckUnderwriting(application, application.applicant, application.underwriting);
-      await persistAssessment(application.id, req.user!.userId, current);
-      if (!current.approved) throw new AppError(`Application is no longer eligible: ${current.flags.join(", ")}`, 422);
     }
 
-    let officerPricing: {id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown} | null = null;
+    let officerPricing: {id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;principal:bigint;term_days:number} | null = null;
     if (decision === "approved") {
       const cases = await prisma.$queryRaw<Array<{status:string}>>(Prisma.sql`SELECT status FROM credit_cases WHERE application_id=${id}::uuid LIMIT 1`);
       if (cases[0]?.status !== "ready_for_offer") throw new AppError("Independent final credit review must be completed before approval", 409);
-      const proposals = await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown}>>(Prisma.sql`
-        SELECT id,proposed_by,apr,interest,other_charges,total,fee_breakdown FROM loan_pricing_proposals
+      const proposals = await prisma.$queryRaw<Array<{id:string;proposed_by:string;apr:unknown;interest:bigint;other_charges:bigint;total:bigint;fee_breakdown:unknown;principal:bigint;term_days:number}>>(Prisma.sql`
+        SELECT id,proposed_by,apr,interest,other_charges,total,fee_breakdown,principal,term_days FROM loan_pricing_proposals
         WHERE application_id=${id}::uuid AND status='proposed' LIMIT 1`);
       officerPricing = proposals[0] ?? null;
       if (!officerPricing) throw new AppError("Assigned loan officer must prepare an itemized pricing proposal",409);
       if (officerPricing.proposed_by === req.user!.userId) throw new AppError("An independent approver must authorize the officer's terms",403);
       const approval = await prisma.$queryRaw<Array<{id:string}>>(Prisma.sql`SELECT id FROM approval_actions WHERE application_id=${id}::uuid AND level=3 AND action='approve' AND actor_id <> ${officerPricing.proposed_by}::uuid LIMIT 1`);
       if (!approval.length) throw new AppError("Pricing cannot be offered before independent Level 3 approval",409);
+      // The offer is issued on the amount and term the officer priced (never above the request).
+      await assertWithinApprovalAuthority(req.user!.role, Number(officerPricing.principal));
       const fresh = await recheckUnderwriting(
-        {...application, total: officerPricing.total},
+        {...application, amount: officerPricing.principal, termDays: Number(officerPricing.term_days), total: officerPricing.total},
         application.applicant,
         application.underwriting,
       );
@@ -605,6 +607,17 @@ router.post(
       ? new Date(decidedAt.getTime() + UNDERWRITING_POLICY.offerValidityHours * 3_600_000)
       : null;
     const updated = await prisma.$transaction(async tx => {
+      if (decision === "rejected") {
+        // Close the staged credit case with the same decision, so case and application agree.
+        const caseRows = await tx.$queryRaw<Array<{ current_level: number; status: string }>>(Prisma.sql`SELECT current_level, status FROM credit_cases WHERE application_id=${id}::uuid FOR UPDATE`);
+        if (caseRows[0] && caseRows[0].status !== "rejected") {
+          await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${id}::uuid AND status='active'`);
+          await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET status='rejected', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE application_id=${id}::uuid`);
+          await tx.$executeRaw(Prisma.sql`
+            INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative)
+            VALUES (${crypto.randomUUID()}::uuid, ${id}::uuid, ${Number(caseRows[0].current_level) || 3}, ${req.user!.userId}::uuid, 'reject', ${notes})`);
+        }
+      }
       if (officerPricing) {
         const count = await tx.$executeRaw(Prisma.sql`UPDATE loan_pricing_proposals SET status='approved',approved_by=${req.user!.userId}::uuid,approved_at=NOW() WHERE id=${officerPricing.id}::uuid AND status='proposed'`);
         if (count !== 1) throw new AppError("Pricing proposal changed during approval; retry review",409);
@@ -618,6 +631,8 @@ router.post(
           approvedBy: req.user!.userId,
           offerExpiresAt,
           ...(officerPricing ? {
+            amount: officerPricing.principal,
+            termDays: Number(officerPricing.term_days),
             apr: Number(officerPricing.apr),
             interest: officerPricing.interest,
             serviceFee: officerPricing.other_charges,

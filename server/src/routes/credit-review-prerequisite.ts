@@ -38,21 +38,8 @@ router.post("/applications/decision", authenticateToken, async (req: Request, _r
     if (!review[0]) throw new AppError("Final Level 3 credit approval is required before creating an offer", 409);
   }
 
-  if (decision === "rejected") {
-    const review = await prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT c.application_id
-      FROM credit_cases c
-      WHERE c.application_id = ${applicationId}::uuid
-        AND c.status = 'rejected'
-        AND EXISTS (
-          SELECT 1 FROM approval_actions a
-          WHERE a.application_id = c.application_id
-            AND a.action = 'reject'
-        )
-      LIMIT 1
-    `);
-    if (!review[0]) throw new AppError("A recorded staged credit review is required before rejecting this application", 409);
-  }
+  // A rejection is recorded as a staged credit decision by the loan handler itself
+  // (final-approver roles only, with written reasons), so it needs no prior case step.
 
   next();
 });
