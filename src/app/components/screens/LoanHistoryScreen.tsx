@@ -6,6 +6,7 @@ import { GuarantorNomination } from "../GuarantorNomination";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { setSelectedLoanApplicationId } from "../../lib/selection";
+import { getDisbursementStatus, type DisbursementBatchStatus } from "../../api/disbursement";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -32,7 +33,7 @@ const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }>
 };
 
 type FilterType = "all" | "offers" | "active" | "completed" | "rejected";
-const FUNDED_STATUSES = new Set(["approved", "active", "overdue", "paid"]);
+const FUNDED_STATUSES = new Set(["active", "overdue", "paid"]);
 
 export function LoanHistoryScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
@@ -41,6 +42,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
   const [loans, setLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [settlements, setSettlements] = useState<Record<string, DisbursementBatchStatus | null>>({});
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
@@ -52,6 +54,23 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const pending = loans.filter(loan => loan.status === "disbursing");
+    if (!pending.length) { setSettlements({}); return; }
+    let active = true;
+    const refresh = async () => {
+      const results = await Promise.all(pending.map(async loan => {
+        try { const response = await getDisbursementStatus(token, loan.id); return [loan.id, response.disbursement] as const; }
+        catch { return [loan.id, null] as const; }
+      }));
+      if (active) setSettlements(Object.fromEntries(results));
+    };
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 12000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [token, loans]);
 
   const filtered = loans.filter((loan) => {
     if (filter === "all") return true;
@@ -114,15 +133,27 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
           const canOpenOffer = ["pending", "resubmitted", "offered", "disbursing", "rejected", "failed"].includes(loan.status);
           const action = canOpenLiveDetail ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-detail"); } : canOpenOffer ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-approval"); } : undefined;
 
-          const progressSteps: Array<[string, boolean]> = [
-            ["Application submitted", true],
-            ["Field verification", (loan.reviewLevel ?? 0) >= 1 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-            ["Credit assessment", (loan.reviewLevel ?? 0) >= 2 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-            ["Final decision", (loan.reviewLevel ?? 0) >= 3 || ["rejected", "offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-            ["Agreement signed", Boolean(loan.agreementAccepted)],
-            ["Funds received", ["active", "paid", "overdue"].includes(loan.status)],
+          const settlement = settlements[loan.id] ?? null;
+          const channelName = settlement?.network === "airtel" || /airtel/i.test(loan.channel || "")
+            ? "Airtel Money" : settlement?.network === "mtn" || /mtn/i.test(loan.channel || "")
+              ? "MTN Mobile Money" : "selected Mobile Money network";
+          const isFunded = ["active", "overdue", "paid"].includes(loan.status);
+          const reviewDone = ["offered", "disbursing", "active", "overdue", "paid", "rejected"].includes(loan.status);
+          const decisionDone = ["offered", "disbursing", "active", "overdue", "paid", "rejected"].includes(loan.status);
+          const isDeclined = ["rejected", "failed", "cancelled", "expired"].includes(loan.status);
+          const releasePending = settlement?.status === "awaiting_release";
+          const payoutAttention = ["attention_required", "failed", "cancelled"].includes(settlement?.status || "");
+          const providerProcessing = loan.status === "disbursing" && !releasePending && !payoutAttention && Boolean(settlement);
+          const stageItems = [
+            { label: "Application submitted", done: true, detail: "Application received" },
+            { label: "Application review", done: reviewDone, detail: reviewDone ? "Business and credit checks completed" : "Business and credit checks in progress" },
+            { label: "Loan decision", done: decisionDone, detail: isDeclined ? "Review the decision details" : decisionDone ? "Decision recorded" : "Awaiting Kuula's decision" },
+            { label: "Review & sign agreement", done: Boolean(loan.agreementAccepted), detail: loan.agreementAccepted ? "Electronic acceptance recorded" : loan.status === "offered" ? "Your signature is needed" : "Available after an offer" },
+            { label: "Payment authorization & processing", done: isFunded, detail: isFunded ? "Payment processing completed" : releasePending ? "Awaiting independent Finance authorization" : payoutAttention ? "Kuula review required" : providerProcessing ? `Processing through ${channelName}` : loan.status === "disbursing" ? "Checking payment status" : "Starts after agreement signing" },
+            { label: "Funds received", done: isFunded, detail: isFunded ? `Provider-confirmed via ${channelName}` : "Not confirmed as received" },
+            { label: "Repayment & completion", done: loan.status === "paid", detail: loan.status === "paid" ? "Facility fully repaid" : isFunded ? "Manage repayments and due dates" : "Begins after confirmed settlement" },
           ];
-          const completedSteps = progressSteps.filter(([, done]) => done).length;
+          const completedSteps = stageItems.filter(item => item.done).length;
           return (
             <article key={loan.id} style={{ background: "#FFFFFF", borderRadius: 20, padding: "clamp(20px, 2.6vw, 32px)", boxShadow: "0 5px 28px rgba(20,50,30,.055)", border: "1px solid #E3EDE6" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
@@ -138,28 +169,36 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 22, padding: "16px 0", borderTop: "1px solid #E8EFEA", borderBottom: "1px solid #E8EFEA" }}>
                 <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>Agreement reference</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16, overflowWrap: "anywhere" }}>{loan.agreementNumber || "Pending reference"}</div></div>
+                <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>Payment network</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16 }}>{channelName}</div></div>
                 <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>Total repayment</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16 }}>{loan.total > 0 ? ugx(loan.total) : "Not yet offered"}</div></div>
                 <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>{loan.status === "offered" ? "Offer expires" : "Current stage"}</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16 }}>{loan.status === "offered" && loan.offerExpiresAt ? fmtDate(loan.offerExpiresAt) : style.label}</div></div>
               </div>
               <div style={{ marginTop: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#143C2A" }}>Application progress</h2>
-                  <span style={{ fontSize: 14, color: "#5A7063" }}>{completedSteps} of {progressSteps.length} stages</span>
+                  <span style={{ fontSize: 14, color: "#5A7063" }}>{completedSteps} of {stageItems.length} stages</span>
                 </div>
                 <div aria-label="Application progress" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginTop: 14 }}>
-                  {progressSteps.map(([name, done], i) => (
-                    <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, background: done ? "#EAF6EE" : "#F5F7F6", borderRadius: 12, padding: "13px 12px", minHeight: 56 }}>
-                      {done ? <Check size={19} strokeWidth={2.7} color="#167443" style={{ flexShrink: 0 }} /> : loan.status === "disbursing" && i === 5 ? <Clock3 size={19} color="#A16B11" style={{ flexShrink: 0 }} /> : <Circle size={18} color="#81948A" style={{ flexShrink: 0 }} />}
-                      <span style={{ fontSize: 14, lineHeight: 1.4, fontWeight: done ? 700 : 550, color: done ? "#145937" : "#667B70" }}>{name}</span>
+                  {stageItems.map((item, i) => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: 12, background: item.done ? "#EAF6EE" : "#F5F7F6", borderRadius: 12, padding: "14px 12px", minHeight: 80 }}>
+                      <div style={{ flexShrink: 0, paddingTop: 1 }}>
+                        {item.done ? <Check size={20} strokeWidth={2.7} color="#167443" /> : loan.status === "disbursing" && i === 4 ? <Clock3 size={20} color="#A16B11" /> : <Circle size={19} color="#81948A" />}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, lineHeight: 1.4, fontWeight: item.done ? 750 : 650, color: item.done ? "#145937" : "#485F53" }}>{i + 1}. {item.label}</div>
+                        <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: "#63796D" }}>{item.detail}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
-                {loan.status === "disbursing" && <p style={{ margin: "15px 0 0", padding: "12px 15px", borderRadius: 10, background: "#FFF8E7", color: "#79550C", fontSize: 15, lineHeight: 1.55 }}>Settlement is pending. Funds may still be awaiting independent Finance release or provider confirmation. Do not treat them as received yet.</p>}
+                {loan.status === "disbursing" && <p style={{ margin: "15px 0 0", padding: "12px 15px", borderRadius: 10, background: "#FFF8E7", color: "#79550C", fontSize: 15, lineHeight: 1.55 }}>{releasePending ? "Awaiting independent Finance authorization." : payoutAttention ? "Payment requires Kuula review." : providerProcessing ? `Payment is processing through ${channelName}.` : "Payment status is being checked."} Funds have not been confirmed received.</p>}
                 {loan.status === "offered" && <p style={{ margin: "15px 0 0", color: "#225A3B", fontSize: 15 }}>Your offer is ready. Review the agreement before accepting.</p>}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 22 }}>
-                {loan.status === "offered" && <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ border: 0, borderRadius: 11, padding: "14px 18px", background: "#0B5E3A", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>Review & sign agreement</button>}
-                {action && <button type="button" onClick={action} style={{ display: "inline-flex", gap: 8, alignItems: "center", border: "1px solid #BDD9C7", borderRadius: 11, padding: "13px 17px", background: "white", color: "#0B5E3A", fontSize: 15, fontWeight: 750, cursor: "pointer" }}>View application details <ChevronRight size={18}/></button>}
+                {loan.status === "disbursing" && <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ border: 0, borderRadius: 11, padding: "14px 18px", background: "#0B5E3A", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>View payment status</button>}
+                {isFunded && <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-detail"); }} style={{ border: 0, borderRadius: 11, padding: "14px 18px", background: "#0B5E3A", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>View repayments</button>}
+                {loan.status === "offered" && <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ border: 0, borderRadius: 11, padding: "14px 18px", background: "#0B5E3A", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>{loan.agreementAccepted ? "View signed agreement" : "Review & sign agreement"}</button>}
+                {action && loan.status !== "offered" && loan.status !== "disbursing" && !isFunded && <button type="button" onClick={action} style={{ display: "inline-flex", gap: 8, alignItems: "center", border: "1px solid #BDD9C7", borderRadius: 11, padding: "13px 17px", background: "white", color: "#0B5E3A", fontSize: 15, fontWeight: 750, cursor: "pointer" }}>View application details <ChevronRight size={18}/></button>}
                 {loan.status === "paid" && <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "#12613D", fontSize: 15, fontWeight: 700 }}><TrendingUp size={18}/>Fully repaid</span>}
               </div>
               {token && <div style={{ marginTop: 14 }}><GuarantorNomination applicationId={loan.id} token={token} status={loan.status} /></div>}
