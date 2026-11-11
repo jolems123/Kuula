@@ -29,6 +29,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
+  const [agreementHash, setAgreementHash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [signatureName, setSignatureName] = useState(user?.fullName ?? "");
   const [understoodTerms, setUnderstoodTerms] = useState(false);
@@ -158,6 +159,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       });
       setServerAccepted(true);
       setAcceptedAt(result.acceptedAt);
+      setAgreementHash(result.agreementHash ?? null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not record your agreement acceptance.");
     } finally {
@@ -194,7 +196,9 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       { label: "Principal", value: formatUGX(principal) },
       { label: "Total Repayment", value: formatUGX(total) },
       ...(isPartnerFacility ? [{ label: "Verified Payee", value: payee }, { label: "Invoice / Order", value: offer?.invoiceReference || "Recorded in application" }] : []),
-      { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Not yet accepted" },
+      { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Draft — not yet accepted" },
+      { label: "Terms version", value: "kuula-agreement-2026-11-11" },
+      ...(agreementHash ? [{ label: "Server acceptance hash", value: agreementHash }] : []),
     ],
     tables: [{ title: "Terms", head: ["Clause", "Detail"], rows: clauses.map((c) => [c.title, c.body]) }],
     filename: `kuula-credit-agreement-${agreementNo}.pdf`,
@@ -290,7 +294,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
                 : "Your name is prefilled for convenience. Review every term and actively confirm your consent below."}
             </p>
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12, fontSize: 12 }}>
-              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} /><UiText text={" I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement. "} /></label>
+              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} /><UiText text={" I have reviewed the principal, interest, repayment period, payment fees, repayment obligations, and default/dispute information. I voluntarily accept this offer and sign electronically. "} /></label>
           </div>}
           <div style={{fontSize:12,color:"#374151",padding:12,background:"#F0FDF4",borderRadius:10}}>
             <strong><UiText text={"Additional approved charges: "} />{formatUGX(serviceFee)}</strong>
