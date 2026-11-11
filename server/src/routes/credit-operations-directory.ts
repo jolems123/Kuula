@@ -96,9 +96,13 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
       const approvedLimit = assessment?.approved_limit == null ? null : Number(assessment.approved_limit);
       const maxAffordablePayment = assessment?.max_affordable_payment == null ? null : Number(assessment.max_affordable_payment);
       const riskSummary = {
-        status: flags.length === 0 && checklist.every((item) => !item.required || item.status === "verified" || item.status === "received") ? "clear" : "review_required",
+        status: assessment && approvedLimit != null && approvedLimit > 0 && requestedAmount <= approvedLimit && maxAffordablePayment != null && maxAffordablePayment > 0 && flags.length === 0 && checklist.every((item) => !item.required || item.status === "verified" || item.status === "received") ? "clear" : "review_required",
         flags,
         requestedAboveLimit: approvedLimit != null && requestedAmount > approvedLimit,
+        underwritingMissing: !assessment,
+        approvedLimitMissing: approvedLimit == null,
+        affordabilityMissing: maxAffordablePayment == null,
+        affordabilityNonPositive: maxAffordablePayment != null && maxAffordablePayment <= 0,
         missingRequiredEvidence: checklist.filter((item) => item.required && item.status === "missing").map((item) => item.label),
       };
 
