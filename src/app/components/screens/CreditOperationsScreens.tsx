@@ -178,7 +178,7 @@ function EvidencePanel({ applicationId, evidence, onUploaded }: { applicationId:
       const dataUrl = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = reject; r.readAsDataURL(file); });
       let gps: { gpsLatitude?: number; gpsLongitude?: number } = {};
       if (attachGps) { const point = await captureLocation(); gps = { gpsLatitude: point.latitude, gpsLongitude: point.longitude }; }
-      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType: type, dataUrl, ...gps, capturedAt: new Date().toISOString() });
+      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType: type, dataUrl, ...gps });
       onUploaded();
     } catch (e: any) { setError(e.message); }
     finally { setBusy(false); }
