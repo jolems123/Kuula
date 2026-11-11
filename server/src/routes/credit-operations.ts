@@ -143,9 +143,18 @@ router.post("/applications/:id/assign", requirePermissions("loan.approve"), asyn
   const applicationId = asId(req.params.id, "Application ID");
   const application = await assertApplication(applicationId);
   const level = Math.max(1, Math.min(3, Number(req.body?.level) || 1));
+  if (level === 1) {
+    if (!["pending", "resubmitted"].includes(application.status)) {
+      throw new AppError("Only pending or resubmitted applications can be assigned to a loan officer", 409);
+    }
+    const currentCase = await caseRow(applicationId);
+    if (currentCase && (Number(currentCase.current_level) !== 1 || ["completed", "rejected"].includes(currentCase.status))) {
+      throw new AppError("This application has already progressed beyond field evaluation and cannot be assigned to a loan officer", 409);
+    }
+  }
   const assigneeId = asId(req.body?.assigneeId, "Assignee ID");
-  const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, role: true, fullName: true, deletedAt: true } });
-  if (!assignee || assignee.deletedAt) throw new AppError("Assignee not found", 404);
+  const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, role: true, fullName: true, deletedAt: true, phoneVerified: true } });
+  if (!assignee || assignee.deletedAt || !assignee.phoneVerified) throw new AppError("Approved active staff account not found", 404);
   if (!roleFitsLevel(assignee.role, level)) throw new AppError(`Level ${level} must be assigned to a ${levelLabel(level)}`, 422);
   await assertIndependentOfOtherLevels(applicationId, assignee.id, level);
 

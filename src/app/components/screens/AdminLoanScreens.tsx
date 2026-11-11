@@ -15,6 +15,7 @@ import { AdminLayout, AdminTable, StatusBadge, AdminPageHeader, AdminCard, StatC
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
+import { setCreditOperationsSelection } from "../../lib/selection";
 import { useTranslation } from "react-i18next";
 
 interface Props { onNavigate: (s: string) => void; }
@@ -66,6 +67,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const { state } = useAppContext();
   const { t } = useTranslation();
   const token = state.session.token;
+  const canAssignOfficer = ["super_admin", "administrator", "admin", "credit_manager", "manager", "final_approver"].includes(state.role || "");
   const [apps, setApps] = useState<LoanApplication[]>([]);
   const [applicationSearch, setApplicationSearch] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -128,9 +130,9 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
 
   const selected = apps.find((a) => a.id === selectedId);
 
-  const filtered = (filter === "All" ? apps : apps.filter(a=>a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
+  const filtered = (filter === "All" ? apps : apps.filter(a=>filter === "Pending" ? ["pending", "resubmitted"].includes(a.status) : a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
 
-  const pendingCount = apps.filter((a) => a.status === "pending").length;
+  const pendingCount = apps.filter((a) => ["pending", "resubmitted"].includes(a.status)).length;
 
   return (
     <AdminLayout activeScreen="admin-loan-apps" onNavigate={onNavigate} title="Loan Applications">
@@ -138,11 +140,15 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         title="Loan Applications"
         subtitle={`${apps.length} total · ${pendingCount} pending`}
         action={
-          pendingCount > 0
-            ? <span style={{ fontSize: 13, fontWeight: 700, color: "#F59E0B", background: "#FEF3C7", padding: "6px 14px", borderRadius: 8 }}>{pendingCount} Pending</span>
-            : undefined
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {pendingCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: "#F59E0B", background: "#FEF3C7", padding: "6px 14px", borderRadius: 8 }}>{pendingCount} Pending</span>}
+            {canAssignOfficer && <button type="button" onClick={() => onNavigate("admin-officer-assignment")} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "#0B5E3A", color: "white", fontWeight: 700, cursor: "pointer" }}>Assign field officers</button>}
+          </div>
         }
       />
+      <p style={{ margin: "-8px 0 14px", color: "#64748B", fontSize: 12 }}>
+        Assign officers to pending or resubmitted applications before field review. Approved applications have already completed that stage.
+      </p>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
@@ -174,6 +180,12 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
               <div key={a.id + "-act"} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                 <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedId(a.id); setReviewNotes(a.businessReviewNotes ?? ""); setReviewError(""); }}
                   style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Review business</button>
+                {canAssignOfficer && <button type="button" onClick={(e) => {
+                  e.stopPropagation();
+                  setCreditOperationsSelection({ applicationId: a.id, applicantName: a.applicantName });
+                  onNavigate("admin-officer-assignment");
+                }}
+                  style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Assign officer</button>}
                 {a.businessProfile && <span style={{ fontSize: 10, color: "#556B5D" }}>{a.businessReviewStatus === "verified" ? "Verified" : "Needs verification"}</span>}
                 <button disabled={busyId === a.id || (Boolean(a.businessProfile) && a.businessReviewStatus !== "verified")} title={a.businessProfile && a.businessReviewStatus !== "verified" ? "Complete the documented business verification before approval" : "Approve loan"} onClick={(e) => { e.stopPropagation(); void decide(a.id, "approved"); }}
                   style={{ padding: "4px 10px", borderRadius: 6, background: "#178654", color: "white", border: "none", fontSize: 11, fontWeight: 600, opacity: a.businessProfile && a.businessReviewStatus !== "verified" ? 0.4 : 1, cursor: busyId === a.id ? "not-allowed" : "pointer" }}>
@@ -185,7 +197,16 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
                 </button>
               </div>
             ) : (
-              <span key={a.id + "-done"} style={{ fontSize: 11, color: "#94A3B8" }}>{a.decidedAt ? fmtDate(a.decidedAt) : "—"}</span>
+              <span key={a.id + "-done"} style={{ fontSize: 11, color: "#94A3B8" }}>
+                {["pending", "resubmitted"].includes(a.status) && canAssignOfficer ? (
+                  <button type="button" onClick={(e) => {
+                    e.stopPropagation();
+                    setCreditOperationsSelection({ applicationId: a.id, applicantName: a.applicantName });
+                    onNavigate("admin-officer-assignment");
+                  }}
+                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Assign officer</button>
+                ) : a.status === "approved" ? "Approved — field review complete" : a.decidedAt ? fmtDate(a.decidedAt) : "—"}
+              </span>
             ),
           ])}
         />

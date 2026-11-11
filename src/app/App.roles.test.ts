@@ -12,6 +12,9 @@ describe("staff dashboard routing", () => {
 
   it("blocks cross-role direct URLs", () => {
     expect(staffCanOpenScreen("admin-reconciliation", "finance")).toBe(true);
+    expect(staffCanOpenScreen("admin-officer-assignment", "super_admin")).toBe(true);
+    expect(staffCanOpenScreen("admin-officer-assignment", "credit_manager")).toBe(true);
+    expect(staffCanOpenScreen("admin-officer-assignment", "final_approver")).toBe(true);
     expect(staffCanOpenScreen("admin-loan-apps", "finance")).toBe(false);
     expect(staffCanOpenScreen("admin-customer-kyc", "support")).toBe(false);
     expect(staffCanOpenScreen("admin-reports", "collections")).toBe(false);
