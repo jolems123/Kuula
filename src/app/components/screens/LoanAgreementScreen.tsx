@@ -29,9 +29,11 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
+  const [agreementHash, setAgreementHash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [signatureName, setSignatureName] = useState(user?.fullName ?? "");
   const [understoodTerms, setUnderstoodTerms] = useState(false);
+  const [showAllTerms, setShowAllTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disbursement, setDisbursement] = useState<DisbursementBatchStatus | null>(null);
 
@@ -125,8 +127,12 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         : `Disbursement is requested through ${offer?.channel ?? "the selected mobile-money channel"}. Kuula may split a large approved principal into sequential provider-safe transfers. The loan becomes active only after the disclosed net payout is provider-confirmed settled.`,
     },
     { title: "Customer payment fees", body: !feesReady ? (feesError || "Verifying payment costs") : paymentFees ? `Approved principal: ${formatUGX(principal)}. A fixed Kuula disbursement fee of 3% (${formatUGX(paymentFees.payoutFee)}) is deducted from principal. You receive ${formatUGX(paymentFees.netDisbursement)}. You still owe the agreed principal and contractual repayment. Each loan repayment has a fixed 3% Kuula payment fee added on top, rounded up to whole UGX. For a loan payment of ${formatUGX(total)}, the fee is ${formatUGX(Math.ceil(total * paymentFees.collectionBps / 10000))} and the total phone debit is ${formatUGX(total + Math.ceil(total * paymentFees.collectionBps / 10000))}. Including these fees for one full repayment, the annualised simple total-cost rate on cash received is ${(((total + Math.ceil(total * paymentFees.collectionBps / 10000) - paymentFees.netDisbursement) / paymentFees.netDisbursement) * 365 / (offer?.termDays || 1) * 100).toFixed(2)}%. Paying in parts can change rounding. These are fixed customer fees; MarzPay's actual charges to Kuula are separate and may differ. Only the loan payment, excluding the 3% fee, reduces your loan balance.` : "Payment provider costs are paid by Kuula under this existing agreement; the principal is paid in full." },
-    { title: "7. Repayment", body: "Repayments change the loan balance only after the payment provider confirms collection. Partial payments are permitted up to the outstanding balance." },
-    { title: "8. Data & Credit", body: "Kuula may use verified identity, repayment and permitted credit evidence for underwriting, servicing, fraud prevention and lawful reporting according to the applicable privacy notice and agreements." },
+    { title: "7. Repayment and due date", body: `The total contractual repayment is ${formatUGX(total)} for a term of ${offer?.termDays ?? "the agreed"} days. Kuula must provide the actual due date and any installment schedule in the confirmed loan record following settlement. Only provider-confirmed payments reduce the balance; partial payments may be made up to the outstanding amount. Request a copy of your current schedule from Kuula before making a repayment.` },
+    { title: "8. Late payment and lawful recovery", body: "If repayment is overdue, Kuula may send payment reminders, request repayment and pursue recovery only through procedures permitted under Ugandan law. Any additional default charge must have been lawfully disclosed and agreed; this agreement does not authorize undisclosed charges, compounding of penalties, harassment, threats or unlawful seizure of property." },
+    { title: "9. Early repayment", body: "You may request early settlement. Kuula must provide an itemized outstanding balance and apply any legally required reduction or adjustment. No undisclosed early-settlement fee is created by this clause." },
+    { title: "10. Guarantees and security", body: "A guarantee or security applies only where separately documented, verified and validly accepted. No guarantee or collateral is created merely by accepting this loan agreement. Kuula must provide the relevant separate instrument when applicable." },
+    { title: "11. Complaints and disputes", body: "For a billing or loan-servicing dispute, contact Kuula through its in-app Support channel and retain the agreement number. Kuula will review the issue and explain available escalation mechanisms. Nothing in this agreement removes any statutory consumer rights or lawful access to competent Ugandan authorities or courts." },
+    { title: "12. Data & Credit", body: "Kuula may use verified identity, repayment and permitted credit evidence for underwriting, servicing, fraud prevention and lawful reporting according to the applicable privacy notice and agreements." },
   ];
 
   const acceptAgreement = async () => {
@@ -153,6 +159,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       });
       setServerAccepted(true);
       setAcceptedAt(result.acceptedAt);
+      setAgreementHash(result.agreementHash ?? null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not record your agreement acceptance.");
     } finally {
@@ -189,7 +196,9 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       { label: "Principal", value: formatUGX(principal) },
       { label: "Total Repayment", value: formatUGX(total) },
       ...(isPartnerFacility ? [{ label: "Verified Payee", value: payee }, { label: "Invoice / Order", value: offer?.invoiceReference || "Recorded in application" }] : []),
-      { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Not yet accepted" },
+      { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Draft — not yet accepted" },
+      { label: "Terms version", value: "kuula-agreement-2026-11-11" },
+      ...(agreementHash ? [{ label: "Server acceptance hash", value: agreementHash }] : []),
     ],
     tables: [{ title: "Terms", head: ["Clause", "Detail"], rows: clauses.map((c) => [c.title, c.body]) }],
     filename: `kuula-credit-agreement-${agreementNo}.pdf`,
@@ -199,20 +208,20 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const beneficiaryLabel = isPartnerFacility ? payee : "your Mobile Money";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#EEECE6" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", background: "linear-gradient(135deg, #0B5E3A, #087148)" }}>
+    <div role="main" aria-label="Full-screen loan agreement" style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", flexDirection: "column", width: "100vw", height: "100dvh", background: "#F8F9F7", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px clamp(16px, 3vw, 48px)", background: "#0B5E3A", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => onNavigate("loan-history")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
           <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}><UiText text={disbursement ? (isPartnerFacility ? "Partner Settlement Progress" : "Disbursement Progress") : "Credit Agreement"} /></span>
         </div>
-        <button onClick={downloadAgreement} disabled={!offer} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600, opacity: offer ? 1 : .55 }}><Download size={14} /><UiText text={" PDF"} /></button>
+        <button onClick={downloadAgreement} disabled={!offer || !charges || !feesReady || !!feesError || !!chargeError} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600, opacity: offer ? 1 : .55 }}><Download size={14} /><UiText text={" PDF"} /></button>
       </div>
 
-      <div style={{ background: serverAccepted ? "#EDF8F2" : "#FFF9E5", padding: "10px 16px", borderBottom: `1px solid ${serverAccepted ? "#B7DEC9" : "#F2D77B"}`, display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ flexShrink: 0, background: serverAccepted ? "#EDF8F2" : "#FFF9E5", padding: "10px 16px", borderBottom: `1px solid ${serverAccepted ? "#B7DEC9" : "#F2D77B"}`, display: "flex", alignItems: "center", gap: 8 }}>
         {serverAccepted ? <><CheckCircle size={16} color="#0B5E3A" /><span style={{ fontSize: 12, color: "#0B5E3A", fontWeight: 700 }}><UiText text={"Agreement acceptance securely recorded"} /></span></> : <><Pen size={16} color="#9B7410" /><span style={{ fontSize: 12, color: "#665218", fontWeight: 700 }}><UiText text={"Review and accept the exact offer before settlement"} /></span></>}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "22px 16px 165px" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px clamp(12px, 3vw, 48px) 40px" }}>
         {offerLoading ? <div role="status" style={{ maxWidth: 800, margin: "0 auto", padding: 28, textAlign: "center", color: "#52645A" }}>Loading your offer…</div>
           : !offer ? <div style={{ maxWidth: 720, margin: "0 auto", padding: 28, background: "white", borderRadius: 14, textAlign: "center", boxShadow: "0 12px 35px rgba(48,45,34,.10)" }}>
             <h2 style={{ marginTop: 0, color: "#173B2A" }}>No approved offer to review</h2>
@@ -245,7 +254,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
           </div>
         )}
 
-        <div style={{ maxWidth: 920, margin: "0 auto", padding: "clamp(20px, 5vw, 48px)", background: "#FFFEFA", border: "1px solid #E2DDCE", borderRadius: 4, boxShadow: "0 14px 40px rgba(48,45,34,.14)", color: "#27352C" }}>
+        <div style={{ maxWidth: 1480, width: "100%", boxSizing: "border-box", margin: "0 auto", padding: "clamp(18px, 3vw, 48px)", background: "#FFFEFA", border: "1px solid #E2DDCE", borderRadius: 4, boxShadow: "0 14px 40px rgba(48,45,34,.14)", color: "#27352C" }}>
           <div style={{ textAlign: "center", borderBottom: "1px solid #C9C1AD", paddingBottom: 20 }}>
             <p style={{ fontSize: 11, letterSpacing: 2, color: "#657267", margin: "0 0 8px" }}>KUULA MICROFINANCE LIMITED</p>
             <h2 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "clamp(22px, 4vw, 30px)", fontWeight: 700, letterSpacing: .5, color: "#173B2A", margin: "0 0 8px" }}><UiText text={isPartnerFacility ? "RESTRICTED-PURPOSE CREDIT AGREEMENT" : "LOAN AGREEMENT"} /></h2>
@@ -263,12 +272,16 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
               <div style={{ marginTop: 5, fontSize: 15, fontWeight: 800, color: "#173B2A" }}>{value}</div>
             </div>)}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0 12px" }}>
+            <strong style={{ fontSize: 14, color: "#173B2A" }}>Agreement terms and borrower protections</strong>
+            <button type="button" onClick={() => setShowAllTerms(v => !v)} aria-expanded={showAllTerms} style={{ border: "1px solid #C9D8D0", background: "white", borderRadius: 8, color: "#0B5E3A", padding: "8px 12px", fontWeight: 700 }}>{showAllTerms ? "Collapse terms" : "Expand terms"}</button>
+          </div>
+          {showAllTerms && <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {clauses.map(({ title, body }) => <section key={title} style={{ padding: "17px 3px", borderBottom: "1px solid #E9E5DA" }}>
               <h3 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16, color: "#173B2A", margin: "0 0 7px" }}>{title}</h3>
               <p style={{ fontSize: 13, color: "#46564B", margin: 0, lineHeight: 1.8, whiteSpace: "pre-line" }}>{body}</p>
             </section>)}
-          </div>
+          </div>}
           {!serverAccepted && <div style={{ padding: 14, borderRadius: 12, background: "#F3F9F5", border: "1px solid #CDE2D5" }}>
             <strong style={{ fontSize: 13, color: "#1C4A31" }}><UiText text={"Sign your exact loan offer"} /></strong>
             <p style={{ color: "#50645B", fontSize: 12 }}><UiText text={"Your typed name and consent will be attached to the server-recorded agreement. Signing does not disburse money; an independent Kuula staff release is still required."} /></p>
@@ -278,10 +291,10 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 11, color: signatureName.trim() && signatureName.trim().replace(/\s+/g, " ").toLowerCase() !== borrower.trim().replace(/\s+/g, " ").toLowerCase() ? "#B42318" : "#52645A", margin: "6px 0 0" }}>
               {signatureName.trim() && signatureName.trim().replace(/\s+/g, " ").toLowerCase() !== borrower.trim().replace(/\s+/g, " ").toLowerCase()
                 ? "The signature must match the registered name shown above."
-                : "Your registered name is prefilled. Confirm it, then check the consent box below."}
+                : "Your name is prefilled for convenience. Review every term and actively confirm your consent below."}
             </p>
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12, fontSize: 12 }}>
-              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} /><UiText text={" I have read the principal, total repayment, APR, loan term and repayment obligations. I voluntarily accept this exact offer and electronically sign the agreement. "} /></label>
+              <input type="checkbox" checked={understoodTerms} onChange={event => setUnderstoodTerms(event.target.checked)} /><UiText text={" I have reviewed the principal, interest, repayment period, payment fees, repayment obligations, and default/dispute information. I voluntarily accept this offer and sign electronically. "} /></label>
           </div>}
           <div style={{fontSize:12,color:"#374151",padding:12,background:"#F0FDF4",borderRadius:10}}>
             <strong><UiText text={"Additional approved charges: "} />{formatUGX(serviceFee)}</strong>
@@ -292,7 +305,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
         </>}
       </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 36px", background: "white", borderTop: "1px solid #E8EEEA" }}>
+      <div style={{ flexShrink: 0, padding: "12px clamp(16px, 3vw, 48px) max(16px, env(safe-area-inset-bottom))", background: "white", borderTop: "1px solid #E8EEEA", boxShadow: "0 -3px 20px rgba(0,0,0,.04)" }}>
         {error && <p style={{ fontSize: 12, color: "#B91C1C", margin: "0 0 10px", textAlign: "center" }}><UiText text={error} /></p>}
         {!offerLoading && offer && !serverAccepted && !error && (
           <p style={{ fontSize: 11, color: feesError || chargeError ? "#B42318" : "#657267", margin: "0 0 8px", textAlign: "center" }}>
