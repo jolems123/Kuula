@@ -82,6 +82,7 @@ function jsonAttempts(value: Prisma.JsonValue): Prisma.JsonArray {
 
 const mapApplication = (application: any) => ({
   id: application.id,
+  agreementNumber: application.agreementNumber,
   applicantId: application.applicantId,
   applicantName: application.applicantName,
   amount: Number(application.amount),
