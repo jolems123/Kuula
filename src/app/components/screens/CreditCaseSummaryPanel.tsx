@@ -26,7 +26,7 @@ export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any>
   const missing = (risk.missingRequiredEvidence || []) as string[];
 
   return <div style={{ display: "grid", gap: 14, marginBottom: 14 }}>
-    <ExpenditureSummary business={application.businessProfile} />
+    <ExpenditureSummary business={application.businessProfile} requestedAmount={requested} />
     <AdminCard>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         {risk.status === "clear" ? <ShieldCheck size={18} color={GREEN}/> : <AlertTriangle size={18} color="#B45309"/>}
@@ -40,6 +40,7 @@ export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any>
           ["Officer recommendation", ugx(officerRecommended)],
         ].map(([label,value]) => <div key={label} style={{ padding: 10, border: `1px solid ${BORDER}`, borderRadius: 10 }}><div style={{ fontSize: 10, color: "#64748B", fontWeight: 800, textTransform: "uppercase" }}>{label}</div><div style={{ fontSize: 13, fontWeight: 800, marginTop: 4 }}>{value}</div></div>)}
       </div>
+      {(risk.underwritingMissing || risk.approvedLimitMissing || risk.affordabilityMissing || risk.affordabilityNonPositive) && <div style={{ marginTop: 10, padding: 9, borderRadius: 9, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>Credit clearance unavailable: {risk.underwritingMissing ? "underwriting assessment missing; " : ""}{risk.approvedLimitMissing ? "approved limit not established; " : ""}{risk.affordabilityMissing ? "affordability not assessed; " : ""}{risk.affordabilityNonPositive ? "affordable repayment is non-positive; " : ""}refer for review before advancing.</div>}
       {risk.requestedAboveLimit && <div style={{ marginTop: 10, padding: 9, borderRadius: 9, background: "#FFF7ED", color: "#9A3412", fontSize: 12 }}>Requested amount exceeds the current system-approved limit.</div>}
       {missing.length > 0 && <div style={{ marginTop: 8, padding: 9, borderRadius: 9, background: "#FEF2F2", color: "#991B1B", fontSize: 12 }}>Missing required evidence: {missing.join(", ")}.</div>}
       {(risk.flags || []).length > 0 && <div style={{ marginTop: 8, fontSize: 11, color: "#64748B" }}>Underwriting flags: {(risk.flags as string[]).join(", ")}</div>}
