@@ -206,7 +206,7 @@ try {
 
   step("the customer accepts; only an uninvolved finance officer can release the payout");
   const { paymentFees } = await call("GET", `/api/loans/${id}/payment-fees`, { token: customer.token });
-  await call("POST", `/api/loans/${id}/agreement/accept`, { token: customer.token, body: { clientContext: { source: "ci-staged", paymentFeePolicy: paymentFees.policyVersion, netDisbursement: paymentFees.netDisbursement, payoutFee: paymentFees.payoutFee } } });
+  await call("POST", `/api/loans/${id}/agreement/accept`, { token: customer.token, body: { clientContext: { source: "ci-staged", signatureVersion: "typed_name_v1", signedByName: customerUser.fullName, explicitConsent: true, paymentFeePolicy: paymentFees.policyVersion, netDisbursement: paymentFees.netDisbursement, payoutFee: paymentFees.payoutFee } } });
   // The loan must not move to payout while the signed guarantee is unverified.
   const early = await fetch(`${API}/api/loans/${id}/accept`, { method: "POST", headers: { Authorization: `Bearer ${customer.token}` } });
   console.log(`  accept before guarantor verification -> ${early.status}`);
