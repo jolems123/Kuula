@@ -271,7 +271,7 @@ export async function getMarzPayAccountWithdrawalLimits(): Promise<{
   if (result.status !== 200 || asString(result.body.status).toLowerCase() !== "success")
     throw new Error("Could not verify account-specific MarzPay limits");
   const data = asObject(result.body.data);
-  const withdrawal = asObject(asObject(data.limits).withdrawal);
+  const withdrawal = asObject(asObject(asObject(data.account).limits).withdrawal);
   const parse = (value: unknown): number => {
     const raw = asObject(value).raw ?? value;
     const amount = Number(raw);
