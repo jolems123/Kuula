@@ -9,8 +9,8 @@ import { saveFieldEvidence, deleteFieldEvidence, accessFieldEvidence } from "../
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
-const REQUIRED = ["exterior", "interior", "applicant_at_business"] as const;
-const TYPES = new Set<string>([...REQUIRED, "stock_equipment", "collateral_asset"]);
+const SINGLE_IMAGE_TYPES = new Set(["exterior", "interior", "applicant_at_business"]);
+const TYPES = new Set<string>([...SINGLE_IMAGE_TYPES, "stock_equipment", "collateral_asset"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function authorizedApplication(id: string, userId: string, role: Parameters<typeof hasPermission>[0]) {
@@ -31,19 +31,19 @@ router.post("/applications/:id/business-photos", authenticateToken, async (req: 
   const photos = req.body?.photos;
   if (!photos || typeof photos !== "object" || Array.isArray(photos) || Object.keys(photos).some(k => !TYPES.has(k)))
     throw new AppError("Unsupported business photo fields", 400);
-  if (REQUIRED.some(k => typeof photos[k] !== "string"))
-    throw new AppError("Business exterior, interior and applicant-at-business photos are required", 400);
+  if (!Object.keys(photos).length) throw new AppError("Choose at least one photo to upload or leave the optional photo section blank", 400);
 
-  // Required views remain single-image; stock and collateral accept up to eight.
+  // Individual views accept one image; stock and collateral accept up to eight.
   const normalized: { kind: string; dataUrl: string }[] = [];
   for (const [kind, value] of Object.entries(photos)) {
-    const multi = kind === "stock_equipment" || kind === "collateral_asset";
+    const multi = !SINGLE_IMAGE_TYPES.has(kind);
     if (multi && Array.isArray(value)) {
       if (value.length > 8 || value.some(v => typeof v !== "string")) throw new AppError("Maximum eight photographs per optional category", 400);
       for (const dataUrl of value) normalized.push({kind,dataUrl});
     } else if (typeof value === "string") normalized.push({kind,dataUrl:value});
     else throw new AppError("Invalid photograph data", 400);
   }
+  if (!normalized.length) throw new AppError("Choose at least one photo to upload", 400);
   if (normalized.length > 19) throw new AppError("Too many photographs", 400);
   const hashes: string[] = [];
   for (const {dataUrl} of normalized) {

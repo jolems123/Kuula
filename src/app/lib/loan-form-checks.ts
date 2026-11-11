@@ -19,8 +19,8 @@ export function checkLoanForm(input: { amount: number; term: number; purposes: s
   if (!whole(b.tradingMonths, 1, 1200)) add("loan-tradingMonths", "Enter months trading as a whole number from 1 to 1,200.");
   const lat = b.latitude, lng = b.longitude;
   if ((lat == null) !== (lng == null) || (lat != null && (!Number.isFinite(lat) || Math.abs(lat) > 90)) || (lng != null && (!Number.isFinite(lng) || Math.abs(lng) > 180))) add("loan-location", "Set both valid business coordinates, or clear the incomplete location pin.");
-  for (const [key, label] of [["exterior", "business exterior"], ["interior", "business interior"], ["applicant_at_business", "yourself at the business"]]) if (!input.photos[key]) add("loan-photos", `Attach a clear photo of ${label}.`);
-  if (!input.consent) add("loan-photo-consent", "Confirm consent to securely process your business photos.");
+  const hasPhotos = Object.values(input.photos).some(value => Array.isArray(value) ? value.length > 0 : Boolean(value));
+  if (hasPhotos && !input.consent) add("loan-photo-consent", "Confirm consent to securely process your business photos.");
   if (!whole(input.income, 1)) add("loan-income", "Enter your average monthly sales before costs, in whole UGX.");
   if (!whole(input.expenses)) add("loan-expenses", "Enter total monthly operating expenses in whole UGX, or 0 if none.");
   if (!whole(input.debt)) add("loan-debt", "Enter monthly payments on existing debts in whole UGX, or 0 if none.");

@@ -60,11 +60,17 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
         WHERE application_id = ${applicationId}::uuid
         GROUP BY evidence_type
       `),
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT photo_type, count(*)::int AS count
+        FROM business_application_photos
+        WHERE application_id = ${applicationId}::uuid
+        GROUP BY photo_type
+      `),
       prisma.user.findUnique({
         where: { id: body.application.applicantId },
         select: { phoneVerified: true },
       }),
-    ]).then(([detailsRows, assessmentRows, creditRows, evidenceRows, applicant]) => {
+    ]).then(([detailsRows, assessmentRows, creditRows, evidenceRows, businessPhotoRows, applicant]) => {
       const details = detailsRows[0] || null;
       const assessment = assessmentRows[0] || null;
       const now = new Date();
@@ -73,6 +79,7 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
       );
       const evidenceCount = evidenceRows.reduce((sum, row) => sum + Number(row.count || 0), 0);
       const evidenceTypes = new Set(evidenceRows.map((row) => String(row.evidence_type)));
+      const businessPhotoTypes = new Set(businessPhotoRows.map((row) => String(row.photo_type)));
       const employmentStatus = details?.employment_status || null;
       const businessApplicant = ["Business owner", "Self-employed", "Farmer"].includes(employmentStatus);
       const kycVerified = Boolean(body.application.customer?.kycVerified);
@@ -82,12 +89,12 @@ router.get("/applications/:id", async (req: Request, res: Response, next: NextFu
       const checklist = [
         { key: "identity", label: "National ID / KYC", required: true, status: kycVerified ? "verified" : "missing", detail: kycVerified ? "Identity verification complete" : "Identity verification is incomplete" },
         { key: "phone", label: "Verified phone number", required: true, status: phoneVerified ? "verified" : "missing", detail: phoneVerified ? "Account phone verified" : "Phone verification is incomplete" },
-        { key: "crb", label: "CRB / credit evidence", required: true, status: liveCredit("crb") ? "verified" : "missing", detail: liveCredit("crb") ? "Current verified CRB evidence" : "No current verified CRB evidence" },
-        { key: "momo", label: "Mobile-money evidence", required: true, status: liveCredit("momo") ? "verified" : "missing", detail: liveCredit("momo") ? "Current verified mobile-money evidence" : "No current verified mobile-money evidence" },
+        { key: "crb", label: "CRB / credit evidence", required: false, status: liveCredit("crb") ? "verified" : "not_provided", detail: liveCredit("crb") ? "Current verified CRB evidence" : "Optional; no current verified CRB evidence" },
+        { key: "momo", label: "Mobile-money evidence", required: false, status: liveCredit("momo") ? "verified" : "not_provided", detail: liveCredit("momo") ? "Current verified mobile-money evidence" : "Optional; no current verified mobile-money evidence" },
         { key: "livelihood", label: "Employment / livelihood declaration", required: true, status: details ? "received" : "missing", detail: details ? `${details.employment_status} · ${details.income_source}` : "Borrower livelihood declaration is missing" },
-        { key: "field_evidence", label: "Field supporting evidence", required: true, status: evidenceCount >= 2 ? "received" : "missing", detail: `${evidenceCount} evidence item${evidenceCount === 1 ? "" : "s"} uploaded` },
+        { key: "field_evidence", label: "Field supporting evidence", required: false, status: evidenceCount ? "received" : "not_provided", detail: `${evidenceCount} evidence item${evidenceCount === 1 ? "" : "s"} uploaded; optional` },
         ...(businessApplicant ? [
-          { key: "business_site", label: "Business/site evidence", required: true, status: (evidenceTypes.has("storefront") || evidenceTypes.has("business_interior") || evidenceTypes.has("applicant_at_business")) ? "received" : "missing", detail: "Required for business/self-employed/farming cases" },
+          { key: "business_site", label: "Business/site evidence", required: false, status: (evidenceTypes.has("storefront") || evidenceTypes.has("business_interior") || evidenceTypes.has("applicant_at_business") || businessPhotoTypes.has("exterior") || businessPhotoTypes.has("interior") || businessPhotoTypes.has("applicant_at_business")) ? "received" : "not_provided", detail: "Optional business-site evidence to support staff review" },
           { key: "business_docs", label: "Business document evidence", required: false, status: (evidenceTypes.has("licence") || evidenceTypes.has("supplier_invoice")) ? "received" : "not_provided", detail: "Licence or supplier invoice where available" },
         ] : []),
       ];

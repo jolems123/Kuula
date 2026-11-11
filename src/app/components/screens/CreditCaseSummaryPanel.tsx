@@ -77,7 +77,7 @@ export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any>
         {checklist.map((item) => {
           const ok = item.status === "verified" || item.status === "received";
           return <div key={item.key} style={{ border: `1px solid ${ok ? "#BBF7D0" : item.required ? "#FECACA" : BORDER}`, background: ok ? "#F0FDF4" : item.required ? "#FEF2F2" : "#F8FAFC", padding: 10, borderRadius: 10 }}>
-            <div style={{ display: "flex", gap: 7, alignItems: "center" }}>{ok ? <CheckCircle2 size={15} color={GREEN}/> : <AlertTriangle size={15} color={item.required ? "#B91C1C" : "#64748B"}/>}<strong style={{ fontSize: 12 }}>{item.label}</strong><span style={{ marginLeft: "auto", fontSize: 10, color: "#64748B" }}>{item.required ? "Required" : "Conditional"}</span></div>
+            <div style={{ display: "flex", gap: 7, alignItems: "center" }}>{ok ? <CheckCircle2 size={15} color={GREEN}/> : <AlertTriangle size={15} color={item.required ? "#B91C1C" : "#64748B"}/>}<strong style={{ fontSize: 12 }}>{item.label}</strong><span style={{ marginLeft: "auto", fontSize: 10, color: "#64748B" }}>{item.required ? "Required" : "Optional"}</span></div>
             <div style={{ marginTop: 4, fontSize: 11, color: "#475569" }}>{statusLabel(String(item.status))} · {item.detail}</div>
           </div>;
         })}

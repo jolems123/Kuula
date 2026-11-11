@@ -5,13 +5,11 @@
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { testPng } from "./test-business-photo-fixtures.mjs";
 
 const API = process.env.LIFECYCLE_API_URL || "http://localhost:3000";
 const FAKE = (process.env.MARZPAY_BASE_URL || "http://127.0.0.1:3999/api/v1").replace(/\/api\/v1\/?$/, "");
 const WEBHOOK_TOKEN = process.env.MARZPAY_WEBHOOK_SECRET || "ci-webhook-secret";
 const prisma = new PrismaClient();
-const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const NARRATIVE = "The business trades daily from a fixed stall with visible stock and steady customer flow; cash flow covers the repayment.";
 
 async function call(method, path, { token, body, base = API, expect } = {}) {
@@ -110,30 +108,24 @@ try {
     token: admin.token, body: { status: "verified", notes: "Unassigned reviewer attempt" }, expect: 403,
   });
   await call("POST", `/api/loans/applications/${id}/business-review`, {
-    token: officer.token, body: { status: "verified", notes: "Cannot verify without business photos" }, expect: 422,
+    token: officer.token, body: { status: "verified", notes: "Verified business operations without optional photo evidence" },
   });
   await call("GET", photoPath, { token: finance.token, expect: 404 });
-  const photoPayload = {
-    exterior: testPng(220, 30, 30),
-    interior: testPng(30, 220, 30),
-    applicant_at_business: testPng(30, 30, 220),
-  };
-  await call("POST", photoPath, { token: customer.token, body: { photoConsent: true, photos: photoPayload }, expect: 201 });
   const receipt = await call("GET", photoPath, { token: customer.token });
-  assert.equal(receipt.photos.length, 3);
+  assert.equal(receipt.photos.length, 0, "business review proceeds without borrower photos");
   await call("GET", photoPath, { token: officer.token });
-  await call("POST", `/api/loans/applications/${id}/business-review`, { token: officer.token, body: { status: "verified", notes: "Staged CI verified the business premises and turnover records" } });
+  const caseDetail = await call("GET", operationsPath, { token: officer.token });
+  for (const key of ["crb", "momo", "field_evidence", "business_site"]) {
+    assert.equal(caseDetail.documentChecklist.find(item => item.key === key)?.required, false, `${key} is optional in the evidence checklist`);
+  }
   await call("POST", "/api/loans/applications/decision", { token: approver.token, body: { id, decision: "approved", notes: "Attempt before the staged review" }, expect: 409 });
 
-  step("Level 1: the officer evaluates and uploads field evidence");
+  step("Level 1: the officer completes the evaluation without optional field evidence");
   await call("POST", `/api/operations/applications/${id}/evaluation`, {
     token: officer.token,
     body: { businessName: "Staged Hardware", businessType: "Retail", businessLocation: "Kampala", yearsOperating: 3, employeeCount: 3, estimatedMonthlySales: 1500000, estimatedStockValue: 4000000, monthlyOperatingExpenses: 400000, existingBusinessDebt: 0,
       businessObservations: NARRATIVE, financialObservations: NARRATIVE, characterAssessment: NARRATIVE, repaymentCapacity: NARRATIVE, risks: "Seasonal demand", mitigatingFactors: "Diversified stock", purposeAssessment: "Working capital for stock", recommendation: "approve", recommendedAmount: 200000, recommendedTermDays: 60 },
   });
-  for (const evidenceType of ["storefront", "stock"]) {
-    await call("POST", `/api/operations/applications/${id}/evidence`, { token: officer.token, body: { evidenceType, dataUrl: PNG }, expect: 201 });
-  }
   step("Level 1 pricing: assigned officer sets interest and itemized fees before escalation");
   await call("POST", `/api/operations/applications/${id}/pricing-proposal`, {
     token: customer.token, body: {aprPercent: 9,charges:[]}, expect:403,
