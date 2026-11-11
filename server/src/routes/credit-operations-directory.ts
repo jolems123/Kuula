@@ -239,18 +239,26 @@ router.get("/staff", async (req: Request, res: Response) => {
   const roles = rolesForLevelQuery(requested);
   if (!roles) throw new AppError("Invalid staff role", 400);
   const roleList = [...roles];
-  const staff = await prisma.user.findMany({
-    where: { role: { in: roleList }, deletedAt: null, phoneVerified: true },
-    select: { id: true, fullName: true, email: true, phone: true, role: true },
-    orderBy: [{ role: "asc" }, { fullName: "asc" }],
-    take: 200,
-  });
-  const loads = await prisma.$queryRaw<any[]>(Prisma.sql`
-    SELECT assignee_id, count(*)::int AS active_count
-    FROM approval_assignments WHERE status='active' GROUP BY assignee_id
+  const staff = await prisma.$queryRaw<Array<{
+    id: string;
+    fullName: string;
+    email: string | null;
+    phone: string | null;
+    role: string;
+    activeCases: number;
+  }>>(Prisma.sql`
+    SELECT u.id, u.full_name AS "fullName", u.email, u.phone, u.role,
+           count(aa.id)::int AS "activeCases"
+    FROM users u
+    LEFT JOIN approval_assignments aa
+      ON aa.assignee_id=u.id AND aa.status='active'
+    WHERE lower(trim(u.role)) IN (${Prisma.join(roleList)})
+      AND u.deleted_at IS NULL AND u.phone_verified=true
+    GROUP BY u.id
+    ORDER BY u.role ASC, u.full_name ASC
+    LIMIT 200
   `);
-  const loadMap = new Map(loads.map((row) => [row.assignee_id, Number(row.active_count)]));
-  res.json({ staff: staff.map((row) => ({ ...row, activeCases: loadMap.get(row.id) || 0 })) });
+  res.json({ staff });
 });
 
 router.get("/intake", requirePermissions("loan.approve"), async (_req: Request, res: Response) => {
