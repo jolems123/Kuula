@@ -486,9 +486,53 @@ export async function releaseDisbursementBatch(params: { applicationId: string; 
   if (!application.applicant.kycVerified) throw new AppError("The borrower's identity is not verified", 422);
   if (application.businessProfile && application.businessReviewStatus !== "verified") throw new AppError("The borrower's business is not verified", 422);
 
+  // Finance releases only the exact customer amount and payout schedule that
+  // the borrower accepted. A modified application, batch or provider limit
+  // requires a revised offer and fresh consent, not a silent payout.
+  const signed = await prisma.loanAgreementAcceptance.findUnique({where:{applicationId:params.applicationId}});
+  if (!signed || !signed.termsSnapshot || typeof signed.termsSnapshot !== "object" || Array.isArray(signed.termsSnapshot))
+    throw new AppError("Verified loan agreement is required before disbursement release", 409);
+  const terms = signed.termsSnapshot as Record<string, unknown>;
+  if (Number(terms.principal) !== Number(application.amount) ||
+      Number(terms.totalRepayment) !== Number(application.total) ||
+      Number(terms.termDays) !== application.termDays ||
+      Number(terms.apr) !== Number(application.apr) ||
+      String(terms.disbursementChannel || "") !== application.channel ||
+      Number(batch.approved_amount) !== Number(application.amount) ||
+      batch.network !== networkFromChannel(application.channel)) {
+    throw new AppError("The payout no longer matches the signed credit agreement; a revised offer and acceptance are required", 409);
+  }
+  const acceptedFees = acceptedPaymentFees(signed.termsSnapshot);
+  if (!acceptedFees) throw new AppError("Accepted customer payout fees could not be verified", 409);
+  const effective = await providerLimit({
+    marketCode: batch.market_code, provider: batch.provider,
+    network: batch.network, beneficiaryType: "customer",
+    beneficiaryReference: batch.beneficiary_reference,
+  });
+
   const balance = await getMarzPayAvailableBalanceUgx();
   if (balance === null) throw new AppError("MarzPay's wallet balance could not be read, so the payout cannot be funded safely", 503);
   const releaseLegs = await prisma.$queryRaw<LegRow[]>(Prisma.sql`SELECT * FROM disbursement_legs WHERE batch_id=${batch.id}::uuid ORDER BY sequence`);
+  const expectedLegs = acceptedFees.legs;
+  if (expectedLegs.length !== releaseLegs.length ||
+      acceptedFees.principal !== Number(application.amount) ||
+      acceptedFees.netDisbursement !== releaseLegs.reduce((sum, leg) => sum + Number(leg.amount), 0) ||
+      releaseLegs.some((leg, index) =>
+        Number(leg.amount) !== expectedLegs[index]?.net ||
+        Number(leg.customer_fee) !== expectedLegs[index]?.customerFee ||
+        Number(leg.amount) < Number(effective.min_amount) ||
+        Number(leg.amount) > Number(effective.max_single_amount))) {
+    throw new AppError("The signed payout plan no longer matches current limits or stored transfer legs", 409);
+  }
+  if (effective.max_daily_amount !== null) {
+    const committed = await destinationCommittedToday({
+      marketCode: batch.market_code, provider: batch.provider,
+      network: batch.network, beneficiaryReference: batch.beneficiary_reference,
+      excludeApplicationId: params.applicationId,
+    });
+    if (committed + Number(batch.approved_amount) > Number(effective.max_daily_amount))
+      throw new AppError("This payout exceeds the verified recipient daily limit", 409);
+  }
   let required;
   try { required = releaseLegs.reduce((sum, leg) => sum + Number(leg.amount) + payoutFee(Number(leg.amount)), 0); }
   catch { throw new AppError("Payout tariff is not verified for this batch; finance review is required", 409); }
