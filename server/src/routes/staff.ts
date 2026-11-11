@@ -147,11 +147,35 @@ router.post("/invite", async (req: Request, res: Response) => {
 
 router.post("/:id/approve", async (req: Request, res: Response) => {
   const targetId = String(req.params.id ?? "");
-  const result = await prisma.user.updateMany({
-    where: { id: targetId, deletedAt: null, phoneVerified: false, passwordHash: { not: null }, role: { in: [...INVITABLE_STAFF_ROLES] } },
-    data: { phoneVerified: true, authVersion: { increment: 1 } },
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, role: true, deletedAt: true, phoneVerified: true, passwordHash: true },
   });
-  if (result.count !== 1) throw new AppError("Staff account is not awaiting approval", 409);
+  if (!target || target.deletedAt || !isStaffRole(target.role) || target.role === "super_admin") {
+    throw new AppError("Staff account not found or not eligible for approval", 404);
+  }
+  if (target.phoneVerified) {
+    res.json({ ok: true, alreadyApproved: true });
+    return;
+  }
+  if (!target.passwordHash) throw new AppError("The staff member must create their password before approval", 409);
+
+  const role = LEGACY_ROLE_REPLACEMENTS[target.role] ?? target.role;
+  const result = await prisma.user.updateMany({
+    where: { id: targetId, deletedAt: null, phoneVerified: false, passwordHash: { not: null }, role: target.role },
+    data: { role, phoneVerified: true, authVersion: { increment: 1 } },
+  });
+  if (result.count !== 1) {
+    const current = await prisma.user.findUnique({
+      where: { id: targetId },
+      select: { deletedAt: true, phoneVerified: true },
+    });
+    if (current && !current.deletedAt && current.phoneVerified) {
+      res.json({ ok: true, alreadyApproved: true });
+      return;
+    }
+    throw new AppError("Staff account changed before approval completed. Refresh the staff list and try again.", 409);
+  }
   await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId });
   res.json({ ok: true });
 });
