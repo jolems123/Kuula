@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
+import { getMarzPayAccountWithdrawalLimits, normalizeUgandaMobileMoneyPhone } from "../lib/marzpay.js";
 import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
@@ -32,6 +32,27 @@ function validateBeneficiary(value: unknown): "customer" | "partner" {
   if (!BENEFICIARIES.has(beneficiaryType)) throw new AppError("Beneficiary type must be customer or partner", 400);
   return beneficiaryType as "customer" | "partner";
 }
+
+// Read-only verified account limit lookup for finance. It does not enable payouts
+// or create provider-limit records; daily and per-network limits still require
+// independent confirmation before an administrator activates them.
+router.get("/marzpay-account-limits", async (_req: Request, res: Response) => {
+  try {
+    const limits = await getMarzPayAccountWithdrawalLimits();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      marketCode: "UG", provider: "marzpay",
+      supportedNetworks: ["mtn", "airtel"],
+      minAmount: limits.minimum, maxSingleAmount: limits.maximum,
+      maxDailyAmount: null,
+      verifiedScope: "MarzPay account withdrawal limit for Uganda",
+      requiresNetworkConfirmation: true,
+      note: "Account limits are not proof of a network-specific or daily disbursement limit. Finance must confirm MTN/Airtel eligibility before creating active provider limits.",
+    });
+  } catch {
+    throw new AppError("MarzPay account withdrawal limits could not be verified; no limits were changed", 503);
+  }
+});
 
 router.get("/", async (_req: Request, res: Response) => {
   const [limits, destinations] = await Promise.all([
