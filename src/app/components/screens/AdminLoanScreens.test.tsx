@@ -12,7 +12,10 @@ vi.mock("react", async (importOriginal) => {
 });
 vi.mock("../../context/AppContext", () => ({ useAppContext: () => ({ state: { session: { token: "test-only" } } }) }));
 vi.mock("../../api/client", () => ({ api: {} }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (value: string) => value }) }));
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return { ...actual, useTranslation: () => ({ t: (value: string) => value }) };
+});
 vi.mock("../AdminLayout", async () => {
   const { createElement } = await import("react");
   const wrapper = ({ children }: { children?: import("react").ReactNode }) => createElement("div", null, children);
@@ -25,6 +28,7 @@ vi.mock("../AdminLayout", async () => {
   };
 });
 import { AdminLoanAppsListScreen } from "./AdminLoanScreens";
+import { CreditCaseSummaryPanel } from "./CreditCaseSummaryPanel";
 
 beforeEach(() => { fixture.applications = []; });
 it("renders a populated application list without crashing after data loads", () => {
@@ -44,4 +48,21 @@ it("renders the empty application state", () => {
   const html = renderToStaticMarkup(<AdminLoanAppsListScreen onNavigate={() => {}} />);
   expect(html).toContain("applications yet");
   expect(html).not.toContain("Regression Applicant");
+});
+it("lets the assigned Level 2 reviewer record required business verification", () => {
+  const detail = {
+    case: { current_level: 2 },
+    application: { id: "level-two-case", amount: 50000, businessProfile: { useOfFunds: {} }, businessReviewStatus: "pending" },
+  };
+  const html = renderToStaticMarkup(<CreditCaseSummaryPanel detail={detail} />);
+  expect(html).toContain("Business assessment · required before final approval");
+  expect(html).toContain("Mark business verified");
+});
+it("keeps business verification controls off the Level 3 final approver screen", () => {
+  const detail = {
+    case: { current_level: 3 },
+    application: { id: "level-three-case", amount: 50000, businessProfile: { useOfFunds: {} }, businessReviewStatus: "pending" },
+  };
+  const html = renderToStaticMarkup(<CreditCaseSummaryPanel detail={detail} />);
+  expect(html).not.toContain("Mark business verified");
 });
