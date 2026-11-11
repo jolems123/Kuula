@@ -45,6 +45,30 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
           <button className="kuula-home-bell" type="button" aria-label={uiText("View notifications")} onClick={() => onNavigate("notifications")}><Bell size={20} />{state.unreadNotifications > 0 && <span className="kuula-home-bell__dot" />}</button>
         </header>
         <main className="kuula-home-content">
+          <section className="kuula-home-at-a-glance" aria-label="Your finance at a glance">
+            <div className="kuula-home-at-a-glance__heading">
+              <span className="kuula-home-eyebrow">YOUR DASHBOARD</span>
+              <h2>Business finance at a glance</h2>
+              <p>Your current position and the next action, without searching through menus.</p>
+            </div>
+            <div className="kuula-home-at-a-glance__grid">
+              <div className="kuula-home-at-a-glance__metric">
+                <span>Credit available</span>
+                <strong>{loading ? "Checking…" : line && line.status === "available" ? money(line.availableLimit, currency) : "Not available"}</strong>
+                <small>Subject to verification and eligibility</small>
+              </div>
+              <div className="kuula-home-at-a-glance__metric">
+                <span>Loan status</span>
+                <strong>{loading ? "Checking…" : statusHeading}</strong>
+                <small>{loading ? "Loading latest status" : statusDetail}</small>
+              </div>
+              <div className="kuula-home-at-a-glance__metric">
+                <span>Next repayment</span>
+                <strong>{loading ? "Checking…" : overview?.nextPayment ? money(overview.nextPayment.amount,currency) : "None scheduled"}</strong>
+                <small>{overview?.nextPayment ? `Due ${formattedDate(overview.nextPayment.dueDate)}` : "When due, payments are shown here"}</small>
+              </div>
+            </div>
+          </section>
           {error && <div className="kx-alert kx-alert--error" role="alert"><AlertCircle size={18}/><span>{error}</span><button type="button" className="kx-link" onClick={() => { setError(""); setLoading(true); api.networkOverview(token!, "UG").then(setOverview).catch(e => setError(String(e))).finally(() => setLoading(false)); }}><RefreshCw size={18}/></button></div>}
           <section className="kuula-home-feature" aria-label={uiText("Loan status and next steps")}>
             <div className="kuula-home-feature__main"><span className="kuula-home-feature__eyebrow"><UiText text="YOUR LOAN STATUS" /></span><h2><UiText text={statusHeading} /></h2><p><UiText text={loading ? "Checking your latest information…" : statusDetail} /></p>
@@ -52,7 +76,7 @@ export function GrowthHomeScreen({ onNavigate }: Props) {
             </div>
             {line && line.totalLimit > 0 && <div className="kuula-home-feature__amount"><span><UiText text="Available credit limit" /></span><strong>{money(line.availableLimit,currency)}</strong><small><UiText text="Subject to eligibility and review" /></small></div>}
           </section>
-          <div className="kuula-home-grid">
+          <div className="kuula-home-grid" id="kuula-home-actions">
             <section className="kuula-home-panel" aria-label={uiText("Quick actions")}><div className="kuula-home-panel__heading"><h2><UiText text="Quick actions" /></h2><p><UiText text="The essentials, all in one place." /></p></div><div className="kuula-home-action-grid">
               <button type="button" onClick={() => onNavigate("loan-apply")}><FileText size={21}/><span><UiText text="Apply for loan" /></span></button>
               <button type="button" onClick={() => onNavigate("loan-history")}><ShieldCheck size={21}/><span><UiText text="Track application" /></span></button>
