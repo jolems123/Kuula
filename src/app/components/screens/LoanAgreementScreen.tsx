@@ -29,7 +29,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
-  const [agreementHash, setAgreementHash] = useState<string | null>(null);
+
   const [busy, setBusy] = useState(false);
   const [signatureName, setSignatureName] = useState(user?.fullName ?? "");
   const [understoodTerms, setUnderstoodTerms] = useState(false);
@@ -105,7 +105,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
 
   const borrower = user?.fullName ?? "—";
   const nin = user?.nationalId ?? "—";
-  const agreementNo = offer?.id ?? "—";
+  const agreementNo = offer?.agreementNumber ?? "—";
   const principal = offer?.amount ?? 0;
   const total = offer?.total ?? 0;
   const interest = offer?.interest ?? Math.max(0, total - principal);
@@ -159,7 +159,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       });
       setServerAccepted(true);
       setAcceptedAt(result.acceptedAt);
-      setAgreementHash(result.agreementHash ?? null);
+
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not record your agreement acceptance.");
     } finally {
@@ -198,7 +198,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       ...(isPartnerFacility ? [{ label: "Verified Payee", value: payee }, { label: "Invoice / Order", value: offer?.invoiceReference || "Recorded in application" }] : []),
       { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Draft — not yet accepted" },
       { label: "Terms version", value: "kuula-agreement-2026-11-11" },
-      ...(agreementHash ? [{ label: "Server acceptance hash", value: agreementHash }] : []),
+
     ],
     tables: [{ title: "Terms", head: ["Clause", "Detail"], rows: clauses.map((c) => [c.title, c.body]) }],
     filename: `kuula-credit-agreement-${agreementNo}.pdf`,
