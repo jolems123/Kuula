@@ -717,7 +717,7 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
 
   // The browser cannot opt out of signature checks by omitting a version flag.
   const signature = req.body?.clientContext;
-  const normalized = (value: string) => value.trim().replace(/\\s+/g, " ").toLocaleLowerCase("en");
+  const normalized = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
   const signedName = typeof signature?.signedByName === "string" ? normalized(signature.signedByName) : "";
   const registeredName = normalized(application.applicant.fullName || "");
   if (signature?.signatureVersion !== "typed_name_v1" ||
@@ -747,6 +747,16 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     disbursementChannel: application.channel,
     offerExpiresAt: application.offerExpiresAt.toISOString(),
     interestType: "simple",
+    // Explicitly preserve the additional borrower-facing legal terms in the
+    // signed snapshot; they are not silently applied to older acceptances.
+    legalTermsVersion: "kuula-agreement-2026-11-11",
+    legalTerms: {
+      repayment: "Provider-confirmed payments reduce the balance. Due dates and any installments must be supplied in the confirmed loan schedule after settlement.",
+      defaultAndRecovery: "Kuula may issue reminders and pursue only lawful recovery procedures. No undisclosed default charge, compounded penalty, harassment, threats or unlawful seizure is authorized.",
+      earlySettlement: "Customers may request early settlement and an itemized balance, subject to applicable law and disclosed terms.",
+      guarantee: "Guarantees or security apply only if separately validly documented and accepted.",
+      disputes: "Customers may complain via Kuula Support and retain access to statutory remedies and competent authorities or courts.",
+    },
     serviceFee: Number(application.serviceFee),
     feeBreakdown: await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${application.id}::uuid AND status='approved' LIMIT 1`).then(rows => rows[0]?.fee_breakdown ?? []),
   };
