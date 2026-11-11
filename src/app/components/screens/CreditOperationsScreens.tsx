@@ -96,18 +96,27 @@ export function AdminOfficerAssignmentScreen({ onNavigate }: Props) {
   const token = useToken();
   const [apps, setApps] = useState<Array<Record<string, any>>>([]);
   const [officers, setOfficers] = useState<OperationsStaff[]>([]);
-  const [selectedApp, setSelectedApp] = useState("");
+  const [selectedApp, setSelectedApp] = useState(() => getCreditOperationsSelection()?.applicationId ?? "");
   const [selectedOfficer, setSelectedOfficer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const load = async () => {
-    if (!token) return;
+    if (!token) { setLoaded(true); return; }
+    setLoaded(false);
+    setError(null);
     try {
       const [intake, staff] = await Promise.all([creditOperationsApi.intake(token), creditOperationsApi.staff(token, "officer")]);
       setApps(intake.applications); setOfficers(staff.staff);
     } catch (e: any) { setError(e.message); }
+    finally { setLoaded(true); }
   };
   useEffect(() => { void load(); }, [token]);
+  useEffect(() => {
+    if (!loaded || !selectedApp || apps.some((application) => application.id === selectedApp)) return;
+    setError("This application is no longer eligible for Level 1 assignment. Only pending or resubmitted applications awaiting field evaluation can be assigned here.");
+    setSelectedApp("");
+  }, [apps, loaded, selectedApp]);
   const assign = async () => {
     if (!token || !selectedApp || !selectedOfficer) return;
     setBusy(true); setError(null);
@@ -117,11 +126,11 @@ export function AdminOfficerAssignmentScreen({ onNavigate }: Props) {
   };
   return (
     <AdminLayout activeScreen="admin-officer-assignment" onNavigate={onNavigate} title="Application Intake & Assignment">
-      <AdminPageHeader title="Assign field evaluations" subtitle="New eligible applications enter Level 1 only after a real officer is assigned." />
+      <AdminPageHeader title="Assign field evaluations" subtitle="Assign or reassign a loan officer to pending applications awaiting Level 1 field evaluation." />
       <ErrorBox value={error} />
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
-        <AdminCard><h3 style={{ marginTop: 0 }}>Unassigned applications</h3>{apps.length === 0 ? <Empty>No unassigned applications.</Empty> : apps.map((a) => <button key={a.id} onClick={() => setSelectedApp(a.id)} style={{ ...rowButton, borderColor: selectedApp === a.id ? GREEN : BORDER, background: selectedApp === a.id ? "#F0FDF4" : "white" }}><strong>{a.applicant_name}</strong><div style={{ display: "flex", gap: 12, marginTop: 5, fontSize: 12, color: "#64748B" }}><span>{ugx(a.amount)}</span><span>{a.purpose}</span><span>Score {a.credit_score ?? "—"}</span></div></button>)}</AdminCard>
-        <AdminCard><h3 style={{ marginTop: 0 }}>Available field officers</h3>{officers.map((o) => <button key={o.id} onClick={() => setSelectedOfficer(o.id)} style={{ ...rowButton, borderColor: selectedOfficer === o.id ? GREEN : BORDER }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><strong>{o.fullName}</strong><div style={{ fontSize: 11, color: "#64748B" }}>{o.email || o.phone || "Officer"}</div></div><span style={{ fontSize: 12, color: o.activeCases < 10 ? GREEN : "#D97706", fontWeight: 700 }}>{o.activeCases} active</span></div></button>)}<button disabled={!selectedApp || !selectedOfficer || busy} onClick={assign} style={{ ...primary, width: "100%", opacity: !selectedApp || !selectedOfficer ? .5 : 1 }}>{busy ? "Assigning…" : "Assign selected application"}</button></AdminCard>
+        <AdminCard><h3 style={{ marginTop: 0 }}>Pending field evaluations</h3>{loaded && apps.length === 0 ? <Empty>No pending applications are waiting for field evaluation. Applications already assigned to an officer remain listed here for reassignment.</Empty> : apps.map((a) => <button key={a.id} onClick={() => { setSelectedApp(a.id); setError(null); }} style={{ ...rowButton, borderColor: selectedApp === a.id ? GREEN : BORDER, background: selectedApp === a.id ? "#F0FDF4" : "white" }}><strong>{a.applicant_name}</strong><div style={{ display: "flex", gap: 12, marginTop: 5, fontSize: 12, color: "#64748B", flexWrap: "wrap" }}><span>{ugx(a.amount)}</span><span>{a.purpose}</span><span>Score {a.credit_score ?? "—"}</span><span>{a.status}</span></div><div style={{ marginTop: 5, fontSize: 12, color: a.assigned_officer_name ? GREEN : "#B45309" }}>{a.assigned_officer_name ? `Currently assigned to ${a.assigned_officer_name}` : "Not assigned"}</div></button>)}</AdminCard>
+        <AdminCard><h3 style={{ marginTop: 0 }}>Available field officers</h3>{officers.length === 0 ? <Empty>No approved loan officer accounts are available. Approve an officer in Staff Management first.</Empty> : officers.map((o) => <button key={o.id} onClick={() => setSelectedOfficer(o.id)} style={{ ...rowButton, borderColor: selectedOfficer === o.id ? GREEN : BORDER }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><strong>{o.fullName}</strong><div style={{ fontSize: 11, color: "#64748B" }}>{o.email || o.phone || "Officer"}</div></div><span style={{ fontSize: 12, color: o.activeCases < 10 ? GREEN : "#D97706", fontWeight: 700 }}>{o.activeCases} active</span></div></button>)}<button disabled={!selectedApp || !selectedOfficer || busy || officers.length === 0} onClick={assign} style={{ ...primary, width: "100%", opacity: !selectedApp || !selectedOfficer ? .5 : 1 }}>{busy ? "Assigning…" : "Assign selected application"}</button></AdminCard>
       </div>
     </AdminLayout>
   );

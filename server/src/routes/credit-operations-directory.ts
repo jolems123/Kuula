@@ -240,7 +240,7 @@ router.get("/staff", async (req: Request, res: Response) => {
   if (!roles) throw new AppError("Invalid staff role", 400);
   const roleList = [...roles];
   const staff = await prisma.user.findMany({
-    where: { role: { in: roleList }, deletedAt: null },
+    where: { role: { in: roleList }, deletedAt: null, phoneVerified: true },
     select: { id: true, fullName: true, email: true, phone: true, role: true },
     orderBy: [{ role: "asc" }, { fullName: "asc" }],
     take: 200,
@@ -257,12 +257,18 @@ router.get("/intake", requirePermissions("loan.approve"), async (_req: Request, 
   const applications = await prisma.$queryRaw<any[]>(Prisma.sql`
     SELECT a.id, a.applicant_id, a.applicant_name, a.amount, a.purpose, a.status, a.created_at,
            u.phone, u.district, u.kyc_verified,
-           ua.credit_score, ua.approved_limit
+           ua.credit_score, ua.approved_limit,
+           c.current_level, c.status AS case_status,
+           aa.assignee_id, assigned.full_name AS assigned_officer_name
     FROM loan_applications a
     JOIN users u ON u.id=a.applicant_id
     LEFT JOIN underwriting_assessments ua ON ua.application_id=a.id
     LEFT JOIN credit_cases c ON c.application_id=a.id
-    WHERE c.application_id IS NULL AND a.status IN ('pending','resubmitted')
+    LEFT JOIN approval_assignments aa
+      ON aa.application_id=a.id AND aa.level=1 AND aa.status='active'
+    LEFT JOIN users assigned ON assigned.id=aa.assignee_id
+    WHERE a.status IN ('pending','resubmitted')
+      AND (c.application_id IS NULL OR (c.current_level=1 AND c.status NOT IN ('completed','rejected')))
     ORDER BY a.created_at ASC
     LIMIT 200
   `);
