@@ -271,7 +271,11 @@ export async function getMarzPayAccountWithdrawalLimits(): Promise<{
   if (result.status !== 200 || asString(result.body.status).toLowerCase() !== "success")
     throw new Error("Could not verify account-specific MarzPay limits");
   const data = asObject(result.body.data);
-  const withdrawal = asObject(asObject(data.limits).withdrawal);
+  const account = asObject(data.account);
+  const accountStatus = asObject(account.status);
+  if (asString(accountStatus.account_status).toLowerCase() !== "active" || accountStatus.is_frozen === true)
+    throw new Error("MarzPay account is inactive or frozen");
+  const withdrawal = asObject(asObject(account.limits).withdrawal);
   const parse = (value: unknown): number => {
     const raw = asObject(value).raw ?? value;
     const amount = Number(raw);

@@ -7,6 +7,7 @@ import { guarantorCleared } from "./guarantor-policy.js";
 import {
   buildMarzPayWebhookUrl,
   createPaymentReference,
+  getMarzPayAccountWithdrawalLimits,
   getMarzPayAvailableBalanceUgx,
   lookupMarzPayTransaction,
   marzPayConfigured,
@@ -112,7 +113,24 @@ export async function providerLimit(params: {
     ORDER BY effective_from DESC
     LIMIT 1
   `);
-  let general = rows[0] ?? nonProductionFallbackLimit(params.network);
+  let general: ProviderLimitRow | null = rows[0] ?? nonProductionFallbackLimit(params.network);
+  // For Uganda customer payouts, use current, authenticated MarzPay account limits
+  // when Finance has not yet created a network-specific record. This is a
+  // verified live account bound, not the public API ceiling or an invented cap.
+  // A network record always takes precedence, and a read failure remains closed.
+  if (!general && marketCode === "UG" && provider === "marzpay" &&
+      params.beneficiaryType === "customer") {
+    try {
+      const verified = await getMarzPayAccountWithdrawalLimits();
+      general = {
+        min_amount: BigInt(verified.minimum),
+        max_single_amount: BigInt(verified.maximum),
+        max_daily_amount: null,
+      };
+    } catch {
+      throw new AppError("MarzPay account withdrawal limits are unavailable; Finance must verify MTN/Airtel limits before the loan agreement can be accepted", 503);
+    }
+  }
   if (!general) throw new AppError(`No active ${params.network.toUpperCase()} disbursement limit is configured for ${marketCode}`, 503);
 
   if (!params.beneficiaryReference) return general;
