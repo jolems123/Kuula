@@ -209,6 +209,7 @@ model SupportTicket {
 
 model LoanApplication {
   id                  String    @id @default(uuid()) @db.Uuid
+  agreementNumber     String    @unique @default(dbgenerated()) @map("agreement_number")
   applicantId         String    @map("applicant_id") @db.Uuid
   applicantName       String    @default("") @map("applicant_name")
   amount              BigInt
