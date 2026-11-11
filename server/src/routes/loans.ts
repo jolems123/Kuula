@@ -102,6 +102,8 @@ const mapApplication = (application: any) => ({
   businessReviewStatus: application.businessReviewStatus ?? "not_required",
   businessReviewNotes: application.businessReviewNotes ?? null,
   businessReviewedAt: application.businessReviewedAt ?? null,
+  agreementAccepted: Boolean(application.agreementAcceptance),
+  agreementAcceptedAt: application.agreementAcceptance?.acceptedAt ?? null,
 });
 
 async function recheckUnderwriting(application: any, user: any, assessment: any) {
@@ -144,7 +146,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
   const where = staff ? {} : { applicantId: req.user!.userId };
   const applications = await prisma.loanApplication.findMany({
     where,
-    include: { underwriting: true },
+    include: { underwriting: true, agreementAcceptance: { select: { acceptedAt: true } } },
     orderBy: { createdAt: "desc" },
     take: 200,
   });

@@ -5,6 +5,7 @@ import { BottomNav } from "../BottomNav";
 import { GuarantorNomination } from "../GuarantorNomination";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
+import { setSelectedLoanApplicationId } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -30,7 +31,7 @@ const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }>
   cancelled:   { color: "#6B7280", bg: "#F3F4F6", label: "Payout cancelled" },
 };
 
-type FilterType = "all" | "active" | "completed" | "rejected";
+type FilterType = "all" | "offers" | "active" | "completed" | "rejected";
 const FUNDED_STATUSES = new Set(["approved", "active", "overdue", "paid"]);
 
 export function LoanHistoryScreen({ onNavigate }: Props) {
@@ -54,6 +55,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
 
   const filtered = loans.filter((loan) => {
     if (filter === "all") return true;
+    if (filter === "offers") return loan.status === "offered";
     if (filter === "active") return ["active", "overdue", "disbursing", "offered"].includes(loan.status);
     if (filter === "completed") return loan.status === "paid";
     return ["rejected", "failed", "expired", "cancelled"].includes(loan.status);
@@ -87,8 +89,8 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "white", overflowX: "auto", borderBottom: "1px solid #E8EEEA" }}>
-        {(["all", "active", "completed", "rejected"] as FilterType[]).map((item) => (
-          <button key={item} onClick={() => setFilter(item)} style={{ padding: "7px 13px", borderRadius: 20, border: filter === item ? "1px solid #0B5E3A" : "1px solid #E1E7E3", background: filter === item ? "#EDF8F2" : "#F8FAF9", color: filter === item ? "#0B5E3A" : "#68766F", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}><UiText text={item === "all" ? "All" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"} /></button>
+        {(["all", "offers", "active", "completed", "rejected"] as FilterType[]).map((item) => (
+          <button key={item} onClick={() => setFilter(item)} style={{ padding: "7px 13px", borderRadius: 20, border: filter === item ? "1px solid #0B5E3A" : "1px solid #E1E7E3", background: filter === item ? "#EDF8F2" : "#F8FAF9", color: filter === item ? "#0B5E3A" : "#68766F", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}><UiText text={item === "all" ? "All" : item === "offers" ? "Offers to review" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"} /></button>
         ))}
       </div>
 
@@ -100,7 +102,7 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
           const style = STATUS_STYLE[loan.status] ?? { color: "#425149", bg: "#F3F5F4", label: loan.status.replace(/_/g, " ") };
           const canOpenLiveDetail = ["active", "overdue"].includes(loan.status);
           const canOpenOffer = ["pending", "resubmitted", "offered", "disbursing", "rejected", "failed"].includes(loan.status);
-          const action = canOpenLiveDetail ? () => onNavigate("loan-detail") : canOpenOffer ? () => onNavigate("loan-approval") : undefined;
+          const action = canOpenLiveDetail ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-detail"); } : canOpenOffer ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-approval"); } : undefined;
           return (
             <div key={loan.id} style={{ background: "white", borderRadius: 16, padding: "14px 16px", border: "1px solid #E8EEEA", boxShadow: "0 2px 6px rgba(0,0,0,0.035)", textAlign: "left", width: "100%", cursor: action ? "pointer" : "default" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -110,7 +112,9 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 800, color: style.color, background: style.bg, padding: "4px 9px", borderRadius: 20 }}><UiText text={style.label} /></span>{action && <ChevronRight size={14} color="#A6B1AB" />}</div>
               </div>
-              {action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}><UiText text={"View application details"} /></button>}
+              {loan.status === "offered"
+                ? <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ display: "block", marginTop: 10, padding: "10px 14px", border: 0, borderRadius: 10, background: "#0B5E3A", color: "white", fontSize: 12, fontWeight: 800 }}><UiText text={"Review offer & accept agreement"} /></button>
+                : action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}><UiText text={"View application details"} /></button>}
               <div style={{ marginTop: 10, borderTop: "1px solid #F0F3F1", paddingTop: 9, display: "grid", gap: 5 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Application"} /></span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
                 <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label={uiText("Loan application progress")}>

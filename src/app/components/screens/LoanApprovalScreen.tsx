@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
-import { getLastSubmittedApplicationId } from "../../lib/selection";
+import { getLastSubmittedApplicationId, getSelectedLoanApplicationId, setSelectedLoanApplicationId } from "../../lib/selection";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -34,7 +34,10 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
     if (!useServer || !token) return;
     try {
       const { applications } = await api.getApplications(token);
-      const chosen = submittedId ? applications.find(application => application.id === submittedId) : applications[0];
+      const selectedId = getSelectedLoanApplicationId() || submittedId;
+      const chosen = (selectedId ? applications.find(application => application.id === selectedId) : null)
+        ?? applications.find(application => application.status === "offered")
+        ?? applications[0];
       if (chosen) setApp(chosen);
       setFetchError(false);
     } catch {
@@ -190,7 +193,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
         <button onClick={() => onNavigate("home")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <Home size={16} /><UiText text={" Home "} /></button>
         {status === "offered" && (
-          <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button onClick={() => { if (app) setSelectedLoanApplicationId(app.id); onNavigate("loan-agreement"); }} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <FileText size={16} /><UiText text={" Review & Accept Terms "} /></button>
         )}
         {status === "approved" && (
