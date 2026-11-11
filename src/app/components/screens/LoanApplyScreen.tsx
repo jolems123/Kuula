@@ -363,7 +363,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         <section className="kuula-application-guide" aria-labelledby="loan-guide-title">
           <h2 id="loan-guide-title"><UiText text={"Your loan application guide"} /></h2>
           <p><UiText text={"Complete the steps below. You can save a draft now; applying requires approved identity documents."} /></p>
-          <details><summary><UiText text={"Step-by-step help with amounts and documents"} /></summary><ol><li><UiText text={"Choose the amount you need and a term. Enter whole Uganda shillings, without commas."} /></li><li><UiText text={"Select every business purpose that applies."} /></li><li><UiText text={"Give your business details, pin the premises and attach the three business photos with consent."} /></li><li><UiText text={"Enter your usual monthly sales, expenses and any current loan payments. These are monthly figures, not the loan amount."} /></li><li><UiText text={"Add two guarantor contacts. They are only contacts at this point; a separate agreement is required before anyone can guarantee a loan."} /></li><li><UiText text={"Check your answers, review the application, then confirm submission. Approval and loan pricing follow Kuula’s assessment."} /></li></ol></details>
+          <details><summary><UiText text={"Step-by-step help with amounts and documents"} /></summary><ol><li><UiText text={"Choose the amount you need and a term. Enter whole Uganda shillings, without commas."} /></li><li><UiText text={"Select every business purpose that applies."} /></li><li><UiText text={"Give your business details and address. Business photos are optional; if you provide any, submit them with consent."} /></li><li><UiText text={"Enter your usual monthly sales, expenses and any current loan payments. These are monthly figures, not the loan amount."} /></li><li><UiText text={"Add two guarantor contacts. They are only contacts at this point; a separate agreement is required before anyone can guarantee a loan."} /></li><li><UiText text={"Check your answers, review the application, then confirm submission. Approval and loan pricing follow Kuula’s assessment."} /></li></ol></details>
           <div id="loan-identity" className="loan-identity-card" tabIndex={-1}>
             <div className="loan-identity-card__status"><strong><UiText text={"Identity documents: "} /><UiText text={identityStatus === 'approved' ? 'verified and approved' : identityStatus === 'loading' ? 'checking status…' : identityStatus === 'error' ? 'status unavailable — retry before applying' : 'approval required before applying'} /></strong>
             {identityStatus !== 'approved' && <p><UiText text={"Uploading documents alone is not approval. Open Identity Verification to submit missing documents, read a rejection reason or wait for review."} /></p>}
@@ -477,8 +477,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
         </section>
 
         <section className="p-4 rounded-2xl" style={{ background: "white" }} aria-label={uiText("Business photographs")}>
-          <h2 id="loan-photos" style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px", color: "#13251C" }}><UiText text={"Business photos and premises evidence"} /></h2>
-          <p style={{ fontSize: 12, color: "#68766F", lineHeight: 1.5 }}><UiText text={"Take clear, recent photos at your real place of business. A Kuula reviewer will inspect them. Uploading a photo does not verify your business automatically."} /></p>
+          <h2 id="loan-photos" style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px", color: "#13251C" }}><UiText text={"Optional business photos and premises evidence"} /></h2>
+          <p style={{ fontSize: 12, color: "#68766F", lineHeight: 1.5 }}><UiText text={"You may provide clear, recent photos of your place of business to support review. Photos are optional, and uploading them does not verify your business automatically."} /></p>
           {([
             ["exterior", "Business exterior", "Show the entrance and surrounding premises.", "environment"],
             ["interior", "Inside your business", "Show your workspace, shelves or equipment.", "environment"],
@@ -487,7 +487,7 @@ export function LoanApplyScreen({ onNavigate }: Props) {
             ["collateral_asset", "Pledged security / collateral (optional)", "Photograph the actual asset offered as security. Include identifiable features; photos alone do not prove ownership or valuation.", "environment"],
           ] as const).map(([kind, label, hint, camera]) => (
             <div key={kind} style={{ borderTop: "1px solid #E4EBE6", padding: "12px 0" }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#153826" }}><UiText text={label} /><UiText text={kind !== "stock_equipment" && kind !== "collateral_asset" ? " *" : ""} /></label>
+              <label style={{ fontSize: 13, fontWeight: 700, color: "#153826" }}><UiText text={label} /></label>
               <p style={{ fontSize: 11, margin: "5px 0", color: "#64766C" }}><UiText text={hint} /></p>
               <LocalizedFileInput type="file" accept="image/*" capture={camera} aria-label={uiText(label)}
                 onChange={event => { const file = event.target.files?.[0]; if (file) void pickPhoto(kind, file); event.target.value = ""; }}
@@ -513,8 +513,8 @@ export function LoanApplyScreen({ onNavigate }: Props) {
           ))}
           {photoError && <p role="alert" style={{ color: "#A13A3A", fontSize: 12 }}><UiText text={photoError} /></p>}
           <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12, lineHeight: 1.6, color: "#243A2B" }}>
-            <input id="loan-photo-consent" type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} /><UiText text={" I consent to Kuula securely storing these photographs for business verification, underwriting review, fraud prevention and applicable record retention. I confirm the images are of my business and I have permission to submit them. "} /></label>
-          <p style={{ fontSize: 11, color: "#8A7661" }}><UiText text={"With your consent, your business photos save securely to your Kuula account so you can continue after signing out."} /></p>
+            <input id="loan-photo-consent" type="checkbox" checked={photoConsent} onChange={event => setPhotoConsent(event.target.checked)} /><UiText text={" If you provide photos, I consent to Kuula securely storing them for business verification, underwriting review, fraud prevention and applicable record retention. I confirm the images are of my business and I have permission to submit them. "} /></label>
+          <p style={{ fontSize: 11, color: "#8A7661" }}><UiText text={"Photo consent is only needed if you choose to provide photos. With your consent, photos save securely to your Kuula account so you can continue after signing out."} /></p>
         </section>
 
         <div className="p-4 rounded-2xl" style={{ background: "white" }}>

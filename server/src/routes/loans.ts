@@ -12,7 +12,6 @@ import { authenticateToken, hasPermission, isStaffRole, requirePermissions } fro
 import { assertLoanIdentityApproved } from "../lib/loan-identity.js";
 import { AppError } from "../middleware/error-handler.js";
 import { guarantorCleared, guaranteeSignatureHash } from "../lib/guarantor-policy.js";
-import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { localQuote, type LoanQuote } from "../lib/pricing.js";
 import { parseBusinessProfile, type BusinessProfile } from "../lib/business-profile.js";
 import { effectiveCreditEvidence } from "../lib/credit-evidence.js";
@@ -296,7 +295,6 @@ router.post("/applications/:id/business-review", authenticateToken, requirePermi
   const assigned = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT id FROM approval_assignments WHERE application_id=${id}::uuid AND assignee_id=${req.user!.userId}::uuid AND level IN (1,2) LIMIT 1`);
   if (!assigned[0]) throw new AppError("Only the loan officer or credit manager assigned to this case can review the business", 403);
-  if (status === "verified") await assertBusinessPhotoEvidence(id);
   const updated = await prisma.loanApplication.update({
     where: { id },
     data: {
@@ -585,7 +583,6 @@ router.post(
       // Final terms must first be offered before a guarantor can knowingly accept maximum liability.
       // Disbursement remains independently blocked until the guarantee is verified.
       if (guarantee && !["waived","verified","not_required","required"].includes(guarantee.status)) throw new AppError("Guarantor requirement not resolved",409);
-      if (application.businessProfile) await assertBusinessPhotoEvidence(id);
       if (application.businessProfile && application.businessReviewStatus !== "verified")
         throw new AppError("Business verification is required before approval", 422);
     }

@@ -20,7 +20,9 @@ represent a quote or Growth Line as a guaranteed facility.
    the loan application and visible only within authorized staff workflows.
 6. Credit officer reviews documentary/field evidence, records findings and
    explicitly verifies or rejects the business information before an offer is
-   eligible for final approval. No automated unverified approval.
+   eligible for final approval. Supporting field evidence and business photos
+   are optional; the documented business assessment and independent approval
+   remain required. No automated unverified approval.
 7. Loan staff apply the existing credit policy and KYC, acceptance, disbursement,
    settlement and repayment controls. Historical loans remain in the ledger.
 

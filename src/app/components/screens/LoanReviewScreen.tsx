@@ -81,9 +81,8 @@ export function LoanReviewScreen({ onNavigate }: Props) {
     setError("");
     try {
       const { files, consent } = getBusinessPhotos();
-      if (!consent || !files.exterior || !files.interior || !files.applicant_at_business) {
-        throw new Error("Your required photos or photo consent are missing. Return to the application, take the photographs, and review again.");
-      }
+      const hasPhotos = Object.values(files).some(file => Array.isArray(file) ? file.length > 0 : Boolean(file));
+      if (hasPhotos && !consent) throw new Error("Photo consent is required for the photos you provided. Return to the application and confirm consent.");
       if (!env.USE_API) throw new Error("Submitting a business application requires a live Kuula server connection.");
       const { kyc } = await api.getKycStatus(token);
       if (kyc.loanEligible !== true) throw new Error("Your identity documents must be verified and approved before applying. Open Identity Verification to check their status.");
@@ -107,16 +106,19 @@ export function LoanReviewScreen({ onNavigate }: Props) {
       setSubmissionStage("uploading");
       const photos: Record<string, string | string[]> = {};
       for (const [kind, file] of Object.entries(files)) {
-        if (Array.isArray(file)) photos[kind] = await Promise.all(file.map(fileToDataUrl));
-        else if (file) photos[kind] = await fileToDataUrl(file);
+        if (Array.isArray(file) && file.length) photos[kind] = await Promise.all(file.map(fileToDataUrl));
+        else if (!Array.isArray(file) && file) photos[kind] = await fileToDataUrl(file);
       }
-      // A prior timeout can mean that private evidence was stored despite
-      // the client receiving no response. Query the server before retrying.
-      const previous = await api.getBusinessPhotos(token, applicationId);
-      const required = ["exterior", "interior", "applicant_at_business"];
-      if (!required.every(kind => previous.photos.some(photo => photo.type === kind))) {
-        if (previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
-        await api.uploadBusinessPhotos(token, applicationId, photos);
+      if (Object.keys(photos).length) {
+        // A prior timeout can mean that private evidence was stored despite
+        // the client receiving no response. Query the server before retrying.
+        const previous = await api.getBusinessPhotos(token, applicationId);
+        const storedCounts = new Map<string, number>();
+        for (const photo of previous.photos) storedCounts.set(photo.type, (storedCounts.get(photo.type) || 0) + 1);
+        const requestedCounts = Object.entries(photos).map(([kind, values]) => [kind, Array.isArray(values) ? values.length : 1] as const);
+        const alreadyUploaded = requestedCounts.every(([kind, count]) => (storedCounts.get(kind) || 0) >= count);
+        if (!alreadyUploaded && previous.photos.length) throw new Error("Some business photos have already been received. Contact Kuula support so the case can be reconciled safely.");
+        if (!alreadyUploaded) await api.uploadBusinessPhotos(token, applicationId, photos);
       }
       try {
         await api.deleteApplicationDraft(token);

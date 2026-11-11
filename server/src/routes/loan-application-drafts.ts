@@ -10,7 +10,7 @@ import { writeAuditEvent } from "../lib/audit.js";
 
 const router = Router();
 const TYPES = new Set(["exterior", "interior", "applicant_at_business", "stock_equipment", "collateral_asset"]);
-const REQUIRED_TYPES = new Set(["exterior", "interior", "applicant_at_business"]);
+const SINGLE_PHOTO_TYPES = new Set(["exterior", "interior", "applicant_at_business"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function draftPayload(value: unknown): Prisma.InputJsonValue {
@@ -45,7 +45,7 @@ router.post("/application-draft/photos", authenticateToken, async (req: Request,
   const position = Number(req.body?.position);
   const dataUrl = req.body?.dataUrl;
   if (!TYPES.has(type) || !Number.isInteger(position) || position < 0 || position > 7
-    || (REQUIRED_TYPES.has(type) && position !== 0) || req.body?.photoConsent !== true || typeof dataUrl !== "string") {
+    || (SINGLE_PHOTO_TYPES.has(type) && position !== 0) || req.body?.photoConsent !== true || typeof dataUrl !== "string") {
     throw new AppError("Draft photo details are invalid", 400);
   }
   try { parseDataUrl(dataUrl); } catch { throw new AppError("Choose a valid JPG, PNG or WEBP image under 5 MB", 400); }
@@ -81,7 +81,7 @@ router.delete("/application-draft/photos/:type/:position", authenticateToken, as
   const type = String(req.params.type);
   const position = Number(req.params.position);
   if (!TYPES.has(type) || !Number.isInteger(position) || position < 0 || position > 7
-    || (REQUIRED_TYPES.has(type) && position !== 0)) throw new AppError("Invalid draft photo type or position", 400);
+    || (SINGLE_PHOTO_TYPES.has(type) && position !== 0)) throw new AppError("Invalid draft photo type or position", 400);
   const rows = await prisma.$queryRaw<{ storage_key: string }[]>(Prisma.sql`DELETE FROM loan_application_draft_photos WHERE applicant_id=${req.user!.userId}::uuid AND photo_type=${type} AND photo_order=${position} RETURNING storage_key`);
   if (rows[0]) await deleteFieldEvidence(rows[0].storage_key).catch(() => undefined);
   res.status(204).end();

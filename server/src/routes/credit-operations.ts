@@ -6,7 +6,6 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { authenticateToken, requirePermissions } from "../middleware/auth.js";
 import { AppError } from "../middleware/error-handler.js";
-import { assertBusinessPhotoEvidence } from "../lib/business-photo-review.js";
 import { accessFieldEvidence, saveFieldEvidence } from "../lib/field-evidence-storage.js";
 import { writeAuditEvent } from "../lib/audit.js";
 import { levelLabel, roleFitsLevel, roleLevel as sharedRoleLevel } from "../lib/credit-roles.js";
@@ -364,8 +363,6 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
     const evaluations = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT id, business_observations, financial_observations, repayment_capacity, recommendation, recommended_amount, recommended_term_days FROM credit_evaluations WHERE application_id = ${applicationId}::uuid ORDER BY version DESC LIMIT 1`);
     const ev = evaluations[0];
     if (!ev || !ev.business_observations || !ev.financial_observations || !ev.repayment_capacity || !ev.recommendation || !ev.recommended_amount || !ev.recommended_term_days) throw new AppError("Complete the required field evaluation narrative and recommendation before submitting", 409);
-    const evidence = await prisma.$queryRaw<any[]>(Prisma.sql`SELECT count(*)::int AS count FROM evaluation_evidence WHERE application_id = ${applicationId}::uuid`);
-    if (Number(evidence[0]?.count || 0) < 2) throw new AppError("At least two field evidence images/documents are required before Level 1 submission", 409);
     const priced = await prisma.$queryRaw<Array<{ principal: bigint; term_days: number }>>(Prisma.sql`SELECT principal, term_days FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid AND status='proposed' LIMIT 1`);
     if (!priced[0]) throw new AppError("Submit the pricing proposal before sending the case for review", 409);
     if (Number(priced[0].principal) !== Number(ev.recommended_amount) || Number(priced[0].term_days) !== Number(ev.recommended_term_days))
@@ -420,7 +417,6 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
     await assertWithinApprovalAuthority(req.user!.role, approvedPrincipal);
   }
   await assertIndependentOfOtherLevels(applicationId, req.user!.userId, level);
-  if (action === "approve" && application.businessProfile) await assertBusinessPhotoEvidence(applicationId);
   if (action === "approve" && application.businessProfile && application.businessReviewStatus !== "verified")
     throw new AppError("A documented, verified business assessment is required before final approval", 422);
   if (action === "approve" && application.businessReviewedBy === req.user!.userId)

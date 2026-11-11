@@ -45,14 +45,14 @@ function BusinessPhotoReview({ token, applicationId }: { token: string; applicat
       if (response.temporary) window.setTimeout(() => URL.revokeObjectURL(response.url), 60_000);
     } catch(err) { setError(err instanceof Error ? err.message : "Could not open private photo"); }
   };
-  const mandatory = ["exterior", "interior", "applicant_at_business"];
-  const missing = mandatory.filter(kind => !photos.some(photo => photo.type === kind));
+  const recommendedTypes = ["exterior", "interior", "applicant_at_business"];
+  const missing = recommendedTypes.filter(kind => !photos.some(photo => photo.type === kind));
   return <div style={{ border: "1px solid #D6E4DC", borderRadius: 12, padding: 14, marginTop: 14 }}>
     <strong style={{ fontSize: 14 }}>Applicant business photographs</strong>
     <p style={{ color: "#64748B", fontSize: 12 }}>Compare premises, applicant identity and other evidence. Images alone do not establish authenticity.</p>
     {loading ? <p style={{ fontSize: 12 }}>Loading private evidence...</p> : <>
       <p style={{ color: missing.length ? "#B45309" : "#0B5E3A", fontSize: 12 }}>
-        {missing.length ? "Missing required evidence: " + missing.join(", ") : "All required photographs received — authenticity still requires review"}
+        {!photos.length ? "No optional business photos provided" : missing.length ? "Optional photos not provided: " + missing.join(", ") : "Photos received — authenticity still requires review"}
       </p>
       {photos.map(photo => <button key={photo.id} type="button" onClick={() => void open(photo.id)}
         style={{ padding: 10, marginRight: 8, marginBottom: 8, background: "white", border: "1px solid #C9DCD0", borderRadius: 9 }}>

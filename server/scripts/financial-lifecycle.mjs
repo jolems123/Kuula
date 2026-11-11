@@ -82,9 +82,9 @@ try {
     token: A, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 403,
   });
   await call("POST", `/api/loans/applications/${applicationId}/business-review`, {
-    token: officerLogin.token, body: { status: "verified", notes: "Inspected business turnover and premises photographs" }, expect: 422,
+    token: officerLogin.token, body: { status: "verified", notes: "Verified business turnover without optional photo evidence" },
   });
-  step("private business photos: ownership, required uploads, distinctness and duplicate protection");
+  step("private business photos: optional uploads, distinctness and duplicate protection");
   const photoPath = `/api/loans/applications/${applicationId}/business-photos`;
   const photoData = {
     exterior: testPng(255, 0, 0),
@@ -95,16 +95,16 @@ try {
   };
   await call("GET", photoPath, { expect: 401 });
   await call("POST", photoPath, { token: C, body: { photoConsent: false, photos: photoData }, expect: 400 });
-  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { exterior: photoData.exterior } }, expect: 400 });
   await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { ...photoData, interior: photoData.exterior } }, expect: 400 });
-  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 201 });
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { exterior: photoData.exterior, stock_equipment: photoData.stock_equipment, collateral_asset: photoData.collateral_asset } }, expect: 201 });
   const photoList = await call("GET", photoPath, { token: C });
-  assert.equal(photoList.photos.length, 7);
+  assert.equal(photoList.photos.length, 5);
   assert.equal(photoList.photos.filter(photo => photo.type === "stock_equipment").length, 2);
   assert.equal(photoList.photos.filter(photo => photo.type === "collateral_asset").length, 2);
-  assert.ok(["exterior", "interior", "applicant_at_business"].every(kind =>
-    photoList.photos.some(photo => photo.type === kind)));
-  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: photoData }, expect: 409 });
+  assert.ok(photoList.photos.some(photo => photo.type === "exterior"));
+  assert.ok(["interior", "applicant_at_business"].every(kind =>
+    !photoList.photos.some(photo => photo.type === kind)));
+  await call("POST", photoPath, { token: C, body: { photoConsent: true, photos: { exterior: photoData.exterior } }, expect: 409 });
   const review = await call("POST", `/api/loans/applications/${applicationId}/business-review`, { token: officerLogin.token, body: { status: "verified", notes: "CI verified trading operations and business turnover evidence" } });
   assert.equal(review.application.businessReviewStatus, "verified");
   step("prepare independent officer pricing and final review fixtures");
