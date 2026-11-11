@@ -29,6 +29,13 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [serverAccepted, setServerAccepted] = useState(false);
   const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
+  const [signatureReceipt, setSignatureReceipt] = useState<{
+    signed: boolean; accepted?: boolean; acceptedAt: string | null;
+    signedByName: string | null; signatureMethod: string | null;
+    agreementVersion: string | null; legacyAcceptance?: boolean;
+  } | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [signatureName, setSignatureName] = useState(user?.fullName ?? "");
@@ -69,6 +76,19 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
   useEffect(() => {
     if (user?.fullName && !signatureName) setSignatureName(user.fullName);
   }, [user?.fullName, signatureName]);
+
+  useEffect(() => {
+    if (!token || !offer) { setSignatureReceipt(null); return; }
+    let active = true;
+    setSignatureReceipt(null);
+    setReceiptLoading(true);
+    setReceiptError("");
+    api.getLoanAgreementReceipt(token, offer.id)
+      .then(receipt => { if (active) setSignatureReceipt(receipt); })
+      .catch(error => { if (active) setReceiptError(error instanceof Error ? error.message : "Could not verify electronic signature"); })
+      .finally(() => { if (active) setReceiptLoading(false); });
+    return () => { active = false; };
+  }, [token, offer?.id, serverAccepted]);
 
   useEffect(() => {
     if (!token || !offer || !["offered","approved","disbursing","active","overdue","paid"].includes(offer.status)) return;
@@ -186,7 +206,12 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
     }
   };
 
-  const downloadAgreement = () => downloadPdf({
+  const downloadAgreement = () => {
+    if (receiptLoading || receiptError || !signatureReceipt) {
+      setError("Confirm the agreement's signing status before downloading the PDF.");
+      return;
+    }
+    return downloadPdf({
     title: isPartnerFacility ? "Restricted-Purpose Credit Agreement" : "Loan Agreement",
     subtitle: `Agreement No: ${agreementNo}`,
     meta: [
@@ -196,13 +221,30 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
       { label: "Principal", value: formatUGX(principal) },
       { label: "Total Repayment", value: formatUGX(total) },
       ...(isPartnerFacility ? [{ label: "Verified Payee", value: payee }, { label: "Invoice / Order", value: offer?.invoiceReference || "Recorded in application" }] : []),
-      { label: "Status", value: serverAccepted ? `Accepted ${fmtDate(acceptedAt)}` : "Draft — not yet accepted" },
+      { label: "Status", value: signatureReceipt.signed ? "ELECTRONICALLY SIGNED" : signatureReceipt.accepted ? "Acceptance recorded — signature evidence unavailable" : "DRAFT — NOT SIGNED" },
+      ...(signatureReceipt.signed && signatureReceipt.signedByName && signatureReceipt.acceptedAt ? [
+        { label: "Electronic signature", value: signatureReceipt.signedByName },
+        { label: "Signed at (UTC)", value: new Date(signatureReceipt.acceptedAt).toISOString().replace("T", " ").replace(".000Z", " UTC").replace("Z", " UTC") },
+        { label: "Signature method", value: signatureReceipt.signatureMethod ?? "Typed-name electronic signature" },
+      ] : []),
       { label: "Terms version", value: "kuula-agreement-2026-11-11" },
 
     ],
-    tables: [{ title: "Terms", head: ["Clause", "Detail"], rows: clauses.map((c) => [c.title, c.body]) }],
+    tables: [
+      { title: "Terms", head: ["Clause", "Detail"], rows: clauses.map((c) => [c.title, c.body]) },
+      { title: "Agreement execution", head: ["Field", "Recorded evidence"], rows: signatureReceipt.signed
+        ? [["Status", "ELECTRONICALLY SIGNED"], ["Signed by (borrower)", signatureReceipt.signedByName ?? "—"],
+           ["Signature method", signatureReceipt.signatureMethod ?? "Typed-name electronic signature"],
+           ["Recorded acceptance (UTC)", signatureReceipt.acceptedAt ? new Date(signatureReceipt.acceptedAt).toISOString() : "—"],
+           ["Agreement reference", agreementNo]]
+        : [["Status", signatureReceipt.accepted ? "Acceptance recorded; verified signature evidence unavailable" : "UNSIGNED DRAFT"],
+           ["Agreement reference", agreementNo],
+           ["Electronic signature", "Not verified — this document is not proof of a signed agreement"]]
+      },
+    ],
     filename: `kuula-credit-agreement-${agreementNo}.pdf`,
   });
+  };
 
   const disbursementTerminal = disbursement && ["settled", "failed", "attention_required"].includes(disbursement.status);
   const beneficiaryLabel = isPartnerFacility ? payee : "your Mobile Money";
@@ -214,7 +256,7 @@ export function LoanAgreementScreen({ onNavigate }: Props) {
           <button onClick={() => onNavigate("loan-history")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.2)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
           <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}><UiText text={disbursement ? (isPartnerFacility ? "Partner Settlement Progress" : "Disbursement Progress") : "Credit Agreement"} /></span>
         </div>
-        <button onClick={downloadAgreement} disabled={!offer || !charges || !feesReady || !!feesError || !!chargeError} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600, opacity: offer ? 1 : .55 }}><Download size={14} /><UiText text={" PDF"} /></button>
+        <button onClick={downloadAgreement} disabled={!offer || !charges || !feesReady || !!feesError || !!chargeError || receiptLoading || !!receiptError || !signatureReceipt} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.2)", border: "none", color: "white", fontSize: 12, fontWeight: 600, opacity: offer ? 1 : .55 }}><Download size={14} /><UiText text={" PDF"} /></button>
       </div>
 
       <div style={{ flexShrink: 0, background: serverAccepted ? "#EDF8F2" : "#FFF9E5", padding: "10px 16px", borderBottom: `1px solid ${serverAccepted ? "#B7DEC9" : "#F2D77B"}`, display: "flex", alignItems: "center", gap: 8 }}>
