@@ -165,7 +165,6 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
               {token && <div style={{ marginTop: 14 }}><GuarantorNomination applicationId={loan.id} token={token} status={loan.status} /></div>}
             </article>
           );
-;
         })}
 
         {!loading && !error && filtered.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: "#87968E" }}><p style={{ fontSize: 15, margin: 0 }}><UiText text={"No records in this category"} /></p></div>}
