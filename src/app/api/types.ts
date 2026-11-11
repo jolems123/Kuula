@@ -88,6 +88,7 @@ export interface BusinessDetails extends Omit<BusinessProfile, "monthlySales" | 
 
 export interface LoanApplication {
   id: string;
+  agreementNumber?: string;
   applicantId: string;
   applicantName: string;
   amount: number;

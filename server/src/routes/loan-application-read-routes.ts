@@ -206,6 +206,7 @@ router.get("/applications", authenticateToken, async (req: Request, res: Respons
       const details = detailsByApplication.get(application.id);
       return {
         id: application.id,
+        agreementNumber: application.agreementNumber,
         applicantId: application.applicantId,
         applicantName: application.applicantName,
         amount: Number(application.amount),
