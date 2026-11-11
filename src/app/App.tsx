@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { KuulaLogo } from "./components/brand/KuulaLogo";
 import { GuarantorInvitationPage } from "./components/GuarantorInvitationPage";
+import { BottomNav } from "./components/BottomNav";
 
 const CUSTOMER_NAV: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Overview", icon: House },
@@ -76,6 +77,16 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
   const navigate = useNavigate();
   const title = CUSTOMER_TITLES[screenId]
     ?? screenId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  const mobileActive: "home" | "borrow" | "activity" | "settings" =
+    screenId === "home" || screenId === "dashboard" ? "home" :
+    ["transaction-history", "transaction-detail", "notifications"].includes(screenId) ? "activity" :
+    ["settings", "profile", "personal-info", "notification-settings", "privacy-security",
+      "help-support", "contact-support", "about-app", "delete-account", "user-support-chat"].includes(screenId) ? "settings" :
+    "borrow";
+  // Full-screen signing, payment and application forms keep their own guarded
+  // actions; a fixed tab bar must never cover an Accept/Submit control.
+  const showMobileTabs = !["loan-apply", "loan-review", "loan-agreement",
+    "make-payment", "payment-confirm", "partner-financing", "delete-account"].includes(screenId);
   const initials = (state.user?.fullName ?? "Kuula Customer")
     .trim()
     .split(/\s+/)
@@ -135,6 +146,7 @@ function CustomerWorkspace({ screenId, children }: { screenId: string; children:
           </div>
         </header>
         <div className="kuula-customer-workspace__content">{children}</div>
+        {showMobileTabs && <BottomNav active={mobileActive} onNavigate={(screen) => navigate(`/${screen}`)} />}
       </div>
     </div>
   );

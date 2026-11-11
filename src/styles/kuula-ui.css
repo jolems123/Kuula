@@ -609,3 +609,50 @@
 
 /* Consistent customer search: avoid duplicates and wrapping. */
 .kx-topbar__actions .kx-search{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;min-width:0;white-space:nowrap;padding:10px 15px}.kuula-customer-search-submit{display:inline-flex!important;align-items:center;justify-content:center;gap:9px;min-width:118px;min-height:48px;white-space:nowrap;flex-shrink:0}.kuula-customer-search-submit:disabled{opacity:.65;cursor:wait}@media(max-width:720px){.kx-topbar__actions .kx-search{padding:9px 10px;font-size:13px}.kuula-customer-search-submit{min-width:104px}}
+
+
+/* Shared navigation behaviour: one scrolling content surface, anchored chrome.
+   Applies to every staff role using AdminLayout and customer BottomNav. */
+.kx-admin { min-width: 0; min-height: 0; overflow: hidden; }
+.kx-admin__main { min-height: 0; overflow: hidden; }
+.kx-admin__content {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.kx-sidebar { overflow: hidden; }
+.kx-sidebar__nav { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.kx-topbar { position: relative; z-index: 5; flex-shrink: 0; }
+.kx-topbar__heading { min-width: 0; flex: 1; }
+.kx-topbar__title { max-width: 100%; }
+.kx-tabbar {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 66px;
+}
+.kx-tabbar__tab { min-width: 0; min-height: 52px; }
+.kx-tabbar__tab span { font-size: 12px; font-weight: 600; }
+@media (max-width: 899px) {
+  .kx-tabbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 35;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 20px rgba(5, 56, 31, .05);
+  }
+  .kuula-customer-workspace__content .kx-app__scroll {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .kx-admin__content { padding: 18px clamp(14px, 3vw, 24px) 32px; }
+  .kx-topbar { min-height: 60px; height: auto; padding: 8px 14px; }
+  .kx-topbar__title { font-size: clamp(15px, 3.8vw, 18px); }
+  .kx-topbar__actions { flex-shrink: 0; }
+  .kx-topbar__my-work { min-height: 42px; }
+}
+@media (max-width: 380px) {
+  .kx-tabbar__tab { gap: 3px; }
+  .kx-tabbar__tab span { font-size: 11px; }
+  .kx-topbar__eyebrow, .kx-topbar__my-work { display: none; }
+}
