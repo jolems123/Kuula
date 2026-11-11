@@ -471,3 +471,17 @@ html body .kuula-app-shell[data-surface="customer"] .kuula-customer-sidebar butt
   .kuula-customer-sidebar__nav { min-height: 0; overflow-y: auto; }
   .kuula-customer-topbar { flex-shrink: 0; z-index: 3; }
 }
+
+
+/* Global customer tabs replace per-screen duplicates, including loan forms
+   and supporting screens that previously had no consistent mobile navigation. */
+@media (max-width: 899px) {
+  .kuula-customer-workspace__content .kx-tabbar { display: none !important; }
+  .kuula-customer-workspace__main > .kx-tabbar { display: grid; }
+  .kuula-customer-workspace__content .kuula-route-viewport {
+    scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 900px) {
+  .kuula-customer-workspace__main > .kx-tabbar { display: none !important; }
+}
