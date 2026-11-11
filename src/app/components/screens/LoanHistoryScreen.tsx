@@ -1,5 +1,5 @@
 import { UiText, uiText, uiLocale } from "../../../i18n/ui-text";
-import { ArrowLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { ArrowLeft, ChevronRight, TrendingUp, Check, Circle, Clock3, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { BottomNav } from "../BottomNav";
 import { GuarantorNomination } from "../GuarantorNomination";
@@ -73,28 +73,38 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F8FAF9" }}>
-      <div style={{ display: "flex", alignItems: "center", padding: "16px", background: "#0B5E3A" }}>
-        <button aria-label={uiText("Back home")} onClick={() => onNavigate("home")} style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.16)", border: "none", display: "grid", placeItems: "center" }}><ArrowLeft size={18} color="white" /></button>
-        <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}><UiText text={"Credit History"} /></span>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "#F5F8F6", color: "#183128" }}>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, padding: "14px 12px", background: "white", borderBottom: "1px solid #E8EEEA" }}>
-        {[
-          { label: "Applications", value: loading ? "—" : String(loans.length) },
-          { label: "Active", value: loading ? "—" : String(activeCount) },
-          { label: "Paid", value: loading ? "—" : String(completedCount) },
-          { label: "Funded", value: loading ? "—" : formatTotal(totalBorrowed) },
-        ].map((item) => <div key={item.label} style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#1F2937" }}>{item.value}</div><div style={{ fontSize: 9, color: "#87968E", marginTop: 2 }}><UiText text={item.label} /></div></div>)}
-      </div>
+      <header style={{ background: "white", borderBottom: "1px solid #DEE8E2", padding: "clamp(18px, 2.6vw, 32px) clamp(16px, 3vw, 40px) 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
+          <button type="button" aria-label={uiText("Back home")} onClick={() => onNavigate("home")} style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 12, background: "#E9F4ED", border: "none", display: "grid", placeItems: "center", cursor: "pointer" }}><ArrowLeft size={22} color="#0B5E3A" /></button>
+          <div>
+            <h1 style={{ fontSize: "clamp(24px, 2.5vw, 32px)", fontWeight: 800, letterSpacing: "-0.035em", color: "#143B2B", margin: 0 }}>Credit history</h1>
+            <p style={{ color: "#667D70", fontSize: 15, margin: "4px 0 0" }}>Your applications, agreements and repayment progress in one place</p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 24 }}>
+          {[
+            { label: "Applications", value: loading ? "—" : String(loans.length) },
+            { label: "Active loans", value: loading ? "—" : String(activeCount) },
+            { label: "Fully repaid", value: loading ? "—" : String(completedCount) },
+            { label: "Total funded", value: loading ? "—" : formatTotal(totalBorrowed) },
+          ].map(item => <div key={item.label} style={{ padding: "16px 18px", background: "#F6FAF7", borderRadius: 14 }}>
+            <div style={{ fontSize: 14, color: "#60776A", fontWeight: 600 }}>{item.label}</div>
+            <div style={{ fontSize: "clamp(22px, 2.2vw, 28px)", fontWeight: 800, color: "#123E2B", marginTop: 6 }}>{item.value}</div>
+          </div>)}
+        </div>
+        <nav aria-label="Filter credit history" style={{ display: "flex", gap: 9, marginTop: 22, flexWrap: "wrap" }}>
+          {(["all", "offers", "active", "completed", "rejected"] as FilterType[]).map(item => (
+            <button key={item} type="button" aria-pressed={filter === item} onClick={() => setFilter(item)}
+              style={{ padding: "11px 17px", minHeight: 44, borderRadius: 10, border: filter === item ? "1px solid #0B5E3A" : "1px solid #DFE9E2", background: filter === item ? "#0B5E3A" : "#FFFFFF", color: filter === item ? "#FFFFFF" : "#435A4C", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              {item === "all" ? "All" : item === "offers" ? "Offers to review" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      <div style={{ display: "flex", gap: 8, padding: "12px 16px", background: "white", overflowX: "auto", borderBottom: "1px solid #E8EEEA" }}>
-        {(["all", "offers", "active", "completed", "rejected"] as FilterType[]).map((item) => (
-          <button key={item} onClick={() => setFilter(item)} style={{ padding: "7px 13px", borderRadius: 20, border: filter === item ? "1px solid #0B5E3A" : "1px solid #E1E7E3", background: filter === item ? "#EDF8F2" : "#F8FAF9", color: filter === item ? "#0B5E3A" : "#68766F", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}><UiText text={item === "all" ? "All" : item === "offers" ? "Offers to review" : item === "active" ? "Open / Active" : item === "completed" ? "Paid" : "Not approved"} /></button>
-        ))}
-      </div>
-
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 84px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "clamp(18px, 3vw, 36px) clamp(16px, 3vw, 40px) 96px", display: "flex", flexDirection: "column", gap: 20 }}>
         {loading && <p style={{ textAlign: "center", padding: 32, color: "#87968E" }}><UiText text={"Loading your credit history…"} /></p>}
         {error && <p role="alert" style={{ textAlign: "center", padding: 24, color: "#B42318" }}><UiText text={error} /></p>}
 
@@ -103,47 +113,59 @@ export function LoanHistoryScreen({ onNavigate }: Props) {
           const canOpenLiveDetail = ["active", "overdue"].includes(loan.status);
           const canOpenOffer = ["pending", "resubmitted", "offered", "disbursing", "rejected", "failed"].includes(loan.status);
           const action = canOpenLiveDetail ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-detail"); } : canOpenOffer ? () => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-approval"); } : undefined;
+
+          const progressSteps: Array<[string, boolean]> = [
+            ["Application submitted", true],
+            ["Field verification", (loan.reviewLevel ?? 0) >= 1 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+            ["Credit assessment", (loan.reviewLevel ?? 0) >= 2 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+            ["Final decision", (loan.reviewLevel ?? 0) >= 3 || ["rejected", "offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
+            ["Agreement signed", Boolean(loan.agreementAccepted)],
+            ["Funds received", ["active", "paid", "overdue"].includes(loan.status)],
+          ];
+          const completedSteps = progressSteps.filter(([, done]) => done).length;
           return (
-            <div key={loan.id} style={{ background: "white", borderRadius: 16, padding: "14px 16px", border: "1px solid #E8EEEA", boxShadow: "0 2px 6px rgba(0,0,0,0.035)", textAlign: "left", width: "100%", cursor: action ? "pointer" : "default" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 15, fontWeight: 800, color: "#1F2937", margin: 0 }}>{ugx(loan.amount)}</p>
-                  <p style={{ fontSize: 11, color: "#87968E", margin: "3px 0 0" }}><UiText text={loan.purpose} /> · {loan.termDays}<UiText text={" days · "} />{fmtDate(loan.createdAt)}</p>
-                </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}><span style={{ fontSize: 10, fontWeight: 800, color: style.color, background: style.bg, padding: "4px 9px", borderRadius: 20 }}><UiText text={style.label} /></span>{action && <ChevronRight size={14} color="#A6B1AB" />}</div>
-              </div>
-              {loan.status === "offered"
-                ? <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ display: "block", marginTop: 10, padding: "10px 14px", border: 0, borderRadius: 10, background: "#0B5E3A", color: "white", fontSize: 12, fontWeight: 800 }}><UiText text={"Review offer & accept agreement"} /></button>
-                : action && <button type="button" onClick={action} style={{fontSize:12,color:"#0B5E3A",marginTop:8,textDecoration:"underline"}}><UiText text={"View application details"} /></button>}
-              <div style={{ marginTop: 10, borderTop: "1px solid #F0F3F1", paddingTop: 9, display: "grid", gap: 5 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Application"} /></span><span style={{ color: "#425149", fontWeight: 600 }}>{loan.id.slice(0, 12)}…</span></div>
-                <div style={{ padding: "10px 0", borderTop: "1px solid #F0F3F1" }} aria-label={uiText("Loan application progress")}>
-                  <strong style={{ fontSize: 12, color: "#184B32" }}><UiText text={"Application progress"} /></strong>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
-                    {([
-                      ["Submitted", true],
-                      ["Level 1 · Field verification", (loan.reviewLevel ?? 0) >= 1 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-                      ["Level 2 · Credit review", (loan.reviewLevel ?? 0) >= 2 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-                      ["Level 3 · Final decision", (loan.reviewLevel ?? 0) >= 3 || ["offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-                      [loan.status === "rejected" ? "Not approved" : "Decision / Offer", ["rejected", "offered", "disbursing", "active", "paid", "overdue"].includes(loan.status)],
-                      ["Agreement accepted", Boolean(loan.agreementAccepted)],
-                      ["Disbursement", ["active", "paid", "overdue"].includes(loan.status)],
-                    ] as Array<[string, boolean]>).map(([name, done]) => (
-                      <span key={name} style={{ borderRadius: 12, padding: "5px 8px", fontSize: 10, color: done ? "#12613D" : "#68766F", background: done ? "#E5F5EA" : "#F2F4F3" }}>
-                        <UiText text={done ? "✓ " : "○ "} /><UiText text={name} />
-                      </span>
-                    ))}
+            <article key={loan.id} style={{ background: "#FFFFFF", borderRadius: 20, padding: "clamp(20px, 2.6vw, 32px)", boxShadow: "0 5px 28px rgba(20,50,30,.055)", border: "1px solid #E3EDE6" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start", minWidth: 0 }}>
+                  <div style={{ width: 50, height: 50, flexShrink: 0, borderRadius: 14, background: "#E9F5EE", display: "grid", placeItems: "center" }}><FileText size={24} color="#0B5E3A" /></div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, color: "#60766B", marginBottom: 3, fontWeight: 600 }}>Business credit · {loan.termDays} days</div>
+                    <div style={{ fontSize: "clamp(23px, 2.3vw, 30px)", fontWeight: 800, color: "#152A20", letterSpacing: "-0.03em" }}>{ugx(loan.amount)}</div>
+                    <div style={{ fontSize: 15, lineHeight: 1.55, color: "#526A5D", marginTop: 6, overflowWrap: "anywhere" }}><UiText text={loan.purpose} /> · Applied {fmtDate(loan.createdAt)}</div>
                   </div>
-                  {loan.status === "offered" && <span style={{ fontSize: 11, color: "#0B5E3A", display: "block", marginTop: 6 }}><UiText text={"Offer available: open it to review and accept your agreement."} /></span>}
-                  {loan.status === "disbursing" && <span style={{ fontSize: 11, color: "#72570B", display: "block", marginTop: 6 }}><UiText text={"Payment processing or awaiting independent Kuula release; not yet confirmed received."} /></span>}
                 </div>
-                {loan.total > 0 && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Quoted total repayment"} /></span><span style={{ color: "#425149", fontWeight: 700 }}>{ugx(loan.total)}</span></div>}
-                {loan.offerExpiresAt && loan.status === "offered" && <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11 }}><span style={{ color: "#87968E" }}><UiText text={"Offer expires"} /></span><span style={{ color: "#425149", fontWeight: 600 }}>{fmtDate(loan.offerExpiresAt)}</span></div>}
+                <div style={{ padding: "9px 14px", borderRadius: 9, background: style.bg, color: style.color, fontSize: 14, fontWeight: 750 }}>{style.label}</div>
               </div>
-              {token && <GuarantorNomination applicationId={loan.id} token={token} status={loan.status} />}
-              {loan.status === "paid" && <div style={{ marginTop: 9, display: "flex", gap: 5, alignItems: "center", color: "#0B5E3A", fontSize: 11, fontWeight: 700 }}><TrendingUp size={12} /><UiText text={" Fully repaid"} /></div>}
-            </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 22, padding: "16px 0", borderTop: "1px solid #E8EFEA", borderBottom: "1px solid #E8EFEA" }}>
+                <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>Agreement reference</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16, overflowWrap: "anywhere" }}>{loan.agreementNumber || "Pending reference"}</div></div>
+                <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>Total repayment</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16 }}>{loan.total > 0 ? ugx(loan.total) : "Not yet offered"}</div></div>
+                <div style={{ flex: "1 1 170px" }}><div style={{ color: "#697F71", fontSize: 14 }}>{loan.status === "offered" ? "Offer expires" : "Current stage"}</div><div style={{ marginTop: 5, fontWeight: 750, fontSize: 16 }}>{loan.status === "offered" && loan.offerExpiresAt ? fmtDate(loan.offerExpiresAt) : style.label}</div></div>
+              </div>
+              <div style={{ marginTop: 22 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#143C2A" }}>Application progress</h2>
+                  <span style={{ fontSize: 14, color: "#5A7063" }}>{completedSteps} of {progressSteps.length} stages</span>
+                </div>
+                <div aria-label="Application progress" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginTop: 14 }}>
+                  {progressSteps.map(([name, done], i) => (
+                    <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, background: done ? "#EAF6EE" : "#F5F7F6", borderRadius: 12, padding: "13px 12px", minHeight: 56 }}>
+                      {done ? <Check size={19} strokeWidth={2.7} color="#167443" style={{ flexShrink: 0 }} /> : loan.status === "disbursing" && i === 5 ? <Clock3 size={19} color="#A16B11" style={{ flexShrink: 0 }} /> : <Circle size={18} color="#81948A" style={{ flexShrink: 0 }} />}
+                      <span style={{ fontSize: 14, lineHeight: 1.4, fontWeight: done ? 700 : 550, color: done ? "#145937" : "#667B70" }}>{name}</span>
+                    </div>
+                  ))}
+                </div>
+                {loan.status === "disbursing" && <p style={{ margin: "15px 0 0", padding: "12px 15px", borderRadius: 10, background: "#FFF8E7", color: "#79550C", fontSize: 15, lineHeight: 1.55 }}>Settlement is pending. Funds may still be awaiting independent Finance release or provider confirmation. Do not treat them as received yet.</p>}
+                {loan.status === "offered" && <p style={{ margin: "15px 0 0", color: "#225A3B", fontSize: 15 }}>Your offer is ready. Review the agreement before accepting.</p>}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 22 }}>
+                {loan.status === "offered" && <button type="button" onClick={() => { setSelectedLoanApplicationId(loan.id); onNavigate("loan-agreement"); }} style={{ border: 0, borderRadius: 11, padding: "14px 18px", background: "#0B5E3A", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>Review & sign agreement</button>}
+                {action && <button type="button" onClick={action} style={{ display: "inline-flex", gap: 8, alignItems: "center", border: "1px solid #BDD9C7", borderRadius: 11, padding: "13px 17px", background: "white", color: "#0B5E3A", fontSize: 15, fontWeight: 750, cursor: "pointer" }}>View application details <ChevronRight size={18}/></button>}
+                {loan.status === "paid" && <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "#12613D", fontSize: 15, fontWeight: 700 }}><TrendingUp size={18}/>Fully repaid</span>}
+              </div>
+              {token && <div style={{ marginTop: 14 }}><GuarantorNomination applicationId={loan.id} token={token} status={loan.status} /></div>}
+            </article>
           );
+;
         })}
 
         {!loading && !error && filtered.length === 0 && <div style={{ textAlign: "center", padding: "40px 0", color: "#87968E" }}><p style={{ fontSize: 15, margin: 0 }}><UiText text={"No records in this category"} /></p></div>}
