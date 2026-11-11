@@ -32,7 +32,7 @@ import {
 
 const router = Router();
 const OPEN_STATUSES = ["pending", "resubmitted", "offered", "disbursing", "active", "overdue"];
-const AGREEMENT_VERSION = "2026-08-01";
+const AGREEMENT_VERSION = "kuula-agreement-2026-11-11";
 
 function quoteForRequest(amount: unknown, termDays: unknown): LoanQuote {
   try {
