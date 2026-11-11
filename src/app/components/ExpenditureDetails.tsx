@@ -24,10 +24,17 @@ export function ExpenditureDetails({ items, funds, onChange }: { items: Item[]; 
     {error && <p role="status" style={{ color: "#a13a3a" }}><UiText text={error} /></p>}
   </details>;
 }
-export function ExpenditureSummary({ business }: { business?: Partial<BusinessProfile> | null }) {
+export function ExpenditureSummary({ business, requestedAmount }: { business?: Partial<BusinessProfile> | null; requestedAmount?: number }) {
   if (!business?.useOfFunds) return null;
+  const categories = Object.keys(spendingCategories) as Item["category"][];
+  const declared = categories.filter(key => business.useOfFunds != null && Object.prototype.hasOwnProperty.call(business.useOfFunds, key));
+  const total = declared.reduce((sum, key) => sum + Number(business.useOfFunds?.[key] ?? 0), 0);
+  const hasCompleteBreakdown = declared.length === categories.length;
+  const validRequest = Number.isFinite(requestedAmount) && (requestedAmount ?? 0) > 0;
   return <section className="kuula-expenditure"><h3><UiText text={"Planned expenditure"} /></h3>
-    {Object.entries(spendingCategories).map(([key, label]) => <p key={key}><UiText text={label} /><UiText text={": UGX "} />{Number(business.useOfFunds?.[key as Item["category"]] ?? 0).toLocaleString("en-UG")}</p>)}
+    {Object.entries(spendingCategories).map(([key, label]) => <p key={key}><UiText text={label} /><UiText text={": UGX "} />{Object.prototype.hasOwnProperty.call(business.useOfFunds, key) ? Number(business.useOfFunds?.[key as Item["category"]] ?? 0).toLocaleString("en-UG") : "Not provided"}</p>)}
+    <p><strong>Declared allocation total: UGX {total.toLocaleString("en-UG")}</strong>{!hasCompleteBreakdown ? " (incomplete breakdown)" : ""}</p>
+    {validRequest && (!hasCompleteBreakdown || total !== requestedAmount) && <p role="status" style={{ color: "#9A3412" }}>Reconciliation required: requested UGX {requestedAmount!.toLocaleString("en-UG")}; declared UGX {total.toLocaleString("en-UG")}. Confirm with the customer before recommending finance.</p>}
     {business.expenditureItems?.length ? <ul>{business.expenditureItems.map((item, index) => <li key={index}><UiText text={spendingCategories[item.category]} /> · {item.description}<UiText text={" · UGX "} />{item.amount.toLocaleString("en-UG")}</li>)}</ul> : <p><UiText text={"No optional itemized details supplied."} /></p>}
   </section>;
 }
