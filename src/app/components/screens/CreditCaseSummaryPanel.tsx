@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { ExpenditureSummary } from "../ExpenditureDetails";
 import { AlertTriangle, CheckCircle2, FileCheck2, ShieldCheck } from "lucide-react";
 import { AdminCard } from "../AdminLayout";
+import { api } from "../../api/client";
+import { useAppContext } from "../../context/AppContext";
 
 const BORDER = "#E2E8F0";
 const GREEN = "#0B5E3A";
@@ -14,6 +17,11 @@ function statusLabel(value: string) {
 }
 
 export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any> }) {
+  const { state } = useAppContext();
+  const [businessReviewNotes, setBusinessReviewNotes] = useState("");
+  const [businessReviewError, setBusinessReviewError] = useState<string | null>(null);
+  const [businessReviewBusy, setBusinessReviewBusy] = useState(false);
+  const [savedBusinessReview, setSavedBusinessReview] = useState<{ applicationId: string; notes: string } | null>(null);
   const application = detail.application || {};
   const livelihood = application.livelihood || {};
   const affordability = application.affordability || {};
@@ -24,9 +32,52 @@ export function CreditCaseSummaryPanel({ detail }: { detail: Record<string, any>
   const underwritten = affordability.approvedLimit == null ? application.underwriting?.approvedLimit : affordability.approvedLimit;
   const officerRecommended = evaluation.recommended_amount == null ? null : Number(evaluation.recommended_amount);
   const missing = (risk.missingRequiredEvidence || []) as string[];
+  const isLevelTwo = Number(detail.case?.current_level) === 2;
+  const businessReviewVerified = application.businessReviewStatus === "verified"
+    || savedBusinessReview?.applicationId === application.id;
+  const verifyBusiness = async () => {
+    const notes = businessReviewNotes.trim();
+    if (!state.session.token || !application.id) return;
+    if (notes.length < 15) {
+      setBusinessReviewError("Enter at least 15 characters describing the business verification findings.");
+      return;
+    }
+    setBusinessReviewBusy(true);
+    setBusinessReviewError(null);
+    try {
+      await api.reviewBusiness(state.session.token, application.id, "verified", notes);
+      setSavedBusinessReview({ applicationId: application.id, notes });
+      setBusinessReviewNotes("");
+    } catch (error) {
+      setBusinessReviewError(error instanceof Error ? error.message : "Could not record the business verification.");
+    } finally {
+      setBusinessReviewBusy(false);
+    }
+  };
 
   return <div style={{ display: "grid", gap: 14, marginBottom: 14 }}>
     <ExpenditureSummary business={application.businessProfile} requestedAmount={requested} />
+    {isLevelTwo && application.businessProfile && <AdminCard>
+      <h3 style={{ marginTop: 0 }}>Business assessment · required before final approval</h3>
+      {businessReviewVerified
+        ? <p role="status" style={{ color: GREEN, marginBottom: 0 }}>Business assessment verified. Level 3 must make the final decision independently.</p>
+        : <>
+          <p style={{ fontSize: 12, color: "#64748B" }}>Record your findings from the business review. Photos are optional; documented findings are required for Level 3 approval.</p>
+          <textarea
+            aria-label="Business verification findings"
+            value={businessReviewNotes}
+            onChange={event => setBusinessReviewNotes(event.target.value)}
+            maxLength={2000}
+            rows={4}
+            style={{ width: "100%", boxSizing: "border-box", padding: 11, border: `1px solid ${BORDER}`, borderRadius: 9 }}
+            placeholder="Describe the business and the checks you completed (at least 15 characters)."
+          />
+          {businessReviewError && <p role="alert" style={{ color: "#B91C1C", fontSize: 12 }}>{businessReviewError}</p>}
+          <button type="button" disabled={businessReviewBusy || businessReviewNotes.trim().length < 15} onClick={() => void verifyBusiness()} style={{ border: 0, borderRadius: 9, padding: "10px 14px", marginTop: 9, background: GREEN, color: "white", fontWeight: 700, opacity: businessReviewBusy || businessReviewNotes.trim().length < 15 ? 0.6 : 1 }}>
+            {businessReviewBusy ? "Saving verification…" : "Mark business verified"}
+          </button>
+        </>}
+    </AdminCard>}
     <AdminCard>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         {risk.status === "clear" ? <ShieldCheck size={18} color={GREEN}/> : <AlertTriangle size={18} color="#B45309"/>}
