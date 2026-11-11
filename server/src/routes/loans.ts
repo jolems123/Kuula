@@ -693,6 +693,40 @@ router.get("/:id/offer-charges", authenticateToken, async (req: Request, res: Re
   res.set("Cache-Control","private, no-store").json({charges:rows[0].fee_breakdown,feeTotal:Number(app.serviceFee)});
 });
 
+// Read-only acceptance receipt. The server, not browser state, is the authority
+// on whether an electronic signature was actually recorded.
+router.get("/:id/agreement/receipt", authenticateToken, async (req: Request, res: Response) => {
+  const applicationId = String(req.params.id);
+  const userId = req.user!.userId;
+  const application = await prisma.loanApplication.findUnique({
+    where: { id: applicationId },
+    select: { applicantId: true, applicant: { select: { fullName: true } }, agreementAcceptance: true },
+  });
+  if (!application || application.applicantId !== userId) throw new AppError("Loan offer not found", 404);
+  res.set("Cache-Control", "private, no-store");
+  const acceptance = application.agreementAcceptance;
+  if (!acceptance) {
+    res.json({ signed: false, acceptedAt: null, signedByName: null, signatureMethod: null, agreementVersion: null });
+    return;
+  }
+  const context = acceptance.clientContext && typeof acceptance.clientContext === "object" &&
+    !Array.isArray(acceptance.clientContext) ? acceptance.clientContext as Record<string, unknown> : {};
+  const verifiedTypedSignature = context.signatureVersion === "typed_name_v1" &&
+    context.explicitConsent === true &&
+    typeof context.signedByName === "string" &&
+    context.signedByName.trim().replace(/\\s+/g, " ").toLowerCase() ===
+      application.applicant.fullName.trim().replace(/\\s+/g, " ").toLowerCase();
+  res.json({
+    signed: verifiedTypedSignature,
+    accepted: true,
+    acceptedAt: acceptance.acceptedAt,
+    signedByName: verifiedTypedSignature ? context.signedByName : null,
+    signatureMethod: verifiedTypedSignature ? "Typed-name electronic signature" : null,
+    agreementVersion: acceptance.agreementVersion,
+    legacyAcceptance: !verifiedTypedSignature,
+  });
+});
+
 router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res: Response) => {
   const applicationId = String(req.params.id);
   const userId = req.user!.userId;
