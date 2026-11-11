@@ -411,8 +411,11 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (action === "approve" && level !== 3) throw new AppError("Only Level 3 can make the final approval", 403);
   let approvedPrincipal = Number(application.amount);
   if (action === "approve") {
-    const priced = await prisma.$queryRaw<Array<{ principal: bigint }>>(Prisma.sql`SELECT principal FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid AND status='proposed' LIMIT 1`);
+    const priced = await prisma.$queryRaw<Array<{ principal: bigint; term_days: number }>>(Prisma.sql`SELECT principal, term_days FROM loan_pricing_proposals WHERE application_id=${applicationId}::uuid AND status='proposed' ORDER BY created_at DESC LIMIT 1`);
     if (!priced[0]) throw new AppError("This case has no pricing proposal. Return it to the loan officer to price it before approving.", 409);
+    const latestEvaluation = await prisma.$queryRaw<Array<{ recommended_amount: bigint | null; recommended_term_days: number | null }>>(Prisma.sql`SELECT recommended_amount, recommended_term_days FROM credit_evaluations WHERE application_id=${applicationId}::uuid ORDER BY version DESC LIMIT 1`);
+    if (!latestEvaluation[0] || Number(priced[0].principal) !== Number(latestEvaluation[0].recommended_amount) || Number(priced[0].term_days) !== Number(latestEvaluation[0].recommended_term_days))
+      throw new AppError("Pricing proposal does not match the latest field recommendation; return the case for updated pricing", 409);
     approvedPrincipal = Number(priced[0].principal);
     await assertWithinApprovalAuthority(req.user!.role, approvedPrincipal);
   }
