@@ -700,9 +700,8 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     include: { applicant: true, underwriting: true, agreementAcceptance: true, partnerFinancing: true },
   });
   if (!application || application.applicantId !== userId) throw new AppError("Loan offer not found", 404);
-  if (application.status !== "offered") throw new AppError("Only an active loan offer can be accepted", 409);
-  if (!application.offerExpiresAt || application.offerExpiresAt <= new Date()) throw new AppError("This loan offer has expired", 409);
-  if (!application.underwriting) throw new AppError("Loan underwriting record is missing", 409);
+  // An already-signed agreement remains retrievable, even after the loan has
+  // progressed beyond the offered state. Never rewrite an accepted snapshot.
   if (application.agreementAcceptance) {
     res.json({
       ok: true,
@@ -711,6 +710,19 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
       agreementHash: application.agreementAcceptance.agreementHash,
     });
     return;
+  }
+  if (application.status !== "offered") throw new AppError("Only an active loan offer can be accepted", 409);
+  if (!application.offerExpiresAt || application.offerExpiresAt <= new Date()) throw new AppError("This loan offer has expired", 409);
+  if (!application.underwriting) throw new AppError("Loan underwriting record is missing", 409);
+
+  // The browser cannot opt out of signature checks by omitting a version flag.
+  const signature = req.body?.clientContext;
+  const normalized = (value: string) => value.trim().replace(/\\s+/g, " ").toLocaleLowerCase("en");
+  const signedName = typeof signature?.signedByName === "string" ? normalized(signature.signedByName) : "";
+  const registeredName = normalized(application.applicant.fullName || "");
+  if (signature?.signatureVersion !== "typed_name_v1" ||
+      signature?.explicitConsent !== true || !signedName || !registeredName || signedName !== registeredName) {
+    throw new AppError("Explicit electronic consent and a signature matching the registered borrower name are required", 422);
   }
 
   const current = await recheckUnderwriting(application, application.applicant, application.underwriting);
@@ -739,12 +751,6 @@ router.post("/:id/agreement/accept", authenticateToken, async (req: Request, res
     feeBreakdown: await prisma.$queryRaw<Array<{fee_breakdown:unknown}>>(Prisma.sql`SELECT fee_breakdown FROM loan_pricing_proposals WHERE application_id=${application.id}::uuid AND status='approved' LIMIT 1`).then(rows => rows[0]?.fee_breakdown ?? []),
   };
   const agreementHash = crypto.createHash("sha256").update(JSON.stringify(termsSnapshot)).digest("hex");
-  const signature = req.body?.clientContext;
-  if (signature?.signatureVersion === "typed_name_v1") {
-    const statedName = typeof signature.signedByName === "string" ? signature.signedByName.trim().toLowerCase() : "";
-    if (!signature.explicitConsent || !statedName || statedName !== (application.applicant.fullName || "").trim().toLowerCase())
-      throw new AppError("Please explicitly sign with your registered full name", 422);
-  }
   const clientContext = req.body?.clientContext && typeof req.body.clientContext === "object"
     ? req.body.clientContext as Prisma.InputJsonValue
     : undefined;
