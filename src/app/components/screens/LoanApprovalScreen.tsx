@@ -5,6 +5,7 @@ import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
 import { getLastSubmittedApplicationId, getSelectedLoanApplicationId, setSelectedLoanApplicationId } from "../../lib/selection";
+import { getDisbursementStatus, type DisbursementBatchStatus } from "../../api/disbursement";
 
 interface Props { onNavigate: (s: string) => void; }
 
@@ -28,6 +29,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
   const useServer = env.USE_API && !!token;
   const [app, setApp] = useState<LoanApplication | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  const [payout, setPayout] = useState<DisbursementBatchStatus | null>(null);
   const [submittedId] = useState(getLastSubmittedApplicationId);
 
   const refresh = useCallback(async () => {
@@ -53,6 +55,20 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
     return () => clearInterval(timer);
   }, [useServer, refresh]);
 
+  useEffect(() => {
+    if (!token || !app || app.status !== "disbursing") { setPayout(null); return; }
+    let active = true;
+    const fetchPayout = async () => {
+      try {
+        const response = await getDisbursementStatus(token, app.id);
+        if (active) setPayout(response.disbursement);
+      } catch { if (active) setPayout(null); }
+    };
+    void fetchPayout();
+    const timer = window.setInterval(() => { void fetchPayout(); }, 12000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [token, app?.id, app?.status]);
+
   const toDisplayStatus = (status: LoanApplication["status"] | undefined): Status => {
     if (status === "active" || status === "paid" || status === "overdue") return "approved";
     if (status === "disbursing") return "disbursing";
@@ -65,6 +81,10 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
   const phone = state.user?.phone ?? "";
   const isDirectPayee = Boolean(app?.partnerFinancingRequestId || app?.payeeName || app?.partnerName);
   const settlementTarget = app?.payeeName || app?.partnerName || "the verified partner";
+  const paymentNetwork = payout?.network === "airtel" || /airtel/i.test(app?.channel || "") ? "Airtel Money" :
+    payout?.network === "mtn" || /mtn/i.test(app?.channel || "") ? "MTN Mobile Money" : "Mobile Money";
+  const awaitingFinance = payout?.status === "awaiting_release";
+  const settlementNeedsReview = ["failed", "attention_required", "cancelled"].includes(payout?.status || "");
 
   const config = {
     pending: {
@@ -90,11 +110,15 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
       color: "#2563EB",
       bg: "#EFF6FF",
       border: "#BFDBFE",
-      title: isDirectPayee ? "Paying the Verified Partner" : "Sending Your Funds",
+      title: awaitingFinance ? "Awaiting Kuula Payment Authorization" :
+        settlementNeedsReview ? "Payment Requires Kuula Review" :
+        isDirectPayee ? "Partner Payment Pending" : "Mobile Money Payment Pending",
       sub: isDirectPayee
         ? uiText("Kuula is processing payment to {{payee}}. We will confirm here only after the payment provider settles it.", { payee: settlementTarget })
-        : "Your Mobile Money disbursement is processing. We will confirm here only after the payment provider settles it.",
-      badge: { text: "Settlement Pending", color: "#1E40AF", bg: "#DBEAFE" },
+        : awaitingFinance ? `Your signed loan is awaiting independent Kuula Finance release to ${paymentNetwork}. No funds have been sent yet.` :
+          settlementNeedsReview ? `Your ${paymentNetwork} payment requires Kuula review. Funds are not confirmed as received.` :
+          `Your ${paymentNetwork} payment is being processed or its status is being verified. Funds are confirmed only after provider settlement.`,
+      badge: { text: awaitingFinance ? "Awaiting Finance" : settlementNeedsReview ? "Review required" : "Settlement pending", color: "#1E40AF", bg: "#DBEAFE" },
     },
     approved: {
       Icon: CheckCircle,
@@ -154,7 +178,7 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
             <p style={{ fontSize: 12, color: "#37644F", margin: "4px 0 0" }}>
               {isDirectPayee
                 ? `Accept the agreement to request settlement to ${settlementTarget}.`
-                : `Accept the agreement to request Mobile Money disbursement${phone ? ` to ${phone}` : ""}.`}
+                : `Accept the agreement to request ${paymentNetwork} disbursement${phone ? ` to ${phone}` : ""}.`}
             </p>
           </div>
         )}
@@ -163,13 +187,14 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
           <div style={{ background: "#EFF6FF", borderRadius: 16, padding: "16px", border: "1px solid #BFDBFE" }}>
             <p style={{ fontSize: 12, color: "#1E40AF", fontWeight: 700, margin: "0 0 4px" }}><UiText text={"Processing Amount"} /></p>
             <p style={{ fontSize: 32, fontWeight: 900, color: "#1D4ED8", margin: 0 }}><UiText text={app ? ugx(app.amount) : "—"} /></p>
-            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}><UiText text={"Do not submit the offer again. This screen refreshes automatically when the payment provider responds."} /></p>
+            <p style={{ fontSize: 12, color: "#1E3A8A", margin: "4px 0 0" }}><UiText text={awaitingFinance ? "Independent Kuula Finance authorization is still required. No payout has been sent." : settlementNeedsReview ? "Kuula is reviewing this payment. Do not initiate another request." : `Do not submit the offer again. ${paymentNetwork} payment confirmation is pending.`} /></p>
           </div>
         )}
 
         <div style={{ background: "white", borderRadius: 16, padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
           {[
-            { label: "Application ID", value: app?.id ?? "—" },
+            { label: "Agreement reference", value: app?.agreementNumber ?? "—" },
+            { label: "Payment network", value: isDirectPayee ? "Verified partner destination" : paymentNetwork },
             { label: "Applied On", value: app ? fmtDateTime(app.createdAt) : "—" },
             { label: "Decision Time", value: status === "pending" ? "In progress..." : (app ? fmtDateTime(app.decidedAt) : "—") },
             { label: "Total Repayment", value: app && app.total > 0 ? ugx(app.total) : "—" },
@@ -195,6 +220,11 @@ export function LoanApprovalScreen({ onNavigate }: Props) {
         {status === "offered" && (
           <button onClick={() => { if (app) setSelectedLoanApplicationId(app.id); onNavigate("loan-agreement"); }} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <FileText size={16} /><UiText text={" Review & Accept Terms "} /></button>
+        )}
+        {status === "disbursing" && (
+          <button onClick={() => { if (app) setSelectedLoanApplicationId(app.id); onNavigate("loan-agreement"); }} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}>
+            <UiText text={"View Payment Status"} />
+          </button>
         )}
         {status === "approved" && (
           <button onClick={() => onNavigate("loan-detail")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#0B5E3A", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
