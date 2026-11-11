@@ -135,7 +135,7 @@ export function FieldOfficerCaseEnhancedScreen({ onNavigate }: Props) {
     setBusy(true); setError(null);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); });
-      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType, dataUrl, gpsLatitude: form.gpsLatitude === "" ? undefined : form.gpsLatitude, gpsLongitude: form.gpsLongitude === "" ? undefined : form.gpsLongitude, capturedAt: new Date().toISOString() });
+      await creditOperationsApi.uploadEvidence(token, applicationId, { evidenceType, dataUrl, gpsLatitude: form.gpsLatitude === "" ? undefined : form.gpsLatitude, gpsLongitude: form.gpsLongitude === "" ? undefined : form.gpsLongitude });
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Could not upload evidence."); }
     finally { setBusy(false); }
