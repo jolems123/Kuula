@@ -71,9 +71,9 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#F1F5F9", paddingTop: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: "#F5F8F6", paddingTop: 0 }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #0B5E3A, #064A2E)", padding: "16px 16px 0" }}>
+      <div style={{ background: "linear-gradient(135deg, #0B5E3A, #064A2E)", padding: "18px clamp(16px, 3vw, 32px) 0" }}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
           <button
             onClick={() => onNavigate("home")}
@@ -81,7 +81,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
           >
             <ArrowLeft size={18} color="white" />
           </button>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white", marginLeft: 12 }}>{t("dashboard.title")}</span>
+          <span style={{ fontSize: 21, fontWeight: 750, color: "white", marginLeft: 12 }}>{t("dashboard.title")}</span>
         </div>
 
         {/* Tab bar */}
@@ -91,9 +91,9 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
               key={tabItem.id}
               onClick={() => setTab(tabItem.id)}
               style={{
-                flex: 1, height: 36, borderRadius: "8px 8px 0 0",
+                flex: 1, minHeight: 48, borderRadius: "10px 10px 0 0",
                 background: tab === tabItem.id ? "white" : "rgba(255,255,255,0.12)",
-                border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
+                border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700,
                 color: tab === tabItem.id ? "#064A2E" : "rgba(255,255,255,0.8)",
                 transition: "all 0.15s",
               }}
@@ -105,7 +105,7 @@ export function DashboardScreen({ onNavigate, initialTab = "overview" }: Props) 
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: 90, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "clamp(18px, 3vw, 32px)", paddingBottom: 106, display: "flex", flexDirection: "column", gap: 14 }}>
 
         {/* ── Overview tab ── */}
         {tab === "overview" && (

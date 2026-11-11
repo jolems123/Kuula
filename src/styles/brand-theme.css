@@ -485,3 +485,51 @@ html body .kuula-app-shell[data-surface="customer"] .kuula-customer-sidebar butt
 @media (min-width: 900px) {
   .kuula-customer-workspace__main > .kx-tabbar { display: none !important; }
 }
+
+
+/* Customer overview redesign: prominent, measurable visual change on phones,
+   tablets and desktop. Kept in shared theme so all served screens use it. */
+.kuula-home-at-a-glance {
+  display: grid; gap: 20px; padding: clamp(20px, 3vw, 30px);
+  border-radius: 20px; background: #fff;
+  box-shadow: 0 8px 28px rgba(9, 62, 37, .06);
+}
+.kuula-home-at-a-glance__heading h2 {
+  margin: 4px 0 6px; font-size: clamp(22px, 2.4vw, 29px);
+  line-height: 1.2; letter-spacing: -.025em; font-weight: 800; color: #153b29;
+}
+.kuula-home-at-a-glance__heading p {
+  font-size: 15px; line-height: 1.6; color: #597363; margin: 0;
+}
+.kuula-home-at-a-glance__grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+}
+.kuula-home-at-a-glance__metric {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  min-height: 150px; padding: 22px;
+  border-radius: 16px; background: #edf6f0;
+}
+.kuula-home-at-a-glance__metric:nth-child(2) { background: #f4f6f1; }
+.kuula-home-at-a-glance__metric:nth-child(3) { background: #f8f4e8; }
+.kuula-home-at-a-glance__metric span {
+  font-size: 15px; font-weight: 700; color: #41654e;
+}
+.kuula-home-at-a-glance__metric strong {
+  overflow-wrap: anywhere; font-size: clamp(21px, 2vw, 27px);
+  font-weight: 800; line-height: 1.25; color: #0a452d;
+}
+.kuula-home-at-a-glance__metric small {
+  font-size: 13.5px; line-height: 1.5; color: #587363;
+}
+.kuula-customer-sidebar__item { font-size: 15px; }
+.kuula-customer-topbar h1 { font-size: clamp(19px, 2vw, 24px); font-weight: 760; }
+@media (max-width: 760px) {
+  .kuula-home-at-a-glance__grid { grid-template-columns: 1fr; gap: 10px; }
+  .kuula-home-at-a-glance__metric { min-height: 0; padding: 17px 18px; }
+  .kuula-home-at-a-glance__metric strong { font-size: 22px; }
+  .kuula-home-content { gap: 16px; padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+  .kuula-home-feature { padding: 22px; }
+  .kuula-home-feature h2 { font-size: 25px; }
+  .kuula-home-panel__heading h2 { font-size: 21px; }
+  .kuula-home-action-grid button { min-height: 98px; font-size: 15px; }
+}
