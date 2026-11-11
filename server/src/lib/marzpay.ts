@@ -256,6 +256,35 @@ async function getJson(path: string): Promise<{ status: number; body: Record<str
   return { status: response.status, body: asObject(await response.json().catch(() => ({}))) };
 }
 
+/**
+ * Read Kuula's own MarzPay wallet withdrawal limits. This makes no money movement.
+ * The public UGX 500–10,000,000 range is a technical bound, not proof of
+ * account authorization or an MTN/Airtel-specific daily cap.
+ */
+export async function getMarzPayAccountWithdrawalLimits(): Promise<{
+  minimum: number;
+  maximum: number;
+  country: "UG";
+  dailyMaximum: null;
+}> {
+  const result = await getJson("/balance?country=UG");
+  if (result.status !== 200 || asString(result.body.status).toLowerCase() !== "success")
+    throw new Error("Could not verify account-specific MarzPay limits");
+  const data = asObject(result.body.data);
+  const withdrawal = asObject(asObject(data.limits).withdrawal);
+  const parse = (value: unknown): number => {
+    const raw = asObject(value).raw ?? value;
+    const amount = Number(raw);
+    return Number.isSafeInteger(amount) && amount > 0 ? amount : NaN;
+  };
+  const minimum = parse(withdrawal.minimum);
+  const maximum = parse(withdrawal.maximum);
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) ||
+      minimum < MIN_AMOUNT_UGX || maximum > MAX_AMOUNT_UGX || minimum > maximum)
+    throw new Error("MarzPay did not return usable verified withdrawal limits for Uganda");
+  return { minimum, maximum, country: "UG", dailyMaximum: null };
+}
+
 function listItems(body: Record<string, unknown>): Record<string, unknown>[] {
   const data = body.data;
   const list = [data, asObject(data).transactions, asObject(data).data, body.transactions].find(Array.isArray) as unknown[] | undefined;
