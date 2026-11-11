@@ -224,6 +224,7 @@ const nodeApi = {
   decideApplication: (token: string, id: string, decision: "approved" | "rejected", notes = "Decision recorded by authorized staff") => request<{ application: LoanApplication }>("/api/loans/applications/decision", { method: "POST", headers: auth(token), body: JSON.stringify({ id, decision, notes }) }),
   getOfferCharges: (token: string, id: string) =>
     request<{charges:Array<{label:string;amount:number}>;feeTotal:number}>("/api/loans/" + encodeURIComponent(id) + "/offer-charges", {headers:auth(token)}),
+  getLoanAgreementReceipt: (token: string, id: string) => request<{ signed: boolean; accepted?: boolean; acceptedAt: string | null; signedByName: string | null; signatureMethod: string | null; agreementVersion: string | null; legacyAcceptance?: boolean }>(`/api/loans/${id}/agreement/receipt`, { headers: auth(token) }),
   acceptLoanAgreement: (token: string, id: string, clientContext?: Record<string, unknown>) => request<{ ok: boolean; acceptedAt: string; agreementVersion: string; agreementHash: string }>(`/api/loans/${id}/agreement/accept`, { method: "POST", headers: auth(token), body: JSON.stringify({ clientContext }) }),
   acceptLoan: (token: string, id: string) => request<{ application: LoanApplication; disbursement?: { status: string; reference: string; uuid?: string; message?: string } }>(`/api/loans/${id}/accept`, { method: "POST", headers: auth(token) }),
   compliance: () => request<Compliance>("/api/compliance"),
