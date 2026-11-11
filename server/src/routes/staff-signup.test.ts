@@ -26,14 +26,18 @@ test("password-only staff signup cannot grant access or overwrite an existing pa
   const originalMessages = prisma.message.findMany;
   const originalNotifications = prisma.notification.count;
   let approved = false;
+  let approvedRole = "";
+  let targetRole = "loan_officer";
   let savedHash = "";
   let writes = 0;
   (prisma.user as any).updateMany = async ({ where, data }: any) => {
     assert.equal(where.phoneVerified, false);
     if (where.id) {
       assert.equal(where.id, "pending-staff");
+      assert.equal(where.role, targetRole);
       assert.deepEqual(where.passwordHash, { not: null });
       assert.equal(data.phoneVerified, true);
+      approvedRole = data.role;
       approved = true;
       return { count: 1 };
     }
@@ -57,7 +61,7 @@ test("password-only staff signup cannot grant access or overwrite an existing pa
   (prisma.notification as any).count = async () => 0;
   let actorRole = "administrator";
   (prisma.user as any).findUnique = async ({ where }: any) => where.id === "actor" ? { role: actorRole, authVersion: 1, deletedAt: null, phoneVerified: true } : ({
-    id: "pending-staff", role: "loan_officer", email: "staff@example.com",
+    id: "pending-staff", role: targetRole, email: "staff@example.com",
     phoneVerified: approved, passwordHash: savedHash, deletedAt: null,
     loginAttempts: 0, loginLockedUntil: null, authVersion: 1, fullName: "Test Staff",
   });
@@ -108,6 +112,11 @@ test("password-only staff signup cannot grant access or overwrite an existing pa
     } finally {
       delete process.env.STAFF_EMAIL_MFA_REQUIRED;
     }
+    approved = false;
+    targetRole = "manager";
+    const legacyApproval = await post("/staff/pending-staff/approve", {}, actorToken());
+    assert.equal(legacyApproval.status, 200);
+    assert.equal(approvedRole, "credit_manager");
   } finally {
     (prisma.user as any).updateMany = originalUpdateMany;
     (prisma.user as any).findUnique = originalFindUnique;
