@@ -1,18 +1,19 @@
 import { UiText, uiText } from "../../i18n/ui-text";
-import { House, HandCoins, LayoutGrid } from "lucide-react";
+import { House, HandCoins, ArrowLeftRight, LayoutGrid } from "lucide-react";
 
 interface BottomNavProps {
-  active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet" | "borrow";
+  active: "home" | "credit" | "network" | "settings" | "more" | "loans" | "wallet" | "borrow" | "activity";
   onNavigate: (screen: string) => void;
 }
 
 const TABS = [
   { id: "home", icon: House, label: "Home", screen: "home" },
   { id: "borrow", icon: HandCoins, label: "Borrow", screen: "quick-actions" },
+  { id: "activity", icon: ArrowLeftRight, label: "Activity", screen: "transaction-history" },
   { id: "settings", icon: LayoutGrid, label: "More", screen: "settings" },
 ] as const;
 
-const ALIASES: Record<string, string> = { loans: "borrow", credit: "borrow", wallet: "borrow", more: "settings" };
+const ALIASES: Record<string, string> = { loans: "borrow", credit: "borrow", wallet: "borrow", network: "activity", more: "settings" };
 
 /** Customer tab bar: four equal tabs, one icon style, a single active marker. */
 export function BottomNav({ active, onNavigate }: BottomNavProps) {
