@@ -130,7 +130,7 @@ try {
   const { paymentFees } = await call("GET", `/api/loans/${applicationId}/payment-fees`, { token: C });
   assert.equal(paymentFees.netDisbursement, 97000);
   assert.equal(paymentFees.payoutFee, 3000);
-  await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci-no-fee-consent" } }, expect: 409 });
+  await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci-no-fee-consent" } }, expect: 422 });
   const agreement = await call("POST", `/api/loans/${applicationId}/agreement/accept`, { token: C, body: { clientContext: { source: "ci", signatureVersion: "typed_name_v1", signedByName: demoUser.fullName, explicitConsent: true, paymentFeePolicy: paymentFees.policyVersion, netDisbursement: paymentFees.netDisbursement, payoutFee: paymentFees.payoutFee } } });
   assert.equal(agreement.ok, true);
   const accepted = await call("POST", `/api/loans/${applicationId}/accept`, { token: C });
