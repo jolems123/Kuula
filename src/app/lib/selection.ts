@@ -55,6 +55,9 @@ export interface LoanCalculatorSelection {
 let _lastSubmittedApplicationId: string | null = null;
 export function setLastSubmittedApplicationId(id: string | null) { _lastSubmittedApplicationId = id; }
 export function getLastSubmittedApplicationId(): string | null { return _lastSubmittedApplicationId; }
+let _selectedLoanApplicationId: string | null = null;
+export function setSelectedLoanApplicationId(id: string | null) { _selectedLoanApplicationId = id; }
+export function getSelectedLoanApplicationId(): string | null { return _selectedLoanApplicationId; }
 let _loanDraft: LoanDraft | null = null;
 export function setLoanDraft(value: LoanDraft | null): void { _loanDraft = value; }
 export function getLoanDraft(): LoanDraft | null { return _loanDraft; }
@@ -119,6 +122,7 @@ export function clearSelectionState(): void {
   _lastPayment = null;
   _loanDraft = null;
   _lastSubmittedApplicationId = null;
+  _selectedLoanApplicationId = null;
   _loanCalculatorSelection = null;
   _creditUseSelection = null;
   _partnerSelection = null;

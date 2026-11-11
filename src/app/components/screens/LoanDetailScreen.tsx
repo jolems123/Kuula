@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
 import { env } from "../../config/env";
+import { setSelectedLoanApplicationId } from "../../lib/selection";
 
 interface Props {
   onNavigate: (screen: string) => void;
@@ -165,7 +166,7 @@ export function LoanDetailScreen({ onNavigate }: Props) {
 
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 34px", background: "white", borderTop: "1px solid #E8EEEA", display: "flex", gap: 10 }}>
         <button disabled={!canRepay} onClick={() => onNavigate("make-payment")} style={{ flex: 1, height: 50, borderRadius: 14, background: canRepay ? "#0B5E3A" : "#D7E1DB", color: "white", fontSize: 14, fontWeight: 700, border: "none", cursor: canRepay ? "pointer" : "not-allowed" }}><UiText text={"Make Repayment"} /></button>
-        <button onClick={() => onNavigate("loan-agreement")} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}><UiText text={"View Agreement"} /></button>
+        <button onClick={() => { if (facility) setSelectedLoanApplicationId(facility.id); onNavigate("loan-agreement"); }} style={{ flex: 1, height: 50, borderRadius: 14, background: "#F3F5F4", color: "#374151", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}><UiText text={"View Agreement"} /></button>
       </div>
     </div>
   );
