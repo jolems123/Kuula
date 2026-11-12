@@ -396,31 +396,9 @@ router.post("/admin-login", async (req: Request, res: Response) => {
     return;
   }
 
-  // Fail closed when MFA is enabled and delivery is unavailable. The durable
-  // database delivery quotas are deliberately not bypassed or reset.
-  try {
-    await issueOtp(user, "admin_login");
-  } catch (error) {
-    if (/OTP delivery quota exceeded/i.test(error instanceof Error ? error.message : "")) {
-      // Password verified: it is safe to describe the actual time remaining.
-      // DB trigger remains authoritative if concurrent requests race.
-      const events = await prisma.$queryRaw<Array<{ sent_at: Date }>>`
-        SELECT sent_at FROM otp_delivery_events
-        WHERE user_id = ${user.id}::uuid
-          AND sent_at >= NOW() - INTERVAL '24 hours'
-        ORDER BY sent_at ASC
-      `;
-      const times = events.map(row => row.sent_at.getTime());
-      const hourly = times.filter(t => t >= now.getTime() - 3_600_000);
-      const candidates = [
-        ...(hourly.length >= 5 ? [hourly[hourly.length - 5] + 3_600_000] : []),
-        ...(times.length >= 10 ? [times[times.length - 10] + 86_400_000] : []),
-      ];
-      const retrySeconds = Math.max(1, Math.ceil((Math.max(now.getTime(), ...candidates) - now.getTime()) / 1000));
-      throw new AppError(`Verification email limit reached. Existing codes remain valid until expiry; if yours has expired, request another code in ${retrySeconds} seconds.`, 429);
-    }
-    throw error;
-  }
+  // Admin login uses the shared 30-second cooldown and existing-code reuse.
+  // Hourly/daily delivery quotas remain limited to non-admin OTP purposes.
+  await issueOtp(user, "admin_login");
   await writeAuditEvent({ actorId: user.id, subjectUserId: user.id, action: "auth.staff_mfa_challenge", resourceType: "user", resourceId: user.id });
   res.set("Cache-Control", "no-store");
   res.json({ ok: true, mfaRequired: true, identifier: user.email, challengeReused: false });
