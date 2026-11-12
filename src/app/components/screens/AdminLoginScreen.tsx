@@ -90,7 +90,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
       const result = await api.adminLogin(identifier, pw);
       adminLoginLimiter.reset();
       if (result.mfaRequired) {
-        setPw(""); setMfaFor(identifier); setNotice("Enter the verification code sent to your staff email.");
+        setPw(""); setMfaFor(identifier); setNotice(result.challengeReused ? "Use the verification code already sent to your staff email. A new code was not requested." : "Enter the verification code sent to your staff email.");
       } else if (result.token && result.role) {
         // Server-controlled rollout: accept the existing authenticated session
         // until staff email OTP is enabled and SMTP delivery is verified.
