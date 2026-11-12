@@ -416,8 +416,8 @@ router.post("/admin-login", async (req: Request, res: Response) => {
         ...(hourly.length >= 5 ? [hourly[hourly.length - 5] + 3_600_000] : []),
         ...(times.length >= 10 ? [times[times.length - 10] + 86_400_000] : []),
       ];
-      const retrySeconds = Math.max(60, Math.ceil((Math.max(now.getTime(), ...candidates) - now.getTime()) / 1000));
-      throw new AppError(`Verification email limit reached. Existing codes remain valid until expiry; if yours has expired, request another code in about ${Math.ceil(retrySeconds / 60)} minutes.`, 429);
+      const retrySeconds = Math.max(1, Math.ceil((Math.max(now.getTime(), ...candidates) - now.getTime()) / 1000));
+      throw new AppError(`Verification email limit reached. Existing codes remain valid until expiry; if yours has expired, request another code in ${retrySeconds} seconds.`, 429);
     }
     throw error;
   }
