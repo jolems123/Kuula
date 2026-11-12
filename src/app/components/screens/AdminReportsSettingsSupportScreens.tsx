@@ -412,7 +412,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:13,color:"#426756",margin:"7px 0 0",lineHeight:1.45 }}>{STAFF_ROLE_AUTHORITY[s.role] || "Staff access based on assigned role"}</p>
                   {s.status === "invited" && <p style={{ fontSize:13,color:"#997012",margin:"5px 0 0" }}>Awaiting staff password setup. No approval has been granted.</p>}
                   {s.status === "pending_approval" && <p style={{ fontSize:13,color:"#997012",margin:"5px 0 0" }}>Access blocked until Super Admin verifies identity and approves the role.</p>}
-                  {s.status === "deactivated" && <p style={{ fontSize:13,color:"#8a3f3f",margin:"5px 0 0" }}>No active staff access.</p>
+                  {s.status === "deactivated" && <p style={{ fontSize:13,color:"#8a3f3f",margin:"5px 0 0" }}>No active staff access.</p>}
                 </div>
                 <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
                   <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status.replace(/_/g, " ")}</span>
