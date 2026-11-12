@@ -656,3 +656,25 @@
   .kx-tabbar__tab span { font-size: 11px; }
   .kx-topbar__eyebrow, .kx-topbar__my-work { display: none; }
 }
+
+
+/* Loan Applications: readable desktop columns, phone-friendly stacked rows.
+   Never confuse decision dates with actions or split the currency and amount. */
+.kuula-loan-applications-table { min-width: 0; }
+.kuula-loan-applications-table .kx-table-wrap { max-width: 100%; overflow-x: auto; }
+.kuula-loan-applications-table .kx-table { font-size: 14px; }
+.kuula-loan-applications-table .kx-table td,
+.kuula-loan-applications-table .kx-table th { padding: 15px 13px; vertical-align: middle; }
+.kuula-loan-applications-table .kx-table td:nth-child(2) { white-space: nowrap; }
+.kuula-loan-applications-table .kx-table td:nth-child(3) { min-width: 190px; }
+.kuula-loan-applications-table .kx-table td:last-child { min-width: 145px; }
+@media (min-width: 641px) {
+  .kuula-loan-applications-table .kx-table { min-width: 1080px; }
+}
+@media (max-width: 640px) {
+  .kuula-loan-applications-table .kx-table { min-width: 0; }
+  .kuula-loan-applications-table .kx-table td { min-width: 0; padding: 9px 0; }
+  .kuula-loan-applications-table .kx-table td:nth-child(3),
+  .kuula-loan-applications-table .kx-table td:last-child { min-width: 0; }
+  .kuula-loan-applications-table .kx-table td:last-child { justify-content: flex-start; flex-wrap: wrap; }
+}
