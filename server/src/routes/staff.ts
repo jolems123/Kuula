@@ -159,6 +159,10 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
     return;
   }
   if (!target.passwordHash) throw new AppError("The staff member must create their password before approval", 409);
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (reason.length < 10 || reason.length > 2000) {
+    throw new AppError("Record how identity and the proposed staff role were verified (10–2000 characters)", 400);
+  }
 
   const role = LEGACY_ROLE_REPLACEMENTS[target.role] ?? target.role;
   const result = await prisma.user.updateMany({
@@ -176,7 +180,7 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
     }
     throw new AppError("Staff account changed before approval completed. Refresh the staff list and try again.", 409);
   }
-  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId, metadata: { role, reason } });
   res.json({ ok: true });
 });
 
@@ -207,7 +211,7 @@ router.post("/:id/deactivate", async (req: Request, res: Response) => {
 router.patch("/:id", async (req: Request, res: Response) => {
   const targetId = String(req.params.id ?? "");
   const target = await prisma.user.findUnique({ where: { id: targetId } });
-  if (!target || !isStaffRole(target.role)) throw new AppError("Staff account not found", 404);
+  if (!target || target.deletedAt || !isStaffRole(target.role)) throw new AppError("Active staff account not found", 404);
   if (target.role === "super_admin") throw new AppError("The Super Admin profile is protected", 400);
   if (target.id === req.user!.userId && req.body.role && req.body.role !== target.role) throw new AppError("You cannot change your own role", 400);
   const fullName = typeof req.body.fullName === "string" ? req.body.fullName.trim() : target.fullName;
@@ -216,14 +220,37 @@ router.patch("/:id", async (req: Request, res: Response) => {
   if (fullName.length < 2 || fullName.length > 120) throw new AppError("Enter the staff member's full name", 400);
   if (!(INVITABLE_STAFF_ROLES as readonly string[]).includes(role)) throw new AppError(`Role must be one of: ${INVITABLE_STAFF_ROLES.join(", ")}`, 400);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError("Enter a valid email address", 400);
+  // A new role (especially final approver or Finance) or email destination is
+  // never silently granted to an active account. Revoke sessions immediately
+  // and require an explicit Super Admin approval after identity confirmation.
+  const roleChanged = role !== target.role;
+  const emailChanged = email !== target.email;
+  const requiresApproval = target.phoneVerified && (roleChanged || emailChanged);
+  if (roleChanged || emailChanged) {
+    const reason = typeof req.body.reason === "string" ? req.body.reason.trim() : "";
+    if (reason.length < 10) throw new AppError("Record why this staff role or email is changing (at least 10 characters)", 400);
+  }
   const updated = await prisma.$transaction(async tx => {
-    const member = await tx.user.update({ where: { id: target.id }, data: { fullName, email, role, authVersion: { increment: 1 } }, select: STAFF_SELECT });
+    const member = await tx.user.update({
+      where: { id: target.id },
+      data: {
+        fullName, email, role, authVersion: { increment: 1 },
+        ...(requiresApproval ? { phoneVerified: false } : {}),
+      },
+      select: STAFF_SELECT,
+    });
     await tx.authSession.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } });
     return member;
   });
-  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: target.id, action: "staff.updated", resourceType: "user", resourceId: target.id, metadata: { previousRole: target.role, role } });
+  await writeAuditEvent({
+    actorId: req.user!.userId, subjectUserId: target.id,
+    action: requiresApproval ? "staff.role_change_pending_approval" : "staff.updated",
+    resourceType: "user", resourceId: target.id,
+    metadata: { previousRole: target.role, role, emailChanged, roleChanged, requiresApproval,
+      reason: typeof req.body.reason === "string" ? req.body.reason.trim() : "" },
+  });
   const { passwordHash, ...safeUpdated } = updated;
-  res.json({ staff: { ...safeUpdated, status: updated.deletedAt ? "deactivated" : updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
+  res.json({ requiresApproval, staff: { ...safeUpdated, status: updated.deletedAt ? "deactivated" : updated.phoneVerified ? "active" : passwordHash ? "pending_approval" : "invited" } });
 });
 
 router.post("/:id/reactivate", async (req: Request, res: Response) => {

@@ -165,6 +165,20 @@ const INVITABLE_ROLES: Array<{ value: string; label: string }> = [
   { value: "support", label: "Customer Support" },
 ];
 
+const STAFF_ROLE_AUTHORITY: Record<string, string> = {
+  super_admin: "Staff management, credit decisions and controlled Finance operations",
+  administrator: "Administration and operational approvals (not independent payout approval on own cases)",
+  admin: "Legacy administrator; verify least-privilege assignment",
+  loan_officer: "Level 1 · business and credit assessment; no final loan approval",
+  officer: "Level 1 · business and credit assessment",
+  credit_manager: "Level 2 · credit review and recommendation",
+  manager: "Level 2 · credit review and recommendation",
+  final_approver: "Level 3 · final credit decision; no disbursement release",
+  finance: "Finance · independent payout release and reconciliation; no credit decision",
+  kyc_officer: "KYC and compliance verification only",
+  collections: "Repayment and collections management",
+  support: "Customer service and support",
+};
 const STAFF_ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
   ...Object.fromEntries(INVITABLE_ROLES.map((r) => [r.value, r.label])),
@@ -197,6 +211,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("loan_officer");
+  const [editReason, setEditReason] = useState("");
   const [resetting, setResetting] = useState<StaffMember | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -258,14 +273,24 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     setEditName(member.fullName);
     setEditEmail(member.email || "");
     setEditRole(EDITABLE_ROLE_BY_LEGACY_ROLE[member.role] ?? member.role);
+    setEditReason("");
     setError(""); setNotice("");
   };
   const saveEdit = async () => {
     if (!token || !editing) return;
     if (editName.trim().length < 2) { setError("Enter the staff member's full name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) { setError("Enter a valid work email address."); return; }
+    const changedRole = editRole !== editing.role;
+    const changedEmail = editEmail.trim().toLowerCase() !== (editing.email || "").toLowerCase();
+    if ((changedRole || changedEmail) && editReason.trim().length < 10) { setError("Explain why the role or email is changing (at least 10 characters)."); return; }
+    if (editing.status === "active" && (changedRole || changedEmail) &&
+        !window.confirm("This will immediately revoke the staff member's sessions and require explicit new approval before they can sign in. Continue?")) return;
     setBusyId(editing.id); setError(""); setNotice("");
-    try { await api.updateStaff(token, editing.id, { fullName: editName.trim(), email: editEmail.trim(), role: editRole }); setNotice(`${editName.trim()} has been updated.`); setEditing(null); await load(); }
+    try {
+      const result = await api.updateStaff(token, editing.id, { fullName: editName.trim(), email: editEmail.trim(), role: editRole, reason: editReason.trim() });
+      setNotice(result.requiresApproval ? `${editName.trim()} has been suspended pending a fresh identity and role approval. Existing sessions were revoked.` : `${editName.trim()} has been updated.`);
+      setEditing(null); setEditReason(""); await load();
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Could not update this account."); }
     finally { setBusyId(null); }
   };
@@ -285,9 +310,13 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   };
 
   const approve = async (member: StaffMember) => {
-    if (!token || !window.confirm(`Approve access for ${member.fullName} (${member.email})? Confirm their identity independently before approving.`)) return;
-    setBusyId(member.id); setError("");
-    try { await api.approveStaff(token, member.id); setNotice(`${member.fullName} can now sign in.`); await load(); }
+    if (!token) return;
+    const reason = window.prompt(`Confirm independent identity verification and approval for ${member.fullName} (${member.email}), role: ${STAFF_ROLE_LABELS[member.role] ?? member.role}. Record evidence or verification reference (at least 10 characters):`);
+    if (reason === null) return;
+    if (reason.trim().length < 10) { setError("Record how the staff identity and proposed role were verified (at least 10 characters)."); return; }
+    if (!window.confirm(`Approve access for ${member.fullName} as ${STAFF_ROLE_LABELS[member.role] ?? member.role}? This grants the permissions listed on the staff card.`)) return;
+    setBusyId(member.id); setError(""); setNotice("");
+    try { await api.approveStaff(token, member.id, reason.trim()); setNotice(`${member.fullName} has been approved for the recorded role and can now sign in.`); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not approve staff access."); }
     finally { setBusyId(null); }
   };
@@ -343,16 +372,16 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
       )}
       {editing && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setEditing(null)}>
         <section className="kx-staff-modal" role="dialog" aria-modal="true" aria-labelledby="edit-staff-title" onMouseDown={(event) => event.stopPropagation()}>
-          <div className="kx-staff-modal__head"><div><h3 id="edit-staff-title">Edit staff profile</h3><p>Changes take effect at the staff member’s next sign-in.</p></div><button type="button" className="kx-icon-btn" onClick={() => setEditing(null)} aria-label="Close edit staff form">×</button></div>
+          <div className="kx-staff-modal__head"><div><h3 id="edit-staff-title">Edit staff profile</h3><p>Changing the role or work email of an active member revokes their sessions immediately and requires a new approval.</p></div><button type="button" className="kx-icon-btn" onClick={() => setEditing(null)} aria-label="Close edit staff form">×</button></div>
           <div className="kx-staff-modal__fields"><label>Full name<input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} autoFocus /></label><label>Work email<input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /></label><label>Role<select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></label></div>
-          <div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>{busyId===editing.id ? "Saving…" : "Save changes"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
+          <div className="kx-staff-modal__fields"><label>Reason for role or email change<textarea aria-label="Reason for staff permission change" value={editReason} onChange={e=>setEditReason(e.target.value)} rows={3} placeholder="Required for role and email changes; retained in audit history" /></label></div><div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>{busyId===editing.id ? "Saving…" : "Save changes"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
         </section>
       </div>}
       {pendingAction && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setPendingAction(null)}>
         <section className="kx-staff-modal kx-staff-modal--confirm" role="dialog" aria-modal="true" aria-labelledby="staff-action-title" onMouseDown={(event) => event.stopPropagation()}>
-          <div className="kx-staff-modal__head"><div><h3 id="staff-action-title">{pendingAction.kind === "delete" ? "Delete staff account?" : pendingAction.kind === "deactivate" ? "Deactivate staff account?" : "Reactivate staff account?"}</h3><p>{pendingAction.member.fullName}</p></div><button type="button" className="kx-icon-btn" onClick={() => setPendingAction(null)} aria-label="Close confirmation">×</button></div>
-          <p className="kx-staff-modal__message">{pendingAction.kind === "delete" ? "This permanently removes the staff member’s sign-in details and staff-directory entry. Their audit records are retained. This cannot be undone." : pendingAction.kind === "deactivate" ? "Their current sessions will end immediately. You can reactivate the account later." : "They will regain access using their existing staff credentials."}</p>
-          <div className="kx-staff-modal__actions"><button className={pendingAction.kind === "delete" ? "kx-btn kx-btn--danger" : "kx-btn kx-btn--primary"} onClick={() => void (pendingAction.kind === "delete" ? deleteAccount(pendingAction.member) : pendingAction.kind === "deactivate" ? deactivate(pendingAction.member) : reactivate(pendingAction.member))} disabled={busyId===pendingAction.member.id}>{busyId===pendingAction.member.id ? "Working…" : pendingAction.kind === "delete" ? "Delete account" : pendingAction.kind === "deactivate" ? "Deactivate account" : "Reactivate account"}</button><button className="kx-btn kx-btn--secondary" onClick={() => setPendingAction(null)}>Cancel</button></div>
+          <div className="kx-staff-modal__head"><div><h3 id="staff-action-title">{pendingAction.kind === "delete" ? (pendingAction.member.status === "invited" ? "Cancel staff invitation?" : "Delete staff account?") : pendingAction.kind === "deactivate" ? "Deactivate staff account?" : "Reactivate staff account?"}</h3><p>{pendingAction.member.fullName}</p></div><button type="button" className="kx-icon-btn" onClick={() => setPendingAction(null)} aria-label="Close confirmation">×</button></div>
+          <p className="kx-staff-modal__message">{pendingAction.kind === "delete" ? (pendingAction.member.status === "invited" ? "This cancels the invitation before activation. The audit record is retained." : "This permanently removes the staff member’s sign-in details and staff-directory entry. Their audit records are retained. This cannot be undone.") : pendingAction.kind === "deactivate" ? "Their current sessions will end immediately. You can reactivate the account later." : "They will regain access using their existing staff credentials."}</p>
+          <div className="kx-staff-modal__actions"><button className={pendingAction.kind === "delete" ? "kx-btn kx-btn--danger" : "kx-btn kx-btn--primary"} onClick={() => void (pendingAction.kind === "delete" ? deleteAccount(pendingAction.member) : pendingAction.kind === "deactivate" ? deactivate(pendingAction.member) : reactivate(pendingAction.member))} disabled={busyId===pendingAction.member.id}>{busyId===pendingAction.member.id ? "Working…" : pendingAction.kind === "delete" ? (pendingAction.member.status === "invited" ? "Cancel invitation" : "Delete account") : pendingAction.kind === "deactivate" ? "Deactivate account" : "Reactivate account"}</button><button className="kx-btn kx-btn--secondary" onClick={() => setPendingAction(null)}>Cancel</button></div>
         </section>
       </div>}
       {resetting && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => { setResetting(null); setNewPassword(""); setConfirmPassword(""); }}>
@@ -380,15 +409,19 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
                   <p style={{ fontSize:14,fontWeight:700,color:"#0F172A",margin:0 }}>{s.fullName}</p>
                   <p style={{ fontSize:12,color:"#64748B",margin:"2px 0 0" }}>{STAFF_ROLE_LABELS[s.role] ?? s.role} · {s.phone || s.email || "—"}</p>
                   <p style={{ fontSize:11,color:"#94A3B8",margin:"2px 0 0" }}>Added {new Date(s.createdAt).toLocaleDateString("en-UG", { month:"short", day:"numeric", year:"numeric" })}</p>
+                  <p style={{ fontSize:13,color:"#426756",margin:"7px 0 0",lineHeight:1.45 }}>{STAFF_ROLE_AUTHORITY[s.role] || "Staff access based on assigned role"}</p>
+                  {s.status === "invited" && <p style={{ fontSize:13,color:"#997012",margin:"5px 0 0" }}>Awaiting staff password setup. No approval has been granted.</p>}
+                  {s.status === "pending_approval" && <p style={{ fontSize:13,color:"#997012",margin:"5px 0 0" }}>Access blocked until Super Admin verifies identity and approves the role.</p>}
+                  {s.status === "deactivated" && <p style={{ fontSize:13,color:"#8a3f3f",margin:"5px 0 0" }}>No active staff access.</p>
                 </div>
                 <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
                   <span style={{ fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,textTransform:"capitalize",...statusStyle(s.status) }}>{s.status.replace(/_/g, " ")}</span>
-                  {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Approve access</button>}
-                  {s.role !== "super_admin" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
-                  {["active", "pending_approval"].includes(s.status) && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>{s.status === "pending_approval" ? "Set password" : "Change password"}</button>}
+                  {s.status === "pending_approval" && <button className="kx-btn kx-btn--primary" onClick={() => void approve(s)} disabled={busyId === s.id}>Verify & approve access</button>}
+                  {s.role !== "super_admin" && s.status !== "deactivated" && <button onClick={()=>beginEdit(s)} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:"1px solid #CBD5E1",background:"white",cursor:"pointer",display:"flex",gap:5 }}><Pencil size={12}/>Edit</button>}
+                  {s.status === "active" && s.role !== "super_admin" && <button className="kx-btn kx-btn--secondary" onClick={()=>{setResetting(s);setNewPassword("");setConfirmPassword("");setError("");}} disabled={busyId===s.id}>Change password</button>}
                   {s.status === "deactivated" && s.role !== "super_admin" && <button onClick={()=>setPendingAction({ kind:"reactivate", member:s })} disabled={busyId===s.id} style={{ padding:"6px 10px",borderRadius:8,border:0,background:"#F0FDF4",color:"#15803D",cursor:"pointer",display:"flex",gap:5 }}><RotateCcw size={12}/>Reactivate</button>}
-                  {s.role !== "super_admin" && s.id !== state.user?.id && <button onClick={() => setPendingAction({ kind:"delete", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#7F1D1D",color:"white",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}><Trash2 size={12}/>Delete account</button>}
-                  {s.status !== "deactivated" && s.role !== "super_admin" && s.id !== state.user?.id && (
+                  {s.role !== "super_admin" && s.id !== state.user?.id && <button onClick={() => setPendingAction({ kind:"delete", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#7F1D1D",color:"white",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}><Trash2 size={12}/>{s.status === "invited" ? "Cancel invitation" : "Delete account"}</button>}
+                  {["active", "pending_approval"].includes(s.status) && s.role !== "super_admin" && s.id !== state.user?.id && (
                     <button onClick={() => setPendingAction({ kind:"deactivate", member:s })} disabled={busyId === s.id} style={{ padding:"6px 12px",borderRadius:8,background:"#FEF2F2",color:"#EF4444",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5 }}>
                       <Trash2 size={12}/>{busyId === s.id ? "Working…" : "Deactivate"}
                     </button>
