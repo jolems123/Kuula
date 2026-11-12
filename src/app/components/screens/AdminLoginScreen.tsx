@@ -38,7 +38,7 @@ export function AdminLoginScreen({ onNavigate }: Props) {
 
   const formatLockout = useCallback((ms: number) => {
     const secs = Math.ceil(ms / 1000);
-    return secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+    return `${secs} seconds`;
   }, []);
 
   const resetPw = async () => {
@@ -99,7 +99,14 @@ export function AdminLoginScreen({ onNavigate }: Props) {
       } else {
         setError("Staff sign-in did not return a valid session or verification challenge.");
       }
-    } catch (e) { setError(e instanceof ApiError ? e.message : "Sign in failed. Try again."); }
+    } catch (e) {
+      const message = e instanceof ApiError ? e.message : "Sign in failed. Try again.";
+      // Only the server's quota response can start this countdown; no client
+      // timer can override the database-enforced delivery limits.
+      const seconds = /Verification email limit reached\.[\s\S]*?request another code in (\d+) seconds\./.exec(message);
+      if (seconds) setLockoutRemaining(Number(seconds[1]) * 1000);
+      setError(message);
+    }
     finally { setLoading(false); }
   };
 
