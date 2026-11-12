@@ -159,6 +159,10 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
     return;
   }
   if (!target.passwordHash) throw new AppError("The staff member must create their password before approval", 409);
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (reason.length < 10 || reason.length > 2000) {
+    throw new AppError("Record how identity and the proposed staff role were verified (10–2000 characters)", 400);
+  }
 
   const role = LEGACY_ROLE_REPLACEMENTS[target.role] ?? target.role;
   const result = await prisma.user.updateMany({
@@ -176,7 +180,7 @@ router.post("/:id/approve", async (req: Request, res: Response) => {
     }
     throw new AppError("Staff account changed before approval completed. Refresh the staff list and try again.", 409);
   }
-  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId });
+  await writeAuditEvent({ actorId: req.user!.userId, subjectUserId: targetId, action: "staff.signup_approved", resourceType: "user", resourceId: targetId, metadata: { role, reason } });
   res.json({ ok: true });
 });
 
