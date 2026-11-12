@@ -6,10 +6,10 @@ import { sendOtpSms, smsConfigured } from "./sms.js";
 import { emailConfigured, sendTransactionalEmail } from "./email.js";
 import { isStaffRole } from "../middleware/auth.js";
 
-function cooldownSeconds(lastSentAt: Date | null, now = new Date()): number {
+function cooldownSeconds(lastSentAt: Date | null, cooldown: number, now = new Date()): number {
   if (!lastSentAt) return 0;
   const elapsed = now.getTime() - lastSentAt.getTime();
-  return Math.max(0, Math.ceil((OTP_POLICY.resendCooldownSeconds * 1000 - elapsed) / 1000));
+  return Math.max(0, Math.ceil((cooldown * 1000 - elapsed) / 1000));
 }
 
 /**
@@ -26,7 +26,10 @@ export async function issueOtpForUser(user: User, purpose: OtpPurpose): Promise<
     throw new AppError(`Verification is locked. Try again in ${seconds} seconds.`, 429);
   }
 
-  const retryAfter = cooldownSeconds(user.otpLastSentAt, now);
+  // Staff sign-in codes can be requested 30 seconds apart, subject to the
+  // independent durable 5/hour and 10/24h quota (not bypassed here).
+  const resendCooldown = staffEmail && purpose === "admin_login" ? 30 : OTP_POLICY.resendCooldownSeconds;
+  const retryAfter = cooldownSeconds(user.otpLastSentAt, resendCooldown, now);
   if (retryAfter > 0) throw new AppError(`Wait ${retryAfter} seconds before requesting another code.`, 429);
   if (staffEmail ? !user.email : !user.phone) throw new AppError("A verified destination is required for verification", 422);
 
