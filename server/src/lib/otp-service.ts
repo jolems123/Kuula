@@ -26,8 +26,8 @@ export async function issueOtpForUser(user: User, purpose: OtpPurpose): Promise<
     throw new AppError(`Verification is locked. Try again in ${seconds} seconds.`, 429);
   }
 
-  // Staff sign-in codes can be requested 30 seconds apart, subject to the
-  // independent durable 5/hour and 10/24h quota (not bypassed here).
+  // Staff sign-in codes can be requested 30 seconds apart.
+  // The 5/hour and 10/24h database delivery quotas apply to other OTP purposes.
   const resendCooldown = staffEmail && purpose === "admin_login" ? 30 : OTP_POLICY.resendCooldownSeconds;
   const retryAfter = cooldownSeconds(user.otpLastSentAt, resendCooldown, now);
   if (retryAfter > 0) throw new AppError(`Wait ${retryAfter} seconds before requesting another code.`, 429);
