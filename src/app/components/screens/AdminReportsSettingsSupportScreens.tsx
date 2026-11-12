@@ -165,6 +165,20 @@ const INVITABLE_ROLES: Array<{ value: string; label: string }> = [
   { value: "support", label: "Customer Support" },
 ];
 
+const STAFF_ROLE_AUTHORITY: Record<string, string> = {
+  super_admin: "Staff management, credit decisions and controlled Finance operations",
+  administrator: "Administration and operational approvals (not independent payout approval on own cases)",
+  admin: "Legacy administrator; verify least-privilege assignment",
+  loan_officer: "Level 1 · business and credit assessment; no final loan approval",
+  officer: "Level 1 · business and credit assessment",
+  credit_manager: "Level 2 · credit review and recommendation",
+  manager: "Level 2 · credit review and recommendation",
+  final_approver: "Level 3 · final credit decision; no disbursement release",
+  finance: "Finance · independent payout release and reconciliation; no credit decision",
+  kyc_officer: "KYC and compliance verification only",
+  collections: "Repayment and collections management",
+  support: "Customer service and support",
+};
 const STAFF_ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
   ...Object.fromEntries(INVITABLE_ROLES.map((r) => [r.value, r.label])),
@@ -197,6 +211,7 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("loan_officer");
+  const [editReason, setEditReason] = useState("");
   const [resetting, setResetting] = useState<StaffMember | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -258,14 +273,24 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
     setEditName(member.fullName);
     setEditEmail(member.email || "");
     setEditRole(EDITABLE_ROLE_BY_LEGACY_ROLE[member.role] ?? member.role);
+    setEditReason("");
     setError(""); setNotice("");
   };
   const saveEdit = async () => {
     if (!token || !editing) return;
     if (editName.trim().length < 2) { setError("Enter the staff member's full name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) { setError("Enter a valid work email address."); return; }
+    const changedRole = editRole !== editing.role;
+    const changedEmail = editEmail.trim().toLowerCase() !== (editing.email || "").toLowerCase();
+    if ((changedRole || changedEmail) && editReason.trim().length < 10) { setError("Explain why the role or email is changing (at least 10 characters)."); return; }
+    if (editing.status === "active" && (changedRole || changedEmail) &&
+        !window.confirm("This will immediately revoke the staff member's sessions and require explicit new approval before they can sign in. Continue?")) return;
     setBusyId(editing.id); setError(""); setNotice("");
-    try { await api.updateStaff(token, editing.id, { fullName: editName.trim(), email: editEmail.trim(), role: editRole }); setNotice(`${editName.trim()} has been updated.`); setEditing(null); await load(); }
+    try {
+      const result = await api.updateStaff(token, editing.id, { fullName: editName.trim(), email: editEmail.trim(), role: editRole, reason: editReason.trim() });
+      setNotice(result.requiresApproval ? `${editName.trim()} has been suspended pending a fresh identity and role approval. Existing sessions were revoked.` : `${editName.trim()} has been updated.`);
+      setEditing(null); setEditReason(""); await load();
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Could not update this account."); }
     finally { setBusyId(null); }
   };
@@ -343,9 +368,9 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
       )}
       {editing && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setEditing(null)}>
         <section className="kx-staff-modal" role="dialog" aria-modal="true" aria-labelledby="edit-staff-title" onMouseDown={(event) => event.stopPropagation()}>
-          <div className="kx-staff-modal__head"><div><h3 id="edit-staff-title">Edit staff profile</h3><p>Changes take effect at the staff member’s next sign-in.</p></div><button type="button" className="kx-icon-btn" onClick={() => setEditing(null)} aria-label="Close edit staff form">×</button></div>
+          <div className="kx-staff-modal__head"><div><h3 id="edit-staff-title">Edit staff profile</h3><p>Changing the role or work email of an active member revokes their sessions immediately and requires a new approval.</p></div><button type="button" className="kx-icon-btn" onClick={() => setEditing(null)} aria-label="Close edit staff form">×</button></div>
           <div className="kx-staff-modal__fields"><label>Full name<input aria-label="Staff full name" value={editName} onChange={e=>setEditName(e.target.value)} autoFocus /></label><label>Work email<input aria-label="Staff email" type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /></label><label>Role<select aria-label="Staff role" value={editRole} onChange={e=>setEditRole(e.target.value)}>{INVITABLE_ROLES.map(role=><option key={role.value} value={role.value}>{role.label}</option>)}</select></label></div>
-          <div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>{busyId===editing.id ? "Saving…" : "Save changes"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
+          <div className="kx-staff-modal__fields"><label>Reason for role or email change<textarea aria-label="Reason for staff permission change" value={editReason} onChange={e=>setEditReason(e.target.value)} rows={3} placeholder="Required for role and email changes; retained in audit history" /></label></div><div className="kx-staff-modal__actions"><button className="kx-btn kx-btn--primary" onClick={()=>void saveEdit()} disabled={busyId===editing.id}>{busyId===editing.id ? "Saving…" : "Save changes"}</button><button className="kx-btn kx-btn--secondary" onClick={()=>setEditing(null)}>Cancel</button></div>
         </section>
       </div>}
       {pendingAction && <div className="kx-staff-modal-backdrop" role="presentation" onMouseDown={() => setPendingAction(null)}>
