@@ -15,6 +15,7 @@ import { AdminLayout, AdminTable, StatusBadge, AdminPageHeader, AdminCard, StatC
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useAppContext } from "../../context/AppContext";
 import { api, type LoanApplication } from "../../api/client";
+import { getDisbursementStatus, type DisbursementBatchStatus } from "../../api/disbursement";
 import { setCreditOperationsSelection } from "../../lib/selection";
 import { useTranslation } from "react-i18next";
 
@@ -78,6 +79,9 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const [reviewNotes, setReviewNotes] = useState("");
   const [reviewError, setReviewError] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<DisbursementBatchStatus | null>(null);
+  const [paymentStatusLoading, setPaymentStatusLoading] = useState(false);
+  const [paymentStatusError, setPaymentStatusError] = useState("");
 
   const refresh = useCallback(async () => {
     if (!token) { setLoading(false); return; }
@@ -129,6 +133,38 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   };
 
   const selected = apps.find((a) => a.id === selectedId);
+  useEffect(() => {
+    if (!selectedId || !token) {
+      setPaymentStatus(null);
+      setPaymentStatusError("");
+      setPaymentStatusLoading(false);
+      return;
+    }
+    let active = true;
+    setPaymentStatus(null);
+    setPaymentStatusError("");
+    setPaymentStatusLoading(true);
+    getDisbursementStatus(token, selectedId).then(result => {
+      if (active) setPaymentStatus(result.disbursement);
+    }).catch(error => {
+      if (active) setPaymentStatusError(error instanceof Error ? error.message : "Payment information is unavailable.");
+    }).finally(() => { if (active) setPaymentStatusLoading(false); });
+    return () => { active = false; };
+  }, [selectedId, token]);
+  const paymentNetwork = paymentStatus?.network === "airtel" ? "Airtel Money" :
+    paymentStatus?.network === "mtn" ? "MTN Mobile Money" :
+    selected?.channel?.toLowerCase().includes("airtel") ? "Airtel Money" :
+    selected?.channel?.toLowerCase().includes("mtn") ? "MTN Mobile Money" : "Not recorded";
+  const paymentCompleted = paymentStatus?.status === "settled" || paymentStatus?.status === "completed";
+  const paymentMessage = paymentStatusLoading ? "Checking provider and Finance records…" :
+    paymentStatusError ? "Payment details could not be confirmed. Check the Finance workspace." :
+    paymentCompleted ? "Provider settlement confirmed." :
+    paymentStatus?.status === "awaiting_release" ? "Awaiting independent Finance authorization. Funds have not been sent." :
+    paymentStatus?.status === "attention_required" ? "Payment needs reconciliation before it can be considered received." :
+    paymentStatus?.status === "failed" ? "Payment attempt failed. Finance review is required." :
+    paymentStatus ? "Payment is pending provider confirmation; do not treat funds as received." :
+    selected?.status === "disbursing" ? "No payment batch details are available. Funds have not been confirmed received." :
+    "No disbursement batch is recorded for this application.";
 
   const filtered = (filter === "All" ? apps : apps.filter(a=>filter === "Pending" ? ["pending", "resubmitted"].includes(a.status) : a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
 
@@ -150,10 +186,10 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         Assign officers to pending or resubmitted applications before field review. Approved applications have already completed that stage.
       </p>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
         {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E2E8F0", background: filter === f ? "#0B5E3A" : "white", color: filter === f ? "white" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "11px 17px", minHeight: 44, borderRadius: 10, border: "1px solid #E2E8F0", background: filter === f ? "#0B5E3A" : "white", color: filter === f ? "white" : "#64748B", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
             {f}
           </button>
         ))}
@@ -168,16 +204,19 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>{loadError ? "Applications could not be refreshed." : applicationSearch.trim() ? "No applications match your search." : `No ${filter === "All" ? "" : filter.toLowerCase() + " "}applications yet`}</div>
       ) : (
+        <div className="kuula-loan-applications-table">
         <AdminTable
-          columns={["Applicant / business", "Amount", "Loan purpose", "Applied", "Status", "Action"]}
+          columns={["Applicant / business", "Amount", "Loan purpose", "Applied", "Decision", "Status", "Action"]}
           rows={filtered.map((a) => [
             <div key={a.id + "-name"}><strong>{a.applicantName || "—"}</strong>{a.businessProfile && <div style={{ fontSize: 11, color: "#64748B" }}>{a.businessProfile.businessName} · {a.businessProfile.sector}</div>}</div>,
-            ugx(a.amount),
-            a.purpose,
-            fmtDate(a.createdAt),
+            <strong key={a.id + "-amount"} style={{ whiteSpace: "nowrap", fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{ugx(a.amount)}</strong>,
+            <span key={a.id + "-purpose"} style={{ fontSize: 14, lineHeight: 1.5 }}>{a.purpose}</span>,
+            <span key={a.id + "-applied"} style={{ whiteSpace: "nowrap", fontSize: 14 }}>{fmtDate(a.createdAt)}</span>,
+            <span key={a.id + "-decision"} style={{ whiteSpace: "nowrap", color: "#576B60", fontSize: 14 }}>{a.decidedAt ? fmtDate(a.decidedAt) : "Not decided"}</span>,
             <StatusBadge key={a.id + "-s"} status={a.status} />,
             a.status === "pending" ? (
-              <div key={a.id + "-act"} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <div key={a.id + "-act"} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button type="button" className="kx-btn kx-btn--secondary" style={{ minHeight: 40, padding: "9px 13px", fontSize: 14, whiteSpace: "nowrap" }} onClick={(e) => { e.stopPropagation(); setSelectedId(a.id); setReviewNotes(a.businessReviewNotes ?? ""); setReviewError(""); }}>View details</button>
                 <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedId(a.id); setReviewNotes(a.businessReviewNotes ?? ""); setReviewError(""); }}
                   style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Review business</button>
                 {canAssignOfficer && <button type="button" onClick={(e) => {
@@ -197,30 +236,37 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
                 </button>
               </div>
             ) : (
-              <span key={a.id + "-done"} style={{ fontSize: 11, color: "#94A3B8" }}>
-                {["pending", "resubmitted"].includes(a.status) && canAssignOfficer ? (
-                  <button type="button" onClick={(e) => {
-                    e.stopPropagation();
-                    setCreditOperationsSelection({ applicationId: a.id, applicantName: a.applicantName });
-                    onNavigate("admin-officer-assignment");
-                  }}
-                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #0B5E3A", background: "white", color: "#0B5E3A", fontWeight: 700, fontSize: 11 }}>Assign officer</button>
-                ) : a.status === "approved" ? "Approved — field review complete" : a.decidedAt ? fmtDate(a.decidedAt) : "—"}
-              </span>
+              <button key={a.id + "-details"} type="button" className="kx-btn kx-btn--secondary"
+                style={{ minHeight: 44, padding: "10px 15px", fontSize: 14, fontWeight: 750, whiteSpace: "nowrap" }}
+                onClick={(e) => { e.stopPropagation(); setSelectedId(a.id); setReviewNotes(a.businessReviewNotes ?? ""); setReviewError(""); }}>
+                View details
+              </button>
             ),
           ])}
         />
+        </div>
       )}
       {reviewError && <div role="alert" style={{ padding: 12, marginTop: 10, borderRadius: 10, background: "#FEF2F2", color: "#991B1B" }}>{reviewError}</div>}
       {selected && (
         <section aria-label="Business credit review" style={{ marginTop: 18, background: "white", padding: 20, borderRadius: 16, border: "1px solid #DAE8DF" }}>
           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>Business review — {selected.applicantName}</h2>
-              <p style={{ color: "#66756D", fontSize: 12 }}>Application {selected.id} · {selected.termDays} days · {ugx(selected.amount)}</p>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Application details — {selected.applicantName}</h2>
+              <p style={{ color: "#66756D", fontSize: 14 }}>Reference {selected.agreementNumber || selected.id} · {selected.termDays} days · {ugx(selected.amount)} · Status: {selected.status.replaceAll("_", " ")}</p>
             </div>
             <button type="button" onClick={() => setSelectedId(null)} style={{ border: 0, background: "transparent", fontWeight: 700 }}>Close</button>
           </div>
+          <section aria-label="Payment and settlement status" style={{ marginTop: 18, padding: 18, background: "#F4F8F5", borderRadius: 12, border: "1px solid #DBE7DE" }}>
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: "#153C28", margin: "0 0 12px" }}>Payment and settlement</h3>
+            <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, margin: 0 }}>
+              <div><dt style={{ fontSize: 13, color: "#657B6E" }}>Mobile Money network</dt><dd style={{ margin: "5px 0 0", fontSize: 16, fontWeight: 750 }}>{paymentNetwork}</dd></div>
+              <div><dt style={{ fontSize: 13, color: "#657B6E" }}>Payment batch</dt><dd style={{ margin: "5px 0 0", fontSize: 16, fontWeight: 750 }}>{paymentStatus?.status?.replaceAll("_", " ") || "Not confirmed"}</dd></div>
+              <div><dt style={{ fontSize: 13, color: "#657B6E" }}>Settled amount</dt><dd style={{ margin: "5px 0 0", fontSize: 16, fontWeight: 750 }}>{paymentStatus ? ugx(paymentStatus.totalSettled) : "Not confirmed"}</dd></div>
+              <div><dt style={{ fontSize: 13, color: "#657B6E" }}>Outstanding payout</dt><dd style={{ margin: "5px 0 0", fontSize: 16, fontWeight: 750 }}>{paymentStatus ? ugx(paymentStatus.remainingAmount) : "Not confirmed"}</dd></div>
+            </dl>
+            <p role="status" style={{ fontSize: 14, lineHeight: 1.55, margin: "14px 0 0", color: "#355444" }}>{paymentMessage}</p>
+            <p style={{ fontSize: 12, color: "#697E70", marginBottom: 0 }}>Read-only payment evidence. Only authorized Finance staff may release or reconcile funds.</p>
+          </section>
           {token && <GuarantorStaffReview token={token} applicationId={selected.id} applicationStatus={selected.status} />}
           {selected.businessProfile ? (
             <>
