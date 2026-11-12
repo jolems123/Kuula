@@ -73,7 +73,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
   const [applicationSearch, setApplicationSearch] = useState("");
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Rejected">("All");
+  const [filter, setFilter] = useState<"All" | "Pending" | "Approved" | "Disbursing" | "Active" | "Rejected" | "Closed">("All");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
@@ -174,15 +174,34 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
     selected?.status === "disbursing" ? "No payment batch details are available. Funds have not been confirmed received." :
     "No disbursement batch is recorded for this application.";
 
-  const filtered = (filter === "All" ? apps : apps.filter(a=>filter === "Pending" ? ["pending", "resubmitted"].includes(a.status) : a.status.toLowerCase()===filter.toLowerCase())).filter(a=>[a.applicantName,a.id,a.purpose,a.businessProfile?.businessName].some(v=>String(v||"").toLowerCase().includes(applicationSearch.trim().toLowerCase())));
-
-  const pendingCount = apps.filter((a) => ["pending", "resubmitted"].includes(a.status)).length;
+  // Every operational loan status must have an intuitive, distinct place.
+  // Approved means a decision/offer, not an already-settled disbursement.
+  const statusTabs = [
+    { label: "All", statuses: null },
+    { label: "Pending", statuses: ["pending", "resubmitted"] },
+    { label: "Approved", statuses: ["approved", "offered"] },
+    { label: "Disbursing", statuses: ["disbursing"] },
+    { label: "Active", statuses: ["active", "overdue"] },
+    { label: "Rejected", statuses: ["rejected"] },
+    { label: "Closed", statuses: ["paid", "failed", "expired", "cancelled"] },
+  ] as const;
+  const filtered = apps.filter(a => {
+    const tab = statusTabs.find(t => t.label === filter);
+    const fitsStatus = !tab?.statuses || (tab.statuses as readonly string[]).includes(a.status);
+    const query = applicationSearch.trim().toLowerCase();
+    return fitsStatus && [a.applicantName, a.agreementNumber, a.id, a.purpose, a.businessProfile?.businessName]
+      .some(v => String(v || "").toLowerCase().includes(query));
+  });
+  const tabCount = (statuses: readonly string[] | null) =>
+    statuses === null ? apps.length : apps.filter(a => statuses.includes(a.status)).length;
+  const pendingCount = tabCount(["pending", "resubmitted"]);
+  const disbursingCount = tabCount(["disbursing"]);
 
   return (
     <AdminLayout activeScreen="admin-loan-apps" onNavigate={onNavigate} title="Loan Applications">
       <AdminPageHeader
         title="Loan Applications"
-        subtitle={`${apps.length} total · ${pendingCount} pending`}
+        subtitle={`${apps.length} total · ${pendingCount} awaiting review · ${disbursingCount} in disbursement`}
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {pendingCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: "#F59E0B", background: "#FEF3C7", padding: "6px 14px", borderRadius: 8 }}>{pendingCount} Pending</span>}
@@ -191,14 +210,15 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
         }
       />
       <p style={{ margin: "-8px 0 14px", color: "#64748B", fontSize: 12 }}>
-        Assign officers to pending or resubmitted applications before field review. Approved applications have already completed that stage.
+        Track applications through review, approval, Mobile Money disbursement and repayment. Approval is not confirmation that funds were received.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
-        {(["All", "Pending", "Approved", "Rejected"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "11px 17px", minHeight: 44, borderRadius: 10, border: "1px solid #E2E8F0", background: filter === f ? "#0B5E3A" : "white", color: filter === f ? "white" : "#64748B", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-            {f}
+      <div className="kuula-loan-status-tabs" role="group" aria-label="Filter applications by loan status">
+        {statusTabs.map((tab) => (
+          <button key={tab.label} type="button" aria-pressed={filter === tab.label}
+            className={filter === tab.label ? "kuula-loan-status-tab is-selected" : "kuula-loan-status-tab"}
+            onClick={() => setFilter(tab.label)}>
+            <span>{tab.label}</span><span className="kuula-loan-status-tab__count">{tabCount(tab.statuses)}</span>
           </button>
         ))}
       </div>
@@ -210,7 +230,14 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       {loading ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>Loading applications…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#9CA3AF", fontSize: 13 }}>{loadError ? "Applications could not be refreshed." : applicationSearch.trim() ? "No applications match your search." : `No ${filter === "All" ? "" : filter.toLowerCase() + " "}applications yet`}</div>
+        <section className="kuula-loan-empty-state" aria-live="polite">
+          <strong>{loadError ? "Applications are unavailable" : applicationSearch.trim() ? "No matching applications" : filter === "All" ? "No loan applications yet" : `No ${filter.toLowerCase()} applications`}</strong>
+          <p>{loadError ? "Refresh the application list to retry." : applicationSearch.trim() ? "Try another customer name, application reference or loan purpose." : filter === "Disbursing" ? "There are no payouts currently in progress." : filter === "Rejected" ? "No loan applications have been rejected." : "Applications will appear here when they enter this stage."}</p>
+          <div className="kuula-loan-empty-state__actions">
+            {(filter !== "All" || applicationSearch.trim()) && <button type="button" className="kx-btn kx-btn--secondary" onClick={() => { setFilter("All"); setApplicationSearch(""); }}>Show all applications</button>}
+            {loadError && <button type="button" className="kx-btn kx-btn--primary" onClick={() => void refresh()}>Retry loading</button>}
+          </div>
+        </section>
       ) : (
         <div className="kuula-loan-applications-table">
         <AdminTable
