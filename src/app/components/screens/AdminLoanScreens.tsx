@@ -132,6 +132,14 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
     }
   };
 
+  useEffect(() => {
+    if (!selectedId) return;
+    document.getElementById("kuula-application-details")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [selectedId]);
+
   const selected = apps.find((a) => a.id === selectedId);
   useEffect(() => {
     if (!selectedId || !token) {
@@ -248,7 +256,7 @@ export function AdminLoanAppsListScreen({ onNavigate }: Props) {
       )}
       {reviewError && <div role="alert" style={{ padding: 12, marginTop: 10, borderRadius: 10, background: "#FEF2F2", color: "#991B1B" }}>{reviewError}</div>}
       {selected && (
-        <section aria-label="Business credit review" style={{ marginTop: 18, background: "white", padding: 20, borderRadius: 16, border: "1px solid #DAE8DF" }}>
+        <section id="kuula-application-details" aria-label="Business credit review" style={{ scrollMarginTop: 20, marginTop: 18, background: "white", padding: 20, borderRadius: 16, border: "1px solid #DAE8DF" }}>
           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 16 }}>
             <div>
               <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Application details — {selected.applicantName}</h2>
