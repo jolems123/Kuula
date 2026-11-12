@@ -310,9 +310,13 @@ export function AdminStaffManagementScreen({ onNavigate }: Props) {
   };
 
   const approve = async (member: StaffMember) => {
-    if (!token || !window.confirm(`Approve access for ${member.fullName} (${member.email})? Confirm their identity independently before approving.`)) return;
-    setBusyId(member.id); setError("");
-    try { await api.approveStaff(token, member.id); setNotice(`${member.fullName} can now sign in.`); await load(); }
+    if (!token) return;
+    const reason = window.prompt(`Confirm independent identity verification and approval for ${member.fullName} (${member.email}), role: ${STAFF_ROLE_LABELS[member.role] ?? member.role}. Record evidence or verification reference (at least 10 characters):`);
+    if (reason === null) return;
+    if (reason.trim().length < 10) { setError("Record how the staff identity and proposed role were verified (at least 10 characters)."); return; }
+    if (!window.confirm(`Approve access for ${member.fullName} as ${STAFF_ROLE_LABELS[member.role] ?? member.role}? This grants the permissions listed on the staff card.`)) return;
+    setBusyId(member.id); setError(""); setNotice("");
+    try { await api.approveStaff(token, member.id, reason.trim()); setNotice(`${member.fullName} has been approved for the recorded role and can now sign in.`); await load(); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not approve staff access."); }
     finally { setBusyId(null); }
   };
