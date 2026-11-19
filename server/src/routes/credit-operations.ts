@@ -369,13 +369,7 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
       throw new AppError("The pricing proposal no longer matches the recommended amount and term; submit the pricing again", 409);
     await prisma.$executeRaw(Prisma.sql`UPDATE credit_evaluations SET status='submitted', submitted_at=CURRENT_TIMESTAMP, visit_completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=${ev.id}::uuid`);
   }
-  if (level >= 2) {
-    await prisma.$executeRaw(Prisma.sql`
-      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
-      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${level === 2 ? "recommend" : "final_review"}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
-    `);
-  }
-
+  // Level 3 must use the final-decision route. Reject before any write.
   if (level === 3) throw new AppError("Use the final decision action at Level 3", 409);
   const nextLevel = level + 1;
   if (!nextAssigneeId) throw new AppError(`Select the Level ${nextLevel} approver before submitting`, 400);
@@ -384,6 +378,12 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
   await assertIndependentOfOtherLevels(applicationId, next.id, nextLevel);
 
   await prisma.$transaction(async (tx) => {
+    if (level === 2) {
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
+        VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, 2, ${req.user!.userId}::uuid, 'recommend', ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
+      `);
+    }
     await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${level} AND assignee_id=${req.user!.userId}::uuid AND status='active'`);
     await tx.$executeRaw(Prisma.sql`INSERT INTO approval_assignments (id, application_id, level, assignee_id, assigned_by) VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${nextLevel}, ${nextAssigneeId}::uuid, ${req.user!.userId}::uuid)`);
     await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET current_level=${nextLevel}, status=${LEVEL_STATUS[nextLevel]}, current_assignee_id=${nextAssigneeId}::uuid, updated_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid`);
