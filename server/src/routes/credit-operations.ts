@@ -459,10 +459,6 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
       INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
       VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
     `);
-    await tx.$executeRaw(Prisma.sql`
-      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
-      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
-    `);
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND status='active'`);
       await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET status='rejected', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid`);
       await tx.loanApplication.update({ where: { id: applicationId }, data: { status: "rejected", decisionNotes: narrative, decidedAt: new Date() } });
