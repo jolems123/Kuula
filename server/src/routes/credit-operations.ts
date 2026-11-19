@@ -367,7 +367,7 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
     if (!priced[0]) throw new AppError("Submit the pricing proposal before sending the case for review", 409);
     if (Number(priced[0].principal) !== Number(ev.recommended_amount) || Number(priced[0].term_days) !== Number(ev.recommended_term_days))
       throw new AppError("The pricing proposal no longer matches the recommended amount and term; submit the pricing again", 409);
-    await prisma.$executeRaw(Prisma.sql`UPDATE credit_evaluations SET status='submitted', submitted_at=CURRENT_TIMESTAMP, visit_completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=${ev.id}::uuid`);
+
   }
   // Level 3 must use the final-decision route. Reject before any write.
   if (level === 3) throw new AppError("Use the final decision action at Level 3", 409);
@@ -378,6 +378,15 @@ router.post("/applications/:id/submit", async (req: Request, res: Response) => {
   await assertIndependentOfOtherLevels(applicationId, next.id, nextLevel);
 
   await prisma.$transaction(async (tx) => {
+    if (level === 1) {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE credit_evaluations
+        SET status='submitted', submitted_at=CURRENT_TIMESTAMP, visit_completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
+        WHERE application_id=${applicationId}::uuid AND version=(
+          SELECT MAX(version) FROM credit_evaluations WHERE application_id=${applicationId}::uuid
+        )
+      `);
+    }
     if (level === 2) {
       await tx.$executeRaw(Prisma.sql`
         INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
