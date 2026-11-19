@@ -470,6 +470,10 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   }
 
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
+      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
+    `);
     await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=3 AND status='active'`);
     await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET status='ready_for_offer', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid`);
   });
