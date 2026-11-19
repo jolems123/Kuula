@@ -431,10 +431,7 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
   if (action === "approve" && application.businessReviewedBy === req.user!.userId)
     throw new AppError("Segregation of duties: the person who verified the business cannot give the final approval", 403);
 
-  await prisma.$executeRaw(Prisma.sql`
-    INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
-    VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
-  `);
+
 
   if (action === "return") {
     const returnLevel = level === 1 ? 1 : Math.max(1, Number(req.body?.returnToLevel) || level - 1);
@@ -443,6 +440,10 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
     if (!target || !roleFitsLevel(target.role, returnLevel)) throw new AppError(`Return assignee must be a ${levelLabel(returnLevel)}`, 422);
     await assertIndependentOfOtherLevels(applicationId, target.id, returnLevel);
     await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
+      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
+    `);
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='returned', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${level} AND status='active'`);
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='returned', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND level=${returnLevel} AND status='active'`);
       await tx.$executeRaw(Prisma.sql`INSERT INTO approval_assignments (id, application_id, level, assignee_id, assigned_by) VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${returnLevel}, ${targetId}::uuid, ${req.user!.userId}::uuid)`);
@@ -454,6 +455,14 @@ router.post("/applications/:id/decision", async (req: Request, res: Response) =>
 
   if (action === "reject") {
     await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
+      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
+    `);
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO approval_actions (id, application_id, level, actor_id, action, narrative, recommended_amount, recommended_term_days)
+      VALUES (${crypto.randomUUID()}::uuid, ${applicationId}::uuid, ${level}, ${req.user!.userId}::uuid, ${action}, ${narrative}, ${money(req.body?.recommendedAmount)}, ${numberOrNull(req.body?.recommendedTermDays)})
+    `);
       await tx.$executeRaw(Prisma.sql`UPDATE approval_assignments SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid AND status='active'`);
       await tx.$executeRaw(Prisma.sql`UPDATE credit_cases SET status='rejected', completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE application_id=${applicationId}::uuid`);
       await tx.loanApplication.update({ where: { id: applicationId }, data: { status: "rejected", decisionNotes: narrative, decidedAt: new Date() } });
