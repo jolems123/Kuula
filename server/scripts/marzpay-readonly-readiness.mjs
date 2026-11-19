@@ -29,7 +29,7 @@ assert.ok(api.pathname === "/" || api.pathname === "", "PUBLIC_API_URL must be t
 const base = new URL(process.env.MARZPAY_BASE_URL || "https://wallet.wearemarz.com/api/v1");
 assert.equal(base.protocol, "https:");
 assert.equal(base.hostname, "wallet.wearemarz.com");
-assert.equal(base.pathname.replace(/\\/$/, ""), "/api/v1");
+assert.equal((base.pathname.endsWith("/") ? base.pathname.slice(0, -1) : base.pathname), "/api/v1");
 const auth = Buffer.from(process.env.MARZPAY_API_KEY.trim() + ":" + process.env.MARZPAY_API_SECRET.trim()).toString("base64");
 try {
   const response = await fetch(new URL("/api/v1/balance?country=UG", base), {
@@ -42,7 +42,7 @@ try {
   const status = account?.status ?? {};
   const sandbox = payload?.metadata?.sandbox_mode ?? payload?.data?.metadata?.sandbox_mode ?? payload?.meta?.sandbox_mode;
   const accountActive = String(status.account_status || "").toLowerCase() === "active" && status.is_frozen !== true;
-  const balanceShapeValid = Number.isFinite(Number(account?.available_balance?.raw));
+  const balanceShapeValid = account?.available_balance?.raw != null && Number.isFinite(Number(account.available_balance.raw));
   // Never infer live readiness when the provider does not explicitly identify sandbox mode.
   const sandboxKnown = typeof sandbox === "boolean";
   const ok = response.ok && String(payload?.status || "").toLowerCase() === "success" && accountActive && balanceShapeValid && sandboxKnown;
